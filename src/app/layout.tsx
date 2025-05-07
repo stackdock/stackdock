@@ -16,6 +16,7 @@ const outfit = localFont({
     },
   ],
   variable: '--font-outfit',
+  display: 'swap'
 });
 
 export const metadata: Metadata = {
