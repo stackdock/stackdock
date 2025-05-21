@@ -92,3 +92,6 @@ export interface ServerResponse {
   links: Links;
   meta: Meta;
 }
+
+// Tags for cache validation
+export const GRIDPANE_SERVERS_TAG = 'gridpane-servers';
