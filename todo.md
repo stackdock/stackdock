@@ -3,6 +3,7 @@
 ## Setup
 - [X] Install Next 15, Tailwind 4, Shadcn
 - [X] Custom Font
+- [X] lib folder utilization for external api
 - [ ] Auth
   - [ ] Better Auth?
   - [ ] Login, Signup, Forgot Password
@@ -13,3 +14,6 @@
 - [ ] Frontend
   - [ ] Component organizaion
   - [ ] Proper Code splitting  
+- [ ] Caching
+  - [ ] Figure out generation method
+  - [ ] Use next.js built in features first 
