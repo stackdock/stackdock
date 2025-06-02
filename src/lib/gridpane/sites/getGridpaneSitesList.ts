@@ -1,6 +1,6 @@
 "use server";
 
-import { SitesResponse, GRIDPANE_SITES_TAG } from './types';
+import { SitesResponse } from './types';
 
 // Read from .env.local 
 const url = process.env.GRIDPANE_API_URL;
@@ -18,7 +18,9 @@ export async function getGridPaneSitesList(page: number = 1): Promise<SitesRespo
 
     try {
         // TEMPORARY FOR TESTING
-        console.log(`[${new Date().toLocaleTimeString()}] Fetching GridPane site list...`);
+        //console.log(`[${new Date().toLocaleTimeString()}] Fetching GridPane site list...`);
+        console.log(`[${new Date().toLocaleTimeString()}] Fetching GridPane site list for page ${page}... URL: ${requestUrl}`);
+
 
         const response = await fetch(requestUrl, {
             method: 'GET',
@@ -26,11 +28,11 @@ export async function getGridPaneSitesList(page: number = 1): Promise<SitesRespo
                 'Authorization': `Bearer ${token}`, 
                 'Content-Type': 'application/json'
             },
-            next: {
-                revalidate: 180, // Revalidate cache every 3 minutes (180 seconds)
-                tags: [GRIDPANE_SITES_TAG] // Tag declaration
-                // tags: [`${GRIDPANE_SITES_TAG}-page-${page}`] // In case tags for cache need more granular control per page
-            }
+            // next: {
+            //     revalidate: 60, // Revalidate cache every 1 minute(s) (60 seconds)
+            //     tags: [GRIDPANE_SITES_TAG, `${GRIDPANE_SITES_TAG}-page-${page}`] // Tag declaration
+            //     // tags: [`${GRIDPANE_SITES_TAG}-page-${page}`] // In case tags for cache need more granular control per page
+            // }
         });
         // Throw error when response sends a failure
         if (!response.ok) {

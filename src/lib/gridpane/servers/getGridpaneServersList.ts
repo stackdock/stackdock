@@ -1,6 +1,6 @@
 "use server";
 
-import { ServerResponse, GRIDPANE_SERVERS_TAG } from './types';
+import { ServerResponse } from './types';
 
 // Read from .env.local 
 const url = process.env.GRIDPANE_API_URL;
@@ -26,11 +26,11 @@ export async function getGridPaneServersList(page: number = 1): Promise<ServerRe
                 'Authorization': `Bearer ${token}`, 
                 'Content-Type': 'application/json'
             },
-            next: {
-                revalidate: 180, // Revalidate cache every 3 minutes (180 seconds)
-                tags: [GRIDPANE_SERVERS_TAG] // Tag declaration
-                // tags: [`${GRIDPANE_SERVERS_TAG}-page-${page}`] // In case tags for cache need more granular control per page
-            }
+            // next: {
+            //     revalidate: 60, // Revalidate cache every 1 minute(s) (60 seconds)
+            //     tags: [GRIDPANE_SERVERS_TAG, `${GRIDPANE_SERVERS_TAG}-page-${page}`] // Tag declaration
+            //     // tags: [`${GRIDPANE_SERVERS_TAG}-page-${page}`] // In case tags for cache need more granular control per page
+            // }
         });
         // Throw error when response sends a failure
         if (!response.ok) {
