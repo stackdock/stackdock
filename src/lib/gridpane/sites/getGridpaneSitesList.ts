@@ -2,48 +2,60 @@
 
 import { SitesResponse } from './types';
 
-// Read from .env.local 
+// Read from .env.local
 const url = process.env.GRIDPANE_API_URL;
 const token = process.env.GRIDPANE_BEARER_TOKEN;
 
-// Async call for Gridpane API to list all sites 
+// Async call for Gridpane API to list all sites
 export async function getGridPaneSitesList(page: number = 1): Promise<SitesResponse> {
-    // Throw error if env variables are not set in .env.local
     if (!url || !token) {
         throw new Error('Missing GridPane API configuration');
     }
 
-    // Construct the URL with the page parameter
     const requestUrl = `${url}/site?page=${page}`;
 
+    // Log 1: Confirm the URL being requested
+    console.log(`[GET_SITES_LIST] Attempting to fetch. Page: ${page}, URL: ${requestUrl}`);
+
     try {
-        // TEMPORARY FOR TESTING
-        //console.log(`[${new Date().toLocaleTimeString()}] Fetching GridPane site list...`);
-        console.log(`[${new Date().toLocaleTimeString()}] Fetching GridPane site list for page ${page}... URL: ${requestUrl}`);
-
-
         const response = await fetch(requestUrl, {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${token}`, 
+                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             },
-            // next: {
-            //     revalidate: 60, // Revalidate cache every 1 minute(s) (60 seconds)
-            //     tags: [GRIDPANE_SITES_TAG, `${GRIDPANE_SITES_TAG}-page-${page}`] // Tag declaration
-            //     // tags: [`${GRIDPANE_SITES_TAG}-page-${page}`] // In case tags for cache need more granular control per page
-            // }
+            // IMPORTANT: Force no caching for this fetch during debugging
+            cache: 'no-store',
         });
-        // Throw error when response sends a failure
+
+        // Log 2: Confirm the status from the API
+        console.log(`[GET_SITES_LIST] API Response received for Page ${page}. Status: ${response.status}, StatusText: ${response.statusText}`);
+
+        // Log 3: See the RAW text response from the API
+        // Clone the response to log its text content without consuming the body for .json()
+        const responseText = await response.clone().text();
+        console.log(`[GET_SITES_LIST] RAW API Response Text for Page ${page} (first 500 chars):`, responseText.substring(0, 500));
+
         if (!response.ok) {
+            console.error(`[GET_SITES_LIST] API Error for Page ${page}. Status: ${response.status}. Raw Body: ${responseText.substring(0, 200)}...`);
             throw new Error(`List sites page (${page}) API response failed | API Response: ${response.status}`);
         }
-        // Set and return data from successful response
+
         const data: SitesResponse = await response.json();
+
+        // Log 4: Confirm the meta data AFTER parsing JSON
+        console.log(`[GET_SITES_LIST] Parsed JSON Meta for Page ${page}:`, JSON.stringify(data.meta, null, 2));
+        console.log(`[GET_SITES_LIST] Parsed JSON Data Length for Page ${page}:`, data.data?.length);
+        if (data.data && data.data.length > 0) {
+            console.log(`[GET_SITES_LIST] Parsed JSON First Item ID for Page ${page}:`, data.data[0]?.id);
+        }
+
         return data;
-    // Throw error if call completely fails 
+
     } catch (error) {
-        console.error(`Error fetching data for page ${page}:`, error);
+        if (!(error instanceof Error && error.message.includes("API response failed"))) {
+            console.error(`[GET_SITES_LIST] General Error for Page ${page}:`, error);
+        }
         throw error;
     }
 }
