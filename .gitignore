@@ -2,7 +2,7 @@
 
 # Copilot instructions
 # /.github/instructions/*
-copilot.instructions.md
+copilot-instructions.md
 
 # playground folder
 /src/app/playground*
