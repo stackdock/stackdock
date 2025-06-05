@@ -1,13 +1,13 @@
 "use server";
 
-import { ServerResponse } from './types';
+import { ServersResponse } from './types';
 
 // Read from .env.local 
 const url = process.env.GRIDPANE_API_URL;
 const token = process.env.GRIDPANE_BEARER_TOKEN;
 
 // Async call for Gridpane API to list all servers 
-export async function getGridPaneServersList(page: number = 1): Promise<ServerResponse> {
+export async function getGridPaneServersList(page: number = 1): Promise<ServersResponse> {
     // Throw error if env variables are not set in .env.local
     if (!url || !token) {
         throw new Error('Missing GridPane API configuration');
@@ -37,7 +37,7 @@ export async function getGridPaneServersList(page: number = 1): Promise<ServerRe
             throw new Error(`List servers page (${page}) API response failed | API Response: ${response.status}`);
         }
         // Set and return data from successful response
-        const data: ServerResponse = await response.json();
+        const data: ServersResponse = await response.json();
         return data;
     // Throw error if call completely fails 
     } catch (error) {
