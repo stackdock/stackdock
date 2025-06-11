@@ -1,64 +1,88 @@
 "use server";
 
-import { SitesResponse, GRIDPANE_SITES_TAG } from './types';
+import { SitesResponse } from './types';
+import {
+    getGridPaneConfig,
+    validatePageParameter,
+    createFetchWithTimeout,
+    withRetry,
+    handleGridPaneResponse,
+    logApiCall,
+    createGridPaneHeaders,
+    GridPaneApiError
+} from '../utils';
 
-// Read from .env.local
-const url = process.env.GRIDPANE_API_URL;
-const token = process.env.GRIDPANE_BEARER_TOKEN;
-
-// Async call for Gridpane API to list all sites
 export async function getGridPaneSitesList(page: number = 1): Promise<SitesResponse> {
-    if (!url || !token) {
-        throw new Error('Missing GridPane API configuration');
-    }
+    const startTime = performance.now();
+    const validPage = validatePageParameter(page);
+    const { url, token } = getGridPaneConfig();
 
-    // Format the URL for query string pagination
-    const requestUrl = `${url}/site?page=${page}`;
-
-    // Log 1: Confirm the URL being requested
-    // console.log(`[GET_SITES_LIST] Attempting to fetch. Page: ${page}, URL: ${requestUrl}`);
+    const endpoint = 'sites';
+    const requestUrl = `${url}/site?page=${validPage}`;
 
     try {
-        const response = await fetch(requestUrl, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
+        const fetchWithTimeout = createFetchWithTimeout();
+
+        const response = await withRetry(
+            async () => {
+                return await fetchWithTimeout(requestUrl, {
+                    method: 'GET',
+                    headers: createGridPaneHeaders(token),
+                    next: {
+                        revalidate: 60,
+                        tags: [`gridpane-sites`, `gridpane-sites-page-${validPage}`]
+                    }
+                });
             },
-            next: { // Add this back
-                revalidate: 60, // 60 Seconds till revalidation
-                tags: [GRIDPANE_SITES_TAG, `${GRIDPANE_SITES_TAG}-page-${page}`]
-            }
-        });
+            endpoint,
+            validPage
+        );
 
-        // Log 2: Confirm the status from the API
-        // console.log(`[GET_SITES_LIST] API Response received for Page ${page}. Status: ${response.status}, StatusText: ${response.statusText}`);
+    const data = await handleGridPaneResponse<SitesResponse>(response, endpoint, validPage);
 
-        // Log 3: See the RAW text response from the API
-        // Clone the response to log its text content without consuming the body for .json()
-        // const responseText = await response.clone().text();
-        // console.log(`[GET_SITES_LIST] RAW API Response Text for Page ${page} (first 500 chars):`, responseText.substring(0, 500));
-
-        if (!response.ok) {
-            // console.error(`[GET_SITES_LIST] API Error for Page ${page}. Status: ${response.status}. Raw Body: ${responseText.substring(0, 200)}...`);
-            throw new Error(`List sites page (${page}) API response failed | API Response: ${response.status}`);
+        // Validate response structure
+        if (!data || !Array.isArray(data.data)) {
+        throw new GridPaneApiError(
+            'Invalid response structure: missing or invalid data array',
+            200,
+            endpoint,
+            validPage
+        );
         }
 
-        const data: SitesResponse = await response.json();
+        if (!data.meta || typeof data.meta.current_page !== 'number') {
+        throw new GridPaneApiError(
+            'Invalid response structure: missing or invalid meta object',
+            200,
+            endpoint,
+            validPage
+        );
+        }
 
-        // Log 4: Confirm the meta data AFTER parsing JSON
-        // console.log(`[GET_SITES_LIST] Parsed JSON Meta for Page ${page}:`, JSON.stringify(data.meta, null, 2));
-        // console.log(`[GET_SITES_LIST] Parsed JSON Data Length for Page ${page}:`, data.data?.length);
-        // if (data.data && data.data.length > 0) {
-        //    console.log(`[GET_SITES_LIST] Parsed JSON First Item ID for Page ${page}:`, data.data[0]?.id);
-        // }
+        // Log successful call
+        const duration = Math.round(performance.now() - startTime);
+        logApiCall(`${endpoint} (${data.data.length} sites)`, validPage, duration);
 
         return data;
 
     } catch (error) {
-        if (!(error instanceof Error && error.message.includes("API response failed"))) {
-            console.error(`[GET_SITES_LIST] General Error for Page ${page}:`, error);
+        const duration = Math.round(performance.now() - startTime);
+        
+        if (error instanceof GridPaneApiError) {
+            console.error(`[GridPane API Error] ${endpoint} page ${validPage}: ${error.message} (${duration}ms)`);
+            throw error;
         }
-        throw error;
+
+        // Handle unexpected errors
+        const unexpectedError = new GridPaneApiError(
+            `Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            0,
+            endpoint,
+            validPage,
+            error
+        );
+        
+        console.error(`[GridPane API Error] ${endpoint} page ${validPage}: ${unexpectedError.message} (${duration}ms)`, error);
+        throw unexpectedError;
     }
 }
