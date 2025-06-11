@@ -2,14 +2,16 @@
 
 import { SitesResponse } from './types';
 import {
-    getGridPaneConfig,
-    validatePageParameter,
-    createFetchWithTimeout,
-    withRetry,
-    handleGridPaneResponse,
-    logApiCall,
-    createGridPaneHeaders,
-    GridPaneApiError
+  getGridPaneConfig,
+  validatePageParameter,
+  createFetchWithTimeout,
+  logApiCall,
+  createGridPaneHeaders,
+  GridPaneApiError
+} from '../helpers';
+import {
+  withRetry,
+  handleGridPaneResponse
 } from '../utils';
 
 export async function getGridPaneSitesList(page: number = 1): Promise<SitesResponse> {
