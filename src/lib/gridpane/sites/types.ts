@@ -33,6 +33,35 @@ export interface SiteServer {
     server_timezone: string;
 }
 
+// Types for VPS services (new for single site)
+export interface VpsServicePivot {
+    site_id: number;
+    service_id: number;
+    id: number;
+    status: string;
+    service_user_id: number;
+}
+
+export interface VpsService {
+    id: number;
+    name: string;
+    pivot: VpsServicePivot;
+}
+
+// Types for scheduled backups (new for single site)
+export interface ScheduleBackup {
+    id: number;
+    site_id: number;
+    type: string;
+    service_id: number | null;
+    bup_schedule: string;
+    hour: string;
+    minute: string;
+    day: string;
+    created_at: string;
+    updated_at: string;
+}
+
 // Types for the nested 'site_security_settings' object
 export interface SiteSecuritySettings {
     site_id: number;
@@ -134,7 +163,7 @@ export interface SiteCustomizer {
     deleted_at: string | null;
 }
 
-// Main Site interface
+// Main Site interface (for list view)
 export interface Site {
     id: number;
     url: string;
@@ -223,6 +252,22 @@ export interface Site {
     site_customizer: SiteCustomizer;
 }
 
+// Extended Site interface for detailed single site view (adds the extra properties)
+export interface SiteDetailed extends Site {
+    vpsServices: VpsService[];
+    schedule_backups: ScheduleBackup[];
+}
+
+// Enhanced SingleSiteResponse with API response metadata
+export interface SingleSiteResponse extends SiteDetailed {
+    _metadata?: {
+        fetched_at: string;
+        cached_until?: string;
+        request_duration_ms: number;
+        api_version?: string;
+    };
+}
+
 // Standardized meta link structure
 export interface MetaLink {
     url: string | null;
@@ -249,10 +294,16 @@ export interface GridPaneErrorResponse {
     status?: number;
 }
 
-// Overall response structure
+// Overall response structure for sites list
 export interface SitesResponse {
     data: Site[];
     meta: SitesMeta;
 }
 
+// Response structure for single site (wraps site in data object)
+export interface SingleSiteApiResponse {
+    data: SiteDetailed;
+}
+
 export const GRIDPANE_SITES_TAG = 'gridpane-sites';
+export const GRIDPANE_SINGLE_SITE_TAG = 'gridpane-single-site';
