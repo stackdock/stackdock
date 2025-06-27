@@ -15,7 +15,7 @@ export interface Team {
   tax_rate: number;
 }
 
-// Error response type (matching other APIs)
+// Error response type
 export interface GridPaneErrorResponse {
   message: string;
   errors?: Record<string, string[]>;
@@ -32,4 +32,21 @@ export interface CurrentTeamResponse extends Team {
   };
 }
 
+// User Teams API response structure (object with numbered keys)
+export interface UserTeamsApiResponse {
+  [key: string]: Team;
+}
+
+// Enhanced UserTeamsResponse with API response metadata and converted array
+export interface UserTeamsResponse {
+  teams: Team[];
+  _metadata?: {
+    fetched_at: string;
+    cached_until?: string;
+    request_duration_ms: number;
+    api_version?: string;
+  };
+}
+
 export const GRIDPANE_CURRENT_TEAM_TAG = 'gridpane-current-team';
+export const GRIDPANE_USER_TEAMS_TAG = 'gridpane-user-teams';

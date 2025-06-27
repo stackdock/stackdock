@@ -25,9 +25,14 @@ export default function Home() {
         <Link href="/playground/gridpane/system-users">System Users</Link>
       </Button>
       <h1>Teams</h1>
-      <Button>
-        <Link href="/playground/gridpane/teams">Teams</Link>
-      </Button>
+      <div className="flex gap-2">
+        <Button>
+          <Link href="/playground/gridpane/teams">Teams</Link>
+        </Button>
+          <Button>
+          <Link href="/playground/gridpane/teams/user-teams">User Teams</Link>
+        </Button>
+      </div>
     </div>
   );
 }
