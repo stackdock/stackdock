@@ -17,3 +17,9 @@
 - [ ] Caching
   - [ ] Figure out generation method
   - [ ] Use next.js built in features first 
+- [ ] API connections
+  - [ ] Gridpane
+    - [ ] GET Endpoints
+    - [ ] POST Endpoints
+    - [ ] PUT Endpoints
+    - [ ] DELETE Endpoints 

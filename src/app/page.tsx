@@ -24,6 +24,10 @@ export default function Home() {
       <Button>
         <Link href="/playground/gridpane/system-users">System Users</Link>
       </Button>
+      <h1>Teams</h1>
+      <Button>
+        <Link href="/playground/gridpane/teams">Teams</Link>
+      </Button>
     </div>
   );
 }
