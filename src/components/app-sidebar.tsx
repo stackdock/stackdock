@@ -52,8 +52,8 @@ const data = {
   ],
   navMain: [
     {
-      title: "Playground",
-      url: "#",
+      title: "Dashboard",
+      url: "./dashboard",
       icon: SquareTerminal,
       isActive: true,
       items: [
@@ -72,13 +72,13 @@ const data = {
       ],
     },
     {
-      title: "Models",
-      url: "#",
+      title: "Sites",
+      url: "./playground/gridpane/sites",
       icon: Bot,
       items: [
         {
-          title: "Genesis",
-          url: "#",
+          title: "All",
+          url: "/playground/gridpane/sites",
         },
         {
           title: "Explorer",
