@@ -3,15 +3,15 @@
 import * as React from "react"
 import {
   AudioWaveform,
-  BookOpen,
   MonitorSmartphoneIcon,
   Command,
   Frame,
   GalleryVerticalEnd,
   Map,
   PieChart,
-  Settings2,
-  Bolt,
+  House,
+  Server,
+  Globe
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -54,7 +54,7 @@ const data = {
     {
       title: "Dashboard",
       url: "./dashboard",
-      icon: Bolt,
+      icon: House,
       isActive: true,
       items: [
         {
@@ -73,7 +73,7 @@ const data = {
     },
     {
       title: "Sites",
-      url: "./playground/gridpane/sites",
+      url: "/playground/gridpane/sites",
       icon: MonitorSmartphoneIcon,
       items: [
         {
@@ -91,13 +91,13 @@ const data = {
       ],
     },
     {
-      title: "Documentation",
-      url: "#",
-      icon: BookOpen,
+      title: "Servers",
+      url: "/playground/gridpane/servers",
+      icon: Server,
       items: [
         {
-          title: "Introduction",
-          url: "#",
+          title: "All",
+          url: "/playground/gridpane/servers",
         },
         {
           title: "Get Started",
@@ -114,13 +114,13 @@ const data = {
       ],
     },
     {
-      title: "Settings",
-      url: "#",
-      icon: Settings2,
+      title: "Domains",
+      url: "/playground/gridpane/domains",
+      icon: Globe,
       items: [
         {
-          title: "General",
-          url: "#",
+          title: "All",
+          url: "/playground/gridpane/domains",
         },
         {
           title: "Team",
