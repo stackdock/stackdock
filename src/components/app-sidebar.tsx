@@ -4,14 +4,14 @@ import * as React from "react"
 import {
   AudioWaveform,
   BookOpen,
-  Bot,
+  MonitorSmartphoneIcon,
   Command,
   Frame,
   GalleryVerticalEnd,
   Map,
   PieChart,
   Settings2,
-  SquareTerminal,
+  Bolt,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -54,7 +54,7 @@ const data = {
     {
       title: "Dashboard",
       url: "./dashboard",
-      icon: SquareTerminal,
+      icon: Bolt,
       isActive: true,
       items: [
         {
@@ -74,7 +74,7 @@ const data = {
     {
       title: "Sites",
       url: "./playground/gridpane/sites",
-      icon: Bot,
+      icon: MonitorSmartphoneIcon,
       items: [
         {
           title: "All",
