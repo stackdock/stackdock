@@ -11,7 +11,8 @@ import {
   PieChart,
   House,
   Server,
-  Globe
+  Globe,
+  SaveAll
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -132,6 +133,29 @@ const data = {
         },
         {
           title: "Limits",
+          url: "#",
+        },
+      ],
+    },
+    {
+      title: "Backups",
+      url: "/playground/gridpane/backups",
+      icon: SaveAll,
+      items: [
+        {
+          title: "Schedules",
+          url: "/playground/gridpane/backups/schedules",
+        },
+        {
+          title: "Integrations",
+          url: "#",
+        },
+        {
+          title: "Subitem",
+          url: "#",
+        },
+        {
+          title: "Subitem-two",
           url: "#",
         },
       ],
