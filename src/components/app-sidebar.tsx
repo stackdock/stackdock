@@ -54,13 +54,13 @@ const data = {
   navMain: [
     {
       title: "Dashboard",
-      url: "./dashboard",
+      url: "/dashboard",
       icon: House,
       isActive: true,
       items: [
         {
-          title: "History",
-          url: "#",
+          title: "Overview",
+          url: "/dashboard",
         },
         {
           title: "Starred",
@@ -93,16 +93,16 @@ const data = {
     },
     {
       title: "Servers",
-      url: "/playground/gridpane/servers",
+      url: "/dashboard/servers",
       icon: Server,
       items: [
         {
           title: "All",
-          url: "/playground/gridpane/servers",
+          url: "/dashboard/servers",
         },
         {
           title: "System Users",
-          url: "playground/gridpane/system-users",
+          url: "/playground/gridpane/system-users",
         },
         {
           title: "Tutorials",
