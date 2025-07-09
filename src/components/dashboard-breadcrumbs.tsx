@@ -1,7 +1,6 @@
 "use client"
 
-import React from 'react';
-import { usePathname } from "next/navigation"
+import { usePathname } from 'next/navigation'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -9,46 +8,50 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
+} from '@/components/ui/breadcrumb'
 
-function getBreadcrumbs(pathname: string) {
-  const paths = pathname.split('/').filter(Boolean)
-  
-  if (paths.length === 1 && paths[0] === 'dashboard') {
-    return [{ title: 'Dashboard', href: '/dashboard', isLast: true }]
-  }
-  
-  if (paths.length === 2 && paths[0] === 'dashboard') {
-    const page = paths[1].charAt(0).toUpperCase() + paths[1].slice(1)
-    return [
-      { title: 'Dashboard', href: '/dashboard', isLast: false },
-      { title: page, href: `/dashboard/${paths[1]}`, isLast: true }
-    ]
-  }
-  
-  return [{ title: 'Dashboard', href: '/dashboard', isLast: true }]
+function formatBreadcrumbLabel(segment: string): string {
+  return segment
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
 }
 
 export function DashboardBreadcrumbs() {
   const pathname = usePathname()
-  const breadcrumbs = getBreadcrumbs(pathname)
   
+  const segments = pathname.split('/').filter(Boolean)
+  
+  if (segments[0] !== 'dashboard') return null
+  
+  const breadcrumbs = segments.map((segment, index) => {
+    const href = '/' + segments.slice(0, index + 1).join('/')
+    const isLast = index === segments.length - 1
+    const label = formatBreadcrumbLabel(segment)
+    
+    return {
+      label,
+      href: isLast ? undefined : href,
+      isLast
+    }
+  })
+
   return (
     <Breadcrumb>
       <BreadcrumbList>
         {breadcrumbs.map((crumb) => (
-          <React.Fragment key={crumb.href}>
+          <div key={crumb.href || crumb.label} className="flex items-center">
             <BreadcrumbItem>
               {crumb.isLast ? (
-                <BreadcrumbPage>{crumb.title}</BreadcrumbPage>
+                <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
               ) : (
                 <BreadcrumbLink href={crumb.href}>
-                  {crumb.title}
+                  {crumb.label}
                 </BreadcrumbLink>
               )}
             </BreadcrumbItem>
             {!crumb.isLast && <BreadcrumbSeparator />}
-          </React.Fragment>
+          </div>
         ))}
       </BreadcrumbList>
     </Breadcrumb>
