@@ -101,8 +101,8 @@ const data = {
           url: "/playground/gridpane/servers",
         },
         {
-          title: "Get Started",
-          url: "#",
+          title: "System Users",
+          url: "playground/gridpane/system-users",
         },
         {
           title: "Tutorials",
