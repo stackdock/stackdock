@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+// import Script from 'next/script'
 import "./globals.css";
 
 const outfit = localFont({
@@ -31,6 +32,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
+      <head>
+        {/* <Script src="https://unpkg.com/react-scan/dist/auto.global.js"/> */}
+      </head>
       <body
         className={`${outfit.variable} ${outfit.className} antialiased`}
       >
