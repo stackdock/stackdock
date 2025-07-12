@@ -74,12 +74,12 @@ const data = {
     },
     {
       title: "Sites",
-      url: "/playground/gridpane/sites",
+      url: "/dashboard/sites",
       icon: MonitorSmartphoneIcon,
       items: [
         {
           title: "All",
-          url: "/playground/gridpane/sites",
+          url: "/dashboard/sites",
         },
         {
           title: "Explorer",
