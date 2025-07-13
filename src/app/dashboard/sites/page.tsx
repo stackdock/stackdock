@@ -7,13 +7,13 @@ import Link from "next/link";
 export const dynamic = 'force-dynamic';
 
 // Pass searchParams as a prop
-interface GridPaneSitesTestPageProps {
+interface GridPaneSitesPageProps {
     searchParams: Promise<{
         page?: string;
     }>;
 }
 
-export default async function GridPaneSitesListPage({ searchParams }: GridPaneSitesTestPageProps) {
+export default async function GridPaneSitesListPage({ searchParams }: GridPaneSitesPageProps) {
     // Await searchParams before using it
     const resolvedSearchParams = await searchParams;
     console.log(`[PAGE.TSX | TOP] searchParams received:`, JSON.stringify(resolvedSearchParams, null, 2));

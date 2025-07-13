@@ -59,14 +59,12 @@ export default async function GridPaneServersPage({ searchParams }: GridPaneServ
                         <p><strong>Total Items:</strong> {serverData.meta.total}</p>
                         <p><strong>Per Page:</strong> {serverData.meta.per_page}</p>
                     </div>
-
                     <div className="p-4 rounded">
                         <h2 className="font-semibold text-lg mb-2">Servers Data</h2>
                         <pre className="p-4 rounded border overflow-auto max-h-96 text-xs">
                             {JSON.stringify(serverData, null, 2)}
                         </pre>
                     </div>
-
                     <div className="flex gap-2 mt-4">
                         {serverData.meta.current_page > 1 && (
                             <Button>
