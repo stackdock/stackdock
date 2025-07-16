@@ -50,7 +50,7 @@ export function DashboardBreadcrumbs() {
                 </BreadcrumbLink>
               )}
             </BreadcrumbItem>
-            {!crumb.isLast && <BreadcrumbSeparator />}
+            {!crumb.isLast && <BreadcrumbSeparator className="pl-2.5"/>}
           </div>
         ))}
       </BreadcrumbList>
