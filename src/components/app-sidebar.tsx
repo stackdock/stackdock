@@ -12,7 +12,8 @@ import {
   House,
   Server,
   Globe,
-  SaveAll
+  SaveAll,
+  Blocks
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -157,6 +158,17 @@ const data = {
           title: "Subitem-two",
           url: "#",
         },
+      ],
+    },
+        {
+      title: "Providers",
+      url: "#",
+      icon: Blocks,
+      items: [
+        {
+          title: "Integrations",
+          url: "#",
+        }
       ],
     },
   ],
