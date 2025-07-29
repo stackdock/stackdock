@@ -139,16 +139,16 @@ const data = {
     },
     {
       title: "Backups",
-      url: "/playground/gridpane/backups",
+      url: "/dashboard/backups",
       icon: SaveAll,
       items: [
         {
           title: "Schedules",
-          url: "/playground/gridpane/backups/schedules",
+          url: "#",
         },
         {
           title: "Integrations",
-          url: "#",
+          url: "/dashboard/backups/integrations",
         },
         {
           title: "Subitem",
