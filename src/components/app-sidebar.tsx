@@ -144,7 +144,7 @@ const data = {
       items: [
         {
           title: "Schedules",
-          url: "#",
+          url: "/dashboard/backups/schedules",
         },
         {
           title: "Integrations",
