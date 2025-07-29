@@ -116,12 +116,12 @@ const data = {
     },
     {
       title: "Domains",
-      url: "/playground/gridpane/domains",
+      url: "/dashboard/domains",
       icon: Globe,
       items: [
         {
           title: "All",
-          url: "/playground/gridpane/domains",
+          url: "/dashboard/domains",
         },
         {
           title: "Team",
