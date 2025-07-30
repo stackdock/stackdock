@@ -13,7 +13,7 @@ interface GridPaneServersPageProps {
     }>;
 }
 
-export default async function GridPaneServersPage({ searchParams }: GridPaneServersPageProps) {
+export default async function GridPaneServersListPage({ searchParams }: GridPaneServersPageProps) {
     // Await searchParams before using it
     const resolvedSearchParams = await searchParams;
     console.log(`[PAGE.TSX | TOP] searchParams received:`, JSON.stringify(resolvedSearchParams, null, 2));
