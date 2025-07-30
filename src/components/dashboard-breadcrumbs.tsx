@@ -1,5 +1,6 @@
 "use client"
 
+import React from 'react'
 import { usePathname } from 'next/navigation'
 import {
   Breadcrumb,
@@ -39,8 +40,8 @@ export function DashboardBreadcrumbs() {
   return (
     <Breadcrumb>
       <BreadcrumbList>
-        {breadcrumbs.map((crumb) => (
-          <div key={crumb.href || crumb.label} className="flex items-center">
+        {breadcrumbs.map((crumb, index) => (
+          <React.Fragment key={`${crumb.label}-${index}`}>
             <BreadcrumbItem>
               {crumb.isLast ? (
                 <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
@@ -51,7 +52,7 @@ export function DashboardBreadcrumbs() {
               )}
             </BreadcrumbItem>
             {!crumb.isLast && <BreadcrumbSeparator />}
-          </div>
+          </React.Fragment>
         ))}
       </BreadcrumbList>
     </Breadcrumb>
