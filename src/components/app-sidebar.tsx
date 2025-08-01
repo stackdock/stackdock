@@ -82,8 +82,8 @@ const data = {
           url: "/dashboard/sites",
         },
         {
-          title: "Explorer",
-          url: "#",
+          title: "Bundles",
+          url: "/dashboard/sites/bundles",
         },
         {
           title: "Quantum",
