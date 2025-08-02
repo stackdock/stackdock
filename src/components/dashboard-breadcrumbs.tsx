@@ -14,7 +14,7 @@ import {
 function formatBreadcrumbLabel(segment: string): string {
   return segment
     .split('-')
-    .map(word => word)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ')
 }
 

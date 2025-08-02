@@ -102,7 +102,7 @@ const data = {
         },
         {
           title: "System Users",
-          url: "/playground/gridpane/system-users",
+          url: "/dashboard/servers/system-users",
         },
         {
           title: "Tutorials",
