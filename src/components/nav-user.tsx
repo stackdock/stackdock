@@ -1,11 +1,11 @@
 "use client"
 
 import {
-  BadgeCheck,
   Bell,
   ChevronsUpDown,
+  HandHeart,
   LogOut,
-  Sparkles,
+  User,
 } from "lucide-react"
 
 import {
@@ -82,14 +82,14 @@ export function NavUser({
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem>
-                <Sparkles />
+                <HandHeart />
                 Sponsor StackDock
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem>
-                <BadgeCheck />
+                <User />
                 <Link href="/dashboard/settings">Profile</Link>
               </DropdownMenuItem>
               <DropdownMenuItem>
