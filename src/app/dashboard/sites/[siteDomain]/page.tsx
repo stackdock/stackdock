@@ -128,9 +128,9 @@ export default async function GridPaneSingleSitePage({ params }: GridPaneSingleS
                         <p><strong>Git Configured:</strong> {siteData.is_git_configured ? 'Yes' : 'No'}</p>
                     </div>
 
-                    <div className="bg-gray-50 p-4 rounded">
+                    <div className="p-4 rounded">
                         <h2 className="font-semibold text-lg mb-2">Full Site Data</h2>
-                        <pre className="bg-white p-4 rounded border overflow-auto max-h-96 text-xs">
+                        <pre className="p-4 rounded border overflow-auto max-h-96 text-xs">
                             {JSON.stringify(siteData, null, 2)}
                         </pre>
                     </div>
