@@ -13,15 +13,42 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { User, Key, Bell, Settings, Copy, Eye, EyeOff, Trash2 } from 'lucide-react'
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 
-export function SettingsPage() {
+interface SettingsPageProps {
+  activeTab?: string
+}
+
+interface ApiKeyData {
+  id: string
+  name: string
+  key: string
+  created: string
+  lastUsed: string
+}
+
+interface NotificationSettings {
+  email: boolean
+  push: boolean
+  marketing: boolean
+  security: boolean
+}
+
+export function SettingsPage({ activeTab = "profile" }: SettingsPageProps) {
+  const router = useRouter()
   const [showApiKey, setShowApiKey] = useState<{ [key: string]: boolean }>({})
-  const [notifications, setNotifications] = useState({
+  const [notifications, setNotifications] = useState<NotificationSettings>({
     email: true,
     push: false,
     marketing: true,
     security: true
   })
+
+  const apiKeys: ApiKeyData[] = [
+    { id: "1", name: "Production Key", key: "sk_live_1234567890abcdef", created: "2024-01-15", lastUsed: "2 hours ago" },
+    { id: "2", name: "Development Key", key: "sk_test_abcdef1234567890", created: "2024-01-10", lastUsed: "1 day ago" },
+    { id: "3", name: "Staging Key", key: "sk_staging_fedcba0987654321", created: "2024-01-05", lastUsed: "3 days ago" }
+  ]
 
   const toggleApiKeyVisibility = (keyId: string) => {
     setShowApiKey(prev => ({ ...prev, [keyId]: !prev[keyId] }))
@@ -29,6 +56,10 @@ export function SettingsPage() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
+  }
+
+  const handleTabChange = (tab: string) => {
+    router.push(`/dashboard/settings/${tab}`)
   }
 
   return (
@@ -39,21 +70,21 @@ export function SettingsPage() {
           <p className="text-muted-foreground">Manage your account settings and preferences.</p>
         </div>
 
-        <Tabs defaultValue="profile" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="profile" className="flex items-center gap-2">
+            <TabsTrigger value="profile" className="flex items-center gap-2 cursor-pointer">
               <User className="h-4 w-4" />
               Profile
             </TabsTrigger>
-            <TabsTrigger value="api-keys" className="flex items-center gap-2">
+            <TabsTrigger value="api-keys" className="flex items-center gap-2 cursor-pointer">
               <Key className="h-4 w-4" />
               API Keys
             </TabsTrigger>
-            <TabsTrigger value="notifications" className="flex items-center gap-2">
+            <TabsTrigger value="notifications" className="flex items-center gap-2 cursor-pointer">
               <Bell className="h-4 w-4" />
               Notifications
             </TabsTrigger>
-            <TabsTrigger value="preferences" className="flex items-center gap-2">
+            <TabsTrigger value="preferences" className="flex items-center gap-2 cursor-pointer">
               <Settings className="h-4 w-4" />
               Preferences
             </TabsTrigger>
@@ -113,11 +144,7 @@ export function SettingsPage() {
                 <Button>Create New API Key</Button>
                 
                 <div className="space-y-4">
-                  {[
-                    { id: "1", name: "Production Key", key: "sk_live_1234567890abcdef", created: "2024-01-15", lastUsed: "2 hours ago" },
-                    { id: "2", name: "Development Key", key: "sk_test_abcdef1234567890", created: "2024-01-10", lastUsed: "1 day ago" },
-                    { id: "3", name: "Staging Key", key: "sk_staging_fedcba0987654321", created: "2024-01-05", lastUsed: "3 days ago" }
-                  ].map((apiKey) => (
+                  {apiKeys.map((apiKey) => (
                     <Card key={apiKey.id}>
                       <CardContent className="pt-6">
                         <div className="flex items-center justify-between">

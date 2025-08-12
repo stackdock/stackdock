@@ -6,6 +6,8 @@ import {
   HandHeart,
   LogOut,
   User,
+  Key,
+  Settings,
 } from "lucide-react"
 
 import {
@@ -89,14 +91,28 @@ export function NavUser({
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link href="/dashboard/settings" className="cursor-pointer">
+                <Link href="/dashboard/settings/profile" className="cursor-pointer">
                   <User />
                   Profile
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Bell />
-                Notifications
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard/settings/notifications" className="cursor-pointer">
+                  <Bell />
+                  Notifications
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard/settings/api-keys" className="cursor-pointer">
+                  <Key />
+                  API Keys
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard/settings/preferences" className="cursor-pointer">
+                  <Settings />
+                  Preferences
+                </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
