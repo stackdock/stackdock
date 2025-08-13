@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator"
 import { User, Key, Bell, Settings, Copy, Eye, EyeOff, Trash2 } from 'lucide-react'
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useTheme } from "@/components/theme-provider"
 
 interface SettingsPageProps {
   activeTab?: string
@@ -36,6 +37,7 @@ interface NotificationSettings {
 
 export function SettingsPage({ activeTab = "profile" }: SettingsPageProps) {
   const router = useRouter()
+  const { theme, setTheme } = useTheme()
   const [showApiKey, setShowApiKey] = useState<{ [key: string]: boolean }>({})
   const [notifications, setNotifications] = useState<NotificationSettings>({
     email: true,
@@ -266,7 +268,7 @@ export function SettingsPage({ activeTab = "profile" }: SettingsPageProps) {
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="theme">Theme</Label>
-                    <Select>
+                    <Select value={theme} onValueChange={setTheme}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select theme" />
                       </SelectTrigger>
