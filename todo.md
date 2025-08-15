@@ -20,6 +20,15 @@
 - [ ] API connections
   - [ ] Gridpane
     - [ ] GET Endpoints
+      - [X] Sites
+      - [X] Site ID
+      - [X] Servers
+      - [X] Server ID
+      - [X] User
+      - [X] System User
+      - [X] Backup Integrations
+      - [X] Backup Schedules
+      - [X] Domains
     - [ ] POST Endpoints
     - [ ] PUT Endpoints
     - [ ] DELETE Endpoints 
