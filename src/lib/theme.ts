@@ -10,9 +10,14 @@ export async function getTheme(): Promise<Theme> {
   return theme || 'system'
 }
 
-export function getEffectiveTheme(theme: Theme, systemPreference?: 'light' | 'dark'): 'light' | 'dark' {
+export async function getEffectiveTheme(): Promise<'light' | 'dark'> {
+  const theme = await getTheme()
+  
   if (theme === 'system') {
-    return systemPreference || 'light'
+    // Default to light for system preference on server
+    // Client-side script will correct this
+    return 'light'
   }
+  
   return theme
 }

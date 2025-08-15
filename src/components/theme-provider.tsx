@@ -20,10 +20,22 @@ interface ThemeProviderProps {
 export function ThemeProvider({ children, defaultTheme }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<Theme>(defaultTheme)
   const [isPending, startTransition] = useTransition()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    
+    // Check if client-side theme differs from server default
+    const storedTheme = localStorage.getItem('stackdock-theme') as Theme
+    if (storedTheme && storedTheme !== defaultTheme) {
+      setThemeState(storedTheme)
+    }
+  }, [defaultTheme])
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme)
     
+    // Update DOM immediately for instant feedback
     const root = document.documentElement
     root.classList.remove('light', 'dark')
     
@@ -34,13 +46,18 @@ export function ThemeProvider({ children, defaultTheme }: ThemeProviderProps) {
       root.classList.add(newTheme)
     }
 
+    // Update localStorage immediately
+    localStorage.setItem('stackdock-theme', newTheme)
+
+    // Update server-side cookie
     startTransition(async () => {
       await updateThemeAction(newTheme)
     })
   }
 
+  // Listen for system theme changes when theme is "system"
   useEffect(() => {
-    if (theme !== 'system') return
+    if (!mounted || theme !== 'system') return
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
     
@@ -53,7 +70,7 @@ export function ThemeProvider({ children, defaultTheme }: ThemeProviderProps) {
 
     mediaQuery.addEventListener('change', handleChange)
     return () => mediaQuery.removeEventListener('change', handleChange)
-  }, [theme])
+  }, [theme, mounted])
 
   const value = {
     theme,
