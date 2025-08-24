@@ -35,6 +35,8 @@
 
 # OSS Workflow
 
+-[X] Create Daily Branch test
+
 - [ ] Create `.github/` folder with:
   - [ ] `workflows/ci.yml` (lint, test, build on PR + push to main)
   - [ ] `workflows/deploy-preview.yml` (PR preview deploys via Vercel)
