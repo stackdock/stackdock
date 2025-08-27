@@ -36,6 +36,7 @@
 # OSS Workflow
 
 -[X] Create Daily Branch test
+-[X] FITYMI
 
 - [ ] Create `.github/` folder with:
   - [ ] `workflows/ci.yml` (lint, test, build on PR + push to main)
