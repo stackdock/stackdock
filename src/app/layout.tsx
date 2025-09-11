@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { getTheme } from "@/lib/theme";
+import { OperatingSystemProvider } from "@/hooks/operating-system-provider"
 import "./globals.css";
 
 const outfit = localFont({
@@ -63,7 +64,9 @@ export default async function RootLayout({
         {/* <Script src="https://unpkg.com/react-scan/dist/auto.global.js"/> */}
       </head>
       <body className={`${outfit.variable} ${outfit.className} antialiased`}>
-        {children}
+        <OperatingSystemProvider>
+          {children}
+        </OperatingSystemProvider>
       </body>
     </html>
   );
