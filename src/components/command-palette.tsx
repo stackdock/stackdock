@@ -15,12 +15,13 @@ import {
   Activity,
   FileText,
   Home,
-  BarChart3,
   Shield,
   Plus,
   Moon,
   Sun,
-  Laptop
+  Laptop,
+  MonitorSmartphoneIcon,
+  SaveAll,
 } from "lucide-react"
 import {
   CommandDialog,
@@ -79,7 +80,7 @@ export function CommandPalette({ open, onOpenChange, ...props }: CommandPaletteP
       <CommandInput placeholder="Type a command or search..." />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
-        
+
         <CommandGroup heading="Navigation">
           <CommandItem
             onSelect={() => runCommand(() => router.push("/dashboard"))}
@@ -89,6 +90,13 @@ export function CommandPalette({ open, onOpenChange, ...props }: CommandPaletteP
             <CommandShortcut>{shortcut("D")}</CommandShortcut>
           </CommandItem>
           <CommandItem
+            onSelect={() => runCommand(() => router.push("/dashboard/sites"))}
+          >
+            <MonitorSmartphoneIcon className="mr-2 h-4 w-4" />
+            Sites
+            <CommandShortcut>{shortcut("W")}</CommandShortcut>
+          </CommandItem>
+          <CommandItem
             onSelect={() => runCommand(() => router.push("/dashboard/servers"))}
           >
             <Server className="mr-2 h-4 w-4" />
@@ -96,24 +104,17 @@ export function CommandPalette({ open, onOpenChange, ...props }: CommandPaletteP
             <CommandShortcut>{shortcut("S")}</CommandShortcut>
           </CommandItem>
           <CommandItem
-            onSelect={() => runCommand(() => router.push("/dashboard/sites"))}
-          >
-            <Globe className="mr-2 h-4 w-4" />
-            Sites
-            <CommandShortcut>{shortcut("W")}</CommandShortcut>
-          </CommandItem>
-          <CommandItem
             onSelect={() => runCommand(() => router.push("/dashboard/domains"))}
           >
-            <Database className="mr-2 h-4 w-4" />
+            <Globe className="mr-2 h-4 w-4" />
             Domains
             <CommandShortcut>{shortcut("B")}</CommandShortcut>
           </CommandItem>
           <CommandItem
-            onSelect={() => runCommand(() => router.push("/dashboard/analytics"))}
+            onSelect={() => runCommand(() => router.push("/dashboard/backups/schedules"))}
           >
-            <BarChart3 className="mr-2 h-4 w-4" />
-            Analytics
+            <SaveAll className="mr-2 h-4 w-4" />
+            Backups
             <CommandShortcut>{shortcut("A")}</CommandShortcut>
           </CommandItem>
           <CommandItem
