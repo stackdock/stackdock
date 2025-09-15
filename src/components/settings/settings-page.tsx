@@ -14,7 +14,7 @@ import { Separator } from "@/components/ui/separator"
 import { User, Key, Bell, Settings, Copy, Eye, EyeOff, Trash2 } from 'lucide-react'
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { useTheme } from "@/components/theme-provider"
+import { useTheme } from "@/components/settings/theme-provider"
 
 interface SettingsPageProps {
   activeTab?: string

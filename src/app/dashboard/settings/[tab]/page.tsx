@@ -1,4 +1,4 @@
-import { SettingsPage } from "@/components/settings-page";
+import { SettingsPage } from "@/components/settings/settings-page";
 import { notFound } from "next/navigation";
 
 interface SettingsTabPageProps {

@@ -33,7 +33,7 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from "@/components/ui/command"
-import { useTheme } from "@/components/theme-provider"
+import { useTheme } from "@/components/settings/theme-provider"
 import { useOperatingSystem } from "@/hooks/operating-system-provider"
 
 interface CommandPaletteProps extends DialogProps {
