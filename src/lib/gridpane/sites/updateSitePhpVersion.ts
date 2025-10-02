@@ -17,7 +17,7 @@ import {
   type PhpVersion,
   type UpdatePhpVersionResponse,
   type UpdatePhpVersionResult
-} from './php-version-types';
+} from './types';
 
 export async function updateSitePhpVersion(
   siteId: number,

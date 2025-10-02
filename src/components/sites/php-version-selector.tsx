@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { updateSitePhpVersion } from '@/lib/gridpane/sites/updateSitePhpVersion';
-import { AVAILABLE_PHP_VERSIONS, type PhpVersion } from '@/lib/gridpane/sites/php-version-types';
+import { AVAILABLE_PHP_VERSIONS, type PhpVersion } from '@/lib/gridpane/sites/types';
 
 interface PhpVersionSelectorProps {
   siteId: number;
