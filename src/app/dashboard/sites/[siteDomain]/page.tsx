@@ -15,7 +15,7 @@ interface GridPaneSingleSitePageProps {
 export default async function GridPaneSingleSitePage({ params }: GridPaneSingleSitePageProps) {
     const resolvedParams = await params;
     const siteDomainParam = resolvedParams.siteDomain;
-    
+
     console.log(`[PAGE.TSX | TOP] Loading GridPane Single Site page for domain: ${siteDomainParam}`);
 
     let siteData: SingleSiteResponse | null = null;
@@ -38,9 +38,9 @@ export default async function GridPaneSingleSitePage({ params }: GridPaneSingleS
     return (
         <div className="p-4">
             <h1 className="text-2xl font-bold mb-4">GridPane Single Site API Test (Domain: {siteDomain})</h1>
-            
+
             {fetchError && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                <div className="border border-destructive text-destructive px-4 py-3 rounded mb-4">
                     <strong>Error:</strong> {fetchError}
                 </div>
             )}
@@ -48,7 +48,7 @@ export default async function GridPaneSingleSitePage({ params }: GridPaneSingleS
             {siteData && (
                 <div className="space-y-4">
                     {siteData._metadata && (
-                        <div className="bg-gray-50 p-4 rounded">
+                        <div className="p-4 rounded border">
                             <h2 className="font-semibold text-lg mb-2">API Response Metadata</h2>
                             <p><strong>Fetched At:</strong> {new Date(siteData._metadata.fetched_at).toLocaleString()}</p>
                             <p><strong>Cached Until:</strong> {siteData._metadata.cached_until ? new Date(siteData._metadata.cached_until).toLocaleString() : 'Not cached'}</p>
@@ -57,7 +57,7 @@ export default async function GridPaneSingleSitePage({ params }: GridPaneSingleS
                         </div>
                     )}
 
-                    <div className="bg-blue-50 p-4 rounded">
+                    <div className="p-4 rounded border">
                         <h2 className="font-semibold text-lg mb-2">Site Summary</h2>
                         <p><strong>URL:</strong> {siteData.url}</p>
                         <p><strong>Site ID:</strong> {siteData.id}</p>
@@ -69,7 +69,7 @@ export default async function GridPaneSingleSitePage({ params }: GridPaneSingleS
                         <p><strong>Last Resolved:</strong> {new Date(siteData.resolved_at).toLocaleString()}</p>
                     </div>
 
-                    <div className="bg-green-50 p-4 rounded">
+                    <div className="p-4 rounded border">
                         <h2 className="font-semibold text-lg mb-2">Server Information</h2>
                         <p><strong>Server Label:</strong> {siteData.server.label}</p>
                         <p><strong>Server IP:</strong> {siteData.server.ip}</p>
@@ -80,7 +80,7 @@ export default async function GridPaneSingleSitePage({ params }: GridPaneSingleS
                         <p><strong>Timezone:</strong> {siteData.server.server_timezone}</p>
                     </div>
 
-                    <div className="bg-yellow-50 p-4 rounded">
+                    <div className="p-4 rounded border">
                         <h2 className="font-semibold text-lg mb-2">Performance & Caching</h2>
                         <p><strong>Nginx Caching:</strong> {siteData.nginx_caching || 'Disabled'}</p>
                         <p><strong>Object Caching:</strong> {siteData.site_customizer.object_caching ? 'Enabled' : 'Disabled'}</p>
@@ -91,7 +91,7 @@ export default async function GridPaneSingleSitePage({ params }: GridPaneSingleS
                         <p><strong>Upload Max Size:</strong> {siteData.upload_max_filesize}MB</p>
                     </div>
 
-                    <div className="bg-purple-50 p-4 rounded">
+                    <div className="p-4 rounded border">
                         <h2 className="font-semibold text-lg mb-2">Security Settings</h2>
                         <p><strong>WAF:</strong> {siteData.waf || 'Not configured'}</p>
                         <p><strong>7G Protection:</strong> {siteData.site_security_settings.seven_g_bad_bots ? 'Enabled' : 'Disabled'}</p>
@@ -101,7 +101,7 @@ export default async function GridPaneSingleSitePage({ params }: GridPaneSingleS
                         <p><strong>HTTP Auth:</strong> {siteData.http_auth ? 'Enabled' : 'Disabled'}</p>
                     </div>
 
-                    <div className="bg-orange-50 p-4 rounded">
+                    <div className="p-4 rounded border">
                         <h2 className="font-semibold text-lg mb-2">Backups & Services</h2>
                         <p><strong>Local Backups:</strong> {siteData.local_bup ? 'Enabled' : 'Disabled'}</p>
                         <p><strong>Remote Backups:</strong> {siteData.remote_bup ? 'Enabled' : 'Disabled'}</p>
@@ -125,7 +125,7 @@ export default async function GridPaneSingleSitePage({ params }: GridPaneSingleS
                         currentPhpVersion={siteData.php_version || '8.0'}
                     />
 
-                    <div className="bg-pink-50 p-4 rounded">
+                    <div className="p-4 rounded border">
                         <h2 className="font-semibold text-lg mb-2">WordPress Settings</h2>
                         <p><strong>Automatic Updates:</strong> {siteData.automatic_updates ? 'Enabled' : 'Disabled'}</p>
                         <p><strong>Debug Mode:</strong> {siteData.is_debug ? 'Enabled' : 'Disabled'}</p>
@@ -135,16 +135,16 @@ export default async function GridPaneSingleSitePage({ params }: GridPaneSingleS
                         <p><strong>Git Configured:</strong> {siteData.is_git_configured ? 'Yes' : 'No'}</p>
                     </div>
 
-                    <div className="bg-gray-50 p-4 rounded">
+                    <div className="p-4 rounded border">
                         <h2 className="font-semibold text-lg mb-2">Full Site Data</h2>
-                        <pre className="bg-white p-4 rounded border overflow-auto max-h-96 text-xs">
+                        <pre className="p-4 rounded border overflow-auto max-h-96 text-xs">
                             {JSON.stringify(siteData, null, 2)}
                         </pre>
                     </div>
 
                         <Link
                             href="/playground/gridpane/sites"
-                            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                            className="px-4 py-2 rounded border inline-block"
                         >
                             ← Back to Sites List
                         </Link>

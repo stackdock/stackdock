@@ -12,35 +12,12 @@ import {
   withRetry,
   handleGridPaneResponse
 } from '../utils';
-
-// Available PHP versions (expand based on GridPane's supported versions)
-export const AVAILABLE_PHP_VERSIONS = [
-  '7.4',
-  '8.0',
-  '8.1',
-  '8.2',
-  '8.3',
-  '8.4'
-] as const;
-
-export type PhpVersion = typeof AVAILABLE_PHP_VERSIONS[number];
-
-// Response type for the mutation
-export interface UpdatePhpVersionResponse {
-  success: boolean;
-  message: string;
-  site_id: number;
-  new_php_version: string;
-  updated_at: string;
-}
-
-// Server action result type
-export interface UpdatePhpVersionResult {
-  success: boolean;
-  message: string;
-  data?: UpdatePhpVersionResponse;
-  error?: string;
-}
+import {
+  AVAILABLE_PHP_VERSIONS,
+  type PhpVersion,
+  type UpdatePhpVersionResponse,
+  type UpdatePhpVersionResult
+} from './php-version-types';
 
 export async function updateSitePhpVersion(
   siteId: number,
@@ -50,7 +27,7 @@ export async function updateSitePhpVersion(
   const { url, token } = getGridPaneConfig();
 
   const endpoint = `site/${siteId}/php-version`;
-  const requestUrl = `${url}/site/${siteId}/php-version`;
+  const requestUrl = `${url}/site/${siteId}`;
 
   // Validate inputs
   if (!Number.isInteger(siteId) || siteId <= 0) {
@@ -92,24 +69,13 @@ export async function updateSitePhpVersion(
       endpoint
     );
 
-    const apiResponse = await handleGridPaneResponse<UpdatePhpVersionResponse>(response, endpoint);
+    const apiResponse = await handleGridPaneResponse<Record<string, unknown>>(response, endpoint);
 
-    // Validate response structure
-    if (!apiResponse || typeof apiResponse.success !== 'boolean') {
-      throw new GridPaneApiError(
-        'Invalid response structure: missing success field',
-        200,
-        endpoint
-      );
-    }
+    // Log the actual response to understand its structure
+    console.log('[UPDATE PHP VERSION] API Response:', JSON.stringify(apiResponse, null, 2));
 
-    if (!apiResponse.success) {
-      throw new GridPaneApiError(
-        `PHP version update failed: ${apiResponse.message || 'Unknown error'}`,
-        200,
-        endpoint
-      );
-    }
+    // GridPane PUT /site/{id} returns the updated site object, not a success/message structure
+    // If we got a 200 response and the response was parsed, consider it successful
 
     // Calculate duration and log success
     const duration = Math.round(performance.now() - startTime);
@@ -124,12 +90,12 @@ export async function updateSitePhpVersion(
     return {
       success: true,
       message: `Successfully updated PHP version to ${phpVersion}`,
-      data: apiResponse
+      data: apiResponse as unknown as UpdatePhpVersionResponse
     };
 
   } catch (error) {
     const _duration = Math.round(performance.now() - startTime);
-    
+
     console.error(`[UPDATE PHP VERSION] Failed to update site ${siteId}:`, error);
 
     if (error instanceof GridPaneApiError) {
