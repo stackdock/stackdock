@@ -6,7 +6,12 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "audit:types": "tsc --noEmit",
+    "audit:lint": "next lint",
+    "audit:unused": "npx unimported",
+    "audit:format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "audit:all": "npm run audit:types && npm run audit:lint && npm run audit:format"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.10",

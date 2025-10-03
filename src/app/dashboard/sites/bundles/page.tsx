@@ -5,8 +5,6 @@ import { BundlesResponse } from "@/lib/gridpane/bundles/types";
 export const dynamic = 'force-dynamic';
 
 export default async function GridPaneBundlesPage() {
-    console.log(`[PAGE.TSX | TOP] Loading GridPane Bundles page`);
-
     let bundlesData: BundlesResponse | null = null;
     let fetchError: string | null = null;
 
@@ -25,7 +23,7 @@ export default async function GridPaneBundlesPage() {
     return (
         <div className="p-4">
             <h1 className="text-2xl font-bold mb-4">GridPane Bundles API Test</h1>
-            
+
             {fetchError && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
                     <strong>Error:</strong> {fetchError}

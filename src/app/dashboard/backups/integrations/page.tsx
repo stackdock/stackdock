@@ -5,8 +5,6 @@ import { BackupIntegrationsResponse, BACKUP_SERVICE_INFO } from "@/lib/gridpane/
 export const dynamic = 'force-dynamic';
 
 export default async function GridPaneBackupIntegrationsPage() {
-    console.log(`[PAGE.TSX | TOP] Loading GridPane Backup Integrations page`);
-
     let backupData: BackupIntegrationsResponse | null = null;
     let fetchError: string | null = null;
 
@@ -25,7 +23,7 @@ export default async function GridPaneBackupIntegrationsPage() {
     return (
         <div className="p-4">
             <h1 className="text-2xl font-bold mb-4">GridPane Backup Integrations API Test</h1>
-            
+
             {fetchError && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
                     <strong>Error:</strong> {fetchError}
@@ -147,7 +145,7 @@ export default async function GridPaneBackupIntegrationsPage() {
                                     color: 'bg-gray-100 text-gray-800',
                                     icon: '💾'
                                 };
-                                
+
                                 return (
                                     <div key={service} className="flex items-center justify-between p-2 rounded border">
                                         <div className="flex items-center gap-2">

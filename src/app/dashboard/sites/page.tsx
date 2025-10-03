@@ -16,16 +16,12 @@ interface GridPaneSitesPageProps {
 export default async function GridPaneSitesListPage({ searchParams }: GridPaneSitesPageProps) {
     // Await searchParams before using it
     const resolvedSearchParams = await searchParams;
-    console.log(`[PAGE.TSX | TOP] searchParams received:`, JSON.stringify(resolvedSearchParams, null, 2));
 
     let siteData: SitesResponse | null = null;
     let fetchError: string | null = null;
 
     const pageFromParams = resolvedSearchParams?.page;
-    console.log(`[PAGE.TSX | PARAMS] searchParams?.page value: ${pageFromParams} (type: ${typeof pageFromParams})`);
-
     const currentPage = Number(pageFromParams) || 1;
-    console.log(`[PAGE.TSX | LOGIC] currentPage determined: ${currentPage}`);
 
     try {
         // server action
@@ -42,7 +38,7 @@ export default async function GridPaneSitesListPage({ searchParams }: GridPaneSi
     return (
         <div className="p-4">
             <h1 className="text-2xl font-bold mb-4">GridPane Sites API Test (Page: {currentPage})</h1>
-            
+
             {fetchError && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
                     <strong>Error:</strong> {fetchError}
@@ -71,7 +67,7 @@ export default async function GridPaneSitesListPage({ searchParams }: GridPaneSi
                         {siteData.meta.current_page > 1 && (
                             <Button>
                                 <Link href={`?page=${siteData.meta.current_page - 1}`}>Previous</Link>
-                            </Button>                            
+                            </Button>
                         )}
                         {siteData.meta.current_page < siteData.meta.last_page && (
                             <Button>

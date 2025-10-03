@@ -14,16 +14,12 @@ interface GridPaneSystemUsersTestPageProps {
 export default async function GridPaneSystemUsersPage({ searchParams }: GridPaneSystemUsersTestPageProps) {
     // Await searchParams before using it
     const resolvedSearchParams = await searchParams;
-    console.log(`[PAGE.TSX | TOP] searchParams received:`, JSON.stringify(resolvedSearchParams, null, 2));
 
     let systemUsersData: SystemUsersResponse | null = null;
     let fetchError: string | null = null;
 
     const pageFromParams = resolvedSearchParams?.page;
-    console.log(`[PAGE.TSX | PARAMS] searchParams?.page value: ${pageFromParams} (type: ${typeof pageFromParams})`);
-
     const currentPage = Number(pageFromParams) || 1;
-    console.log(`[PAGE.TSX | LOGIC] currentPage determined: ${currentPage}`);
 
     try {
         // server action
@@ -40,7 +36,7 @@ export default async function GridPaneSystemUsersPage({ searchParams }: GridPane
     return (
         <div className="p-4">
             <h1 className="text-2xl font-bold mb-4">GridPane System Users API Test (Page: {currentPage})</h1>
-            
+
             {fetchError && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
                     <strong>Error:</strong> {fetchError}
@@ -125,7 +121,7 @@ export default async function GridPaneSystemUsersPage({ searchParams }: GridPane
                                             </span>
                                         </div>
                                     </div>
-                                    
+
                                     {user.details && (
                                         <div className="mb-2">
                                             <p className="text-sm"><strong>Details:</strong> {user.details}</p>
@@ -171,7 +167,7 @@ export default async function GridPaneSystemUsersPage({ searchParams }: GridPane
 
                     <div className="flex gap-2 mt-4">
                         {systemUsersData.meta.current_page > 1 && (
-                            <a 
+                            <a
                                 href={`?page=${systemUsersData.meta.current_page - 1}`}
                                 className="px-4 py-2 rounded"
                             >
@@ -179,7 +175,7 @@ export default async function GridPaneSystemUsersPage({ searchParams }: GridPane
                             </a>
                         )}
                         {systemUsersData.meta.current_page < systemUsersData.meta.last_page && (
-                            <a 
+                            <a
                                 href={`?page=${systemUsersData.meta.current_page + 1}`}
                                 className="px-4 py-2 rounded"
                             >

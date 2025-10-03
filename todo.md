@@ -14,10 +14,31 @@
 - [ ] Frontend
   - [ ] Component organizaion
   - [ ] Proper Code splitting
-- [ ] Caching
-  - [ ] Figure out generation method
-  - [ ] Use next.js built in features first
+  - [ ] Proper Routing
+  - [ ] Caching
+    - [ ] Figure out generation method
+    - [ ] Use next.js built in features first
+  - [ ] State Manager
+    - [ ] Zustand? SWR? TS Query/DB?
+- [ ] SSH2
+  - [ ] Scope
+- [ ] Testing FRamwork
+- [ ] Devops
+- [ ] Docs
 - [ ] API connections
+  - [ ] Kinsta
+  - [ ] Rocket
+  - [ ] Runcloud
+  - [ ] Cloudways
+  - [ ] InstaWP
+  - [ ] Coolify
+  - [ ] Ploi
+  - [ ] Laravel Forge
+  - [ ] Vercel
+  - [ ] Netlify
+  - [ ] Cloudflare
+  - [ ] AWS (F------ maybe)
+  - [ ] GCP (F------ also maybe)
   - [ ] Gridpane
     - [ ] GET Endpoints
       - [X] Sites

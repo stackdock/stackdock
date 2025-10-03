@@ -52,8 +52,6 @@ class GridPaneRateLimiter {
         resetAt: resetAt,
         lastRequestAt: Math.floor(Date.now() / 1000)
       });
-
-      console.log(`[Rate Limiter] Updated ${endpoint}: ${endpointRemaining}/${endpointLimit} remaining, resets at ${new Date(resetAt * 1000).toLocaleTimeString()}`);
     }
 
     // Global limits

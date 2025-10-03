@@ -14,18 +14,14 @@ interface GridPaneDomainsTestPageProps {
 export default async function GridPaneDomainsListPage({ searchParams }: GridPaneDomainsTestPageProps) {
     // Await searchParams before using it
     const resolvedSearchParams = await searchParams;
-    console.log(`[PAGE.TSX | TOP] searchParams received:`, JSON.stringify(resolvedSearchParams, null, 2));
 
     let domainData: DomainsResponse | null = null;
     let fetchError: string | null = null;
 
     const pageFromParams = resolvedSearchParams?.page;
-    console.log(`[PAGE.TSX | PARAMS] searchParams?.page value: ${pageFromParams} (type: ${typeof pageFromParams})`);
-
     const currentPage = Number(pageFromParams) || 1;
-    console.log(`[PAGE.TSX | LOGIC] currentPage determined: ${currentPage}`);
 
-    try {
+    try{
         // server action
         domainData = await getGridPaneDomainsList(currentPage);
     } catch (error) {
@@ -40,7 +36,7 @@ export default async function GridPaneDomainsListPage({ searchParams }: GridPane
     return (
         <div className="p-4">
             <h1 className="text-2xl font-bold mb-4">GridPane Domains API Test (Page: {currentPage})</h1>
-            
+
             {fetchError && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
                     <strong>Error:</strong> {fetchError}
@@ -74,7 +70,7 @@ export default async function GridPaneDomainsListPage({ searchParams }: GridPane
 
                     <div className="flex gap-2 mt-4">
                         {domainData.meta.current_page > 1 && (
-                            <a 
+                            <a
                                 href={`?page=${domainData.meta.current_page - 1}`}
                                 className=" text-white px-4 py-2 rounded"
                             >
@@ -82,7 +78,7 @@ export default async function GridPaneDomainsListPage({ searchParams }: GridPane
                             </a>
                         )}
                         {domainData.meta.current_page < domainData.meta.last_page && (
-                            <a 
+                            <a
                                 href={`?page=${domainData.meta.current_page + 1}`}
                                 className=" text-white px-4 py-2 rounded"
                             >

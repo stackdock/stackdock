@@ -5,8 +5,6 @@ import { BackupSchedulesResponse, SCHEDULE_FREQUENCY_INFO, BACKUP_TYPE_INFO, DAY
 export const dynamic = 'force-dynamic';
 
 export default async function GridPaneBackupSchedulesPage() {
-    console.log(`[PAGE.TSX | TOP] Loading GridPane Backup Schedules page`);
-
     let schedulesData: BackupSchedulesResponse | null = null;
     let fetchError: string | null = null;
 
@@ -35,7 +33,7 @@ export default async function GridPaneBackupSchedulesPage() {
     return (
         <div className="p-4">
             <h1 className="text-2xl font-bold mb-4">GridPane Backup Schedules API Test</h1>
-            
+
             {fetchError && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
                     <strong>Error:</strong> {fetchError}
@@ -188,7 +186,7 @@ export default async function GridPaneBackupSchedulesPage() {
                                         name: frequency,
                                         icon: '📋'
                                     };
-                                    
+
                                     return (
                                         <div key={frequency} className="flex items-center justify-between p-2 rounded border">
                                             <span className="flex items-center gap-2">
@@ -214,7 +212,7 @@ export default async function GridPaneBackupSchedulesPage() {
                                     }, {} as Record<string, number>)
                                 ).map(([type, count]) => {
                                     const info = BACKUP_TYPE_INFO[type as keyof typeof BACKUP_TYPE_INFO];
-                                    
+
                                     return (
                                         <div key={type} className="flex items-center justify-between p-2 rounded border">
                                             <span className="flex items-center gap-2">
@@ -239,7 +237,7 @@ export default async function GridPaneBackupSchedulesPage() {
                     </div>
 
                     <div className="mt-4">
-                        <a 
+                        <a
                             href="/playground/gridpane/backups/integrations"
                             className="px-4 py-2 rounded mr-2"
                         >

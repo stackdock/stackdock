@@ -16,8 +16,6 @@ export default async function GridPaneSingleSitePage({ params }: GridPaneSingleS
     const resolvedParams = await params;
     const siteDomainParam = resolvedParams.siteDomain;
 
-    console.log(`[PAGE.TSX | TOP] Loading GridPane Single Site page for domain: ${siteDomainParam}`);
-
     let siteData: SingleSiteResponse | null = null;
     let fetchError: string | null = null;
 

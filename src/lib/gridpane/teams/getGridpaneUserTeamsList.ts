@@ -52,13 +52,9 @@ export async function getGridPaneUserTeamsList(): Promise<UserTeamsResponse> {
     const teamsArray: Team[] = [];
     const keys = Object.keys(apiResponse);
 
-    if (keys.length === 0) {
-      console.log(`[GridPane API] No teams found for user`);
-    }
-
     for (const key of keys) {
       const team = apiResponse[key];
-      
+
       // Validate team object structure
       if (!team || typeof team.id !== 'number' || typeof team.name !== 'string') {
         throw new GridPaneApiError(
@@ -84,7 +80,7 @@ export async function getGridPaneUserTeamsList(): Promise<UserTeamsResponse> {
 
     // Calculate duration and prepare metadata
     const duration = Math.round(performance.now() - startTime);
-    
+
     // Create enhanced response with metadata
     const userTeamsResponse: UserTeamsResponse = {
       teams: teamsArray,
@@ -103,7 +99,7 @@ export async function getGridPaneUserTeamsList(): Promise<UserTeamsResponse> {
 
   } catch (error) {
     const duration = Math.round(performance.now() - startTime);
-    
+
     if (error instanceof GridPaneApiError) {
       console.error(`[GridPane API Error] ${endpoint}: ${error.message} (${duration}ms)`);
       throw error;
@@ -117,7 +113,7 @@ export async function getGridPaneUserTeamsList(): Promise<UserTeamsResponse> {
       undefined,
       error
     );
-    
+
     console.error(`[GridPane API Error] ${endpoint}: ${unexpectedError.message} (${duration}ms)`, error);
     throw unexpectedError;
   }

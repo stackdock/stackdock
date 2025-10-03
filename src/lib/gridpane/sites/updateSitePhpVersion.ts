@@ -47,8 +47,6 @@ export async function updateSitePhpVersion(
     };
   }
 
-  console.log(`[UPDATE PHP VERSION] Starting update for site ${siteId} to PHP ${phpVersion}`);
-
   try {
     const fetchWithTimeout = createFetchWithTimeout();
 
@@ -72,9 +70,6 @@ export async function updateSitePhpVersion(
 
     const apiResponse = await handleGridPaneResponse<Record<string, unknown>>(response, endpoint);
 
-    // Log the actual response to understand its structure
-    console.log('[UPDATE PHP VERSION] API Response:', JSON.stringify(apiResponse, null, 2));
-
     // GridPane PUT /site/{id} returns the updated site object, not a success/message structure
     // If we got a 200 response and the response was parsed, consider it successful
 
@@ -85,8 +80,6 @@ export async function updateSitePhpVersion(
     // Revalidate cache tags for the updated site
     revalidateTag(`gridpane-single-site-${siteId}`);
     revalidateTag('gridpane-sites'); // Also revalidate sites list in case PHP version shows there
-
-    console.log(`[UPDATE PHP VERSION] Successfully updated site ${siteId} to PHP ${phpVersion} (${duration}ms)`);
 
     return {
       success: true,

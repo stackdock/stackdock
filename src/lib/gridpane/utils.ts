@@ -9,7 +9,7 @@ import { rateLimiter } from './rate-limiter';
 export async function withRetry<T>(
   operation: () => Promise<T>,
   endpoint: string,
-  page?: number,
+  _page?: number, // Prefixed with _ to indicate intentionally unused
   _maxRetries: number = 0 // TEMPORARILY SET TO 0 - WAS: GRIDPANE_CONFIG.MAX_RETRIES
 ): Promise<T> {
   // Check rate limit BEFORE making request (but don't be too aggressive)
@@ -20,9 +20,6 @@ export async function withRetry<T>(
     // CHANGED: Don't throw immediately - let the API tell us if we're actually rate limited
     // This handles cases where our cache is stale
   }
-
-  console.log(`[GridPane] Making request to ${endpoint}${page ? ` (page ${page})` : ''} - RETRIES DISABLED`);
-  console.log(rateLimiter.getDebugInfo());
 
   // Direct execution - no retry logic
   return await operation();
@@ -147,13 +144,7 @@ export async function handleGridPaneResponse<T>(
   // Update rate limiter with successful response headers
   rateLimiter.updateFromHeaders(endpoint, response.headers);
 
-  // Log current rate limit status after successful request
-  console.log('[GridPane] Request successful. Response headers:');
-  console.log('  x-ratelimit-endpoint-limit:', response.headers.get('x-ratelimit-endpoint-limit'));
-  console.log('  x-ratelimit-endpoint-remaining:', response.headers.get('x-ratelimit-endpoint-remaining'));
-  console.log('  x-ratelimit-endpoint-reset:', response.headers.get('x-ratelimit-endpoint-reset'));
-  console.log('[GridPane] Current rate limits:');
-  console.log(rateLimiter.getDebugInfo());  // Validate JSON response
+  // Validate JSON response
   if (!contentType?.includes('application/json')) {
     throw new GridPaneApiError(
       `Expected JSON response but received ${contentType}`,
