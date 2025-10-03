@@ -23,39 +23,6 @@ export async function withRetry<T>(
 
   // Direct execution - no retry logic
   return await operation();
-
-  /* COMMENTED OUT - RETRY LOGIC (Re-enable in Phase 3 after testing)
-  let lastError: unknown;
-
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      return await operation();
-    } catch (error) {
-      lastError = error;
-
-      // Don't retry on client errors (4xx) except 429 (rate limit)
-      if (error instanceof GridPaneApiError) {
-        if (error.status >= 400 && error.status < 500 && error.status !== 429) {
-          throw error;
-        }
-      }
-
-      if (attempt < maxRetries) {
-        const delay = GRIDPANE_CONFIG.RETRY_DELAY * Math.pow(2, attempt);
-        console.warn(`[GridPane] Retry ${attempt + 1}/${maxRetries} for ${endpoint}${page ? ` (page ${page})` : ''} after ${delay}ms`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-  }
-
-  throw new GridPaneApiError(
-    `Failed after ${maxRetries + 1} attempts`,
-    0,
-    endpoint,
-    page,
-    lastError
-  );
-  */
 }
 
 // Enhanced response handler with structured error extraction
@@ -69,42 +36,14 @@ export async function handleGridPaneResponse<T>(
   if (!response.ok) {
     let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
 
-    // PHASE 1: Read and log rate limit headers for 429 errors
+    // Handle rate limit errors
     if (response.status === 429) {
-      console.error('=== RATE LIMIT ERROR (429) ===');
-      console.error('Rate Limit Headers:');
-      console.error('  X-RateLimit-Limit:', response.headers.get('X-RateLimit-Limit'));
-      console.error('  X-RateLimit-Remaining:', response.headers.get('X-RateLimit-Remaining'));
-      console.error('  X-RateLimit-Reset:', response.headers.get('X-RateLimit-Reset'));
-      console.error('  Retry-After:', response.headers.get('Retry-After'));
-
-      // GridPane uses per-endpoint rate limits
       const endpointLimit = response.headers.get('x-ratelimit-endpoint-limit');
-      const endpointRemaining = response.headers.get('x-ratelimit-endpoint-remaining');
-      const endpointReset = response.headers.get('x-ratelimit-endpoint-reset');
       const retryAfterEndpoint = response.headers.get('retry-after-endpoint');
-      const totalLimit = response.headers.get('x-ratelimit-total-limit');
-      const totalRemaining = response.headers.get('x-ratelimit-total-remaining');
+      const endpointReset = response.headers.get('x-ratelimit-endpoint-reset');
 
-      console.error('Per-Endpoint Rate Limit:');
-      console.error(`  Limit: ${endpointLimit} requests`);
-      console.error(`  Remaining: ${endpointRemaining}`);
-      console.error(`  Reset: ${endpointReset ? new Date(parseInt(endpointReset) * 1000).toLocaleTimeString() : 'N/A'}`);
-      console.error(`  Retry After: ${retryAfterEndpoint} seconds`);
-      console.error('Total/Global Rate Limit:');
-      console.error(`  Limit: ${totalLimit} requests`);
-      console.error(`  Remaining: ${totalRemaining}`);
-
-      console.error('All Response Headers:');
-      response.headers.forEach((value, key) => {
-        console.error(`  ${key}: ${value}`);
-      });
-      console.error('==============================');
-
-      // CRITICAL: Update rate limiter with 429 response headers!
+      // Update rate limiter with 429 response headers
       rateLimiter.updateFromHeaders(endpoint, response.headers);
-      console.error('[GridPane] Rate limiter updated from 429 response');
-      console.error(rateLimiter.getDebugInfo());
 
       // Build user-friendly error message
       if (retryAfterEndpoint) {
@@ -114,6 +53,8 @@ export async function handleGridPaneResponse<T>(
         const secondsUntilReset = Math.max(0, Math.ceil((resetDate.getTime() - Date.now()) / 1000));
         errorMessage = `Rate limit exceeded. This endpoint allows ${endpointLimit} requests. Please wait ${secondsUntilReset} seconds (resets at ${resetDate.toLocaleTimeString()}).`;
       }
+      
+      console.error(`[GridPane Rate Limit] ${endpoint}: ${errorMessage}`);
     }
 
     // Try to extract structured error from response
