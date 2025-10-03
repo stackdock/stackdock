@@ -53,7 +53,7 @@ export async function handleGridPaneResponse<T>(
         const secondsUntilReset = Math.max(0, Math.ceil((resetDate.getTime() - Date.now()) / 1000));
         errorMessage = `Rate limit exceeded. This endpoint allows ${endpointLimit} requests. Please wait ${secondsUntilReset} seconds (resets at ${resetDate.toLocaleTimeString()}).`;
       }
-      
+
       console.error(`[GridPane Rate Limit] ${endpoint}: ${errorMessage}`);
     }
 
