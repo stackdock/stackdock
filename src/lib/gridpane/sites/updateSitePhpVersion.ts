@@ -26,7 +26,8 @@ export async function updateSitePhpVersion(
   const startTime = performance.now();
   const { url, token } = getGridPaneConfig();
 
-  const endpoint = `site/${siteId}/php-version`;
+  // Use normalized endpoint for rate limiting (all PUT /site/{id} share the same limit)
+  const endpoint = `PUT:/site/{id}`;
   const requestUrl = `${url}/site/${siteId}`;
 
   // Validate inputs

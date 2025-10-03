@@ -12,12 +12,13 @@ export async function withRetry<T>(
   page?: number,
   _maxRetries: number = 0 // TEMPORARILY SET TO 0 - WAS: GRIDPANE_CONFIG.MAX_RETRIES
 ): Promise<T> {
-  // Check rate limit BEFORE making request
+  // Check rate limit BEFORE making request (but don't be too aggressive)
   const secondsToWait = rateLimiter.checkEndpoint(endpoint);
   if (secondsToWait !== null && secondsToWait > 0) {
-    const message = rateLimiter.getRateLimitMessage(endpoint);
-    console.warn(`[GridPane] Rate limit check failed: ${message}`);
-    throw new GridPaneApiError(message, 429, endpoint, page);
+    console.warn(`[GridPane] Rate limit check: Need to wait ${secondsToWait}s for ${endpoint}`);
+    console.warn(`[GridPane] Attempting request anyway to verify current limit status...`);
+    // CHANGED: Don't throw immediately - let the API tell us if we're actually rate limited
+    // This handles cases where our cache is stale
   }
 
   console.log(`[GridPane] Making request to ${endpoint}${page ? ` (page ${page})` : ''} - RETRIES DISABLED`);
@@ -103,6 +104,11 @@ export async function handleGridPaneResponse<T>(
       });
       console.error('==============================');
 
+      // CRITICAL: Update rate limiter with 429 response headers!
+      rateLimiter.updateFromHeaders(endpoint, response.headers);
+      console.error('[GridPane] Rate limiter updated from 429 response');
+      console.error(rateLimiter.getDebugInfo());
+
       // Build user-friendly error message
       if (retryAfterEndpoint) {
         errorMessage = `Rate limit exceeded. This endpoint allows ${endpointLimit} requests. Please wait ${retryAfterEndpoint} seconds before trying again.`;
@@ -141,7 +147,13 @@ export async function handleGridPaneResponse<T>(
   // Update rate limiter with successful response headers
   rateLimiter.updateFromHeaders(endpoint, response.headers);
 
-  // Validate JSON response
+  // Log current rate limit status after successful request
+  console.log('[GridPane] Request successful. Response headers:');
+  console.log('  x-ratelimit-endpoint-limit:', response.headers.get('x-ratelimit-endpoint-limit'));
+  console.log('  x-ratelimit-endpoint-remaining:', response.headers.get('x-ratelimit-endpoint-remaining'));
+  console.log('  x-ratelimit-endpoint-reset:', response.headers.get('x-ratelimit-endpoint-reset'));
+  console.log('[GridPane] Current rate limits:');
+  console.log(rateLimiter.getDebugInfo());  // Validate JSON response
   if (!contentType?.includes('application/json')) {
     throw new GridPaneApiError(
       `Expected JSON response but received ${contentType}`,

@@ -31,12 +31,11 @@
       - [X] Domains
     - [ ] POST Endpoints
     - [ ] PUT Endpoints
+      - [X] Update Site PHP Version (PUT /site/{id})
+      - [X] Rate Limiting System (Per-Endpoint + Global tracking)
     - [ ] DELETE Endpoints
 
 # OSS Workflow
-
--[X] Create Daily Branch test
--[X] FITYMI
 
 - [ ] Create `.github/` folder with:
   - [ ] `workflows/ci.yml` (lint, test, build on PR + push to main)

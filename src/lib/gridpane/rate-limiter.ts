@@ -27,14 +27,33 @@ class GridPaneRateLimiter {
     const endpointLimit = headers.get('x-ratelimit-endpoint-limit');
     const endpointRemaining = headers.get('x-ratelimit-endpoint-remaining');
     const endpointReset = headers.get('x-ratelimit-endpoint-reset');
+    const retryAfterEndpoint = headers.get('retry-after-endpoint');
 
-    if (endpointLimit && endpointRemaining && endpointReset) {
+    // GridPane returns reset timestamp on 429, but null on successful responses
+    // We need to estimate the reset time if it's not provided
+    if (endpointLimit && endpointRemaining !== null) {
+      let resetAt: number;
+
+      if (endpointReset) {
+        // Use the provided reset timestamp
+        resetAt = parseInt(endpointReset);
+      } else if (retryAfterEndpoint) {
+        // Estimate reset from retry-after header
+        resetAt = Math.floor(Date.now() / 1000) + parseInt(retryAfterEndpoint);
+      } else {
+        // Estimate: GridPane seems to use ~60 second windows for PUT /site/{id}
+        // Use a conservative 60 seconds
+        resetAt = Math.floor(Date.now() / 1000) + 60;
+      }
+
       this.endpointLimits.set(endpoint, {
         limit: parseInt(endpointLimit),
         remaining: parseInt(endpointRemaining),
-        resetAt: parseInt(endpointReset),
+        resetAt: resetAt,
         lastRequestAt: Math.floor(Date.now() / 1000)
       });
+
+      console.log(`[Rate Limiter] Updated ${endpoint}: ${endpointRemaining}/${endpointLimit} remaining, resets at ${new Date(resetAt * 1000).toLocaleTimeString()}`);
     }
 
     // Global limits
