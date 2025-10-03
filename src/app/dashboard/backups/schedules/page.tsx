@@ -1,5 +1,5 @@
 import { getGridPaneBackupSchedules } from "@/lib/gridpane/backups/getGridpaneBackupSchedules";
-import { BackupSchedulesResponse, SCHEDULE_FREQUENCY_INFO, BACKUP_TYPE_INFO, DAY_OF_WEEK } from "@/lib/gridpane/backups/schedule-types";
+import { BackupSchedulesResponse, SCHEDULE_FREQUENCY_INFO, BACKUP_TYPE_INFO, DAY_OF_WEEK } from "@/lib/gridpane/backups/types";
 
 // Dynamic Rendering declaration
 export const dynamic = 'force-dynamic';

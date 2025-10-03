@@ -1,6 +1,6 @@
 "use server";
 
-import { BackupSchedulesResponse, BackupSchedulesApiResponse } from './schedule-types';
+import { BackupSchedulesResponse, BackupSchedulesApiResponse } from './types';
 import {
   getGridPaneConfig,
   createFetchWithTimeout,
@@ -112,10 +112,10 @@ export async function getGridPaneBackupSchedules(): Promise<BackupSchedulesRespo
 
     // Calculate duration and prepare metadata
     const duration = Math.round(performance.now() - startTime);
-    
+
     // Calculate total schedules
     const totalSchedules = apiResponse.data.reduce((sum, site) => sum + site.schedule_backups.length, 0);
-    
+
     // Create enhanced response with metadata
     const backupSchedulesResponse: BackupSchedulesResponse = {
       ...apiResponse,
@@ -134,7 +134,7 @@ export async function getGridPaneBackupSchedules(): Promise<BackupSchedulesRespo
 
   } catch (error) {
     const duration = Math.round(performance.now() - startTime);
-    
+
     if (error instanceof GridPaneApiError) {
       console.error(`[GridPane API Error] ${endpoint}: ${error.message} (${duration}ms)`);
       throw error;
@@ -148,7 +148,7 @@ export async function getGridPaneBackupSchedules(): Promise<BackupSchedulesRespo
       undefined,
       error
     );
-    
+
     console.error(`[GridPane API Error] ${endpoint}: ${unexpectedError.message} (${duration}ms)`, error);
     throw unexpectedError;
   }
