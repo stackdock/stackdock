@@ -1,5 +1,6 @@
 import { getGridPaneDomainsList } from "@/lib/gridpane/domains/getGridpaneDomainsList";
 import { DomainsResponse } from "@/lib/gridpane/domains/types";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Dynamic Rendering declaration
 export const dynamic = 'force-dynamic';
@@ -38,9 +39,10 @@ export default async function GridPaneDomainsListPage({ searchParams }: GridPane
             <h1 className="text-2xl font-bold mb-4">GridPane Domains API Test (Page: {currentPage})</h1>
 
             {fetchError && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                    <strong>Error:</strong> {fetchError}
-                </div>
+                <Alert variant="destructive" className="mb-4">
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>{fetchError}</AlertDescription>
+                </Alert>
             )}
 
             {domainData && (

@@ -1,14 +1,14 @@
 # Week 2 Cleanup Preparation Notes
 
-**Created:** October 3, 2025  
-**Status:** Ready for Week 2 execution  
+**Created:** October 3, 2025
+**Status:** Ready for Week 2 execution
 **Based on:** Comprehensive codebase review after Week 1 completion
 
 ---
 
 ## Overview
 
-Week 1 cleaned up core infrastructure (utils, error handling, types, debug logging).  
+Week 1 cleaned up core infrastructure (utils, error handling, types, debug logging).
 Week 2 will focus on **components, routes, and styling** - the user-facing layer.
 
 **Good News:** Components and routes are already quite clean! Week 2 will be lighter than Week 1.
@@ -45,7 +45,7 @@ All following files use hardcoded red colors for errors:
 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
 ```
 
-**Should be:** 
+**Should be:**
 ```tsx
 <div className="border border-destructive text-destructive px-4 py-3 rounded mb-4">
 ```

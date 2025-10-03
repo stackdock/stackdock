@@ -1,6 +1,7 @@
 import { getGridPaneServersList } from "@/lib/gridpane/servers/getGridpaneServersList";
 import { ServersResponse } from "@/lib/gridpane/servers/types";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Link from "next/link";
 
 // Dynamic Rendering declaration
@@ -40,9 +41,10 @@ export default async function GridPaneServersListPage({ searchParams }: GridPane
             <h1 className="text-2xl font-bold mb-4">GridPane Servers API Test (Page: {currentPage})</h1>
 
             {fetchError && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                    <strong>Error:</strong> {fetchError}
-                </div>
+                <Alert variant="destructive" className="mb-4">
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>{fetchError}</AlertDescription>
+                </Alert>
             )}
 
             {serverData && (

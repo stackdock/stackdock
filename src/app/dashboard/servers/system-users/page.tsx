@@ -1,5 +1,7 @@
 import { getGridPaneSystemUsersList } from "@/lib/gridpane/system-users/getGridpaneSystemUsersList";
 import { SystemUsersResponse } from "@/lib/gridpane/system-users/types";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 
 // Dynamic Rendering declaration
 export const dynamic = 'force-dynamic';
@@ -38,9 +40,10 @@ export default async function GridPaneSystemUsersPage({ searchParams }: GridPane
             <h1 className="text-2xl font-bold mb-4">GridPane System Users API Test (Page: {currentPage})</h1>
 
             {fetchError && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                    <strong>Error:</strong> {fetchError}
-                </div>
+                <Alert variant="destructive" className="mb-4">
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>{fetchError}</AlertDescription>
+                </Alert>
             )}
 
             {systemUsersData && (
@@ -100,25 +103,23 @@ export default async function GridPaneSystemUsersPage({ searchParams }: GridPane
                                         </div>
                                         <div className="flex gap-2 flex-wrap">
                                             {user.is_primary && (
-                                                <span className="px-2 py-1 rounded text-xs">
+                                                <Badge variant="secondary">
                                                     Primary
-                                                </span>
+                                                </Badge>
                                             )}
                                             {user.ssh_access && (
-                                                <span className="px-2 py-1 rounded text-xs">
+                                                <Badge variant="secondary">
                                                     SSH
-                                                </span>
+                                                </Badge>
                                             )}
                                             {user.sudo && (
-                                                <span className="px-2 py-1 rounded text-xs">
+                                                <Badge variant="secondary">
                                                     Sudo
-                                                </span>
+                                                </Badge>
                                             )}
-                                            <span className={`px-2 py-1 rounded text-xs ${
-                                                user.status === 'succeed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                            }`}>
+                                            <Badge variant={user.status === 'succeed' ? 'default' : 'destructive'}>
                                                 {user.status}
-                                            </span>
+                                            </Badge>
                                         </div>
                                     </div>
 
