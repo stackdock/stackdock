@@ -8,6 +8,7 @@ import {
   createGridPaneHeaders,
   GridPaneApiError
 } from '../helpers';
+import { rateLimiter } from '../rate-limiter';
 import {
   withRetry,
   handleGridPaneResponse
@@ -26,8 +27,7 @@ export async function updateSitePhpVersion(
   const startTime = performance.now();
   const { url, token } = getGridPaneConfig();
 
-  // Use normalized endpoint for rate limiting (all PUT /site/{id} share the same limit)
-  const endpoint = `PUT:/site/{id}`;
+  const endpoint = `site/${siteId}`;
   const requestUrl = `${url}/site/${siteId}`;
 
   // Validate inputs
@@ -47,6 +47,21 @@ export async function updateSitePhpVersion(
     };
   }
 
+  console.log(`[UPDATE PHP VERSION] Starting update for site ${siteId} to PHP ${phpVersion}`);
+  console.log(`[UPDATE PHP VERSION] Endpoint: ${endpoint}`);
+
+  // Check rate limit BEFORE attempting request
+  const waitTime = rateLimiter.checkEndpoint(endpoint);
+  if (waitTime !== null) {
+    const message = rateLimiter.getRateLimitMessage(endpoint);
+    console.warn(`[UPDATE PHP VERSION] Rate limited - need to wait ${waitTime}s`);
+    return {
+      success: false,
+      message: message || `Rate limited. Please wait ${waitTime} seconds before trying again.`,
+      error: 'RATE_LIMITED'
+    };
+  }
+
   try {
     const fetchWithTimeout = createFetchWithTimeout();
 
@@ -56,6 +71,7 @@ export async function updateSitePhpVersion(
 
     const response = await withRetry(
       async () => {
+        console.log(`[UPDATE PHP VERSION] Making PUT request to ${requestUrl}`);
         return await fetchWithTimeout(requestUrl, {
           method: 'PUT',
           headers: {
@@ -65,13 +81,18 @@ export async function updateSitePhpVersion(
           body: JSON.stringify(requestBody)
         });
       },
-      endpoint
+      endpoint,
+      undefined,
+      0 // No retries for mutations
     );
+
+    // Update rate limiter with response headers
+    rateLimiter.updateFromHeaders(endpoint, response.headers);
 
     const apiResponse = await handleGridPaneResponse<Record<string, unknown>>(response, endpoint);
 
-    // GridPane PUT /site/{id} returns the updated site object, not a success/message structure
-    // If we got a 200 response and the response was parsed, consider it successful
+    // Log the actual response to see what GridPane returns
+    console.log(`[UPDATE PHP VERSION] Response:`, JSON.stringify(apiResponse, null, 2));
 
     // Calculate duration and log success
     const duration = Math.round(performance.now() - startTime);
@@ -79,20 +100,32 @@ export async function updateSitePhpVersion(
 
     // Revalidate cache tags for the updated site
     revalidateTag(`gridpane-single-site-${siteId}`);
-    revalidateTag('gridpane-sites'); // Also revalidate sites list in case PHP version shows there
+    revalidateTag('gridpane-sites');
+
+    console.log(`[UPDATE PHP VERSION] Successfully updated site ${siteId} to PHP ${phpVersion}`);
 
     return {
       success: true,
-      message: `Successfully updated PHP version to ${phpVersion}`,
+      message: `Successfully updated PHP version to ${phpVersion}. The change is being applied on the server.`,
       data: apiResponse as unknown as UpdatePhpVersionResponse
     };
 
   } catch (error) {
-    const _duration = Math.round(performance.now() - startTime);
+    const duration = Math.round(performance.now() - startTime);
 
-    console.error(`[UPDATE PHP VERSION] Failed to update site ${siteId}:`, error);
+    console.error(`[UPDATE PHP VERSION] Failed to update site ${siteId} after ${duration}ms:`, error);
 
     if (error instanceof GridPaneApiError) {
+      // If it's a rate limit error, update the rate limiter and provide clear message
+      if (error.status === 429) {
+        const message = rateLimiter.getRateLimitMessage(endpoint);
+        return {
+          success: false,
+          message: message || `Rate limit exceeded. GridPane allows only 2 PUT requests per minute for site updates.`,
+          error: 'RATE_LIMITED'
+        };
+      }
+
       return {
         success: false,
         message: error.message,

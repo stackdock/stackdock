@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useRef } from 'react';
 import { updateSitePhpVersion } from '@/lib/gridpane/sites/updateSitePhpVersion';
-import { AVAILABLE_PHP_VERSIONS, type PhpVersion } from '@/lib/gridpane/sites/types';
+import { AVAILABLE_PHP_VERSIONS, PhpVersion } from '@/lib/gridpane/sites/types';
 
 interface PhpVersionSelectorProps {
   siteId: number;
@@ -16,13 +16,20 @@ export default function PhpVersionSelector({
   currentPhpVersion
 }: PhpVersionSelectorProps) {
   const [selectedVersion, setSelectedVersion] = useState<PhpVersion | ''>('');
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error' | 'warning'; text: string } | null>(null);
   const [optimisticVersion, setOptimisticVersion] = useState<string>(currentPhpVersion);
   const [isPending, startTransition] = useTransition();
+  const isSubmittingRef = useRef(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    
+    // Prevent duplicate submissions
+    if (isSubmittingRef.current || isPending) {
+      console.log('[PHP VERSION SELECTOR] Submission already in progress, ignoring...');
+      return;
+    }
+    
     if (!selectedVersion) {
       setMessage({ type: 'error', text: 'Please select a PHP version' });
       return;
@@ -35,35 +42,52 @@ export default function PhpVersionSelector({
 
     // Clear previous messages
     setMessage(null);
+    
+    // Set submission flag
+    isSubmittingRef.current = true;
 
     // Optimistic update
     setOptimisticVersion(selectedVersion);
 
+    console.log(`[PHP VERSION SELECTOR] Starting update for site ${siteId} to PHP ${selectedVersion}`);
+
     startTransition(async () => {
       try {
         const result = await updateSitePhpVersion(siteId, selectedVersion);
-
+        
         if (result.success) {
-          setMessage({
-            type: 'success',
-            text: result.message
+          setMessage({ 
+            type: 'success', 
+            text: result.message 
           });
           setSelectedVersion(''); // Reset form
         } else {
           // Revert optimistic update on failure
           setOptimisticVersion(currentPhpVersion);
-          setMessage({
-            type: 'error',
-            text: result.message
-          });
+          
+          // Special handling for rate limits
+          if (result.error === 'RATE_LIMITED') {
+            setMessage({ 
+              type: 'warning', 
+              text: `⏳ ${result.message}`
+            });
+          } else {
+            setMessage({ 
+              type: 'error', 
+              text: result.message 
+            });
+          }
         }
       } catch (error) {
         // Revert optimistic update on error
         setOptimisticVersion(currentPhpVersion);
-        setMessage({
-          type: 'error',
-          text: error instanceof Error ? error.message : 'An unexpected error occurred'
+        setMessage({ 
+          type: 'error', 
+          text: error instanceof Error ? error.message : 'An unexpected error occurred' 
         });
+      } finally {
+        // Reset submission flag
+        isSubmittingRef.current = false;
       }
     });
   };
@@ -71,21 +95,21 @@ export default function PhpVersionSelector({
   const isVersionChanged = optimisticVersion !== currentPhpVersion;
 
   return (
-    <div className="bg-card border rounded-lg p-4">
-      <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+    <div className="bg-card border border-border p-4 rounded-lg">
+      <h3 className="font-semibold text-lg mb-3 flex items-center gap-2 text-card-foreground">
         <span>🐘</span>
         PHP Version Management
       </h3>
-
-      <div className="mb-3">
-        <p className="text-sm text-muted-foreground mb-1">
+      
+      <div className="mb-3 space-y-2">
+        <p className="text-sm text-muted-foreground">
           <strong>Site:</strong> {siteName}
         </p>
-        <p className="text-sm mb-2">
-          <strong>Current PHP Version:</strong>
-          <span className={`ml-2 px-2 py-1 rounded-md text-sm font-medium ${
-            isVersionChanged
-              ? 'bg-accent text-accent-foreground border'
+        <p className="text-sm text-card-foreground">
+          <strong>Current PHP Version:</strong> 
+          <span className={`ml-2 px-2 py-1 rounded text-sm font-medium ${
+            isVersionChanged 
+              ? 'bg-primary text-primary-foreground' 
               : 'bg-muted text-muted-foreground'
           }`}>
             {optimisticVersion}
@@ -94,24 +118,27 @@ export default function PhpVersionSelector({
             )}
           </span>
         </p>
+        <p className="text-xs text-muted-foreground">
+          ⚠️ Note: GridPane limits PHP version changes to 2 requests per minute per site
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3">
         <div>
-          <label htmlFor="php-version" className="block text-sm font-medium mb-2">
+          <label htmlFor="php-version" className="block text-sm font-medium text-card-foreground mb-2">
             Select New PHP Version:
           </label>
           <select
             id="php-version"
             value={selectedVersion}
             onChange={(e) => setSelectedVersion(e.target.value as PhpVersion)}
-            disabled={isPending}
-            className="block w-full px-3 py-2 border rounded-md disabled:opacity-50 [&>option]:bg-background [&>option]:text-foreground"
+            disabled={isPending || isSubmittingRef.current}
+            className="block w-full px-3 py-2 border border-border bg-background text-foreground rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring disabled:bg-muted disabled:cursor-not-allowed"
           >
             <option value="">Choose PHP version...</option>
-            {AVAILABLE_PHP_VERSIONS.map(version => (
-              <option
-                key={version}
+            {AVAILABLE_PHP_VERSIONS.map((version: PhpVersion) => (
+              <option 
+                key={version} 
                 value={version}
                 disabled={version === currentPhpVersion}
               >
@@ -125,10 +152,10 @@ export default function PhpVersionSelector({
         <div className="flex items-center gap-3">
           <button
             type="submit"
-            disabled={isPending || !selectedVersion || selectedVersion === currentPhpVersion}
-            className="px-4 py-2 bg-primary text-primary-foreground border rounded-md disabled:opacity-50 flex items-center gap-2"
+            disabled={isPending || isSubmittingRef.current || !selectedVersion || selectedVersion === currentPhpVersion}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
           >
-            {isPending ? (
+            {(isPending || isSubmittingRef.current) ? (
               <>
                 <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
                 Updating...
@@ -150,11 +177,17 @@ export default function PhpVersionSelector({
 
         {message && (
           <div className={`p-3 rounded-md text-sm border ${
-            message.type === 'error' ? 'bg-destructive/10 text-destructive border-destructive' : 'bg-accent text-accent-foreground'
+            message.type === 'success' 
+              ? 'bg-card text-card-foreground border-border' 
+              : message.type === 'warning'
+              ? 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/50 dark:text-orange-300 dark:border-orange-800'
+              : 'bg-destructive/10 text-destructive border-destructive/20'
           }`}>
-            <div className="flex items-center gap-2">
-              <span>{message.type === 'success' ? '✅' : '❌'}</span>
-              {message.text}
+            <div className="flex items-start gap-2">
+              <span className="flex-shrink-0">
+                {message.type === 'success' ? '✅' : message.type === 'warning' ? '⚠️' : '❌'}
+              </span>
+              <div className="flex-1">{message.text}</div>
             </div>
           </div>
         )}

@@ -2,7 +2,7 @@
  * Rate Limiter for GridPane API
  *
  * GridPane uses per-endpoint rate limits:
- * - PUT /site/{id} allows only 2 requests per ~22 seconds
+ * - Each specific endpoint (like /site/123) has its own limit
  * - Global limit is 60 requests per minute
  *
  * This tracks requests and prevents hitting the limits
@@ -23,35 +23,41 @@ class GridPaneRateLimiter {
    * Update rate limit info from response headers
    */
   updateFromHeaders(endpoint: string, headers: Headers): void {
+    const now = Math.floor(Date.now() / 1000);
+    
     // Per-endpoint limits
     const endpointLimit = headers.get('x-ratelimit-endpoint-limit');
     const endpointRemaining = headers.get('x-ratelimit-endpoint-remaining');
     const endpointReset = headers.get('x-ratelimit-endpoint-reset');
     const retryAfterEndpoint = headers.get('retry-after-endpoint');
 
-    // GridPane returns reset timestamp on 429, but null on successful responses
-    // We need to estimate the reset time if it's not provided
+    console.log(`[Rate Limiter] Updating ${endpoint}:`, {
+      limit: endpointLimit,
+      remaining: endpointRemaining,
+      reset: endpointReset,
+      retryAfter: retryAfterEndpoint
+    });
+
     if (endpointLimit && endpointRemaining !== null) {
       let resetAt: number;
 
       if (endpointReset) {
-        // Use the provided reset timestamp
         resetAt = parseInt(endpointReset);
       } else if (retryAfterEndpoint) {
-        // Estimate reset from retry-after header
-        resetAt = Math.floor(Date.now() / 1000) + parseInt(retryAfterEndpoint);
+        resetAt = now + parseInt(retryAfterEndpoint);
       } else {
-        // Estimate: GridPane seems to use ~60 second windows for PUT /site/{id}
-        // Use a conservative 60 seconds
-        resetAt = Math.floor(Date.now() / 1000) + 60;
+        // Conservative: assume 60 second window
+        resetAt = now + 60;
       }
 
       this.endpointLimits.set(endpoint, {
         limit: parseInt(endpointLimit),
         remaining: parseInt(endpointRemaining),
         resetAt: resetAt,
-        lastRequestAt: Math.floor(Date.now() / 1000)
+        lastRequestAt: now
       });
+
+      console.log(`[Rate Limiter] Stored limit for ${endpoint}: ${endpointRemaining}/${endpointLimit} (resets in ${resetAt - now}s)`);
     }
 
     // Global limits
@@ -59,14 +65,13 @@ class GridPaneRateLimiter {
     const totalRemaining = headers.get('x-ratelimit-total-remaining');
 
     if (totalLimit && totalRemaining) {
-      // Estimate reset time (1 minute from now if not provided)
-      const resetAt = Math.floor(Date.now() / 1000) + 60;
+      const resetAt = now + 60;
 
       this.globalLimit = {
         limit: parseInt(totalLimit),
         remaining: parseInt(totalRemaining),
         resetAt: resetAt,
-        lastRequestAt: Math.floor(Date.now() / 1000)
+        lastRequestAt: now
       };
     }
   }
@@ -80,24 +85,45 @@ class GridPaneRateLimiter {
     const limitInfo = this.endpointLimits.get(endpoint);
 
     if (!limitInfo) {
-      // No limit info yet, allow the request
+      console.log(`[Rate Limiter] No limit info for ${endpoint} - allowing request`);
       return null;
     }
 
     // Check if limit has reset
     if (now >= limitInfo.resetAt) {
-      // Limit has reset, clear the entry
+      console.log(`[Rate Limiter] Limit for ${endpoint} has reset - clearing`);
       this.endpointLimits.delete(endpoint);
       return null;
     }
 
     // Check if we have remaining requests
     if (limitInfo.remaining > 0) {
+      const timeUntilReset = limitInfo.resetAt - now;
+      console.log(`[Rate Limiter] ${endpoint}: ${limitInfo.remaining}/${limitInfo.limit} remaining (resets in ${timeUntilReset}s)`);
       return null;
     }
 
     // Rate limited - return seconds to wait
-    return limitInfo.resetAt - now;
+    const secondsToWait = limitInfo.resetAt - now;
+    console.warn(`[Rate Limiter] ${endpoint} is rate limited! Wait ${secondsToWait}s`);
+    return secondsToWait;
+  }
+
+  /**
+   * Clear rate limit info for a specific endpoint (useful for testing)
+   */
+  clearEndpoint(endpoint: string): void {
+    this.endpointLimits.delete(endpoint);
+    console.log(`[Rate Limiter] Cleared limit info for ${endpoint}`);
+  }
+
+  /**
+   * Clear all rate limit info (useful for testing)
+   */
+  clearAll(): void {
+    this.endpointLimits.clear();
+    this.globalLimit = null;
+    console.log(`[Rate Limiter] Cleared all limit info`);
   }
 
   /**
@@ -132,10 +158,16 @@ class GridPaneRateLimiter {
     }
 
     lines.push('Per-Endpoint Limits:');
-    this.endpointLimits.forEach((info, endpoint) => {
-      const resetDate = new Date(info.resetAt * 1000);
-      lines.push(`  ${endpoint}: ${info.remaining}/${info.limit} remaining (resets at ${resetDate.toLocaleTimeString()})`);
-    });
+    if (this.endpointLimits.size === 0) {
+      lines.push('  (none tracked)');
+    } else {
+      this.endpointLimits.forEach((info, endpoint) => {
+        const resetDate = new Date(info.resetAt * 1000);
+        const now = Math.floor(Date.now() / 1000);
+        const secondsUntilReset = Math.max(0, info.resetAt - now);
+        lines.push(`  ${endpoint}: ${info.remaining}/${info.limit} remaining (resets in ${secondsUntilReset}s at ${resetDate.toLocaleTimeString()})`);
+      });
+    }
 
     lines.push('========================');
     return lines.join('\n');
