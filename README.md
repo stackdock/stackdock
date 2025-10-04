@@ -1,4 +1,4 @@
-![Image of Stackdock logo](/public/stackdock-official.svg "Stackdock logo")
+![Image of Stackdock logo](/public/stackdock-official-logo-dark.svg "Stackdock logo")
 
 <div align="center">
 
