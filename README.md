@@ -43,12 +43,15 @@
 - ✅ Teams and user settings
 
 ### Coming Soon 🚧
-- 🔜 Ploi.io integration
-- 🔜 Cloudflare DNS management
-- 🔜 DigitalOcean integration
-- 🔜 Webhook automation
-- 🔜 Cost analytics
-- 🔜 Performance monitoring
+- Kinsta 
+- Rocket.net 
+- Runcloud
+- Coolify
+- InstaWP
+- Vercel
+- Render
+- Laravel Forge
+- More...
 
 ---
 
@@ -58,7 +61,7 @@
 
 - Node.js 18+
 - npm or pnpm
-- GridPane API credentials (for GridPane features)
+- API credentials (for each provider)
 
 ### Installation
 
@@ -184,7 +187,7 @@ This project follows strict coding conventions documented in `.github/instructio
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please read our contributing guidelines before submitting PRs.
+Contributions welcome!
 
 ### Development Workflow
 
