@@ -79,7 +79,23 @@ export async function handleGridPaneResponse<T>(
       }
     }
 
-    throw new GridPaneApiError(errorMessage, response.status, endpoint, page);
+    const retryAfterHeader =
+      response.headers.get('retry-after-endpoint') ??
+      response.headers.get('retry-after');
+    const retryAfterSeconds = retryAfterHeader
+      ? Number.parseInt(retryAfterHeader, 10)
+      : undefined;
+    const _normalisedEnpoint = endpoint;
+    rateLimiter.updateFromHeaders(endpoint, response.headers);
+
+    throw new GridPaneApiError(
+      errorMessage,
+      response.status,
+      endpoint,
+      page,
+      undefined,
+      Number.isFinite(retryAfterSeconds) ? retryAfterSeconds : undefined
+    );
   }
 
   // Update rate limiter with successful response headers

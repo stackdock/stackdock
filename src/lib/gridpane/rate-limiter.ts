@@ -1,11 +1,13 @@
 /**
  * Rate Limiter for GridPane API
  *
- * GridPane uses per-endpoint rate limits:
- * - Each specific endpoint (like /site/123) has its own limit
- * - Global limit is 60 requests per minute
+ * GridPane exposes rate limit headers per normalized endpoint key.
+ * - All `PUT /site/{id}` requests share a single bucket (2 calls per minute account-wide)
+ * - Read endpoints such as `GET site/{id}` include their own limits (commonly 12/min)
+ * - Global limit remains 60 requests per minute
  *
- * This tracks requests and prevents hitting the limits
+ * This helper caches header data so we can inform the UI about cooldowns
+ * without blindly retrying requests.
  */
 
 interface RateLimitInfo {
@@ -24,7 +26,7 @@ class GridPaneRateLimiter {
    */
   updateFromHeaders(endpoint: string, headers: Headers): void {
     const now = Math.floor(Date.now() / 1000);
-    
+
     // Per-endpoint limits
     const endpointLimit = headers.get('x-ratelimit-endpoint-limit');
     const endpointRemaining = headers.get('x-ratelimit-endpoint-remaining');

@@ -43,8 +43,8 @@
 - ✅ Teams and user settings
 
 ### Coming Soon 🚧
-- Kinsta 
-- Rocket.net 
+- Kinsta
+- Rocket.net
 - Runcloud
 - Coolify
 - InstaWP
@@ -144,7 +144,7 @@ GRIDPANE_BEARER_TOKEN=your_bearer_token_here
 ### API Rate Limits
 
 Stackdock includes intelligent rate limit handling:
-- **GridPane:** 60 requests/minute globally, 2 requests/60s per endpoint (PUT operations)
+- **GridPane:** 60 requests/minute globally, 2 `PUT /site/{id}` requests per minute shared across the entire account
 - Automatic retry with exponential backoff
 - User-friendly error messages
 - Request queuing to prevent 429 errors

@@ -331,10 +331,19 @@ export interface UpdatePhpVersionResponse {
   updated_at: string;
 }
 
-// Server action result type
+export interface UpdatePhpVersionApiResponse {
+  site?: SiteDetailed;
+  success?: boolean;
+  message?: string;
+  site_id?: number;
+  new_php_version?: string;
+  updated_at?: string;
+}
+
 export interface UpdatePhpVersionResult {
   success: boolean;
   message: string;
-  data?: UpdatePhpVersionResponse;
+  data?: SiteDetailed;
   error?: string;
+    waitSeconds?: number;
 }

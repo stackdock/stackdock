@@ -24,7 +24,8 @@ export class GridPaneApiError extends Error {
     public status: number,
     public endpoint: string,
     public page?: number,
-    public originalError?: unknown
+    public originalError?: unknown,
+    public retryAfterSeconds?: number
   ) {
     super(message);
     this.name = 'GridPaneApiError';
