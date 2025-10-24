@@ -4,45 +4,58 @@
 
   # Stackdock
 
-  ### The Open Source Multi-Cloud Management Platform
+  ### Open Source Multi-Cloud Management Platform
 
-  **Manage websites and servers across multiple providers from a single, beautiful interface.**
+  **Manage websites and servers across multiple providers from a unified interface.**
 
   [![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)](https://nextjs.org/)
   [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
   [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
-  [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://github.com/stackdock/stackdock/pulls)
 
 </div>
 
 ---
 
-## ✨ Features in development
+## WARNING: EARLY DEVELOPMENT
 
-- 🌐 **Multi-Provider Support** - Manage GridPane and more hosting panel providers coming soon from one dashboard
-- 🎨 **Beautiful UI** - Modern interface built with shadcn/ui and Tailwind CSS
-- 🌓 **Dark Mode** - Seamless light/dark theme switching
-- ⚡ **Real-Time Updates** - Live data with Next.js Server Actions
-- 🔐 **Type-Safe** - Full TypeScript coverage for reliability
-- 📊 **Comprehensive API** - Rate limiting, error handling, and caching built-in
-- 🎯 **Site Management** - PHP version updates, SSL management, backups, and more
-- 📦 **Server Control** - Monitor and manage servers across providers
-- 🔍 **Smart Search** - Command palette (Cmd+K) for quick navigation
+**This project is in active development and is NOT ready for production use, testing, or deployment.**
+
+- Core features are incomplete and under heavy iteration
+- API integrations are being systematically documented and tested
+- Breaking changes occur frequently without notice
+- No stability guarantees of any kind
+- Database schema and authentication are not yet implemented
+
+**DO NOT use this in any production environment or with production data.**
+
+If you're interested in following development progress, star the repository and check back later.
 
 ---
 
-## 🎯 Current Provider Support
+## Features in Development
 
-### GridPane Integration ✅
-- ✅ Sites management (list, view, update)
-- ✅ PHP version switching with rate limit handling
-- ✅ Server monitoring and management
-- ✅ Domain management
-- ✅ Backup schedules and integrations
-- ✅ System users management
-- ✅ Teams and user settings
+- **Multi-Provider Support** - GridPane integration in progress, additional providers planned
+- **Modern UI** - Interface built with shadcn/ui and Tailwind CSS
+- **Theme Support** - Light and dark mode switching
+- **Type Safety** - Full TypeScript coverage
+- **API Foundation** - Rate limiting, error handling, and request logging
+- **Site Management** - PHP version updates, SSL management, backups
+- **Server Control** - Monitor and manage servers across providers
 
-### Coming Soon 🚧
+---
+
+## Current Provider Status
+
+### GridPane Integration (In Progress)
+- Sites management (list, view, update)
+- PHP version switching with rate limit handling
+- Server monitoring and management
+- Domain management
+- Backup schedules and integrations
+- System users management
+- Teams and user settings
+
+### Planned Providers
 - Kinsta
 - Rocket.net
 - Runcloud
@@ -51,19 +64,20 @@
 - Vercel
 - Render
 - Laravel Forge
-- More...
 
 ---
 
-## 🚀 Quick Start
+## For Developers Only
+
+**WARNING:** This section is for developers who want to explore the codebase. This is NOT an invitation to test or use the application.
 
 ### Prerequisites
 
 - Node.js 18+
 - npm or pnpm
-- API credentials (for each provider)
+- GridPane API credentials (for development only)
 
-### Installation
+### Local Development Setup
 
 ```bash
 # Clone the repository
@@ -77,18 +91,20 @@ npm install
 cp example.env .env.local
 
 # Add your API credentials to .env.local
-# GRIDPANE_API_URL=https://api.gridpane.com/v2
+# GRIDPANE_API_URL=https://my.gridpane.com/oauth/api/v1
 # GRIDPANE_BEARER_TOKEN=your_token_here
 
 # Run development server
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see your dashboard.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+**Note:** Development is conducted on the `debug/api-exploration` branch for API mapping work.
 
 ---
 
-## 🏗️ Tech Stack
+## Tech Stack
 
 - **Framework:** [Next.js 15](https://nextjs.org/) with App Router
 - **Language:** [TypeScript](https://www.typescriptlang.org/)
@@ -96,11 +112,11 @@ Open [http://localhost:3000](http://localhost:3000) to see your dashboard.
 - **UI Components:** [shadcn/ui](https://ui.shadcn.com/)
 - **Icons:** [Lucide Icons](https://lucide.dev/)
 - **State Management:** React Server Components + Server Actions
-- **Deployment:** [Vercel](https://vercel.com/) (recommended)
+- **Deployment:** [Vercel](https://vercel.com/) (planned)
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 stackdock/
@@ -119,6 +135,8 @@ stackdock/
 │   ├── lib/             # Utility functions
 │   │   └── gridpane/    # GridPane API integration
 │   └── hooks/           # Custom React hooks
+├── docs/                # Documentation
+│   └── gridpane/        # GridPane API documentation
 ├── public/              # Static assets
 └── .github/
     └── instructions/    # Development documentation
@@ -126,7 +144,7 @@ stackdock/
 
 ---
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables
 
@@ -134,24 +152,21 @@ Create a `.env.local` file in the root directory:
 
 ```bash
 # GridPane API Configuration
-GRIDPANE_API_URL=https://api.gridpane.com/v2
+GRIDPANE_API_URL=https://my.gridpane.com/oauth/api/v1
 GRIDPANE_BEARER_TOKEN=your_bearer_token_here
-
-# Optional: Custom configuration
-# NODE_ENV=development
 ```
 
 ### API Rate Limits
 
-Stackdock includes intelligent rate limit handling:
-- **GridPane:** 60 requests/minute globally, 2 `PUT /site/{id}` requests per minute shared across the entire account
-- Automatic retry with exponential backoff
-- User-friendly error messages
+Stackdock includes rate limit handling for GridPane:
+- GET requests: 12 per minute per endpoint
+- PUT requests: 2 per minute account-wide
+- Automatic tracking and user feedback
 - Request queuing to prevent 429 errors
 
 ---
 
-## 🎨 Development
+## Development
 
 ### Available Scripts
 
@@ -174,93 +189,60 @@ npx tsc --noEmit
 
 ### Code Standards
 
-This project follows strict coding conventions documented in `.github/instructions/CONVENTIONS.md`:
+This project follows strict TypeScript conventions:
 
-- ✅ TypeScript strict mode enabled
-- ✅ No console.logs in production
-- ✅ Design tokens only (no hardcoded colors)
-- ✅ Consistent error handling with `GridPaneApiError`
-- ✅ Server Actions for all API calls
-- ✅ shadcn/ui components for UI consistency
-
----
-
-## 🤝 Contributing
-
-Contributions welcome!
-
-### Development Workflow
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes following our code standards
-4. Run tests and linting (`npm run lint && npm run build`)
-5. Commit your changes (`git commit -m 'feat: add amazing feature'`)
-6. Push to the branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
-
-### Commit Convention
-
-We follow [Conventional Commits](https://www.conventionalcommits.org/):
-
-- `feat:` New features
-- `fix:` Bug fixes
-- `docs:` Documentation changes
-- `refactor:` Code refactoring
-- `style:` Formatting changes
-- `test:` Test additions or changes
-- `chore:` Maintenance tasks
+- Strict mode enabled
+- No console.logs in production code
+- Design tokens only (no hardcoded colors)
+- Consistent error handling
+- Server Actions for all API calls
+- shadcn/ui components for UI consistency
 
 ---
 
-## 📖 Documentation
+## Contributing
 
+This project is not currently accepting contributions while core architecture is being established.
+
+If you'd like to be notified when contributions are welcome, please star the repository.
+
+---
+
+## Documentation
+
+- **API Documentation:** `docs/gridpane/`
 - **Code Conventions:** `.github/instructions/CONVENTIONS.md`
 - **API Patterns:** `.github/instructions/API_PATTERNS.md`
 - **Quick Reference:** `.github/instructions/QUICK_REFERENCE.md`
-- **Cleanup History:** `.github/instructions/CLEANUP_PLAN.md`
 
 ---
 
-## 🐛 Known Issues & Roadmap
-
-See [Issues](https://github.com/stackdock/stackdock/issues) for a list of known issues and planned features.
-
-### Recent Updates
-
-- ✅ **Week 1 Cleanup** - Removed debug logging, consolidated types, standardized error handling
-- ✅ **Week 2 Cleanup** - Migrated to design tokens, implemented Alert/Badge components
-
----
-
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## 💖 Acknowledgments
+## Security
 
-- [shadcn](https://twitter.com/shadcn) for the amazing UI components
-- [Vercel](https://vercel.com/) for Next.js and hosting
-- [GridPane](https://gridpane.com/) for their robust API
-- All contributors who help improve Stackdock
+If you discover a security vulnerability, please email security@stackdock.dev immediately.
+
+Do not create a public GitHub issue for security vulnerabilities.
 
 ---
 
-## 📬 Contact & Support
+## Contact
 
-- **GitHub Issues:** [Report bugs or request features](https://github.com/stackdock/stackdock/issues)
-- **Discussions:** [Ask questions or share ideas](https://github.com/stackdock/stackdock/discussions)
+- **Security Issues:** security@stackdock.dev
+- **General Inquiries:** contact@stackdock.dev
+- **GitHub Issues:** [Report bugs](https://github.com/stackdock/stackdock/issues) (non-security only)
 
 ---
 
 <div align="center">
 
-  **Built with ❤️ by the Stackdock team**
+  **Stackdock** - Built for WordPress agencies managing multi-cloud infrastructure
 
-  ⭐ Star us on GitHub — it helps!
-
-  [Website](https://stackdock.dev) • [Documentation](https://docs.stackdock.com) • [X](https://x.com/stackdock)
+  [Website](https://stackdock.dev)
 
 </div>
