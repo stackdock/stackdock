@@ -55,15 +55,37 @@ If you're interested in following development progress, star the repository and 
 - System users management
 - Teams and user settings
 
-### Planned Providers
+### Planned PAAS Providers
 - Kinsta
 - Rocket.net
 - Runcloud
 - Coolify
 - InstaWP
+- Cloudflare
 - Vercel
+- Netlify
 - Render
+- Fly.io
+- Railway
 - Laravel Forge
+- Ploi
+
+### Planned IAAS Providers
+- AWS (ofc)
+- GCP
+- Azure
+- Hetzner
+- Digital Ocean
+- Linode
+- Vultr
+- More...
+
+### Planned APM Tools
+- Posthog
+- New Relic
+- Sentry
+- Datadog
+- More...
 
 ---
 
@@ -112,7 +134,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 - **UI Components:** [shadcn/ui](https://ui.shadcn.com/)
 - **Icons:** [Lucide Icons](https://lucide.dev/)
 - **State Management:** React Server Components + Server Actions
-- **Deployment:** [Vercel](https://vercel.com/) (planned)
+- **Landing Page Deployment:** [Vercel](https://vercel.com/) (planned)
 
 ---
 
@@ -158,7 +180,7 @@ GRIDPANE_BEARER_TOKEN=your_bearer_token_here
 
 ### API Rate Limits
 
-Stackdock includes rate limit handling for GridPane:
+Stackdock includes rate limit discovery for GridPane:
 - GET requests: 12 per minute per endpoint
 - PUT requests: 2 per minute account-wide
 - Automatic tracking and user feedback
@@ -210,7 +232,7 @@ If you'd like to be notified when contributions are welcome, please star the rep
 
 ## Documentation
 
-- **API Documentation:** `docs/gridpane/`
+- **Provider API Documentation:** `docs/{provider}/`
 - **Code Conventions:** `.github/instructions/CONVENTIONS.md`
 - **API Patterns:** `.github/instructions/API_PATTERNS.md`
 - **Quick Reference:** `.github/instructions/QUICK_REFERENCE.md`
@@ -241,7 +263,7 @@ Do not create a public GitHub issue for security vulnerabilities.
 
 <div align="center">
 
-  **Stackdock** - Built for WordPress agencies managing multi-cloud infrastructure
+  **Stackdock** - Built for managing multi-cloud infrastructure
 
   [Website](https://stackdock.dev)
 
