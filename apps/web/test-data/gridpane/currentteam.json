@@ -1,0 +1,15 @@
+{
+    "id": 2447,
+    "owner_id": 437,
+    "name": "OwnAccount",
+    "slug": null,
+    "photo_url": "https://www.gravatar.com/avatar/2868a12d0a2cd7d16268eb7d598963a2.jpg?s=200&d=identicon",
+    "stripe_id": null,
+    "current_billing_plan": null,
+    "vat_id": null,
+    "trial_ends_at": "2021-04-22T14:18:56.000000Z",
+    "created_at": "2021-04-21T14:18:56.000000Z",
+    "updated_at": "2021-04-21T14:18:56.000000Z",
+    "teams_additional_members": null,
+    "tax_rate": 0
+}

@@ -1,0 +1,14 @@
+{
+    "success": true,
+    "message": "Available backups integrations",
+    "integrations": [
+        {
+            "id": 7627,
+            "integrated_service": "aws-s3",
+            "integration_name": "GP S3 Backups",
+            "token": "string",
+            "secret_token": "string",
+            "region": "us-east-1"
+        }
+    ]
+}
