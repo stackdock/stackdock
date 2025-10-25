@@ -1,0 +1,14 @@
+{{
+
+  "build": {  "build": {
+
+    "env": {},    "env": {},
+
+    "ignoreCommand": "git diff --quiet HEAD^ HEAD apps/landing/"    "ignoreCommand": "git diff --quiet HEAD^ HEAD apps/landing/"
+
+  },  }
+
+  "rootDirectory": "apps/landing"  ,
+
+}  "rootDirectory": "apps/landing"
+}
