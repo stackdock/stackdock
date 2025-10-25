@@ -1,91 +1,100 @@
 ![Image of Stackdock logo](/public/stackdock-logo-dark-mode.svg "Stackdock logo")
 
 <div align="center">
-
-  # Stackdock
-
-  ### Open Source Multi-Cloud Management Platform
-
-  **Manage websites and servers across multiple providers from a unified interface.**
-
-  [![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)](https://nextjs.org/)
-  [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-  [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
-
+  <h1>StackDock</h1>
+  <p><strong>Open Source Multi-Cloud Management Platform</strong></p>
+  <p>Manage websites, apps, databases, servers, and APM tools across multiple providers from a unified interface.</p>
+  <p>
+    <a href="https://nextjs.org/">
+      <img src="https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js" alt="Next.js"/>
+    </a>
+    <a href="https://www.typescriptlang.org/">
+      <img src="https://img.shields.io/badge/TypeScript-5.x-blue?style=flat-square&logo=typescript" alt="TypeScript"/>
+    </a>
+    <a href="LICENSE">
+      <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License"/>
+    </a>
+     <a href="https://github.com/stackdock/stackdock/stargazers">
+      <img src="https://img.shields.io/github/stars/stackdock/stackdock?style=flat-square&logo=github" alt="GitHub stars"/>
+    </a>
+  </p>
 </div>
 
 ---
 
-## WARNING: EARLY DEVELOPMENT
+## Welcome Aboard Captain! ⚓️
 
-**This project is in active development and is NOT ready for production use, testing, or deployment.**
+If you're seeing this message, you're early – but welcome to the shipyard! The actual code is still under heavy construction, but the blueprints are evolving, the harbor is secured (`stackdock.com`, `.dev`, `.ai`, `.io`, `.net`, `.org`, `.app`, `.co`, all major social handles, and trademark pending™️), the mission is locked in.
 
-- Core features are incomplete and under heavy iteration
-- API integrations are being systematically documented and tested
-- Breaking changes occur frequently without notice
-- No stability guarantees of any kind
-- Database schema and authentication are not yet implemented
+This isn't just another tool. It's the culmination of years spent navigating the chaos of multi-cloud myself. StackDock is being built to be the command center I wish I always had – the home port for your entire digital fleet.
 
-**DO NOT use this in any production environment or with production data.**
+A composable cloud.
 
-If you're interested in following development progress, star the repository and check back later.
+Seeing interest already, even at this stage, tells me we're charting the right course. Thanks for being here at the beginning. **Star the repo to watch the build and join the voyage!** ⭐
 
 ---
 
-## Features in Development
+## ⚠️ WARNING: PRE-ALPHA - HEAVY DEVELOPMENT ⚠️
 
-- **Multi-Provider Support** - GridPane integration in progress, additional providers planned
-- **Modern UI** - Interface built with shadcn/ui and Tailwind CSS
-- **Theme Support** - Light and dark mode switching
-- **Type Safety** - Full TypeScript coverage
-- **API Foundation** - Rate limiting, error handling, and request logging
-- **Site Management** - PHP version updates, SSL management, backups
-- **Server Control** - Monitor and manage servers across providers
+**This project is in a very early, active development stage and is NOT ready for production use, testing, or deployment.**
+
+* Core features are missing or incomplete.
+* API integrations are actively being explored and may change.
+* **Breaking changes will occur frequently and without notice.**
+* There are **NO STABILITY GUARANTEES** of any kind.
+* Critical components like database schema and robust authentication are not yet implemented.
+
+**DO NOT use this in any production environment or connect it to critical infrastructure.** Star the repository for updates on future, stable releases.
 
 ---
 
-## Current Provider Status
+## 🧭 Project Vision & Roadmap
 
-### GridPane Integration (In Progress)
-- Sites management (list, view, update)
-- PHP version switching with rate limit handling
-- Server monitoring and management
-- Domain management
-- Backup schedules and integrations
-- System users management
-- Teams and user settings
+StackDock aims to provide a unified interface for managing resources across various cloud (IaaS/PaaS) and service providers.
 
-### Planned PAAS Providers
-- Kinsta
-- Rocket.net
-- Runcloud
-- Coolify
-- InstaWP
-- Cloudflare
-- Vercel
-- Netlify
-- Render
-- Fly.io
-- Railway
-- Laravel Forge
-- Ploi
+**Current Focus (Pre-MVP):**
 
-### Planned IAAS Providers
-- AWS (ofc)
-- GCP
-- Azure
-- Hetzner
-- Digital Ocean
-- Linode
-- Vultr
-- More...
+* **API Exploration:** Systematically mapping and testing the GridPane API (`debug/api-exploration` branch).
+* **Core UI Foundation:** Building the main dashboard layout, navigation, and core components using shadcn/ui.
+* **Type Safety & DX:** Establishing robust TypeScript patterns and developer workflows.
 
-### Planned APM Tools
-- Posthog
-- New Relic
-- Sentry
-- Datadog
-- More...
+**Planned MVP Goals:**
+
+* **Multi-Provider Read-Only View:** Connect at least 2-3 providers (e.g., GridPane, Vercel, DigitalOcean) and display core resources (servers, sites, deployments) in a unified dashboard.
+* **Basic APM Integration:** Connect at least one APM tool (e.g., Sentry) to display basic project health alongside infrastructure.
+* **Intuitive Navigation:** Implement the simplified `/dashboard`, `/projects`, `/infrastructure`, `/operations` navigation structure.
+* **Themeable UI:** Support for light/dark modes and basic theme customization.
+
+**Future Vision (Post-MVP):**
+
+* **Write Operations (Mutations):** Gradually add actions like restarting servers, deploying sites, clearing caches, managing backups.
+* **Wider Provider Support:** Integrate the extensive list of PaaS, IaaS, and APM providers (see below).
+* **Automation Engine:** Implement workflows for scheduled tasks, alert-driven actions, and automated provisioning/scaling.
+* **Composable UI:** Explore custom shadcn/ui registry for user-customizable interfaces.
+* **Autonomous Capabilities:** Long-term vision includes AI-driven optimization, self-healing, and intent-based infrastructure management.
+
+---
+
+## 🔌 Planned Integrations (Examples)
+
+* **Server Panels/PaaS:** GridPane, Kinsta, Rocket.net, RunCloud, Coolify, Cloudflare, Vercel, Netlify, Render, Fly.io, Railway, Laravel Forge, Ploi, InstaWP
+* **IaaS:** AWS, GCP, Azure, Hetzner, Digital Ocean, Linode, Vultr
+* **APM:** Posthog, New Relic, Sentry, Datadog
+
+*(This list is ambitious and will be prioritized based on community feedback and development progress.)*
+
+---
+
+## 💻 Tech Stack
+
+* **Framework:** [Next.js 15](https://nextjs.org/) (App Router)
+* **Language:** [TypeScript](https://www.typescriptlang.org/)
+* **Styling:** [Tailwind CSS](https://tailwindcss.com/)
+* **UI Components:** [shadcn/ui](https://ui.shadcn.com/)
+* **Icons:** [Lucide React](https://lucide.dev/)
+* **State/Fetching:** React Server Components, Server Actions, SWR/React Query (TBD)
+* **(Planned) Database:** Turso / LibSQL
+* **(Planned) Authentication:** NextAuth.js
 
 ---
 
