@@ -4,6 +4,7 @@
 - [X] Install Next 15, Tailwind 4, Shadcn
 - [X] Custom Font
 - [X] lib folder utilization for external api
+- [ ] tRPC implementation
 - [ ] Auth
   - [ ] Better Auth?
   - [ ] Login, Signup, Forgot Password
@@ -19,7 +20,8 @@
     - [ ] Figure out generation method
     - [ ] Use next.js built in features first
   - [ ] State Manager
-    - [ ] Zustand? SWR? TS Query/DB?
+    - [ ] Zustand Client
+    - [ ] React Query tRPC calls
 - [ ] SSH2
   - [ ] Scope
 - [ ] Testing FRamwork
