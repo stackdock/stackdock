@@ -1,0 +1,382 @@
+{
+    "data": {
+      "domains": [
+        {
+          "id": 464433,
+          "url": "therhejencollection.com",
+          "route": "none",
+          "type": "primary",
+          "dns_management_id": 2524,
+          "creds_need_updating": false,
+          "is_ssl": true,
+          "ssl_status": "succeed",
+          "dns_connection_type": "full",
+          "site_id": 425622,
+          "user_id": 437,
+          "identify_code": null,
+          "server_id": 29328,
+          "resolved_at": "2022-10-26 23:55:23",
+          "status": null,
+          "is_wildcard": false,
+          "created_at": "2022-10-27T03:52:28.000000Z",
+          "updated_at": "2024-12-10T20:56:05.000000Z",
+          "deleted_at": null,
+          "primary_is_staging": false,
+          "primary_staging_enabled": true,
+          "primary_canary_enabled": false,
+          "user_dns": {
+            "id": 2524,
+            "user_id": 437,
+            "dns_provider_id": 2,
+            "name": null,
+            "token": "c3bc0fae519567f7994010c9484a097c9ff1e",
+            "secret": "robertmanderson37@gmail.com",
+            "integration_name": "Flyboy The Risen",
+            "nameserver": null,
+            "challenge_domain": null,
+            "is_available": true,
+            "number": 1,
+            "created_at": "2020-03-27T21:31:00.000000Z",
+            "updated_at": "2025-01-24T20:26:23.000000Z",
+            "deleted_at": null,
+            "last_active_at": "2025-01-24 15:26:23",
+            "provider": {
+              "id": 2,
+              "name": "cloudflare",
+              "created_at": "2020-03-06T09:09:02.000000Z",
+              "updated_at": "2020-03-06T09:09:02.000000Z"
+            }
+          }
+        },
+        {
+          "id": 464434,
+          "url": "staging.therhejencollection.com",
+          "route": "none",
+          "type": "primary",
+          "dns_management_id": 2524,
+          "creds_need_updating": false,
+          "is_ssl": true,
+          "ssl_status": "succeed",
+          "dns_connection_type": "full",
+          "site_id": 425623,
+          "user_id": 437,
+          "identify_code": null,
+          "server_id": 29328,
+          "resolved_at": null,
+          "status": null,
+          "is_wildcard": false,
+          "created_at": "2022-10-27T03:52:34.000000Z",
+          "updated_at": "2024-12-10T20:56:17.000000Z",
+          "deleted_at": null,
+          "primary_is_staging": true,
+          "primary_staging_enabled": false,
+          "primary_canary_enabled": false,
+          "user_dns": {
+            "id": 2524,
+            "user_id": 437,
+            "dns_provider_id": 2,
+            "name": null,
+            "token": "c3bc0fae519567f7994010c9484a097c9ff1e",
+            "secret": "robertmanderson37@gmail.com",
+            "integration_name": "Flyboy The Risen",
+            "nameserver": null,
+            "challenge_domain": null,
+            "is_available": true,
+            "number": 1,
+            "created_at": "2020-03-27T21:31:00.000000Z",
+            "updated_at": "2025-01-24T20:26:23.000000Z",
+            "deleted_at": null,
+            "last_active_at": "2025-01-24 15:26:23",
+            "provider": {
+              "id": 2,
+              "name": "cloudflare",
+              "created_at": "2020-03-06T09:09:02.000000Z",
+              "updated_at": "2020-03-06T09:09:02.000000Z"
+            }
+          }
+        },
+        {
+          "id": 464435,
+          "url": "canary.therhejencollection.com",
+          "route": "none",
+          "type": "primary",
+          "dns_management_id": null,
+          "creds_need_updating": false,
+          "is_ssl": false,
+          "ssl_status": null,
+          "dns_connection_type": "none",
+          "site_id": 425624,
+          "user_id": 437,
+          "identify_code": null,
+          "server_id": 29328,
+          "resolved_at": null,
+          "status": null,
+          "is_wildcard": false,
+          "created_at": "2022-10-27T03:52:35.000000Z",
+          "updated_at": "2022-10-27T03:52:35.000000Z",
+          "deleted_at": null,
+          "primary_is_staging": false,
+          "primary_staging_enabled": false,
+          "primary_canary_enabled": false,
+          "user_dns": null
+        },
+        {
+          "id": 464442,
+          "url": "simplepriceprep.com",
+          "route": "none",
+          "type": "primary",
+          "dns_management_id": 2524,
+          "creds_need_updating": false,
+          "is_ssl": true,
+          "ssl_status": "succeed",
+          "dns_connection_type": "full",
+          "site_id": 425631,
+          "user_id": 437,
+          "identify_code": null,
+          "server_id": 29328,
+          "resolved_at": "2022-10-27 00:05:22",
+          "status": null,
+          "is_wildcard": false,
+          "created_at": "2022-10-27T04:03:53.000000Z",
+          "updated_at": "2024-10-22T00:50:07.000000Z",
+          "deleted_at": null,
+          "primary_is_staging": false,
+          "primary_staging_enabled": true,
+          "primary_canary_enabled": false,
+          "user_dns": {
+            "id": 2524,
+            "user_id": 437,
+            "dns_provider_id": 2,
+            "name": null,
+            "token": "c3bc0fae519567f7994010c9484a097c9ff1e",
+            "secret": "robertmanderson37@gmail.com",
+            "integration_name": "Flyboy The Risen",
+            "nameserver": null,
+            "challenge_domain": null,
+            "is_available": true,
+            "number": 1,
+            "created_at": "2020-03-27T21:31:00.000000Z",
+            "updated_at": "2025-01-24T20:26:23.000000Z",
+            "deleted_at": null,
+            "last_active_at": "2025-01-24 15:26:23",
+            "provider": {
+              "id": 2,
+              "name": "cloudflare",
+              "created_at": "2020-03-06T09:09:02.000000Z",
+              "updated_at": "2020-03-06T09:09:02.000000Z"
+            }
+          }
+        },
+        {
+          "id": 464443,
+          "url": "staging.simplepriceprep.com",
+          "route": "none",
+          "type": "primary",
+          "dns_management_id": 2524,
+          "creds_need_updating": false,
+          "is_ssl": true,
+          "ssl_status": "succeed",
+          "dns_connection_type": "full",
+          "site_id": 425632,
+          "user_id": 437,
+          "identify_code": null,
+          "server_id": 29328,
+          "resolved_at": null,
+          "status": null,
+          "is_wildcard": false,
+          "created_at": "2022-10-27T04:04:01.000000Z",
+          "updated_at": "2023-12-29T19:55:45.000000Z",
+          "deleted_at": null,
+          "primary_is_staging": true,
+          "primary_staging_enabled": false,
+          "primary_canary_enabled": false,
+          "user_dns": {
+            "id": 2524,
+            "user_id": 437,
+            "dns_provider_id": 2,
+            "name": null,
+            "token": "c3bc0fae519567f7994010c9484a097c9ff1e",
+            "secret": "robertmanderson37@gmail.com",
+            "integration_name": "Flyboy The Risen",
+            "nameserver": null,
+            "challenge_domain": null,
+            "is_available": true,
+            "number": 1,
+            "created_at": "2020-03-27T21:31:00.000000Z",
+            "updated_at": "2025-01-24T20:26:23.000000Z",
+            "deleted_at": null,
+            "last_active_at": "2025-01-24 15:26:23",
+            "provider": {
+              "id": 2,
+              "name": "cloudflare",
+              "created_at": "2020-03-06T09:09:02.000000Z",
+              "updated_at": "2020-03-06T09:09:02.000000Z"
+            }
+          }
+        },
+        {
+          "id": 464444,
+          "url": "canary.simplepriceprep.com",
+          "route": "none",
+          "type": "primary",
+          "dns_management_id": null,
+          "creds_need_updating": false,
+          "is_ssl": false,
+          "ssl_status": null,
+          "dns_connection_type": "none",
+          "site_id": 425633,
+          "user_id": 437,
+          "identify_code": null,
+          "server_id": 29328,
+          "resolved_at": null,
+          "status": null,
+          "is_wildcard": false,
+          "created_at": "2022-10-27T04:04:01.000000Z",
+          "updated_at": "2022-10-27T04:04:01.000000Z",
+          "deleted_at": null,
+          "primary_is_staging": false,
+          "primary_staging_enabled": false,
+          "primary_canary_enabled": false,
+          "user_dns": null
+        }
+      ],
+      "constants": {
+        "type": [
+          {
+            "text": "alias",
+            "value": "alias"
+          },
+          {
+            "text": "redirect",
+            "value": "redirect"
+          }
+        ],
+        "routing": [
+          {
+            "text": "root",
+            "value": "root"
+          },
+          {
+            "text": "www",
+            "value": "www"
+          },
+          {
+            "text": "none",
+            "value": "none"
+          }
+        ],
+        "integration": {
+          "none": "None",
+          "dnsmefull": "DNSME Full",
+          "dnsme": "DNSME Challenge Only",
+          "cloudflarefull": "CF Full",
+          "cloudflare": "CF Challenge Only"
+        },
+        "dns": [
+          {
+            "id": 514,
+            "user_id": 437,
+            "dns_provider_id": 0,
+            "name": null,
+            "token": "",
+            "secret": "",
+            "integration_name": "Dragonslayer Flygirl",
+            "nameserver": null,
+            "challenge_domain": null,
+            "is_available": true,
+            "number": null,
+            "created_at": "2020-03-06T09:09:18.000000Z",
+            "updated_at": "2021-04-26T06:28:41.000000Z",
+            "deleted_at": null,
+            "last_active_at": "2020-07-27 20:49:24",
+            "provider": {
+              "id": 0,
+              "name": "none",
+              "created_at": "2020-03-06T09:09:16.000000Z",
+              "updated_at": "2020-03-06T09:09:16.000000Z"
+            }
+          },
+          {
+            "id": 2524,
+            "user_id": 437,
+            "dns_provider_id": 2,
+            "name": null,
+            "token": "c3bc0fae519567f7994010c9484a097c9ff1e",
+            "secret": "robertmanderson37@gmail.com",
+            "integration_name": "Flyboy The Risen",
+            "nameserver": null,
+            "challenge_domain": null,
+            "is_available": true,
+            "number": 1,
+            "created_at": "2020-03-27T21:31:00.000000Z",
+            "updated_at": "2025-01-24T20:26:23.000000Z",
+            "deleted_at": null,
+            "last_active_at": "2025-01-24 15:26:23",
+            "provider": {
+              "id": 2,
+              "name": "cloudflare",
+              "created_at": "2020-03-06T09:09:02.000000Z",
+              "updated_at": "2020-03-06T09:09:02.000000Z"
+            }
+          }
+        ]
+      }
+    },
+    "links": {
+      "first": "https://my.gridpane.com/oauth/api/v1/domain?page=1",
+      "last": "https://my.gridpane.com/oauth/api/v1/domain?page=6",
+      "prev": null,
+      "next": "https://my.gridpane.com/oauth/api/v1/domain?page=2"
+    },
+    "meta": {
+      "current_page": 1,
+      "from": 1,
+      "last_page": 6,
+      "links": [
+        {
+          "url": null,
+          "label": "&laquo; Previous",
+          "active": false
+        },
+        {
+          "url": "https://my.gridpane.com/oauth/api/v1/domain?page=1",
+          "label": "1",
+          "active": true
+        },
+        {
+          "url": "https://my.gridpane.com/oauth/api/v1/domain?page=2",
+          "label": "2",
+          "active": false
+        },
+        {
+          "url": "https://my.gridpane.com/oauth/api/v1/domain?page=3",
+          "label": "3",
+          "active": false
+        },
+        {
+          "url": "https://my.gridpane.com/oauth/api/v1/domain?page=4",
+          "label": "4",
+          "active": false
+        },
+        {
+          "url": "https://my.gridpane.com/oauth/api/v1/domain?page=5",
+          "label": "5",
+          "active": false
+        },
+        {
+          "url": "https://my.gridpane.com/oauth/api/v1/domain?page=6",
+          "label": "6",
+          "active": false
+        },
+        {
+          "url": "https://my.gridpane.com/oauth/api/v1/domain?page=2",
+          "label": "Next &raquo;",
+          "active": false
+        }
+      ],
+      "path": "https://my.gridpane.com/oauth/api/v1/domain",
+      "per_page": 6,
+      "to": 6,
+      "total": 33
+    }
+  }
