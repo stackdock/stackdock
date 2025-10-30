@@ -1,12 +1,17 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from 'convex/react'
+import { Authenticated, Unauthenticated } from 'convex/react'
 import { api } from 'convex/_generated/api'
+
+import { SignInButton } from '../components/auth/SignInButton'
+import { AuthStatus } from '../components/auth/AuthStatus'
 
 export const Route = createFileRoute('/')({ component: App })
 
 function App() {
   // Test Convex connection (only runs if VITE_CONVEX_URL is set)
   const convexUrl = import.meta.env.VITE_CONVEX_URL
+  const clerkKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
   const pingResult = convexUrl ? useQuery(api.test.ping) : null
 
   return (
@@ -26,37 +31,53 @@ function App() {
             Open-source multi-cloud management platform. Manage websites, apps, databases, and servers across multiple providers from a unified interface.
           </p>
           
-          {/* Convex Connection Status */}
-          <div className="mb-8 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
-            <p className="text-sm text-gray-400 mb-2">Convex Status:</p>
-            {convexUrl ? (
-              pingResult ? (
-                <div className="flex items-center justify-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-green-400 text-sm">
-                    Connected • {pingResult.message}
-                  </span>
-                </div>
+          {/* Status Indicators */}
+          <div className="mb-8 space-y-3">
+            {/* Convex Connection Status */}
+            <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+              <p className="text-sm text-gray-400 mb-2">Convex Status:</p>
+              {convexUrl ? (
+                pingResult ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-green-400 text-sm">
+                      Connected • {pingResult.message}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+                    <span className="text-yellow-400 text-sm">Connecting...</span>
+                  </div>
+                )
               ) : (
                 <div className="flex items-center justify-center gap-2">
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
-                  <span className="text-yellow-400 text-sm">Connecting...</span>
+                  <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                  <span className="text-gray-400 text-sm">
+                    Not configured • Set VITE_CONVEX_URL in .env.local
+                  </span>
                 </div>
-              )
-            ) : (
-              <div className="flex items-center justify-center gap-2">
-                <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
-                <span className="text-gray-400 text-sm">
-                  Not configured • Set VITE_CONVEX_URL in .env.local
-                </span>
+              )}
+            </div>
+
+            {/* Clerk Auth Status */}
+            {clerkKey && (
+              <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                <p className="text-sm text-gray-400 mb-2">Auth Status:</p>
+                <AuthStatus />
               </div>
             )}
           </div>
 
           <div className="flex flex-col items-center gap-4">
-            <button className="px-8 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold rounded-lg transition-colors shadow-lg shadow-cyan-500/50">
-              Get Started
-            </button>
+            <Unauthenticated>
+              <SignInButton />
+            </Unauthenticated>
+            <Authenticated>
+              <p className="text-gray-300 text-sm">
+                Welcome! You're signed in.
+              </p>
+            </Authenticated>
             <p className="text-gray-400 text-sm mt-2">
               Welcome to StackDock
             </p>
