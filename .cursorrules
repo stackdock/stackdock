@@ -1,0 +1,188 @@
+# StackDock Cursor Rules
+# CRITICAL: These rules prevent breaking the core architecture
+
+## 🚨 NEVER DO THESE THINGS 🚨
+
+1. **NEVER create provider-specific resource tables**
+   - ❌ NO: `gridPaneSites`, `vercelDeployments`, `awsInstances`
+   - ✅ YES: Use universal tables (`webServices`, `servers`, `domains`)
+   - The `provider` field identifies the source
+   - Provider-specific data goes in `fullApiData` field
+
+2. **NEVER delete files without explicit user permission**
+   - Always ask before removing code
+   - Preserve existing functionality
+   - Check git status first
+
+3. **NEVER bypass RBAC checks**
+   - Every Convex query/mutation MUST check permissions
+   - Use `withRBAC()` middleware
+   - No direct database access without auth
+
+4. **NEVER store API keys unencrypted**
+   - Always use `encryptApiKey()` before storing
+   - Only decrypt in server-side Convex functions
+   - Never expose to client
+
+5. **NEVER break the dock adapter pattern**
+   - Docks are TRANSLATORS (provider API → universal schema)
+   - One adapter per provider
+   - Follow the interface in `convex/docks/_types.ts`
+
+## ✅ ALWAYS DO THESE THINGS ✅
+
+1. **ALWAYS use the universal table pattern**
+   ```typescript
+   // Correct: GridPane site → webServices
+   await ctx.db.insert("webServices", {
+     provider: "gridpane",
+     providerResourceId: site.id,
+     name: site.name,
+     productionUrl: site.url,
+     fullApiData: site, // All GridPane-specific fields
+   })
+   ```
+
+2. **ALWAYS enforce RBAC**
+   ```typescript
+   export const myMutation = mutation({
+     handler: withRBAC("docks:full")(async (ctx, args) => {
+       // Your logic here
+     }),
+   })
+   ```
+
+3. **ALWAYS encrypt sensitive data**
+   ```typescript
+   const encrypted = await encryptApiKey(apiKey)
+   await ctx.db.insert("docks", { encryptedApiKey: encrypted })
+   ```
+
+4. **ALWAYS audit important actions**
+   ```typescript
+   await auditLog(ctx, "dock.create", "success", { dockId, provider })
+   ```
+
+5. **ALWAYS document new dock adapters**
+   - Add to `docs/adapters/{provider}.md`
+   - Include API rate limits
+   - Document field mappings
+
+## 📐 Architecture Principles
+
+### The Three Registries
+1. **Docks Registry**: Infrastructure adapters (copy/paste/own)
+2. **UI Registry**: Dashboard components (copy/paste/own)
+3. **The Platform**: Orchestration layer (RBAC, encryption, audit)
+
+### Core Concepts
+- **Universal Tables**: `servers`, `webServices`, `domains` accept ANY provider
+- **Polymorphic Linking**: Projects link to resources via `projectResources` table
+- **Dock Adapters**: Translate provider-specific APIs to universal schema
+- **Zero-Trust RBAC**: Every operation checks permissions
+- **Composability**: Docks, UI, and resources are all modular
+
+### The Schema IS the App
+- `schema.ts` defines the data model
+- Never add provider-specific tables
+- Use `fullApiData` for provider-specific fields
+- Maintain backward compatibility
+
+## 🏗️ Tech Stack (LOCKED)
+
+- **TanStack Start**: Full-stack React framework
+- **Convex**: Real-time database
+- **Clerk**: Authentication & organizations
+- **XState**: Complex workflow state machines
+- **shadcn/ui**: Component primitives (copy/paste ownership model)
+- **Tailwind 4**: Styling
+
+## 📦 Monorepo Structure
+
+```
+stackdock/
+├── apps/
+│   ├── web/              # Main TanStack Start app
+│   └── docs/             # Documentation site
+├── packages/
+│   ├── docks/            # Dock adapter registry
+│   ├── ui/               # UI component registry
+│   └── shared/           # Shared utilities
+├── convex/               # Convex backend (shared)
+├── docs/                 # Architecture & guides
+└── .cursorrules          # This file
+```
+
+## 🔒 Security Requirements
+
+1. **Encryption**: AES-256-GCM for all API keys
+2. **RBAC**: Enforced at Convex layer (middleware)
+3. **Audit Logs**: All mutations logged with user/timestamp
+4. **CSP Headers**: Content Security Policy in production
+5. **Input Validation**: Validate all user inputs
+6. **Rate Limiting**: Respect provider API rate limits
+
+## 🧪 Testing Requirements
+
+1. **Unit Tests**: For all utility functions
+2. **Integration Tests**: For dock adapters
+3. **RBAC Tests**: Permission checks must have tests
+4. **Encryption Tests**: Verify encrypt/decrypt cycles
+
+## 📝 Documentation Standards
+
+1. **Every dock adapter needs**:
+   - README with setup instructions
+   - API rate limit documentation
+   - Field mapping table (provider → universal)
+   - Example usage
+
+2. **Every UI component needs**:
+   - Props documentation
+   - Usage examples
+   - Accessibility notes
+
+3. **Every Convex function needs**:
+   - JSDoc comments
+   - Permission requirements
+   - Example usage
+
+## 🚀 Development Workflow
+
+1. **Feature Branches**: Never commit directly to main
+2. **Pull Requests**: Required for all changes
+3. **Code Review**: At least one approval
+4. **Tests Pass**: All tests must pass
+5. **Docs Updated**: Update docs with changes
+
+## ⚠️ Before Making Changes
+
+1. **Read the docs**: Check `docs/` for relevant guides
+2. **Understand the pattern**: Follow existing conventions
+3. **Ask questions**: If unsure, ask the user
+4. **Document changes**: Update relevant docs
+5. **Test thoroughly**: Don't break existing functionality
+
+## 🎯 The Vision
+
+**StackDock is infrastructure's WordPress moment.**
+
+- WordPress democratized content management
+- StackDock democratizes infrastructure management
+- True FOSS: You own the code (docks, UI, everything)
+- Composable: Build your perfect control plane
+- Extensible: If it has an API, it can be a dock
+
+**This is generational. Don't fuck it up.**
+
+## 📞 When In Doubt
+
+1. Check existing patterns in the codebase
+2. Read the architecture docs
+3. Ask the user
+4. Preserve > Delete
+5. Document > Assume
+
+---
+
+**Remember: The user has $4k invested and a CEO meeting Wednesday. Every decision matters.**

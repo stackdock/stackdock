@@ -1,0 +1,38 @@
+{
+  "name": "stackdock",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Open-source multi-cloud management platform",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stackdock/stackdock.git"
+  },
+  "license": "MIT",
+  "author": "StackDock Team",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "dev:convex": "pnpm --filter web convex dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "test": "turbo run test",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "clean": "turbo run clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "prettier": "^3.0.0",
+    "turbo": "^1.10.0",
+    "typescript": "^5.2.0",
+    "vitest": "^1.0.0"
+  },
+  "packageManager": "pnpm@8.0.0",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}

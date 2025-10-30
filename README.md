@@ -5,9 +5,6 @@
   <p><strong>Open Source Multi-Cloud Management Platform</strong></p>
   <p>Manage websites, apps, databases, servers, and APM tools across multiple providers from a unified interface.</p>
   <p>
-    <a href="https://nextjs.org/">
-      <img src="https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js" alt="Next.js"/>
-    </a>
     <a href="https://www.typescriptlang.org/">
       <img src="https://img.shields.io/badge/TypeScript-5.x-blue?style=flat-square&logo=typescript" alt="TypeScript"/>
     </a>
@@ -22,258 +19,233 @@
 
 ---
 
+## The Vision
+
+**Remember how shadcn/ui changed UI development?**
+
+```bash
+npx shadcn add button
+# → Copies component into YOUR codebase
+# → You own the code
+# → No vendor lock-in
+```
+
+**StackDock does the same for infrastructure.**
+
+```bash
+npx stackdock add gridpane
+# → Copies infrastructure adapter into YOUR codebase
+# → You own the dock adapter
+# → Customize, fork, publish your own
+```
+
+### Why This Matters
+
+- **WordPress democratized content management**
+- **StackDock democratizes infrastructure management**
+- **True FOSS**: You own the code (docks, UI, everything)
+- **Composable**: Build your perfect control plane
+- **Extensible**: If it has an API, it can be a dock
+
+---
+
 ## Welcome Aboard Captain! ⚓️
 
-If you're seeing this message, you're early – but welcome to the shipyard! The actual code is still under heavy construction, but the blueprints are evolving, the harbor is secured (`stackdock.com`, `.dev`, `.ai`, `.io`, `.net`, `.org`, `.app`, `.co`, all major social handles, and trademark pending™️), the mission is locked in.
+You're early – but welcome to the shipyard! The blueprints are evolving, the vision is locked in, and we're building in public.
 
-This isn't just another tool. It's the culmination of years spent navigating the chaos of multi-cloud myself. StackDock is being built to be the command center I wish I always had – the home port for your entire digital fleet.
+**This isn't just another tool.** It's infrastructure's WordPress moment.
 
-A composable cloud.
-
-Seeing interest already, even at this stage, tells me we're charting the right course. Thanks for being here at the beginning. **Star the repo to watch the build and join the voyage!** ⭐
+Star the repo to watch the build! ⭐
 
 ---
 
-## ⚠️ WARNING: PRE-ALPHA - HEAVY DEVELOPMENT ⚠️
+## ⚠️ PRE-ALPHA WARNING ⚠️
 
-**This project is in a very early, active development stage and is NOT ready for production use, testing, or deployment.**
+**This is pre-alpha software. NOT ready for production.**
 
-* Core features are missing or incomplete.
-* API integrations are actively being explored and may change.
-* **Breaking changes will occur frequently and without notice.**
-* There are **NO STABILITY GUARANTEES** of any kind.
-* Critical components like database schema and robust authentication are not yet implemented.
+- Breaking changes frequent
+- Core features under development
+- Database schema evolving
+- DO NOT use with critical infrastructure
 
-**DO NOT use this in any production environment or connect it to critical infrastructure.** Star the repository for updates on future, stable releases.
-
----
-
-## 🧭 Project Vision & Roadmap
-
-StackDock aims to provide a unified interface for managing resources across various cloud (IaaS/PaaS) and service providers.
-
-**Current Focus (Pre-MVP):**
-
-* **API Exploration:** Systematically mapping and testing the GridPane API (`debug/api-exploration` branch).
-* **Core UI Foundation:** Building the main dashboard layout, navigation, and core components using shadcn/ui.
-* **Type Safety & DX:** Establishing robust TypeScript patterns and developer workflows.
-
-**Planned MVP Goals:**
-
-* **Multi-Provider Read-Only View:** Connect at least 2-3 providers (e.g., GridPane, Vercel, DigitalOcean) and display core resources (servers, sites, deployments) in a unified dashboard.
-* **Basic APM Integration:** Connect at least one APM tool (e.g., Sentry) to display basic project health alongside infrastructure.
-* **Intuitive Navigation:** Implement the simplified `/dashboard`, `/projects`, `/infrastructure`, `/operations` navigation structure.
-* **Themeable UI:** Support for light/dark modes and basic theme customization.
-
-**Future Vision (Post-MVP):**
-
-* **Write Operations (Mutations):** Gradually add actions like restarting servers, deploying sites, clearing caches, managing backups.
-* **Wider Provider Support:** Integrate the extensive list of PaaS, IaaS, and APM providers (see below).
-* **Automation Engine:** Implement workflows for scheduled tasks, alert-driven actions, and automated provisioning/scaling.
-* **Composable UI:** Explore custom shadcn/ui registry for user-customizable interfaces.
-* **Autonomous Capabilities:** Long-term vision includes AI-driven optimization, self-healing, and intent-based infrastructure management.
+**For early contributors and investors only.** Star for updates on stable releases.
 
 ---
 
-## 🔌 Planned Integrations (Examples)
+## 🧭 Vision & Architecture
 
-* **Server Panels/PaaS:** GridPane, Kinsta, Rocket.net, RunCloud, Coolify, Cloudflare, Vercel, Netlify, Render, Fly.io, Railway, Laravel Forge, Ploi, InstaWP
-* **IaaS:** AWS, GCP, Azure, Hetzner, Digital Ocean, Linode, Vultr
-* **APM:** Posthog, New Relic, Sentry, Datadog
+### The Three Registries
 
-*(This list is ambitious and will be prioritized based on community feedback and development progress.)*
+1. **Docks Registry**: Infrastructure adapters (copy/paste/own)
+   - GridPane, Vercel, AWS, DigitalOcean, Cloudflare, etc.
+   - Community-built and official adapters
+   - Translates provider APIs to universal schema
+
+2. **UI Registry**: Dashboard components (shadcn/ui model)
+   - Server health widgets, deployment timelines, etc.
+   - Works with ANY provider (provider-agnostic)
+   - Copy, customize, own
+
+3. **The Platform**: Orchestration layer
+   - Universal data model (schema.ts)
+   - RBAC enforcement (unlimited users)
+   - Encryption & security (AES-256-GCM)
+   - Audit logging
+   - Real-time sync
+
+### Core Architecture
+
+**Universal Tables** (Provider-Agnostic):
+- `servers`: AWS, DigitalOcean, Vultr, Hetzner → ONE table
+- `webServices`: Vercel, Netlify, Railway, GridPane → ONE table
+- `domains`: Cloudflare, Route53, Namecheap → ONE table
+
+**Dock Adapters** (Translators):
+- GridPane API → Universal `webServices` table
+- Vercel API → Universal `webServices` table
+- Provider-specific data in `fullApiData` field
+
+**See [ARCHITECTURE.md](./ARCHITECTURE.md) for complete details.**
 
 ---
 
-## 💻 Tech Stack
+## 🚀 Quick Start
 
-* **Framework:** [Next.js 15](https://nextjs.org/) (App Router)
-* **Language:** [TypeScript](https://www.typescriptlang.org/)
-* **Styling:** [Tailwind CSS](https://tailwindcss.com/)
-* **UI Components:** [shadcn/ui](https://ui.shadcn.com/)
-* **Icons:** [Lucide React](https://lucide.dev/)
-* **State/Fetching:** React Server Components, Server Actions, SWR/React Query (TBD)
-* **(Planned) Database:** Turso / LibSQL
-* **(Planned) Authentication:** NextAuth.js
-
----
-
-## For Developers Only
-
-**WARNING:** This section is for developers who want to explore the codebase. This is NOT an invitation to test or use the application.
-
-### Prerequisites
-
-- Node.js 18+
-- npm or pnpm
-- GridPane API credentials (for development only)
-
-### Local Development Setup
+**Prerequisites**: Node.js 18+, pnpm 8+
 
 ```bash
-# Clone the repository
+# Clone & install
 git clone https://github.com/stackdock/stackdock.git
 cd stackdock
+pnpm install
 
-# Install dependencies
-npm install
+# Setup environment
+cp env.example .env.local
+node scripts/generate-encryption-key.js
+# Add key to .env.local
 
-# Copy environment file
-cp example.env .env.local
+# Start Convex (terminal 1)
+pnpm dev:convex
 
-# Add your API credentials to .env.local
-# GRIDPANE_API_URL=https://my.gridpane.com/oauth/api/v1
-# GRIDPANE_BEARER_TOKEN=your_token_here
-
-# Run development server
-npm run dev
+# Start app (terminal 2)
+pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-**Note:** Development is conducted on the `debug/api-exploration` branch for API mapping work.
+**Open http://localhost:3000**
 
 ---
 
-## Tech Stack
+## 📚 Documentation
 
-- **Framework:** [Next.js 15](https://nextjs.org/) with App Router
-- **Language:** [TypeScript](https://www.typescriptlang.org/)
-- **Styling:** [Tailwind CSS](https://tailwindcss.com/)
-- **UI Components:** [shadcn/ui](https://ui.shadcn.com/)
-- **Icons:** [Lucide Icons](https://lucide.dev/)
-- **State Management:** React Server Components + Server Actions
-- **Landing Page Deployment:** [Vercel](https://vercel.com/) (planned)
-
----
-
-## Project Structure
-
-```
-stackdock/
-├── src/
-│   ├── app/              # Next.js app router pages
-│   │   ├── dashboard/    # Main dashboard routes
-│   │   │   ├── sites/    # Site management
-│   │   │   ├── servers/  # Server management
-│   │   │   ├── domains/  # Domain management
-│   │   │   └── backups/  # Backup management
-│   │   └── layout.tsx    # Root layout
-│   ├── components/       # React components
-│   │   ├── ui/          # shadcn/ui components
-│   │   ├── sidebar/     # Navigation components
-│   │   └── sites/       # Site-specific components
-│   ├── lib/             # Utility functions
-│   │   └── gridpane/    # GridPane API integration
-│   └── hooks/           # Custom React hooks
-├── docs/                # Documentation
-│   └── gridpane/        # GridPane API documentation
-├── public/              # Static assets
-└── .github/
-    └── instructions/    # Development documentation
-```
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Complete system architecture
+- **[CONTRIBUTING.md](./CONTRIBUTING.md)** - Development workflow
+- **[DOCK_ADAPTER_GUIDE.md](./DOCK_ADAPTER_GUIDE.md)** - Build adapters
+- **[REGISTRY_GUIDE.md](./REGISTRY_GUIDE.md)** - Build UI components
+- **[SECURITY.md](./SECURITY.md)** - Security patterns
+- **[RBAC.md](./RBAC.md)** - Permission system
+- **[.cursorrules](./.cursorrules)** - AI assistant rules
 
 ---
 
-## Configuration
+## 🎯 MVP Roadmap (First Demo)
 
-### Environment Variables
+**Goal**: Multi-provider read-only dashboard
 
-Create a `.env.local` file in the root directory:
+- [x] Architecture documentation
+- [ ] TanStack Start app setup
+- [ ] Clerk authentication
+- [ ] Convex integration
+- [ ] RBAC implementation
+- [ ] Encryption system
+- [ ] GridPane dock adapter
+- [ ] Vercel dock adapter
+- [ ] DigitalOcean dock adapter
+- [ ] Unified infrastructure dashboard
+- [ ] Project resource linking
+- [ ] Client portal
 
-```bash
-# GridPane API Configuration
-GRIDPANE_API_URL=https://my.gridpane.com/oauth/api/v1
-GRIDPANE_BEARER_TOKEN=your_bearer_token_here
-```
-
-### API Rate Limits
-
-Stackdock includes rate limit discovery for GridPane:
-- GET requests: 12 per minute per endpoint
-- PUT requests: 2 per minute account-wide
-- Automatic tracking and user feedback
-- Request queuing to prevent 429 errors
-
----
-
-## Development
-
-### Available Scripts
-
-```bash
-# Development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Start production server
-npm run start
-
-# Run linter
-npm run lint
-
-# Type checking
-npx tsc --noEmit
-```
-
-### Code Standards
-
-This project follows strict TypeScript conventions:
-
-- Strict mode enabled
-- No console.logs in production code
-- Design tokens only (no hardcoded colors)
-- Consistent error handling
-- Server Actions for all API calls
-- shadcn/ui components for UI consistency
+**Target**: Working demo with 3-5 providers
 
 ---
 
-## Contributing
+## 🔌 Provider Support
 
-This project is not currently accepting contributions while core architecture is being established.
+### Planned Docks (Adapters)
 
-If you'd like to be notified when contributions are welcome, please star the repository.
+**PaaS/Server Management**:
+GridPane, Kinsta, Rocket.net, RunCloud, Coolify, Cloudways, Vercel, Netlify, Render, Fly.io, Railway, Laravel Forge, Ploi, InstaWP
 
----
+**IaaS**:
+AWS, GCP, Azure, Hetzner, DigitalOcean, Linode, Vultr
 
-## Documentation
+**DNS/Domains**:
+Cloudflare, Route53, Namecheap
 
-- **Provider API Documentation:** `docs/{provider}/`
-- **Code Conventions:** `.github/instructions/CONVENTIONS.md`
-- **API Patterns:** `.github/instructions/API_PATTERNS.md`
-- **Quick Reference:** `.github/instructions/QUICK_REFERENCE.md`
+**APM/Monitoring**:
+Posthog, New Relic, Sentry, Datadog
 
----
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+**If it has an API, it can be a dock.**
 
 ---
 
-## Security
+## 🛠️ Tech Stack
 
-If you discover a security vulnerability, please email security@stackdock.dev immediately.
+- **[TanStack Start](https://tanstack.com/start)** - Full-stack React framework
+- **[Convex](https://convex.dev)** - Real-time database
+- **[Clerk](https://clerk.com)** - Authentication & orgs
+- **[XState](https://xstate.js.org)** - State machines
+- **[shadcn/ui](https://ui.shadcn.com)** - Component primitives
+- **[Tailwind CSS 4](https://tailwindcss.com)** - Styling
 
-Do not create a public GitHub issue for security vulnerabilities.
+
+## 🤝 Contributing
+
+We welcome contributions! Please read:
+
+- [CONTRIBUTING.md](./CONTRIBUTING.md) - Development workflow
+- [DOCK_ADAPTER_GUIDE.md](./DOCK_ADAPTER_GUIDE.md) - Build adapters
+- [REGISTRY_GUIDE.md](./REGISTRY_GUIDE.md) - Build UI components
+
+**Ways to contribute**:
+1. Build dock adapters for new providers
+2. Create UI components for the registry
+3. Improve documentation
+4. Report bugs
+5. Share feedback
 
 ---
 
-## Contact
+## 🔒 Security
 
-- **Security Issues:** security@stackdock.dev
-- **General Inquiries:** contact@stackdock.dev
-- **GitHub Issues:** [Report bugs](https://github.com/stackdock/stackdock/issues) (non-security only)
+**Reporting Vulnerabilities**: security@stackdock.dev
+
+**DO NOT** create public GitHub issues for security vulnerabilities.
+
+See [SECURITY.md](./SECURITY.md) for complete security documentation.
+
+---
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+## 📞 Contact
+
+- **Website**: [stackdock.dev](https://stackdock.dev)
+- **Security**: security@stackdock.dev
+- **General**: contact@stackdock.dev
+- **Issues**: [GitHub Issues](https://github.com/stackdock/stackdock/issues)
 
 ---
 
 <div align="center">
 
-  **Stackdock** - Built for managing multi-cloud infrastructure
+**StackDock** - Infrastructure's WordPress Moment
 
-  [Website](https://stackdock.dev)
+[Website](https://stackdock.dev) • [Documentation](./ARCHITECTURE.md) • [Contributing](./CONTRIBUTING.md)
+
+*Built with ⚓️ for the captains navigating the multi-cloud ocean*
 
 </div>
