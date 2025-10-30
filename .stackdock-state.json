@@ -1,0 +1,105 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2025-10-30T00:00:00Z",
+  "setup": {
+    "dependencies": {
+      "root": true,
+      "web": true
+    },
+    "envFiles": {
+      "apps/web/.env.local": true
+    },
+    "services": {
+      "convex": {
+        "configured": true,
+        "running": "unknown",
+        "url": "https://warmhearted-ferret-15.convex.cloud",
+        "deployment": "dev:warmhearted-ferret-15"
+      },
+      "clerk": {
+        "configured": false,
+        "publishableKey": "pk_test_Y2FwaXRhbC1tZWVya2F0LTY2LmNsZXJrLmFjY291bnRzLmRldiQ",
+        "secretKeySet": false,
+        "organizationsEnabled": "unknown"
+      }
+    },
+    "app": {
+      "devServerRunning": false,
+      "lastTestedUrl": null,
+      "loginTested": false
+    }
+  },
+  "blockers": [
+    {
+      "id": "test-in-browser",
+      "severity": "high",
+      "description": "Dev server should be running on port 5173, need to test in browser",
+      "resolution": "Open http://localhost:5173 and verify landing page loads",
+      "resolvedBy": null
+    },
+    {
+      "id": "env-file-missing",
+      "severity": "high",
+      "description": "apps/web/.env.local does not exist",
+      "resolution": "Create file with Convex + Clerk keys",
+      "resolvedBy": null
+    },
+    {
+      "id": "clerk-secret-missing",
+      "severity": "high",
+      "description": "Clerk secret key not configured",
+      "resolution": "Get from https://dashboard.clerk.com",
+      "resolvedBy": null
+    },
+    {
+      "id": "login-not-tested",
+      "severity": "medium",
+      "description": "Login flow has never been tested by user (blocked by version mismatch)",
+      "resolution": "Start dev server, open browser, test login flow",
+      "resolvedBy": null
+    }
+  ],
+  "completedSteps": [
+    "monorepo-structure-created",
+    "convex-initialized",
+    "convex-schema-pushed",
+    "pnpm-removed-npm-converted",
+    "package-json-updated-to-official-versions",
+    "vite-config-created",
+    "router-plugin-configured",
+    "missing-components-created",
+    "clerk-imports-fixed",
+    "corruption-cleaned-git-verified",
+    "docs-organized-into-docs-folder",
+    "ai-hall-of-shame-created",
+    "dependencies-installed-with-correct-packages",
+    "react-19-installed",
+    "tanstack-react-start-installed",
+    "dev-server-started-in-background"
+  ],
+  "nextSteps": [
+    "diagnose-installed-tanstack-versions",
+    "research-official-example-package-versions",
+    "decide-pin-versions-or-clone-example",
+    "implement-chosen-solution",
+    "user-creates-env-file",
+    "user-adds-clerk-secret",
+    "test-dev-server-starts",
+    "verify-routeTree-gen-ts-created",
+    "user-tests-login-flow"
+  ],
+  "notes": [
+    "User has invested $4k and has CEO meeting Wednesday",
+    "Convex process killed - can safely restart (schema already pushed to cloud)",
+    "12+ hours spent, $60+ in credits burned",
+    "This state file is the ONLY source of truth",
+    "FOUND ROOT CAUSE: Using @tanstack/start instead of @tanstack/react-start",
+    "Official example uses srvx NOT vinxi, React 19 NOT React 18",
+    "Package.json rewritten to match official example (0.26.3, 1.133.36, 1.134.0)",
+    "pnpm broken on Windows (ERR_INVALID_THIS bug) - converted to npm workspaces",
+    "Corruption cleaned: deleted nested apps/web/apps, apps/web/convex, temp files",
+    "Docs organized into docs/ structure, AI-HALL-OF-SHAME.md created",
+    "Git status checked: corruption was untracked, safe to delete",
+    "Docs sweep: README/CONTRIBUTING/troubleshooting now reflect npm workflow and port 5173"
+  ]
+}

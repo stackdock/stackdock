@@ -1,5 +1,4 @@
 {
-  "functions": "convex/",
   "node": {
     "version": "18"
   }
