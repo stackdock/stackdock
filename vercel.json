@@ -1,7 +1,0 @@
-{
-  "build": {
-    "env": {},
-    "ignoreCommand": "git diff --quiet HEAD^ HEAD apps/landing/"
-  },
-  "rootDirectory": "apps/landing"
-}
