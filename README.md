@@ -141,11 +141,11 @@ VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
 CLERK_SECRET_KEY=sk_test_...
 CLERK_WEBHOOK_SECRET=whsec_...
 ENCRYPTION_MASTER_KEY=<64-char-hex-from-generator>
-VITE_APP_URL=http://localhost:5173
+VITE_APP_URL=http://localhost:3000
 NODE_ENV=development
 ```
 
-**Open http://localhost:5173**
+**Open http://localhost:3000**
 
 ---
 
@@ -179,7 +179,7 @@ All documentation is organized in `docs/`:
 **Goal**: Multi-provider read-only dashboard
 
 - [x] Architecture documentation
-- [ ] TanStack Start app setup
+- [x] TanStack Start app setup
 - [ ] Clerk authentication
 - [ ] Convex integration
 - [ ] RBAC implementation

@@ -44,7 +44,7 @@ CLERK_WEBHOOK_SECRET=whsec_...
 ENCRYPTION_MASTER_KEY=<64-char-hex-from-generator>
 
 # App
-VITE_APP_URL=http://localhost:5173
+VITE_APP_URL=http://localhost:3000
 NODE_ENV=development
 ```
 
@@ -77,7 +77,7 @@ npm run dev
 
 ### 6. Open Browser
 
-http://localhost:5173
+http://localhost:3000
 
 ---
 
@@ -101,7 +101,7 @@ Watching for changes...
 **Terminal 2 (App)**:
 ```
 ✓ routeTree.gen.ts generated
-➜ Local: http://localhost:5173/
+➜ Local: http://localhost:3000/
 ```
 
 ---

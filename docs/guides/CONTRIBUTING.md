@@ -65,7 +65,7 @@ CLERK_WEBHOOK_SECRET=whsec_...
 ENCRYPTION_MASTER_KEY=<64-char-hex>
 
 # App
-VITE_APP_URL=http://localhost:5173
+VITE_APP_URL=http://localhost:3000
 NODE_ENV=development
 ```
 
@@ -131,7 +131,7 @@ npm run format
 
 ```
 apps/web/
-├── app/
+├── src/
 │   ├── routes/                   # File-based routing
 │   │   ├── __root.tsx           # Root layout (providers)
 │   │   ├── index.tsx            # Landing page
@@ -155,7 +155,8 @@ apps/web/
 │       ├── dockConnectionMachine.ts
 │       └── syncMachine.ts
 ├── public/                      # Static assets
-└── app.config.ts               # TanStack Start config
+├── vite.config.ts              # Vite config (TanStack Start plugin)
+└── router.tsx                  # Router setup
 ```
 
 ### Convex Structure

@@ -626,7 +626,7 @@ class GridPaneClient {
 
 **Structure**:
 ```
-app/
+apps/web/src/
 ├── routes/
 │   ├── __root.tsx          # Root layout (providers)
 │   ├── index.tsx           # Landing page
@@ -636,6 +636,8 @@ app/
 │       ├── docks/
 │       ├── projects/
 │       └── infrastructure/
+├── router.tsx              # Router setup
+└── components/             # React components
 ```
 
 ### Database: Convex

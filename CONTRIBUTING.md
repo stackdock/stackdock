@@ -21,7 +21,7 @@ Thank you for your interest in contributing to StackDock! This document will gui
 ### Prerequisites
 
 - **Node.js**: 18+ (with npm)
-- **pnpm**: 8+ (`npm install -g pnpm`)
+- **npm**: 9+ (comes with Node.js)
 - **Git**: Latest version
 - **Convex Account**: https://convex.dev
 - **Clerk Account**: https://clerk.com
@@ -34,19 +34,16 @@ git clone https://github.com/stackdock/stackdock.git
 cd stackdock
 
 # Install dependencies
-pnpm install
+npm install
 
-# Copy environment template
-cp .env.example .env.local
-
-# Generate encryption key
+# Generate encryption key (copy output to apps/web/.env.local)
 node scripts/generate-encryption-key.js
 
 # Start Convex dev
-pnpm dev:convex
+npm run dev:convex
 
 # In another terminal, start the app
-pnpm dev
+npm run dev
 ```
 
 ### Environment Variables
@@ -92,37 +89,37 @@ stackdock/
 ### Install Dependencies
 
 ```bash
-# Install all workspace dependencies
-pnpm install
+# Install all workspace dependencies (from repo root)
+npm install
 
-# Install in specific workspace
-pnpm --filter web add <package>
-pnpm --filter @stackdock/docks add <package>
+# Install a dependency in a specific workspace
+npm install <package> --workspace apps/web
+npm install <package> --workspace packages/docks
 ```
 
 ### Development Commands
 
 ```bash
-# Start development server
-pnpm dev
+# Start development server (from root)
+npm run dev
 
-# Start Convex in dev mode
-pnpm dev:convex
+# Start Convex in dev mode (from root)
+npm run dev:convex
 
 # Build for production
-pnpm build
+npm run build --workspace apps/web
 
 # Run tests
-pnpm test
+npm run test --workspace apps/web
 
 # Run linter
-pnpm lint
+npm run lint --workspace apps/web
 
 # Type check
-pnpm type-check
+npm run type-check --workspace apps/web
 
-# Format code
-pnpm format
+# Format code (from root)
+npm run format
 ```
 
 ---
@@ -133,7 +130,7 @@ pnpm format
 
 ```
 apps/web/
-├── app/
+├── src/
 │   ├── routes/                   # File-based routing
 │   │   ├── __root.tsx           # Root layout (providers)
 │   │   ├── index.tsx            # Landing page
@@ -153,11 +150,12 @@ apps/web/
 │   │   ├── convex.ts            # Convex client
 │   │   ├── clerk.ts             # Clerk helpers
 │   │   └── utils.ts             # Utilities
-│   └── machines/                # XState machines
-│       ├── dockConnectionMachine.ts
-│       └── syncMachine.ts
+│   ├── machines/                # XState machines
+│   │   ├── dockConnectionMachine.ts
+│   │   └── syncMachine.ts
+│   └── router.tsx               # Router setup
 ├── public/                      # Static assets
-└── app.config.ts               # TanStack Start config
+└── vite.config.ts              # Vite config (TanStack Start plugin)
 ```
 
 ### Convex Structure
@@ -217,9 +215,9 @@ packages/docks/gridpane/
 
 3. **Test locally**
    ```bash
-   pnpm test
-   pnpm type-check
-   pnpm lint
+   npm run test --workspace apps/web
+   npm run type-check --workspace apps/web
+   npm run lint --workspace apps/web
    ```
 
 4. **Commit changes**
@@ -413,16 +411,16 @@ describe('Vercel Integration', () => {
 
 ```bash
 # Run all tests
-pnpm test
+npm run test --workspace apps/web
 
 # Run tests in watch mode
-pnpm test:watch
+npm run test:watch --workspace apps/web
 
 # Run tests for specific file
-pnpm test adapter.test.ts
+npm run test --workspace apps/web -- adapter.test.ts
 
 # Run tests with coverage
-pnpm test:coverage
+npm run test:coverage --workspace apps/web
 ```
 
 ---
@@ -433,17 +431,17 @@ pnpm test:coverage
 
 1. **Run linter**
    ```bash
-   pnpm lint
+   npm run lint --workspace apps/web
    ```
 
 2. **Run type check**
    ```bash
-   pnpm type-check
+   npm run type-check --workspace apps/web
    ```
 
 3. **Run tests**
    ```bash
-   pnpm test
+   npm run test --workspace apps/web
    ```
 
 4. **Update docs** (if applicable)

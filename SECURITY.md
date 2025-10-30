@@ -263,7 +263,7 @@ const identity = await ctx.auth.getUserIdentity()
 
 **User Sync (Webhook)**:
 ```typescript
-// app/routes/api/webhooks/clerk.ts
+// src/routes/api/webhooks/clerk.ts
 export async function POST(request: Request) {
   const payload = await request.text()
   const headers = Object.fromEntries(request.headers)
@@ -516,7 +516,7 @@ if (process.env.NODE_ENV === 'production' && !request.url.startsWith('https://')
 ### Content Security Policy (CSP)
 
 ```typescript
-// app.config.ts
+// vite.config.ts (or server middleware)
 export default defineConfig({
   server: {
     headers: {

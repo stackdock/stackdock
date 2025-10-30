@@ -326,7 +326,7 @@ export function CreateProjectButton() {
 **RequirePermission Component**:
 
 ```typescript
-// app/components/auth/RequirePermission.tsx
+// src/components/auth/RequirePermission.tsx
 import { ReactNode } from 'react'
 import { useRBAC } from '../../hooks/useRBAC'
 

@@ -31,20 +31,24 @@ Create `apps/web/vite.config.ts`:
 
 ```typescript
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { TanStackRouterVite } from '@tanstack/router-vite-plugin'
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import viteReact from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+import { nitroV2Plugin } from '@tanstack/nitro-v2-vite-plugin'
 
 export default defineConfig({
   plugins: [
-    react(),
-    TanStackRouterVite(), // Auto-generates routeTree.gen.ts
+    nitroV2Plugin(),
+    tailwindcss(),
+    tanstackStart(), // Auto-generates routeTree.gen.ts
+    viteReact(),
   ],
 })
 ```
 
 #### Step 2: Create Missing Components
 
-Create `apps/web/app/components/DefaultCatchBoundary.tsx`:
+Create `apps/web/src/components/DefaultCatchBoundary.tsx`:
 
 ```typescript
 import { ErrorComponent } from '@tanstack/react-router'
@@ -54,7 +58,7 @@ export function DefaultCatchBoundary({ error }: { error: Error }) {
 }
 ```
 
-Create `apps/web/app/components/NotFound.tsx`:
+Create `apps/web/src/components/NotFound.tsx`:
 
 ```typescript
 export function NotFound() {
@@ -75,8 +79,8 @@ npm run dev
 ```
 
 The Vite plugin will:
-1. Scan `app/routes/` folder
-2. Generate `app/routeTree.gen.ts`
+1. Scan `src/routes/` folder
+2. Generate `src/routeTree.gen.ts`
 3. Dev server starts successfully
 
 ### Verification
@@ -84,7 +88,7 @@ The Vite plugin will:
 After dev server starts, verify:
 ```bash
 # Check file was created
-ls apps/web/app/routeTree.gen.ts
+ls apps/web/src/routeTree.gen.ts
 ```
 
 Should see the auto-generated file with your route tree.
@@ -131,8 +135,8 @@ app.config.timestamp_1761813075026.js
 
 ### Root Cause
 
-1. `app.config.ts` imports package that's missing
-2. Vinxi (TanStack Start's bundler) tries to load config
+1. `app.config.ts` imports package that's missing (or shouldn't exist)
+2. Vite/Nitro plugin tries to load config
 3. Fails, creates temp file, retries
 4. Creates infinite temp files
 
@@ -150,16 +154,15 @@ Remove-Item apps\web\app.config.timestamp*.js -Force
 
 #### Step 3: Fix Config
 
-Remove problematic imports from `app.config.ts`. Keep it simple:
+**TanStack Start doesn't require `app.config.ts`** - configuration is in `vite.config.ts`. If you have an `app.config.ts`, either:
+- Remove it entirely (recommended)
+- Or keep it minimal with no imports
 
+The `vite.config.ts` should have:
 ```typescript
-import { defineConfig } from '@tanstack/start/config'
-
-export default defineConfig({
-  server: {
-    preset: 'node-server',
-  },
-})
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+// ... other plugins
+tanstackStart(), // This handles everything
 ```
 
 #### Step 4: Install Missing Dependencies
@@ -174,6 +177,8 @@ npm install
 ```
 app.config.timestamp*.js
 ```
+
+**Note**: TanStack Start uses `vite.config.ts` with `tanstackStart()` plugin. No separate `app.config.ts` needed.
 
 ---
 
@@ -193,11 +198,10 @@ app.config.timestamp*.js
    CLERK_SECRET_KEY=sk_test_...
    ```
 
-2. **Correct package name?**
-   ```json
-   // package.json should have:
-   "@clerk/tanstack-react-start": "latest"
-   // NOT @clerk/tanstack-start
+2. **Clerk package installed?**
+   ```bash
+   # Install Clerk for TanStack Start
+   npm install @clerk/tanstack-react-start --workspace apps/web
    ```
 
 3. **Organizations enabled?**
@@ -213,7 +217,7 @@ app.config.timestamp*.js
 
 ### Solution
 
-See `READY.md` for complete Clerk setup.
+Clerk integration is optional for now. The app works without it. When ready, wrap `ConvexProvider` with `ClerkProvider` in `src/routes/__root.tsx`.
 
 ---
 
@@ -272,27 +276,29 @@ Then restart TS server.
 
 ---
 
-## Port 5173 Already in Use
+## Port 3000 Already in Use
 
 ### Symptoms
 ```
-Error: listen EADDRINUSE: address already in use :::5173
+Error: listen EADDRINUSE: address already in use :::3000
 ```
 
 ### Solution
 
-**Option 1: Kill process on port 5173**
+**Option 1: Kill process on port 3000**
 ```bash
 # Windows
-netstat -ano | findstr :5173
+netstat -ano | findstr :3000
 # Note the PID, then:
 taskkill /PID <PID> /F
 ```
 
 **Option 2: Use different port**
 ```bash
-npm run dev -- --port 5174
+npm run dev -- --port 3001
 ```
+
+**Note**: Update `VITE_APP_URL` in `.env.local` if you change the port.
 
 ---
 

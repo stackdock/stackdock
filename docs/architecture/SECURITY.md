@@ -263,7 +263,7 @@ const identity = await ctx.auth.getUserIdentity()
 
 **User Sync (Webhook)**:
 ```typescript
-// app/routes/api/webhooks/clerk.ts
+// src/routes/api/webhooks/clerk.ts
 export async function POST(request: Request) {
   const payload = await request.text()
   const headers = Object.fromEntries(request.headers)
@@ -546,7 +546,7 @@ export default defineConfig({
   "functions": "convex/",
   "cors": {
     "allowedOrigins": [
-      "http://localhost:5173",
+      "http://localhost:3000",
       "https://app.stackdock.dev"
     ]
   }

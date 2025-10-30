@@ -56,11 +56,11 @@ stackdock/
 ```
 
 ### Dependencies ✅
-- Root: 782 packages
+- Root: npm workspaces configured
 - apps/web: Installed with correct versions
-  - @tanstack/react-start@1.134.0 ✅
+  - @tanstack/react-start@1.132.0 ✅
   - React 19 ✅
-  - srvx ✅
+  - @tanstack/router-plugin ✅
 
 ### Documentation ✅
 - 30k+ words
@@ -77,7 +77,7 @@ stackdock/
 **Look for**:
 ```
 ✓ routeTree.gen.ts generated
-➜ Local: http://localhost:5173/
+➜ Local: http://localhost:3000/
 ```
 
 **If you see that**: Open browser, test auth flow.
