@@ -221,35 +221,89 @@ Clerk integration is optional for now. The app works without it. When ready, wra
 
 ---
 
-## Convex Not Connecting
+## Convex Import Path Error
 
 ### Symptoms
 ```
-[Convex] Connection failed
+Failed to resolve import "convex/_generated/api" from "src/routes/index.tsx"
 ```
+
+### Root Cause
+
+Convex generates files at the repo root (`convex/_generated/`), but Vite needs a path alias to resolve them from `apps/web/src/`.
+
+### Solution
+
+**Already configured!** The `vite.config.ts` includes a resolve alias:
+
+```typescript
+resolve: {
+  alias: {
+    'convex/_generated': path.resolve(__dirname, '../../convex/_generated'),
+  },
+}
+```
+
+**Import Convex API**:
+```typescript
+import { api } from 'convex/_generated/api'
+import { useQuery } from 'convex/react'
+
+// In your component:
+const result = useQuery(api.test.ping)
+```
+
+If you still see errors:
+1. Restart dev server (alias changes require restart)
+2. Check `convex/_generated/api.d.ts` exists at repo root
+3. Verify `npm run dev:convex` has run successfully
+
+---
+
+## Convex Not Connecting
+
+### Symptoms
+- Landing page shows gray "Not configured" status
+- Landing page shows yellow "Connecting..." (never turns green)
+- Browser console shows connection errors
 
 ### Checklist
 
 1. **Convex dev running?**
    ```bash
-   npx convex dev
+   npm run dev:convex
    ```
+   Should show: `✓ Convex functions ready!`
 
 2. **Environment variables?**
    ```bash
    # apps/web/.env.local must have:
    VITE_CONVEX_URL=https://your-deployment.convex.cloud
    ```
+   **Note**: File must be named `.env.local` (with dot), not `env.local`
 
-3. **Schema pushed?**
+3. **URL correct?**
+   - Copy from `npm run dev:convex` terminal output
+   - Should look like: `https://xxx.convex.cloud`
+   - Check it's not wrapped in quotes
+
+4. **Schema pushed?**
    - Check Convex dashboard → Data
    - Should see tables from schema.ts
 
 ### Solution
 
-1. Make sure `npx convex dev` is running
-2. Check URL in `.env.local` matches terminal output
-3. Restart dev server
+1. Make sure `npm run dev:convex` is running (from repo root)
+2. Check URL in `.env.local` matches terminal output exactly
+3. Restart dev server after adding `.env.local`
+4. Check browser console for specific error messages
+
+### Verify Connection
+
+On the landing page, you should see:
+- 🟢 **Green**: "Connected • Convex is connected!" = Working!
+- 🟡 **Yellow**: "Connecting..." = URL set but connection pending
+- ⚪ **Gray**: "Not configured" = Need to add `VITE_CONVEX_URL`
 
 ---
 

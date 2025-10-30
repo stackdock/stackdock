@@ -147,6 +147,20 @@ NODE_ENV=development
 
 **Open http://localhost:3000**
 
+You should see:
+- Landing page with StackDock branding
+- **Green "Connected" status** if Convex is configured correctly
+- Connection status indicator shows: "Connected • Convex is connected!"
+
+---
+
+## ✅ Current Status
+
+- ✅ **TanStack Start** - Fully configured with file-based routing
+- ✅ **Convex** - Connected and working (test query available)
+- ⏳ **Clerk** - Optional, can be added later
+- ⏳ **Dock Adapters** - Ready to build once encryption is added
+
 ---
 
 ## 📚 Documentation
@@ -160,6 +174,7 @@ All documentation is organized in `docs/`:
 
 ### Guides
 - **[CONTRIBUTING.md](./docs/guides/CONTRIBUTING.md)** - Development workflow
+- **[CONVEX_SETUP.md](./docs/guides/CONVEX_SETUP.md)** - Convex integration guide ⭐
 - **[DOCK_ADAPTER_GUIDE.md](./docs/guides/DOCK_ADAPTER_GUIDE.md)** - Build adapters
 - **[REGISTRY_GUIDE.md](./docs/guides/REGISTRY_GUIDE.md)** - Build UI components
 
@@ -180,8 +195,8 @@ All documentation is organized in `docs/`:
 
 - [x] Architecture documentation
 - [x] TanStack Start app setup
+- [x] Convex integration ⭐
 - [ ] Clerk authentication
-- [ ] Convex integration
 - [ ] RBAC implementation
 - [ ] Encryption system
 - [ ] GridPane dock adapter

@@ -86,8 +86,11 @@ http://localhost:3000
 ### You Should See
 
 1. **Landing page** with StackDock branding
-2. Click "Get Started" → Clerk sign-up page
-3. Sign up → Dashboard appears
+2. **Convex Status Indicator** (below the description):
+   - 🟢 **Green "Connected"** = Convex is working! You'll see "Connected • Convex is connected!"
+   - 🟡 **Yellow "Connecting..."** = Convex URL is set but connection pending
+   - ⚪ **Gray "Not configured"** = Need to add `VITE_CONVEX_URL` to `.env.local`
+3. If Clerk is configured: Click "Get Started" → Clerk sign-up page
 4. Navigate all routes (all working)
 
 ### In Terminal
@@ -111,10 +114,10 @@ Watching for changes...
 See [docs/troubleshooting/TROUBLESHOOTING.md](./docs/troubleshooting/TROUBLESHOOTING.md)
 
 Common issues:
+- **Convex import errors** → See "Convex Import Path" below
 - Missing routeTree.gen.ts → Check vite.config.ts exists
-- Clerk errors → Check .env.local has both keys
-- Convex errors → Make sure `npx convex dev` is running
- - Convex errors → Make sure `npm run dev:convex` is running
+- Clerk errors → Check .env.local has both keys (Clerk is optional)
+- Convex connection → Make sure `npm run dev:convex` is running and URL is in `.env.local`
 
 ---
 
