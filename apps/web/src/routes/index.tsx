@@ -1,7 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from 'convex/react'
-// @ts-expect-error - Convex generated files are at repo root
-import { api } from '../../../convex/_generated/api'
+import { api } from 'convex/_generated/api'
 
 export const Route = createFileRoute('/')({ component: App })
 

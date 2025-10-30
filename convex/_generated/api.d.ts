@@ -10,6 +10,7 @@
 
 import type * as lib_rbac from "../lib/rbac.js";
 import type * as organizations from "../organizations.js";
+import type * as test from "../test.js";
 import type * as users from "../users.js";
 
 import type {
@@ -29,6 +30,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   "lib/rbac": typeof lib_rbac;
   organizations: typeof organizations;
+  test: typeof test;
   users: typeof users;
 }>;
 declare const fullApiWithMounts: typeof fullApi;
