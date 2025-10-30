@@ -175,6 +175,7 @@ All documentation is organized in `docs/`:
 ### Guides
 - **[CONTRIBUTING.md](./docs/guides/CONTRIBUTING.md)** - Development workflow
 - **[CONVEX_SETUP.md](./docs/guides/CONVEX_SETUP.md)** - Convex integration guide ⭐
+- **[CLERK_SETUP.md](./docs/guides/CLERK_SETUP.md)** - Clerk authentication setup ⭐
 - **[DOCK_ADAPTER_GUIDE.md](./docs/guides/DOCK_ADAPTER_GUIDE.md)** - Build adapters
 - **[REGISTRY_GUIDE.md](./docs/guides/REGISTRY_GUIDE.md)** - Build UI components
 
