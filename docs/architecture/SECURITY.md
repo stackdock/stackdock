@@ -516,7 +516,7 @@ if (process.env.NODE_ENV === 'production' && !request.url.startsWith('https://')
 ### Content Security Policy (CSP)
 
 ```typescript
-// vite.config.ts (or server middleware)
+// app.config.ts
 export default defineConfig({
   server: {
     headers: {

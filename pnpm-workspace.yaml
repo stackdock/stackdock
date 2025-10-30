@@ -1,6 +1,0 @@
-# pnpm Workspace Configuration
-# Defines which directories are part of the monorepo
-
-packages:
-  - 'apps/*'
-  - 'packages/*'

@@ -111,39 +111,81 @@ Star the repo to watch the build! ⭐
 
 ## 🚀 Quick Start
 
-**Prerequisites**: Node.js 18+, pnpm 8+
+**Prerequisites**: Node.js 18+, npm 9+
 
 ```bash
 # Clone & install
 git clone https://github.com/stackdock/stackdock.git
 cd stackdock
-pnpm install
+npm install
 
 # Setup environment
-cp env.example .env.local
 node scripts/generate-encryption-key.js
-# Add key to .env.local
+# Create apps/web/.env.local with your Convex + Clerk values (see below)
+# Paste the generated ENCRYPTION_MASTER_KEY into apps/web/.env.local
 
 # Start Convex (terminal 1)
-pnpm dev:convex
+npm run dev:convex
 
 # Start app (terminal 2)
-pnpm dev
+cd apps/web
+npm run dev
+```
+
+Create `apps/web/.env.local` with values like:
+
+```
+VITE_CONVEX_URL=https://<your-deployment>.convex.cloud
+CONVEX_DEPLOYMENT=dev:<your-deployment>
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+CLERK_WEBHOOK_SECRET=whsec_...
+ENCRYPTION_MASTER_KEY=<64-char-hex-from-generator>
+VITE_APP_URL=http://localhost:3000
+NODE_ENV=development
 ```
 
 **Open http://localhost:3000**
+
+You should see:
+- Landing page with StackDock branding
+- **Green "Connected" status** if Convex is configured correctly
+- Connection status indicator shows: "Connected • Convex is connected!"
+
+---
+
+## ✅ Current Status
+
+- ✅ **TanStack Start** - Fully configured with file-based routing
+- ✅ **Convex** - Connected and working (test query available)
+- ⏳ **Clerk** - Optional, can be added later
+- ⏳ **Dock Adapters** - Ready to build once encryption is added
 
 ---
 
 ## 📚 Documentation
 
-- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Complete system architecture
-- **[CONTRIBUTING.md](./CONTRIBUTING.md)** - Development workflow
-- **[DOCK_ADAPTER_GUIDE.md](./DOCK_ADAPTER_GUIDE.md)** - Build adapters
-- **[REGISTRY_GUIDE.md](./REGISTRY_GUIDE.md)** - Build UI components
-- **[SECURITY.md](./SECURITY.md)** - Security patterns
-- **[RBAC.md](./RBAC.md)** - Permission system
+All documentation is organized in `docs/`:
+
+### Architecture
+- **[ARCHITECTURE.md](./docs/architecture/ARCHITECTURE.md)** - Complete system design
+- **[SECURITY.md](./docs/architecture/SECURITY.md)** - Security patterns
+- **[RBAC.md](./docs/architecture/RBAC.md)** - Permission system
+
+### Guides
+- **[CONTRIBUTING.md](./docs/guides/CONTRIBUTING.md)** - Development workflow
+- **[CONVEX_SETUP.md](./docs/guides/CONVEX_SETUP.md)** - Convex integration guide ⭐
+- **[DOCK_ADAPTER_GUIDE.md](./docs/guides/DOCK_ADAPTER_GUIDE.md)** - Build adapters
+- **[REGISTRY_GUIDE.md](./docs/guides/REGISTRY_GUIDE.md)** - Build UI components
+
+### Troubleshooting
+- **[TROUBLESHOOTING.md](./docs/troubleshooting/TROUBLESHOOTING.md)** - Common issues
+- **[CURRENT_ISSUE.md](./docs/troubleshooting/CURRENT_ISSUE.md)** - Active issues
+
+### Reference
+- **[docs/README.md](./docs/README.md)** - Documentation index
 - **[.cursorrules](./.cursorrules)** - AI assistant rules
+- **[AI-HALL-OF-SHAME.md](./AI-HALL-OF-SHAME.md)** - Lessons learned
 
 ---
 
@@ -152,9 +194,9 @@ pnpm dev
 **Goal**: Multi-provider read-only dashboard
 
 - [x] Architecture documentation
-- [ ] TanStack Start app setup
+- [x] TanStack Start app setup
+- [x] Convex integration ⭐
 - [ ] Clerk authentication
-- [ ] Convex integration
 - [ ] RBAC implementation
 - [ ] Encryption system
 - [ ] GridPane dock adapter

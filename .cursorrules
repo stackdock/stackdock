@@ -163,6 +163,133 @@ stackdock/
 4. **Document changes**: Update relevant docs
 5. **Test thoroughly**: Don't break existing functionality
 
+## 🧠 CRITICAL: THINK BEFORE YOU ACT
+
+1. **ALWAYS KNOW WHERE YOU ARE**
+   - Check `Get-Location` before any command
+   - Understand monorepo structure (apps/web, packages/, convex/)
+   - Verify paths exist before using them
+
+2. **IF YOU DON'T KNOW - STOP**
+   - Don't guess directory paths
+   - Don't assume files exist
+   - Don't run commands blindly
+   - Ask the user first
+
+3. **QUESTION EVERYTHING YOU DO**
+   - Why am I running this command?
+   - What directory am I in?
+   - Does this path actually exist?
+   - What will this break?
+
+4. **ATTACK ALL ANGLES**
+   - Check if node_modules exists before deleting
+   - Verify package.json path before editing
+   - Read file contents before modifying
+   - Think about monorepo implications
+
+5. **YOU'RE GOING TOO FAST**
+   - Slow down
+   - Read before write
+   - Verify before execute
+   - Think before act
+
+6. **ACCURACY > SPEED**
+   - Being right matters more than being fast
+   - Double-check paths
+   - Confirm assumptions
+   - Preserve > Delete
+
+7. **TROUBLESHOOTING MINDSET - NOT BAND-AIDS**
+   - **ASSESS FIRST**: "Here's what I know" vs "Here's what I'm guessing"
+   - **PRESENT OPTIONS**: "Here's what we can try" (don't just do it)
+   - **DIAGNOSE BEFORE FIX**: Understand root cause, not symptoms
+   - **NEVER ASSUME**: If user shows error, ASK if it's still happening
+   - **DOCUMENT STATE**: Update state file after every change
+   - **LET USER DECIDE**: Present 2-3 options, let them choose
+
+8. **RESPONSE FORMAT FOR ISSUES**
+   ```
+   ## Current State
+   - What I KNOW (facts)
+   - What I DON'T KNOW (unknowns)
+   
+   ## Diagnosis
+   - What the error means
+   - Possible root causes
+   
+   ## Options
+   1. Option A (pros/cons)
+   2. Option B (pros/cons)
+   3. Option C (pros/cons)
+   
+   What do you want to try?
+   ```
+
+9. **BEFORE ANY DESTRUCTIVE ACTION**
+   - Check `git status` FIRST
+   - See what's tracked/untracked
+   - Know what can be recovered
+   - Document findings
+   - THEN present options
+   - WAIT for user approval
+
+10. **TERMINAL ACCESS REVOKED**
+   - DO NOT use run_terminal_cmd tool
+   - Provide commands for USER to run
+   - Wait for USER to paste output
+   - Diagnose based on THEIR output
+   - No background processes
+   - No blind command execution
+
+## 🔄 CONTEXT PERSISTENCE (CRITICAL)
+
+### ALWAYS DO THIS FIRST - EVERY SESSION
+1. **Read `.stackdock-state.json`** - This is the source of truth
+2. **Verify against filesystem** - Don't trust the state file blindly
+3. **Report current blockers** - Tell user what's preventing progress
+4. **Check completedSteps** - Don't repeat what's done
+5. **Never assume completion** - Only user can verify tests work
+
+### State File Rules
+- Machine-readable JSON format (no ambiguity)
+- Updated after EVERY significant action
+- Cross-verified with actual system state
+- Tracks blockers explicitly
+- Records what's tested vs what's "done"
+- If state conflicts with docs, **state wins**
+
+### Session Start Protocol
+```
+Step 1: read_file(".stackdock-state.json")
+Step 2: Report blockers to user (e.g., "You have 3 critical blockers")
+Step 3: Verify critical paths exist (apps/web/.env.local, running processes)
+Step 4: Compare state vs reality, report discrepancies
+Step 5: Ask user what to tackle next (don't assume)
+```
+
+### Never Say "Ready" or "Done" Until
+- [ ] User confirms they tested it themselves
+- [ ] State file shows `loginTested: true`
+- [ ] No critical blockers remain in state file
+- [ ] User explicitly marks step as completed
+
+### Updating State File
+After ANY action that changes system state:
+1. Update `.stackdock-state.json` 
+2. Update `lastUpdated` timestamp
+3. Move items from `nextSteps` to `completedSteps` if user verified
+4. Remove from `blockers[]` only when actually resolved
+5. Add new blockers if discovered
+
+### Documentation Hierarchy
+1. `.stackdock-state.json` - **GROUND TRUTH** (machine state)
+2. `.cursorrules` - **BEHAVIOR RULES** (this file)
+3. `README.md` - **PROJECT OVERVIEW** (vision/architecture)
+4. `STATE-README.md` - **STATE SYSTEM GUIDE** (how state works)
+5. `SETUP_NOW.md` - **SETUP REFERENCE** (consolidated steps)
+6. All other `.md` files - **REFERENCE ONLY** (can conflict, state wins)
+
 ## 🎯 The Vision
 
 **StackDock is infrastructure's WordPress moment.**
@@ -177,11 +304,13 @@ stackdock/
 
 ## 📞 When In Doubt
 
-1. Check existing patterns in the codebase
-2. Read the architecture docs
-3. Ask the user
-4. Preserve > Delete
-5. Document > Assume
+1. Read `.stackdock-state.json` first
+2. Check existing patterns in the codebase
+3. Read the architecture docs
+4. Ask the user (don't assume)
+5. Preserve > Delete
+6. Document > Assume
+7. Verify > Trust
 
 ---
 

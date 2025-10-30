@@ -78,7 +78,7 @@ http://localhost:3000
 
 ### Landing Page
 - Hero section: "Infrastructure's WordPress Moment"
-- 3 feature cards (Docks, UI, Platform)
+- **Convex Status Indicator** (shows connection status)
 - "Get Started" button
 
 ### Click "Get Started"

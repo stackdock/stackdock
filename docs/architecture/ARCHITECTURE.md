@@ -701,8 +701,8 @@ npx stackdock add server-health-widget
 ```
 stackdock/
 ├── .cursorrules                  # AI assistant rules
-├── package.json                  # Root package.json (pnpm workspaces)
-├── pnpm-workspace.yaml           # Workspace config
+├── package.json                  # Root package.json (npm workspaces)
+├── package-lock.json             # npm lockfile
 ├── turbo.json                    # Turborepo config (optional)
 │
 ├── apps/
@@ -781,30 +781,29 @@ stackdock/
 
 ### Workspace Management
 
-**pnpm-workspace.yaml**:
-```yaml
-packages:
-  - 'apps/*'
-  - 'packages/*'
-```
-
-**Root package.json**:
+**Root package.json (excerpt)**:
 ```json
 {
   "name": "stackdock",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "pnpm --filter web dev",
-    "dev:convex": "pnpm --filter web convex dev",
-    "build": "turbo run build",
-    "lint": "turbo run lint"
+    "dev": "npm run dev --workspace=apps/web",
+    "dev:convex": "npx convex dev",
+    "build": "npm run build --workspaces",
+    "lint": "npm run lint --workspaces",
+    "type-check": "npm run type-check --workspaces",
+    "test": "npm run test --workspaces",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\""
   },
-  "devDependencies": {
-    "turbo": "latest",
-    "typescript": "^5.0.0"
-  }
+  "packageManager": "npm@10.0.0"
 }
 ```
+
+**Workspace installs** are handled via `npm install <pkg> --workspace apps/web` (or another workspace path), keeping the repo on npm end-to-end.
 
 ---
 

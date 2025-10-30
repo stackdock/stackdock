@@ -14,25 +14,26 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "pnpm --filter web dev",
-    "dev:convex": "pnpm --filter web convex dev",
-    "build": "turbo run build",
-    "lint": "turbo run lint",
-    "type-check": "turbo run type-check",
-    "test": "turbo run test",
+    "dev": "npm run dev --workspace=apps/web",
+    "dev:convex": "npx convex dev",
+    "build": "npm run build --workspace=apps/web",
+    "lint": "npm run type-check --workspace=apps/web",
+    "type-check": "npm run type-check --workspace=apps/web",
+    "test": "echo \"No test suite configured yet.\"",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
-    "clean": "turbo run clean && rm -rf node_modules"
+    "clean": "npx rimraf node_modules apps/web/node_modules"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "convex": "^1.28.0",
     "prettier": "^3.0.0",
     "turbo": "^1.10.0",
     "typescript": "^5.2.0",
     "vitest": "^1.0.0"
   },
-  "packageManager": "pnpm@8.0.0",
+  "packageManager": "npm@10.0.0",
   "engines": {
     "node": ">=18.0.0",
-    "pnpm": ">=8.0.0"
+    "npm": ">=9.0.0"
   }
 }

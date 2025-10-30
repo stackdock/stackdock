@@ -112,13 +112,8 @@ All routes have:
 
 ### 1. Install Dependencies
 ```bash
-cd apps/web
-pnpm install
-
-# If pnpm has issues, try:
+# From repo root
 npm install
-# or
-yarn install
 ```
 
 ### 2. Setup Environment Variables
@@ -140,9 +135,8 @@ npx convex dev
 
 ### 4. Start App
 ```bash
-# Terminal 2
-cd apps/web
-pnpm dev
+# Terminal 2 (from root)
+npm run dev
 ```
 
 ### 5. Test Auth Flow

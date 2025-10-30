@@ -36,31 +36,32 @@ cd stackdock
 # Install dependencies
 npm install
 
-# Generate encryption key (copy output to apps/web/.env.local)
+# Generate encryption key (copy the output into apps/web/.env.local)
 node scripts/generate-encryption-key.js
 
 # Start Convex dev
 npm run dev:convex
 
 # In another terminal, start the app
+cd apps/web
 npm run dev
 ```
 
 ### Environment Variables
 
-```bash
-# .env.local
+Create `apps/web/.env.local` with values like:
 
+```
 # Convex
-CONVEX_DEPLOYMENT=dev:xxx
-VITE_CONVEX_URL=https://xxx.convex.cloud
+CONVEX_DEPLOYMENT=dev:your-deployment
+VITE_CONVEX_URL=https://your-deployment.convex.cloud
 
 # Clerk
-VITE_CLERK_PUBLISHABLE_KEY=pk_test_xxx
-CLERK_SECRET_KEY=sk_test_xxx
-CLERK_WEBHOOK_SECRET=whsec_xxx
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+CLERK_WEBHOOK_SECRET=whsec_...
 
-# Encryption (generate with: node scripts/generate-encryption-key.js)
+# Encryption (output from node scripts/generate-encryption-key.js)
 ENCRYPTION_MASTER_KEY=<64-char-hex>
 
 # App
@@ -100,16 +101,16 @@ npm install <package> --workspace packages/docks
 ### Development Commands
 
 ```bash
-# Start development server (from root)
-npm run dev
+# Start the web app dev server (workspace)
+npm run dev --workspace apps/web
 
 # Start Convex in dev mode (from root)
 npm run dev:convex
 
-# Build for production
+# Build the web app
 npm run build --workspace apps/web
 
-# Run tests
+# Run tests (replace workspace as needed)
 npm run test --workspace apps/web
 
 # Run linter
@@ -118,7 +119,7 @@ npm run lint --workspace apps/web
 # Type check
 npm run type-check --workspace apps/web
 
-# Format code (from root)
+# Format code (ROOT)
 npm run format
 ```
 
@@ -150,12 +151,12 @@ apps/web/
 │   │   ├── convex.ts            # Convex client
 │   │   ├── clerk.ts             # Clerk helpers
 │   │   └── utils.ts             # Utilities
-│   ├── machines/                # XState machines
-│   │   ├── dockConnectionMachine.ts
-│   │   └── syncMachine.ts
-│   └── router.tsx               # Router setup
+│   └── machines/                # XState machines
+│       ├── dockConnectionMachine.ts
+│       └── syncMachine.ts
 ├── public/                      # Static assets
-└── vite.config.ts              # Vite config (TanStack Start plugin)
+├── vite.config.ts              # Vite config (TanStack Start plugin)
+└── router.tsx                  # Router setup
 ```
 
 ### Convex Structure
