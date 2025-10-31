@@ -24,6 +24,13 @@ Deep dive into system design, security, and permissions:
   - Audit Logging
   - Network Security
 
+- **[SCHEMA_DESIGN.md](./architecture/SCHEMA_DESIGN.md)** - Schema design & evolution
+  - MVP Schema (v1) - Current implementation
+  - Universal Provider Pattern
+  - Future enhancements (post-MVP)
+  - Migration strategy
+  - Known limitations & trade-offs
+
 - **[RBAC.md](./architecture/RBAC.md)** - Role-Based Access Control
   - Permission Model
   - Enforcement Architecture

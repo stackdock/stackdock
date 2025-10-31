@@ -82,6 +82,9 @@ export default defineSchema({
       v.literal("error")
     ),
     lastSyncAt: v.optional(v.number()),
+    lastSyncError: v.optional(v.string()), // Error message for failed syncs
+    syncInProgress: v.optional(v.boolean()), // Prevent concurrent syncs
+    updatedAt: v.optional(v.number()), // Track modification time
   }).index("by_orgId", ["orgId"]),
 
   dockPermissions: defineTable({
@@ -115,28 +118,34 @@ export default defineSchema({
     provider: v.string(), // "vultr", "aws"
     providerResourceId: v.string(),
     name: v.string(),
-    ipAddress: v.string(),
+    primaryIpAddress: v.optional(v.string()), // Main IP for display (all IPs in fullApiData)
+    region: v.optional(v.string()), // "us-east-1", "nyc1", etc.
     status: v.string(),
     fullApiData: v.any(),
+    updatedAt: v.optional(v.number()), // Track modification time
   })
     .index("by_orgId", ["orgId"])
-    .index("by_dockId", ["dockId"]),
+    .index("by_dockId", ["dockId"])
+    .index("by_dock_resource", ["dockId", "providerResourceId"]), // Prevent duplicate syncs
 
   // *** NEW TABLE ***
   // Master Fleet List: Web Services (PaaS)
   webServices: defineTable({
     orgId: v.id("organizations"),
     dockId: v.id("docks"),
-    provider: v.string(), // "vercel", "netlify", "railway"
+    provider: v.string(), // "vercel", "netlify", "railway", "gridpane"
     providerResourceId: v.string(),
     name: v.string(),
-    productionUrl: v.string(),
+    productionUrl: v.optional(v.string()), // Some services might not have URLs yet
+    environment: v.optional(v.string()), // "production", "staging", "development"
     gitRepo: v.optional(v.string()),
     status: v.string(),
     fullApiData: v.any(),
+    updatedAt: v.optional(v.number()), // Track modification time
   })
     .index("by_orgId", ["orgId"])
-    .index("by_dockId", ["dockId"]),
+    .index("by_dockId", ["dockId"])
+    .index("by_dock_resource", ["dockId", "providerResourceId"]), // Prevent duplicate syncs
 
   // Master Fleet List: Domains
   domains: defineTable({
@@ -147,11 +156,28 @@ export default defineSchema({
     expiresAt: v.optional(v.number()),
     status: v.string(),
     fullApiData: v.any(),
+    updatedAt: v.optional(v.number()), // Track modification time
   })
     .index("by_orgId", ["orgId"])
-    .index("by_dockId", ["dockId"]),
-  
-  // ... (other resource tables like `databases`) ...
+    .index("by_dockId", ["dockId"])
+    .index("by_dock_resource", ["dockId", "providerResourceId"]), // Prevent duplicate syncs
+
+  // Master Fleet List: Databases
+  databases: defineTable({
+    orgId: v.id("organizations"),
+    dockId: v.id("docks"),
+    provider: v.string(), // "aws-rds", "digitalocean-db", "planetscale", etc.
+    providerResourceId: v.string(),
+    name: v.string(),
+    engine: v.optional(v.string()), // "mysql", "postgresql", "mongodb", etc.
+    version: v.optional(v.string()),
+    status: v.string(),
+    fullApiData: v.any(),
+    updatedAt: v.optional(v.number()), // Track modification time
+  })
+    .index("by_orgId", ["orgId"])
+    .index("by_dockId", ["dockId"])
+    .index("by_dock_resource", ["dockId", "providerResourceId"]), // Prevent duplicate syncs
 
   // *** UPDATED TABLE ***
   // The "Glue" Table (Layer 5 Linking)
@@ -190,4 +216,23 @@ export default defineSchema({
   })
     .index("by_serviceId", ["serviceId"])
     .index("by_teamId", ["teamId"]),
+
+  // == LAYER 8: AUDIT LOGGING ==
+
+  auditLogs: defineTable({
+    orgId: v.id("organizations"),
+    userId: v.id("users"),
+    action: v.string(), // "dock.create", "rbac.deny", "dock.sync", etc.
+    resourceType: v.optional(v.string()), // "docks", "servers", "webServices", etc.
+    resourceId: v.optional(v.string()), // ID of the resource acted upon
+    metadata: v.optional(v.any()), // Action-specific data
+    result: v.union(v.literal("success"), v.literal("error")),
+    errorMessage: v.optional(v.string()),
+    timestamp: v.number(),
+    ipAddress: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+  })
+    .index("by_org", ["orgId", "timestamp"])
+    .index("by_user", ["userId", "timestamp"])
+    .index("by_resource", ["resourceType", "resourceId"]),
 });
