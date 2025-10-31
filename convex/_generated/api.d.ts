@@ -8,8 +8,18 @@
  * @module
  */
 
+import type * as docks__types from "../docks/_types.js";
+import type * as docks_adapters_gridpane_adapter from "../docks/adapters/gridpane/adapter.js";
+import type * as docks_adapters_gridpane_api from "../docks/adapters/gridpane/api.js";
+import type * as docks_adapters_gridpane_index from "../docks/adapters/gridpane/index.js";
+import type * as docks_adapters_gridpane_types from "../docks/adapters/gridpane/types.js";
+import type * as docks_mutations from "../docks/mutations.js";
+import type * as docks_queries from "../docks/queries.js";
+import type * as docks_registry from "../docks/registry.js";
+import type * as lib_encryption from "../lib/encryption.js";
 import type * as lib_rbac from "../lib/rbac.js";
 import type * as organizations from "../organizations.js";
+import type * as resources_queries from "../resources/queries.js";
 import type * as test from "../test.js";
 import type * as users from "../users.js";
 
@@ -28,8 +38,18 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  "docks/_types": typeof docks__types;
+  "docks/adapters/gridpane/adapter": typeof docks_adapters_gridpane_adapter;
+  "docks/adapters/gridpane/api": typeof docks_adapters_gridpane_api;
+  "docks/adapters/gridpane/index": typeof docks_adapters_gridpane_index;
+  "docks/adapters/gridpane/types": typeof docks_adapters_gridpane_types;
+  "docks/mutations": typeof docks_mutations;
+  "docks/queries": typeof docks_queries;
+  "docks/registry": typeof docks_registry;
+  "lib/encryption": typeof lib_encryption;
   "lib/rbac": typeof lib_rbac;
   organizations: typeof organizations;
+  "resources/queries": typeof resources_queries;
   test: typeof test;
   users: typeof users;
 }>;

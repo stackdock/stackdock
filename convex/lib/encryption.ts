@@ -61,7 +61,7 @@ function getMasterKey(): string {
  * Format: [IV (12 bytes)][Ciphertext (variable)]
  * 
  * @param plaintext - The API key to encrypt
- * @returns Encrypted bytes (Uint8Array) - IV + ciphertext
+ * @returns Encrypted bytes (ArrayBuffer) - IV + ciphertext (for Convex v.bytes())
  * 
  * @example
  * ```typescript
@@ -69,7 +69,7 @@ function getMasterKey(): string {
  * await ctx.db.insert("docks", { encryptedApiKey: encrypted })
  * ```
  */
-export async function encryptApiKey(plaintext: string): Promise<Uint8Array> {
+export async function encryptApiKey(plaintext: string): Promise<ArrayBuffer> {
   if (!plaintext || plaintext.length === 0) {
     throw new Error("Cannot encrypt empty string")
   }
@@ -86,7 +86,7 @@ export async function encryptApiKey(plaintext: string): Promise<Uint8Array> {
   const keyData = hexToUint8Array(masterKey)
   const key = await webcrypto.subtle.importKey(
     'raw',
-    keyData,
+    keyData.buffer as ArrayBuffer,
     { name: 'AES-GCM', length: 256 },
     false,
     ['encrypt']
@@ -105,13 +105,14 @@ export async function encryptApiKey(plaintext: string): Promise<Uint8Array> {
   result.set(iv, 0)
   result.set(new Uint8Array(encrypted), iv.length)
   
-  return result
+  // Return ArrayBuffer for Convex v.bytes()
+  return result.buffer
 }
 
 /**
  * Decrypt an API key that was encrypted with encryptApiKey
  * 
- * @param encrypted - Encrypted bytes (Uint8Array) - IV + ciphertext
+ * @param encrypted - Encrypted bytes (ArrayBuffer) - IV + ciphertext (from Convex v.bytes())
  * @returns Decrypted API key string
  * 
  * @throws Error if decryption fails (wrong key, corrupted data, etc.)
@@ -123,14 +124,17 @@ export async function encryptApiKey(plaintext: string): Promise<Uint8Array> {
  * // Use apiKey to call provider API
  * ```
  */
-export async function decryptApiKey(encrypted: Uint8Array): Promise<string> {
-  if (!encrypted || encrypted.length < 13) {
+export async function decryptApiKey(encrypted: ArrayBuffer): Promise<string> {
+  // Convert ArrayBuffer to Uint8Array for easier manipulation
+  const encryptedUint8 = new Uint8Array(encrypted)
+  
+  if (!encryptedUint8 || encryptedUint8.length < 13) {
     throw new Error("Invalid encrypted data: too short (needs IV + at least 1 byte ciphertext)")
   }
   
   // Extract IV (first 12 bytes) and ciphertext (rest)
-  const iv = encrypted.slice(0, 12)
-  const ciphertext = encrypted.slice(12)
+  const iv = encryptedUint8.slice(0, 12)
+  const ciphertext = encryptedUint8.slice(12)
   
   if (ciphertext.length === 0) {
     throw new Error("Invalid encrypted data: no ciphertext found")
@@ -142,7 +146,7 @@ export async function decryptApiKey(encrypted: Uint8Array): Promise<string> {
   const keyData = hexToUint8Array(masterKey)
   const key = await webcrypto.subtle.importKey(
     'raw',
-    keyData,
+    keyData.buffer as ArrayBuffer,
     { name: 'AES-GCM', length: 256 },
     false,
     ['decrypt']
@@ -167,4 +171,3 @@ export async function decryptApiKey(encrypted: Uint8Array): Promise<string> {
   const decoder = new TextDecoder()
   return decoder.decode(decrypted)
 }
-

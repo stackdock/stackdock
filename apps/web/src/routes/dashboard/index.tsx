@@ -9,6 +9,7 @@ export const Route = createFileRoute("/dashboard/")({
 
 function DashboardHome() {
   const currentUser = useQuery(api.users.getCurrent)
+  const counts = useQuery(api["resources/queries"].getCounts)
 
   return (
     <Authenticated>
@@ -39,23 +40,28 @@ function DashboardHome() {
             <h3 className="text-sm font-medium text-gray-500 mb-2">
               Servers
             </h3>
-            <p className="text-2xl font-bold text-black">0</p>
+            <p className="text-2xl font-bold text-black">
+              {counts?.servers ?? 0}
+            </p>
           </div>
           <div className="rounded-lg border border-gray-200 bg-white p-6">
             <h3 className="text-sm font-medium text-gray-500 mb-2">
               Web Services
             </h3>
-            <p className="text-2xl font-bold text-black">0</p>
+            <p className="text-2xl font-bold text-black">
+              {counts?.webServices ?? 0}
+            </p>
           </div>
           <div className="rounded-lg border border-gray-200 bg-white p-6">
             <h3 className="text-sm font-medium text-gray-500 mb-2">
               Domains
             </h3>
-            <p className="text-2xl font-bold text-black">0</p>
+            <p className="text-2xl font-bold text-black">
+              {counts?.domains ?? 0}
+            </p>
           </div>
         </div>
       </div>
     </Authenticated>
   )
 }
-
