@@ -44,15 +44,19 @@
 2. Click **"New Template"**
 3. Name it: **`convex`** (exactly this name - required!)
 4. Token lifetime: **60 minutes** (default is fine)
-5. Add claims (if needed - defaults usually work):
+5. Add claims:
    ```json
    {
-     "sub": "{{user.id}}"
+     "aud": "convex"
    }
    ```
+   **Important**: 
+   - Only add `aud: "convex"` claim
+   - Do NOT add `sub` - it's reserved by Clerk and added automatically
+   - The `aud` (audience) claim tells Convex this token is for it
 6. Click **"Save"**
 
-**Important**: The template name **must** be `convex` - this is what Convex looks for.
+**Why the name `convex`?** Convex looks for a JWT template with this exact name when requesting tokens. The `aud: "convex"` claim matches Convex's `applicationID: "convex"` in `auth.config.ts`.
 
 ---
 
@@ -188,7 +192,22 @@ function MyComponent() {
 **Solution**:
 1. Check Clerk dashboard → JWT Templates
 2. Verify template is named exactly `convex` (lowercase)
-3. Restart dev server after creating template
+3. Verify template has `aud: "convex"` claim (no `sub` - it's reserved)
+4. Restart dev server after creating template
+
+### "No auth provider found matching the given token"
+
+**Error**: Convex shows `domain=http://localhost:3000/` or wrong domain
+
+**Solution**:
+1. **Check Convex Dashboard FIRST**: Go to Settings → Environment Variables
+2. Look for `CLERK_DOMAIN` variable
+3. Either:
+   - **Delete it** (recommended - let `auth.config.ts` handle it), OR
+   - **Set it correctly**: `https://your-instance.clerk.accounts.dev` (full URL with https://)
+4. Restart Convex dev server (`npx convex dev`)
+
+**Why**: Environment variables in Convex dashboard override `auth.config.ts`. If `CLERK_DOMAIN` is set incorrectly, Convex will use that instead of your code.
 
 ### "Not authenticated" in Convex queries
 

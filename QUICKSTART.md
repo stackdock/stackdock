@@ -1,29 +1,14 @@
 # StackDock Quick Start
 
-## Current Issue: Dependencies Not Installed
+## Quick Start
 
-The TypeScript errors you're seeing are because `node_modules` doesn't exist yet. The `pnpm install` failed due to network issues.
+Install dependencies and get started:
 
----
-
-## Fix: Install Dependencies
-
-### Option 1: Try pnpm Again
 ```bash
-cd apps/web
-pnpm install
-```
-
-### Option 2: Use npm Instead
-```bash
-cd apps/web
+# From repo root
 npm install
-```
 
-### Option 3: Use yarn
-```bash
-cd apps/web
-yarn install
+# This installs dependencies for all workspaces (apps/web, etc.)
 ```
 
 ---
@@ -163,11 +148,12 @@ PORT=3001 npm run dev
 
 ✅ **Built**:
 - Complete documentation (ARCHITECTURE, SECURITY, RBAC, etc.)
-- TanStack Start app structure
-- Clerk authentication flow
-- Convex backend with RBAC middleware
+- TanStack Start app structure with file-based routing
+- Clerk authentication flow (working!)
+- Convex backend connected and authenticated
+- User auto-sync from Clerk to Convex
 - All dashboard routes (scaffolded with labels)
-- Monorepo structure
+- Monorepo structure (npm workspaces)
 
 ❌ **Not Built** (By Design):
 - Encryption system (coming next)

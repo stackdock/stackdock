@@ -61,11 +61,15 @@ This will:
 
 ### 4. Configure Clerk
 
+**See [CLERK_SETUP.md](./docs/guides/CLERK_SETUP.md) for complete guide.**
+
+Quick steps:
 1. Go to https://dashboard.clerk.com
 2. Create application: "StackDock Dev"
 3. **Enable Organizations** (left sidebar → Organizations → Toggle ON)
-4. Go to "API Keys"
-5. Copy publishable + secret key to `.env.local`
+4. Create JWT template named `convex` with claim `{ "aud": "convex" }`
+5. Go to "API Keys" → Copy keys to `.env.local`
+6. **IMPORTANT**: Check Convex dashboard → Environment Variables → Remove or fix `CLERK_DOMAIN` if set incorrectly
 
 ### 5. Start App
 

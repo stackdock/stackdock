@@ -158,7 +158,8 @@ You should see:
 
 - ✅ **TanStack Start** - Fully configured with file-based routing
 - ✅ **Convex** - Connected and working (test query available)
-- ⏳ **Clerk** - Optional, can be added later
+- ✅ **Clerk** - Authentication integrated and working
+- ✅ **User Sync** - Auto-syncs users from Clerk to Convex
 - ⏳ **Dock Adapters** - Ready to build once encryption is added
 
 ---
@@ -197,7 +198,8 @@ All documentation is organized in `docs/`:
 - [x] Architecture documentation
 - [x] TanStack Start app setup
 - [x] Convex integration ⭐
-- [ ] Clerk authentication
+- [x] Clerk authentication ⭐
+- [x] User auto-sync to Convex ⭐
 - [ ] RBAC implementation
 - [ ] Encryption system
 - [ ] GridPane dock adapter

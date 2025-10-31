@@ -63,15 +63,10 @@ Step-by-step guides for contributors:
 Common issues and solutions:
 
 - **[TROUBLESHOOTING.md](./troubleshooting/TROUBLESHOOTING.md)** - Common issues
-  - TanStack Start issues
-  - pnpm vs npm problems
-  - Auth issues
+  - TanStack Start setup
   - Convex connection problems
-
-- **[CURRENT_ISSUE.md](./troubleshooting/CURRENT_ISSUE.md)** - Active issues
-  - Current blockers
-  - Work in progress
-  - Known issues
+  - Clerk authentication issues
+  - Import path errors
 
 ---
 
@@ -99,7 +94,7 @@ System references and state tracking:
 
 **Having issues?** Check:
 1. [TROUBLESHOOTING.md](./troubleshooting/TROUBLESHOOTING.md)
-2. [CURRENT_ISSUE.md](./troubleshooting/CURRENT_ISSUE.md)
+2. [CLERK_SETUP.md](./guides/CLERK_SETUP.md) - Auth troubleshooting section
 
 ---
 
