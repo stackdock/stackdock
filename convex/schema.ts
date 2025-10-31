@@ -152,6 +152,7 @@ export default defineSchema({
     orgId: v.id("organizations"),
     dockId: v.id("docks"),
     provider: v.string(),
+    providerResourceId: v.string(),
     domainName: v.string(),
     expiresAt: v.optional(v.number()),
     status: v.string(),
