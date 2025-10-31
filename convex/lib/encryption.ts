@@ -9,10 +9,25 @@
  * - Only decrypted in Convex server functions
  * - Never logged
  * 
+ * Note: Uses Web Crypto API (available globally in Convex)
+ * 
  * @see docs/architecture/SECURITY.md for full security documentation
  */
 
-import { webcrypto } from "crypto"
+// Web Crypto API is available globally in Convex
+const webcrypto = crypto
+
+/**
+ * Convert hex string to Uint8Array
+ * (Replacement for Buffer.from(hex, 'hex') in Convex)
+ */
+function hexToUint8Array(hex: string): Uint8Array {
+  const bytes = new Uint8Array(hex.length / 2)
+  for (let i = 0; i < hex.length; i += 2) {
+    bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16)
+  }
+  return bytes
+}
 
 /**
  * Get the master encryption key from environment variables
@@ -67,7 +82,8 @@ export async function encryptApiKey(plaintext: string): Promise<Uint8Array> {
   
   // Import master key from hex string
   const masterKey = getMasterKey()
-  const keyData = Buffer.from(masterKey, 'hex')
+  // Convert hex string to Uint8Array (Convex doesn't have Buffer)
+  const keyData = hexToUint8Array(masterKey)
   const key = await webcrypto.subtle.importKey(
     'raw',
     keyData,
@@ -122,7 +138,8 @@ export async function decryptApiKey(encrypted: Uint8Array): Promise<string> {
   
   // Import master key from hex string
   const masterKey = getMasterKey()
-  const keyData = Buffer.from(masterKey, 'hex')
+  // Convert hex string to Uint8Array (Convex doesn't have Buffer)
+  const keyData = hexToUint8Array(masterKey)
   const key = await webcrypto.subtle.importKey(
     'raw',
     keyData,
