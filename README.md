@@ -68,7 +68,7 @@ Star the repo to watch the build! ⭐
 - Database schema evolving
 - DO NOT use with critical infrastructure
 
-**For early contributors and investors only.** Star for updates on stable releases.
+**For early contributors only.** Star for updates on stable releases.
 
 ---
 
