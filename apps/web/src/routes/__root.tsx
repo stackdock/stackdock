@@ -57,7 +57,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body>
+      {/* suppressHydrationWarning: Grammarly extension adds attributes that cause hydration warnings */}
+      <body suppressHydrationWarning>
         <ConvexClerkProvider>{content}</ConvexClerkProvider>
       </body>
     </html>

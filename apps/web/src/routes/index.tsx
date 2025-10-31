@@ -1,10 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from 'convex/react'
-import { Authenticated, Unauthenticated } from 'convex/react'
+import { Authenticated } from 'convex/react'
 import { api } from 'convex/_generated/api'
+import { SignedOut, SignedIn, useAuth, SignOutButton } from '@clerk/clerk-react'
 
 import { SignInButton } from '../components/auth/SignInButton'
 import { AuthStatus } from '../components/auth/AuthStatus'
+import { AuthenticatedUserSync } from '../components/auth/UserSync'
 
 export const Route = createFileRoute('/')({ component: App })
 
@@ -13,12 +15,18 @@ function App() {
   const convexUrl = import.meta.env.VITE_CONVEX_URL
   const clerkKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
   const pingResult = convexUrl ? useQuery(api.test.ping) : null
+  
+  // Get current user (query to read user data)
+  const currentUser = convexUrl ? useQuery(api.users.getCurrent) : null
+  
+  // Check if Clerk is loaded (for conditional rendering)
+  const { isLoaded: clerkLoaded, isSignedIn } = useAuth()
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
       <section className="relative py-20 px-6 text-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-purple-500/10"></div>
-        <div className="relative max-w-5xl mx-auto">
+        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-purple-500/10 pointer-events-none"></div>
+        <div className="relative max-w-5xl mx-auto z-10">
           <h1 className="text-6xl md:text-7xl font-black text-white [letter-spacing:-0.08em] mb-6">
             <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
               StackDock
@@ -69,15 +77,43 @@ function App() {
             )}
           </div>
 
-          <div className="flex flex-col items-center gap-4">
-            <Unauthenticated>
-              <SignInButton />
-            </Unauthenticated>
-            <Authenticated>
-              <p className="text-gray-300 text-sm">
-                Welcome! You're signed in.
+          {/* Auto-sync user when authenticated */}
+          {convexUrl && <AuthenticatedUserSync />}
+          
+          <div className="flex flex-col items-center gap-4 relative z-10">
+            {/* Show sign-in button when user is signed out */}
+            {clerkKey ? (
+              clerkLoaded ? (
+                isSignedIn ? (
+                  <div className="flex flex-col items-center gap-4">
+                    <Authenticated>
+                      <p className="text-gray-300 text-sm">
+                        Welcome! You're signed in.
+                      </p>
+                    </Authenticated>
+                    <SignOutButton>
+                      <button className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold rounded-lg transition-colors">
+                        Sign Out
+                      </button>
+                    </SignOutButton>
+                  </div>
+                ) : (
+                  <SignInButton />
+                )
+              ) : (
+                <button 
+                  disabled
+                  className="px-8 py-3 bg-gray-500 text-white font-semibold rounded-lg cursor-not-allowed opacity-50"
+                >
+                  Loading Clerk...
+                </button>
+              )
+            ) : (
+              <p className="text-gray-400 text-sm">
+                Clerk not configured • Set VITE_CLERK_PUBLISHABLE_KEY in .env.local
               </p>
-            </Authenticated>
+            )}
+            
             <p className="text-gray-400 text-sm mt-2">
               Welcome to StackDock
             </p>

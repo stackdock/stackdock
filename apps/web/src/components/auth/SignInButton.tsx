@@ -1,12 +1,18 @@
 import { SignInButton as ClerkSignInButton } from '@clerk/clerk-react'
 
+/**
+ * Sign-in button component
+ * Parent should wrap this in <SignedOut> component for conditional rendering
+ */
 export function SignInButton() {
   return (
     <ClerkSignInButton mode="modal">
-      <button className="px-8 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold rounded-lg transition-colors shadow-lg shadow-cyan-500/50">
+      <button 
+        className="px-8 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold rounded-lg transition-colors shadow-lg shadow-cyan-500/50 cursor-pointer relative z-10"
+        type="button"
+      >
         Get Started
       </button>
     </ClerkSignInButton>
   )
 }
-

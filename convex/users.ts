@@ -36,7 +36,38 @@ export const syncFromClerk = mutation({
 })
 
 /**
+ * Ensure current user exists in database (creates if needed)
+ * Call this mutation when user first signs in
+ */
+export const ensureCurrentUser = mutation({
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) {
+      throw new Error("Not authenticated")
+    }
+    
+    // Check if user already exists
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first()
+    
+    if (existing) {
+      return existing._id
+    }
+    
+    // Create new user
+    return await ctx.db.insert("users", {
+      clerkId: identity.subject,
+      name: identity.name || identity.email || 'User',
+      email: identity.email || '',
+    })
+  },
+})
+
+/**
  * Get current user (for UI)
+ * Returns null if user doesn't exist yet (call ensureCurrentUser first)
  */
 export const getCurrent = query({
   handler: async (ctx) => {
