@@ -58,3 +58,13 @@ ENCRYPTION_MASTER_KEY*
 *.key
 *.pem
 .env*.local
+
+# Provider API response dumps (local development only, may contain sensitive data)
+# Ignore all JSON files in docks/ directories
+docks/**/*.json
+# But allow important JSON config files
+!package.json
+!package-lock.json
+!tsconfig.json
+!convex.json
+!turbo.json
