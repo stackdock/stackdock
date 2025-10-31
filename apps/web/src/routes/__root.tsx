@@ -35,7 +35,6 @@ export const Route = createRootRoute({
 function RootDocument({ children }: { children: React.ReactNode }) {
   const content = (
     <>
-      <Header />
       {children}
       <TanStackDevtools
         config={{

@@ -19,6 +19,7 @@ const config = defineConfig({
   ],
   resolve: {
     alias: {
+      '@': path.resolve(__dirname, './src'),
       // Allow importing Convex generated files from repo root
       'convex/_generated': path.resolve(__dirname, '../../convex/_generated'),
     },

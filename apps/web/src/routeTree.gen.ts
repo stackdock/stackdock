@@ -9,7 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
+import { Route as DashboardWebServicesRouteImport } from './routes/dashboard/web-services'
+import { Route as DashboardSettingsRouteImport } from './routes/dashboard/settings'
+import { Route as DashboardServersRouteImport } from './routes/dashboard/servers'
+import { Route as DashboardDomainsRouteImport } from './routes/dashboard/domains'
+import { Route as DashboardDocksRouteImport } from './routes/dashboard/docks'
 import { Route as DemoStartServerFuncsRouteImport } from './routes/demo/start.server-funcs'
 import { Route as DemoStartApiRequestRouteImport } from './routes/demo/start.api-request'
 import { Route as DemoApiNamesRouteImport } from './routes/demo/api.names'
@@ -18,10 +25,45 @@ import { Route as DemoStartSsrSpaModeRouteImport } from './routes/demo/start.ssr
 import { Route as DemoStartSsrFullSsrRouteImport } from './routes/demo/start.ssr.full-ssr'
 import { Route as DemoStartSsrDataOnlyRouteImport } from './routes/demo/start.ssr.data-only'
 
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardIndexRoute = DashboardIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardWebServicesRoute = DashboardWebServicesRouteImport.update({
+  id: '/web-services',
+  path: '/web-services',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardServersRoute = DashboardServersRouteImport.update({
+  id: '/servers',
+  path: '/servers',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardDomainsRoute = DashboardDomainsRouteImport.update({
+  id: '/domains',
+  path: '/domains',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardDocksRoute = DashboardDocksRouteImport.update({
+  id: '/docks',
+  path: '/docks',
+  getParentRoute: () => DashboardRoute,
 } as any)
 const DemoStartServerFuncsRoute = DemoStartServerFuncsRouteImport.update({
   id: '/demo/start/server-funcs',
@@ -61,6 +103,13 @@ const DemoStartSsrDataOnlyRoute = DemoStartSsrDataOnlyRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRouteWithChildren
+  '/dashboard/docks': typeof DashboardDocksRoute
+  '/dashboard/domains': typeof DashboardDomainsRoute
+  '/dashboard/servers': typeof DashboardServersRoute
+  '/dashboard/settings': typeof DashboardSettingsRoute
+  '/dashboard/web-services': typeof DashboardWebServicesRoute
+  '/dashboard/': typeof DashboardIndexRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
@@ -71,6 +120,12 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/dashboard/docks': typeof DashboardDocksRoute
+  '/dashboard/domains': typeof DashboardDomainsRoute
+  '/dashboard/servers': typeof DashboardServersRoute
+  '/dashboard/settings': typeof DashboardSettingsRoute
+  '/dashboard/web-services': typeof DashboardWebServicesRoute
+  '/dashboard': typeof DashboardIndexRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
@@ -82,6 +137,13 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRouteWithChildren
+  '/dashboard/docks': typeof DashboardDocksRoute
+  '/dashboard/domains': typeof DashboardDomainsRoute
+  '/dashboard/servers': typeof DashboardServersRoute
+  '/dashboard/settings': typeof DashboardSettingsRoute
+  '/dashboard/web-services': typeof DashboardWebServicesRoute
+  '/dashboard/': typeof DashboardIndexRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
@@ -94,6 +156,13 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/dashboard'
+    | '/dashboard/docks'
+    | '/dashboard/domains'
+    | '/dashboard/servers'
+    | '/dashboard/settings'
+    | '/dashboard/web-services'
+    | '/dashboard/'
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
@@ -104,6 +173,12 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/dashboard/docks'
+    | '/dashboard/domains'
+    | '/dashboard/servers'
+    | '/dashboard/settings'
+    | '/dashboard/web-services'
+    | '/dashboard'
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
@@ -114,6 +189,13 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/dashboard'
+    | '/dashboard/docks'
+    | '/dashboard/domains'
+    | '/dashboard/servers'
+    | '/dashboard/settings'
+    | '/dashboard/web-services'
+    | '/dashboard/'
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
@@ -125,6 +207,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DashboardRoute: typeof DashboardRouteWithChildren
   DemoApiNamesRoute: typeof DemoApiNamesRoute
   DemoStartApiRequestRoute: typeof DemoStartApiRequestRoute
   DemoStartServerFuncsRoute: typeof DemoStartServerFuncsRoute
@@ -136,12 +219,61 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/': {
+      id: '/dashboard/'
+      path: '/'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof DashboardIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/web-services': {
+      id: '/dashboard/web-services'
+      path: '/web-services'
+      fullPath: '/dashboard/web-services'
+      preLoaderRoute: typeof DashboardWebServicesRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/settings': {
+      id: '/dashboard/settings'
+      path: '/settings'
+      fullPath: '/dashboard/settings'
+      preLoaderRoute: typeof DashboardSettingsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/servers': {
+      id: '/dashboard/servers'
+      path: '/servers'
+      fullPath: '/dashboard/servers'
+      preLoaderRoute: typeof DashboardServersRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/domains': {
+      id: '/dashboard/domains'
+      path: '/domains'
+      fullPath: '/dashboard/domains'
+      preLoaderRoute: typeof DashboardDomainsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/docks': {
+      id: '/dashboard/docks'
+      path: '/docks'
+      fullPath: '/dashboard/docks'
+      preLoaderRoute: typeof DashboardDocksRouteImport
+      parentRoute: typeof DashboardRoute
     }
     '/demo/start/server-funcs': {
       id: '/demo/start/server-funcs'
@@ -195,8 +327,31 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface DashboardRouteChildren {
+  DashboardDocksRoute: typeof DashboardDocksRoute
+  DashboardDomainsRoute: typeof DashboardDomainsRoute
+  DashboardServersRoute: typeof DashboardServersRoute
+  DashboardSettingsRoute: typeof DashboardSettingsRoute
+  DashboardWebServicesRoute: typeof DashboardWebServicesRoute
+  DashboardIndexRoute: typeof DashboardIndexRoute
+}
+
+const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardDocksRoute: DashboardDocksRoute,
+  DashboardDomainsRoute: DashboardDomainsRoute,
+  DashboardServersRoute: DashboardServersRoute,
+  DashboardSettingsRoute: DashboardSettingsRoute,
+  DashboardWebServicesRoute: DashboardWebServicesRoute,
+  DashboardIndexRoute: DashboardIndexRoute,
+}
+
+const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
+  DashboardRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DashboardRoute: DashboardRouteWithChildren,
   DemoApiNamesRoute: DemoApiNamesRoute,
   DemoStartApiRequestRoute: DemoStartApiRequestRoute,
   DemoStartServerFuncsRoute: DemoStartServerFuncsRoute,
