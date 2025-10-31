@@ -4,6 +4,7 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 
 import Header from '../components/Header'
 import { ConvexClerkProvider } from '../lib/convex-clerk'
+import { ThemeProvider } from '../components/dashboard/ThemeProvider'
 
 import appCss from '../styles.css?url'
 
@@ -52,13 +53,39 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   )
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const theme = localStorage.getItem('theme');
+                const isDark = theme === 'dark' || 
+                  (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches) ||
+                  (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                
+                if (isDark) {
+                  document.documentElement.classList.add('dark')
+                } else {
+                  document.documentElement.classList.remove('dark')
+                }
+              } catch (_) {}
+            `,
+          }}
+        />
       </head>
       {/* suppressHydrationWarning: Grammarly extension adds attributes that cause hydration warnings */}
       <body suppressHydrationWarning>
-        <ConvexClerkProvider>{content}</ConvexClerkProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          storageKey="theme"
+          disableTransitionOnChange
+        >
+          <ConvexClerkProvider>{content}</ConvexClerkProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

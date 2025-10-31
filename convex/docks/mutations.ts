@@ -6,15 +6,17 @@
 
 import { v } from "convex/values"
 import { mutation } from "../_generated/server"
-import { getCurrentUser } from "../lib/rbac"
+import { getCurrentUser, checkPermission } from "../lib/rbac"
 import { encryptApiKey } from "../lib/encryption"
 import { getAdapter, listProviders } from "./registry"
 import { ConvexError } from "convex/values"
+import { internal } from "../_generated/api"
 
 /**
  * Create a new dock (provider connection)
  * 
  * Validates credentials, encrypts API key, and creates dock record.
+ * Requires "docks:full" permission (org owner only).
  */
 export const createDock = mutation({
   args: {
@@ -27,8 +29,18 @@ export const createDock = mutation({
     // Check authentication
     const user = await getCurrentUser(ctx)
 
-    // Verify user belongs to org (TODO: Add RBAC check)
-    // For now, just ensure user exists
+    // Verify user belongs to org and has docks:full permission
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      args.orgId,
+      "docks:full"
+    )
+    if (!hasPermission) {
+      throw new ConvexError(
+        "Permission denied: Only organization owners can create docks"
+      )
+    }
 
     // Get adapter for provider
     const adapter = getAdapter(args.provider)
@@ -38,10 +50,34 @@ export const createDock = mutation({
       )
     }
 
-    // Validate credentials before saving
-    const isValid = await adapter.validateCredentials(args.apiKey)
-    if (!isValid) {
-      throw new ConvexError("Invalid API credentials")
+    // Validate credentials before saving (using action for HTTP requests)
+    try {
+      const validationResult = await ctx.runAction(
+        internal.docks.actions.validateCredentials,
+        {
+          provider: args.provider,
+          apiKey: args.apiKey,
+        }
+      )
+
+      if (!validationResult.valid) {
+        throw new ConvexError(
+          "Invalid API credentials: The API key was rejected by GridPane (401 Unauthorized). Please check that your API key is correct and has not expired."
+        )
+      }
+    } catch (error) {
+      // Provide more detailed error message
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error"
+      
+      // If it's already a ConvexError, re-throw it
+      if (error instanceof ConvexError) {
+        throw error
+      }
+      
+      throw new ConvexError(
+        `Failed to validate credentials: ${errorMessage}. Please check your API key and try again.`
+      )
     }
 
     // Encrypt API key
@@ -81,7 +117,18 @@ export const syncDock = mutation({
       throw new ConvexError("Dock not found")
     }
 
-    // Verify user belongs to dock's org (TODO: Add RBAC check)
+    // Verify user belongs to dock's org and has docks:full permission
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      dock.orgId,
+      "docks:full"
+    )
+    if (!hasPermission) {
+      throw new ConvexError(
+        "Permission denied: Only organization owners can sync docks"
+      )
+    }
 
     // Get adapter
     const adapter = getAdapter(dock.provider)
@@ -163,7 +210,18 @@ export const deleteDock = mutation({
       throw new ConvexError("Dock not found")
     }
 
-    // Verify user belongs to dock's org (TODO: Add RBAC check)
+    // Verify user belongs to dock's org and has docks:full permission
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      dock.orgId,
+      "docks:full"
+    )
+    if (!hasPermission) {
+      throw new ConvexError(
+        "Permission denied: Only organization owners can delete docks"
+      )
+    }
 
     // Delete dock
     await ctx.db.delete(args.dockId)
@@ -171,4 +229,3 @@ export const deleteDock = mutation({
     return { success: true }
   },
 })
-

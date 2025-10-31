@@ -1,30 +1,55 @@
+"use client"
+
 import { ReactNode } from "react"
-import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/clerk-react"
-import { TopNav } from "./TopNav"
-import { Sidebar } from "@/components/ui/sidebar"
+import { SignedIn, SignedOut } from "@clerk/clerk-react"
+import { useNavigate } from "@tanstack/react-router"
+import { useEffect } from "react"
+import { cn } from "@/lib/utils"
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
+import { AppSidebar } from "./AppSidebar"
+import { Header } from "./Header"
 
 interface DashboardLayoutProps {
   children: ReactNode
+}
+
+function RedirectToLogin() {
+  const navigate = useNavigate()
+  
+  useEffect(() => {
+    navigate({ to: "/auth/login" })
+  }, [navigate])
+  
+  return null
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <>
       <SignedOut>
-        <RedirectToSignIn />
+        <RedirectToLogin />
       </SignedOut>
       <SignedIn>
-        <div className="flex h-screen flex-col bg-white">
-          <TopNav />
-          <div className="flex flex-1 overflow-hidden">
-            <Sidebar />
-            <main className="flex-1 overflow-y-auto bg-gray-50">
-              {children}
-            </main>
-          </div>
+        <div className="border-grid flex flex-1 flex-col">
+          <SidebarProvider defaultOpen={true}>
+            <AppSidebar />
+            <SidebarInset>
+              <Header />
+              <div
+                id="content"
+                className={cn(
+                  "flex h-full w-full flex-col",
+                  "has-[div[data-layout=fixed]]:h-svh",
+                  "group-data-[scroll-locked=1]/body:h-full",
+                  "has-[data-layout=fixed]:group-data-[scroll-locked=1]/body:h-svh"
+                )}
+              >
+                {children}
+              </div>
+            </SidebarInset>
+          </SidebarProvider>
         </div>
       </SignedIn>
     </>
   )
 }
-

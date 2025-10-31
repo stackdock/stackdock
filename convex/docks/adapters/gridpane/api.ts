@@ -20,7 +20,7 @@ export class GridPaneAPI {
   private apiKey: string
 
   constructor(apiKey: string, baseUrl: string = "https://my.gridpane.com") {
-    this.apiKey = apiKey
+    this.apiKey = apiKey.trim() // Remove any whitespace
     this.baseUrl = baseUrl
   }
 
@@ -58,13 +58,44 @@ export class GridPaneAPI {
    */
   async validateCredentials(): Promise<boolean> {
     try {
-      await this.request<GridPaneUser>("/user")
-      return true
-    } catch (error) {
-      if (error instanceof Error && error.message.includes("401")) {
+      const url = `${this.baseUrl}/oauth/api/v1/user`
+      console.log(`[GridPane] Validating credentials against: ${url}`)
+      
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+        },
+      })
+
+      console.log(`[GridPane] Response status: ${response.status}`)
+
+      if (response.status === 401) {
+        const errorText = await response.text().catch(() => response.statusText)
+        console.log(`[GridPane] 401 Unauthorized: ${errorText}`)
         return false
       }
-      // Re-throw network/other errors
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => response.statusText)
+        console.log(`[GridPane] API error (${response.status}): ${errorText}`)
+        throw new Error(
+          `GridPane API error (${response.status}): ${errorText}`
+        )
+      }
+
+      // If we get here, credentials are valid
+      console.log(`[GridPane] Credentials validated successfully`)
+      return true
+    } catch (error) {
+      // Network errors or other issues
+      console.error(`[GridPane] Validation error:`, error)
+      if (error instanceof Error) {
+        // Re-throw with more context for debugging
+        throw new Error(
+          `Failed to validate GridPane credentials: ${error.message}`
+        )
+      }
       throw error
     }
   }
@@ -137,4 +168,3 @@ export class GridPaneAPI {
     return response.data.domains[0]
   }
 }
-

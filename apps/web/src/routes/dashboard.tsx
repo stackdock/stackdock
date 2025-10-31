@@ -8,10 +8,7 @@ export const Route = createFileRoute("/dashboard")({
 function DashboardLayoutWrapper() {
   return (
     <DashboardLayout>
-      <div className="p-6">
-        <Outlet />
-      </div>
+      <Outlet />
     </DashboardLayout>
   )
 }
-

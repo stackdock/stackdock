@@ -10,24 +10,46 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
-import { Route as DashboardWebServicesRouteImport } from './routes/dashboard/web-services'
 import { Route as DashboardSettingsRouteImport } from './routes/dashboard/settings'
-import { Route as DashboardServersRouteImport } from './routes/dashboard/servers'
-import { Route as DashboardDomainsRouteImport } from './routes/dashboard/domains'
-import { Route as DashboardDocksRouteImport } from './routes/dashboard/docks'
+import { Route as DashboardProjectsRouteImport } from './routes/dashboard/projects'
+import { Route as DashboardOperationsRouteImport } from './routes/dashboard/operations'
+import { Route as DashboardInfrastructureRouteImport } from './routes/dashboard/infrastructure'
+import { Route as AuthRegisterRouteImport } from './routes/auth/register'
+import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
 import { Route as DemoStartServerFuncsRouteImport } from './routes/demo/start.server-funcs'
 import { Route as DemoStartApiRequestRouteImport } from './routes/demo/start.api-request'
 import { Route as DemoApiNamesRouteImport } from './routes/demo/api.names'
+import { Route as DashboardSettingsUserRouteImport } from './routes/dashboard/settings/user'
+import { Route as DashboardSettingsThemeRouteImport } from './routes/dashboard/settings/theme'
+import { Route as DashboardSettingsOrganizationRouteImport } from './routes/dashboard/settings/organization'
+import { Route as DashboardSettingsDocksRouteImport } from './routes/dashboard/settings/docks'
+import { Route as DashboardProjectsProjectIdRouteImport } from './routes/dashboard/projects/$projectId'
+import { Route as DashboardOperationsWorkflowsRouteImport } from './routes/dashboard/operations/workflows'
+import { Route as DashboardOperationsNetworkingRouteImport } from './routes/dashboard/operations/networking'
+import { Route as DashboardOperationsBackupsRouteImport } from './routes/dashboard/operations/backups'
+import { Route as DashboardInfrastructureDataRouteImport } from './routes/dashboard/infrastructure/data'
+import { Route as DashboardInfrastructureComputeRouteImport } from './routes/dashboard/infrastructure/compute'
 import { Route as DemoStartSsrIndexRouteImport } from './routes/demo/start.ssr.index'
 import { Route as DemoStartSsrSpaModeRouteImport } from './routes/demo/start.ssr.spa-mode'
 import { Route as DemoStartSsrFullSsrRouteImport } from './routes/demo/start.ssr.full-ssr'
 import { Route as DemoStartSsrDataOnlyRouteImport } from './routes/demo/start.ssr.data-only'
+import { Route as DashboardProjectsProjectIdSettingsRouteImport } from './routes/dashboard/projects/$projectId/settings'
+import { Route as DashboardProjectsProjectIdResourcesRouteImport } from './routes/dashboard/projects/$projectId/resources'
+import { Route as DashboardProjectsProjectIdOverviewRouteImport } from './routes/dashboard/projects/$projectId/overview'
+import { Route as DashboardProjectsProjectIdActivityRouteImport } from './routes/dashboard/projects/$projectId/activity'
 
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -40,30 +62,40 @@ const DashboardIndexRoute = DashboardIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardWebServicesRoute = DashboardWebServicesRouteImport.update({
-  id: '/web-services',
-  path: '/web-services',
-  getParentRoute: () => DashboardRoute,
-} as any)
 const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardServersRoute = DashboardServersRouteImport.update({
-  id: '/servers',
-  path: '/servers',
+const DashboardProjectsRoute = DashboardProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardDomainsRoute = DashboardDomainsRouteImport.update({
-  id: '/domains',
-  path: '/domains',
+const DashboardOperationsRoute = DashboardOperationsRouteImport.update({
+  id: '/operations',
+  path: '/operations',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardDocksRoute = DashboardDocksRouteImport.update({
-  id: '/docks',
-  path: '/docks',
+const DashboardInfrastructureRoute = DashboardInfrastructureRouteImport.update({
+  id: '/infrastructure',
+  path: '/infrastructure',
   getParentRoute: () => DashboardRoute,
+} as any)
+const AuthRegisterRoute = AuthRegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthLoginRoute = AuthLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => AuthRoute,
 } as any)
 const DemoStartServerFuncsRoute = DemoStartServerFuncsRouteImport.update({
   id: '/demo/start/server-funcs',
@@ -80,6 +112,63 @@ const DemoApiNamesRoute = DemoApiNamesRouteImport.update({
   path: '/demo/api/names',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardSettingsUserRoute = DashboardSettingsUserRouteImport.update({
+  id: '/user',
+  path: '/user',
+  getParentRoute: () => DashboardSettingsRoute,
+} as any)
+const DashboardSettingsThemeRoute = DashboardSettingsThemeRouteImport.update({
+  id: '/theme',
+  path: '/theme',
+  getParentRoute: () => DashboardSettingsRoute,
+} as any)
+const DashboardSettingsOrganizationRoute =
+  DashboardSettingsOrganizationRouteImport.update({
+    id: '/organization',
+    path: '/organization',
+    getParentRoute: () => DashboardSettingsRoute,
+  } as any)
+const DashboardSettingsDocksRoute = DashboardSettingsDocksRouteImport.update({
+  id: '/docks',
+  path: '/docks',
+  getParentRoute: () => DashboardSettingsRoute,
+} as any)
+const DashboardProjectsProjectIdRoute =
+  DashboardProjectsProjectIdRouteImport.update({
+    id: '/$projectId',
+    path: '/$projectId',
+    getParentRoute: () => DashboardProjectsRoute,
+  } as any)
+const DashboardOperationsWorkflowsRoute =
+  DashboardOperationsWorkflowsRouteImport.update({
+    id: '/workflows',
+    path: '/workflows',
+    getParentRoute: () => DashboardOperationsRoute,
+  } as any)
+const DashboardOperationsNetworkingRoute =
+  DashboardOperationsNetworkingRouteImport.update({
+    id: '/networking',
+    path: '/networking',
+    getParentRoute: () => DashboardOperationsRoute,
+  } as any)
+const DashboardOperationsBackupsRoute =
+  DashboardOperationsBackupsRouteImport.update({
+    id: '/backups',
+    path: '/backups',
+    getParentRoute: () => DashboardOperationsRoute,
+  } as any)
+const DashboardInfrastructureDataRoute =
+  DashboardInfrastructureDataRouteImport.update({
+    id: '/data',
+    path: '/data',
+    getParentRoute: () => DashboardInfrastructureRoute,
+  } as any)
+const DashboardInfrastructureComputeRoute =
+  DashboardInfrastructureComputeRouteImport.update({
+    id: '/compute',
+    path: '/compute',
+    getParentRoute: () => DashboardInfrastructureRoute,
+  } as any)
 const DemoStartSsrIndexRoute = DemoStartSsrIndexRouteImport.update({
   id: '/demo/start/ssr/',
   path: '/demo/start/ssr/',
@@ -100,19 +189,60 @@ const DemoStartSsrDataOnlyRoute = DemoStartSsrDataOnlyRouteImport.update({
   path: '/demo/start/ssr/data-only',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardProjectsProjectIdSettingsRoute =
+  DashboardProjectsProjectIdSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => DashboardProjectsProjectIdRoute,
+  } as any)
+const DashboardProjectsProjectIdResourcesRoute =
+  DashboardProjectsProjectIdResourcesRouteImport.update({
+    id: '/resources',
+    path: '/resources',
+    getParentRoute: () => DashboardProjectsProjectIdRoute,
+  } as any)
+const DashboardProjectsProjectIdOverviewRoute =
+  DashboardProjectsProjectIdOverviewRouteImport.update({
+    id: '/overview',
+    path: '/overview',
+    getParentRoute: () => DashboardProjectsProjectIdRoute,
+  } as any)
+const DashboardProjectsProjectIdActivityRoute =
+  DashboardProjectsProjectIdActivityRouteImport.update({
+    id: '/activity',
+    path: '/activity',
+    getParentRoute: () => DashboardProjectsProjectIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRouteWithChildren
   '/dashboard': typeof DashboardRouteWithChildren
-  '/dashboard/docks': typeof DashboardDocksRoute
-  '/dashboard/domains': typeof DashboardDomainsRoute
-  '/dashboard/servers': typeof DashboardServersRoute
-  '/dashboard/settings': typeof DashboardSettingsRoute
-  '/dashboard/web-services': typeof DashboardWebServicesRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/register': typeof AuthRegisterRoute
+  '/dashboard/infrastructure': typeof DashboardInfrastructureRouteWithChildren
+  '/dashboard/operations': typeof DashboardOperationsRouteWithChildren
+  '/dashboard/projects': typeof DashboardProjectsRouteWithChildren
+  '/dashboard/settings': typeof DashboardSettingsRouteWithChildren
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/infrastructure/compute': typeof DashboardInfrastructureComputeRoute
+  '/dashboard/infrastructure/data': typeof DashboardInfrastructureDataRoute
+  '/dashboard/operations/backups': typeof DashboardOperationsBackupsRoute
+  '/dashboard/operations/networking': typeof DashboardOperationsNetworkingRoute
+  '/dashboard/operations/workflows': typeof DashboardOperationsWorkflowsRoute
+  '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRouteWithChildren
+  '/dashboard/settings/docks': typeof DashboardSettingsDocksRoute
+  '/dashboard/settings/organization': typeof DashboardSettingsOrganizationRoute
+  '/dashboard/settings/theme': typeof DashboardSettingsThemeRoute
+  '/dashboard/settings/user': typeof DashboardSettingsUserRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
+  '/dashboard/projects/$projectId/activity': typeof DashboardProjectsProjectIdActivityRoute
+  '/dashboard/projects/$projectId/overview': typeof DashboardProjectsProjectIdOverviewRoute
+  '/dashboard/projects/$projectId/resources': typeof DashboardProjectsProjectIdResourcesRoute
+  '/dashboard/projects/$projectId/settings': typeof DashboardProjectsProjectIdSettingsRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
@@ -120,15 +250,32 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/dashboard/docks': typeof DashboardDocksRoute
-  '/dashboard/domains': typeof DashboardDomainsRoute
-  '/dashboard/servers': typeof DashboardServersRoute
-  '/dashboard/settings': typeof DashboardSettingsRoute
-  '/dashboard/web-services': typeof DashboardWebServicesRoute
+  '/auth': typeof AuthRouteWithChildren
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/register': typeof AuthRegisterRoute
+  '/dashboard/infrastructure': typeof DashboardInfrastructureRouteWithChildren
+  '/dashboard/operations': typeof DashboardOperationsRouteWithChildren
+  '/dashboard/projects': typeof DashboardProjectsRouteWithChildren
+  '/dashboard/settings': typeof DashboardSettingsRouteWithChildren
   '/dashboard': typeof DashboardIndexRoute
+  '/dashboard/infrastructure/compute': typeof DashboardInfrastructureComputeRoute
+  '/dashboard/infrastructure/data': typeof DashboardInfrastructureDataRoute
+  '/dashboard/operations/backups': typeof DashboardOperationsBackupsRoute
+  '/dashboard/operations/networking': typeof DashboardOperationsNetworkingRoute
+  '/dashboard/operations/workflows': typeof DashboardOperationsWorkflowsRoute
+  '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRouteWithChildren
+  '/dashboard/settings/docks': typeof DashboardSettingsDocksRoute
+  '/dashboard/settings/organization': typeof DashboardSettingsOrganizationRoute
+  '/dashboard/settings/theme': typeof DashboardSettingsThemeRoute
+  '/dashboard/settings/user': typeof DashboardSettingsUserRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
+  '/dashboard/projects/$projectId/activity': typeof DashboardProjectsProjectIdActivityRoute
+  '/dashboard/projects/$projectId/overview': typeof DashboardProjectsProjectIdOverviewRoute
+  '/dashboard/projects/$projectId/resources': typeof DashboardProjectsProjectIdResourcesRoute
+  '/dashboard/projects/$projectId/settings': typeof DashboardProjectsProjectIdSettingsRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
@@ -137,16 +284,33 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth': typeof AuthRouteWithChildren
   '/dashboard': typeof DashboardRouteWithChildren
-  '/dashboard/docks': typeof DashboardDocksRoute
-  '/dashboard/domains': typeof DashboardDomainsRoute
-  '/dashboard/servers': typeof DashboardServersRoute
-  '/dashboard/settings': typeof DashboardSettingsRoute
-  '/dashboard/web-services': typeof DashboardWebServicesRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/register': typeof AuthRegisterRoute
+  '/dashboard/infrastructure': typeof DashboardInfrastructureRouteWithChildren
+  '/dashboard/operations': typeof DashboardOperationsRouteWithChildren
+  '/dashboard/projects': typeof DashboardProjectsRouteWithChildren
+  '/dashboard/settings': typeof DashboardSettingsRouteWithChildren
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/infrastructure/compute': typeof DashboardInfrastructureComputeRoute
+  '/dashboard/infrastructure/data': typeof DashboardInfrastructureDataRoute
+  '/dashboard/operations/backups': typeof DashboardOperationsBackupsRoute
+  '/dashboard/operations/networking': typeof DashboardOperationsNetworkingRoute
+  '/dashboard/operations/workflows': typeof DashboardOperationsWorkflowsRoute
+  '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRouteWithChildren
+  '/dashboard/settings/docks': typeof DashboardSettingsDocksRoute
+  '/dashboard/settings/organization': typeof DashboardSettingsOrganizationRoute
+  '/dashboard/settings/theme': typeof DashboardSettingsThemeRoute
+  '/dashboard/settings/user': typeof DashboardSettingsUserRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
+  '/dashboard/projects/$projectId/activity': typeof DashboardProjectsProjectIdActivityRoute
+  '/dashboard/projects/$projectId/overview': typeof DashboardProjectsProjectIdOverviewRoute
+  '/dashboard/projects/$projectId/resources': typeof DashboardProjectsProjectIdResourcesRoute
+  '/dashboard/projects/$projectId/settings': typeof DashboardProjectsProjectIdSettingsRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
@@ -156,16 +320,33 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/auth'
     | '/dashboard'
-    | '/dashboard/docks'
-    | '/dashboard/domains'
-    | '/dashboard/servers'
+    | '/auth/forgot-password'
+    | '/auth/login'
+    | '/auth/register'
+    | '/dashboard/infrastructure'
+    | '/dashboard/operations'
+    | '/dashboard/projects'
     | '/dashboard/settings'
-    | '/dashboard/web-services'
     | '/dashboard/'
+    | '/dashboard/infrastructure/compute'
+    | '/dashboard/infrastructure/data'
+    | '/dashboard/operations/backups'
+    | '/dashboard/operations/networking'
+    | '/dashboard/operations/workflows'
+    | '/dashboard/projects/$projectId'
+    | '/dashboard/settings/docks'
+    | '/dashboard/settings/organization'
+    | '/dashboard/settings/theme'
+    | '/dashboard/settings/user'
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
+    | '/dashboard/projects/$projectId/activity'
+    | '/dashboard/projects/$projectId/overview'
+    | '/dashboard/projects/$projectId/resources'
+    | '/dashboard/projects/$projectId/settings'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
@@ -173,15 +354,32 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/dashboard/docks'
-    | '/dashboard/domains'
-    | '/dashboard/servers'
+    | '/auth'
+    | '/auth/forgot-password'
+    | '/auth/login'
+    | '/auth/register'
+    | '/dashboard/infrastructure'
+    | '/dashboard/operations'
+    | '/dashboard/projects'
     | '/dashboard/settings'
-    | '/dashboard/web-services'
     | '/dashboard'
+    | '/dashboard/infrastructure/compute'
+    | '/dashboard/infrastructure/data'
+    | '/dashboard/operations/backups'
+    | '/dashboard/operations/networking'
+    | '/dashboard/operations/workflows'
+    | '/dashboard/projects/$projectId'
+    | '/dashboard/settings/docks'
+    | '/dashboard/settings/organization'
+    | '/dashboard/settings/theme'
+    | '/dashboard/settings/user'
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
+    | '/dashboard/projects/$projectId/activity'
+    | '/dashboard/projects/$projectId/overview'
+    | '/dashboard/projects/$projectId/resources'
+    | '/dashboard/projects/$projectId/settings'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
@@ -189,16 +387,33 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/auth'
     | '/dashboard'
-    | '/dashboard/docks'
-    | '/dashboard/domains'
-    | '/dashboard/servers'
+    | '/auth/forgot-password'
+    | '/auth/login'
+    | '/auth/register'
+    | '/dashboard/infrastructure'
+    | '/dashboard/operations'
+    | '/dashboard/projects'
     | '/dashboard/settings'
-    | '/dashboard/web-services'
     | '/dashboard/'
+    | '/dashboard/infrastructure/compute'
+    | '/dashboard/infrastructure/data'
+    | '/dashboard/operations/backups'
+    | '/dashboard/operations/networking'
+    | '/dashboard/operations/workflows'
+    | '/dashboard/projects/$projectId'
+    | '/dashboard/settings/docks'
+    | '/dashboard/settings/organization'
+    | '/dashboard/settings/theme'
+    | '/dashboard/settings/user'
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
+    | '/dashboard/projects/$projectId/activity'
+    | '/dashboard/projects/$projectId/overview'
+    | '/dashboard/projects/$projectId/resources'
+    | '/dashboard/projects/$projectId/settings'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
@@ -207,6 +422,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRouteWithChildren
   DashboardRoute: typeof DashboardRouteWithChildren
   DemoApiNamesRoute: typeof DemoApiNamesRoute
   DemoStartApiRequestRoute: typeof DemoStartApiRequestRoute
@@ -226,6 +442,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -240,13 +463,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/dashboard/web-services': {
-      id: '/dashboard/web-services'
-      path: '/web-services'
-      fullPath: '/dashboard/web-services'
-      preLoaderRoute: typeof DashboardWebServicesRouteImport
-      parentRoute: typeof DashboardRoute
-    }
     '/dashboard/settings': {
       id: '/dashboard/settings'
       path: '/settings'
@@ -254,26 +470,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardSettingsRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/dashboard/servers': {
-      id: '/dashboard/servers'
-      path: '/servers'
-      fullPath: '/dashboard/servers'
-      preLoaderRoute: typeof DashboardServersRouteImport
+    '/dashboard/projects': {
+      id: '/dashboard/projects'
+      path: '/projects'
+      fullPath: '/dashboard/projects'
+      preLoaderRoute: typeof DashboardProjectsRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/dashboard/domains': {
-      id: '/dashboard/domains'
-      path: '/domains'
-      fullPath: '/dashboard/domains'
-      preLoaderRoute: typeof DashboardDomainsRouteImport
+    '/dashboard/operations': {
+      id: '/dashboard/operations'
+      path: '/operations'
+      fullPath: '/dashboard/operations'
+      preLoaderRoute: typeof DashboardOperationsRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/dashboard/docks': {
-      id: '/dashboard/docks'
-      path: '/docks'
-      fullPath: '/dashboard/docks'
-      preLoaderRoute: typeof DashboardDocksRouteImport
+    '/dashboard/infrastructure': {
+      id: '/dashboard/infrastructure'
+      path: '/infrastructure'
+      fullPath: '/dashboard/infrastructure'
+      preLoaderRoute: typeof DashboardInfrastructureRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/auth/register': {
+      id: '/auth/register'
+      path: '/register'
+      fullPath: '/auth/register'
+      preLoaderRoute: typeof AuthRegisterRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/login': {
+      id: '/auth/login'
+      path: '/login'
+      fullPath: '/auth/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/forgot-password': {
+      id: '/auth/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/auth/forgot-password'
+      preLoaderRoute: typeof AuthForgotPasswordRouteImport
+      parentRoute: typeof AuthRoute
     }
     '/demo/start/server-funcs': {
       id: '/demo/start/server-funcs'
@@ -295,6 +532,76 @@ declare module '@tanstack/react-router' {
       fullPath: '/demo/api/names'
       preLoaderRoute: typeof DemoApiNamesRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/settings/user': {
+      id: '/dashboard/settings/user'
+      path: '/user'
+      fullPath: '/dashboard/settings/user'
+      preLoaderRoute: typeof DashboardSettingsUserRouteImport
+      parentRoute: typeof DashboardSettingsRoute
+    }
+    '/dashboard/settings/theme': {
+      id: '/dashboard/settings/theme'
+      path: '/theme'
+      fullPath: '/dashboard/settings/theme'
+      preLoaderRoute: typeof DashboardSettingsThemeRouteImport
+      parentRoute: typeof DashboardSettingsRoute
+    }
+    '/dashboard/settings/organization': {
+      id: '/dashboard/settings/organization'
+      path: '/organization'
+      fullPath: '/dashboard/settings/organization'
+      preLoaderRoute: typeof DashboardSettingsOrganizationRouteImport
+      parentRoute: typeof DashboardSettingsRoute
+    }
+    '/dashboard/settings/docks': {
+      id: '/dashboard/settings/docks'
+      path: '/docks'
+      fullPath: '/dashboard/settings/docks'
+      preLoaderRoute: typeof DashboardSettingsDocksRouteImport
+      parentRoute: typeof DashboardSettingsRoute
+    }
+    '/dashboard/projects/$projectId': {
+      id: '/dashboard/projects/$projectId'
+      path: '/$projectId'
+      fullPath: '/dashboard/projects/$projectId'
+      preLoaderRoute: typeof DashboardProjectsProjectIdRouteImport
+      parentRoute: typeof DashboardProjectsRoute
+    }
+    '/dashboard/operations/workflows': {
+      id: '/dashboard/operations/workflows'
+      path: '/workflows'
+      fullPath: '/dashboard/operations/workflows'
+      preLoaderRoute: typeof DashboardOperationsWorkflowsRouteImport
+      parentRoute: typeof DashboardOperationsRoute
+    }
+    '/dashboard/operations/networking': {
+      id: '/dashboard/operations/networking'
+      path: '/networking'
+      fullPath: '/dashboard/operations/networking'
+      preLoaderRoute: typeof DashboardOperationsNetworkingRouteImport
+      parentRoute: typeof DashboardOperationsRoute
+    }
+    '/dashboard/operations/backups': {
+      id: '/dashboard/operations/backups'
+      path: '/backups'
+      fullPath: '/dashboard/operations/backups'
+      preLoaderRoute: typeof DashboardOperationsBackupsRouteImport
+      parentRoute: typeof DashboardOperationsRoute
+    }
+    '/dashboard/infrastructure/data': {
+      id: '/dashboard/infrastructure/data'
+      path: '/data'
+      fullPath: '/dashboard/infrastructure/data'
+      preLoaderRoute: typeof DashboardInfrastructureDataRouteImport
+      parentRoute: typeof DashboardInfrastructureRoute
+    }
+    '/dashboard/infrastructure/compute': {
+      id: '/dashboard/infrastructure/compute'
+      path: '/compute'
+      fullPath: '/dashboard/infrastructure/compute'
+      preLoaderRoute: typeof DashboardInfrastructureComputeRouteImport
+      parentRoute: typeof DashboardInfrastructureRoute
     }
     '/demo/start/ssr/': {
       id: '/demo/start/ssr/'
@@ -324,24 +631,147 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoStartSsrDataOnlyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard/projects/$projectId/settings': {
+      id: '/dashboard/projects/$projectId/settings'
+      path: '/settings'
+      fullPath: '/dashboard/projects/$projectId/settings'
+      preLoaderRoute: typeof DashboardProjectsProjectIdSettingsRouteImport
+      parentRoute: typeof DashboardProjectsProjectIdRoute
+    }
+    '/dashboard/projects/$projectId/resources': {
+      id: '/dashboard/projects/$projectId/resources'
+      path: '/resources'
+      fullPath: '/dashboard/projects/$projectId/resources'
+      preLoaderRoute: typeof DashboardProjectsProjectIdResourcesRouteImport
+      parentRoute: typeof DashboardProjectsProjectIdRoute
+    }
+    '/dashboard/projects/$projectId/overview': {
+      id: '/dashboard/projects/$projectId/overview'
+      path: '/overview'
+      fullPath: '/dashboard/projects/$projectId/overview'
+      preLoaderRoute: typeof DashboardProjectsProjectIdOverviewRouteImport
+      parentRoute: typeof DashboardProjectsProjectIdRoute
+    }
+    '/dashboard/projects/$projectId/activity': {
+      id: '/dashboard/projects/$projectId/activity'
+      path: '/activity'
+      fullPath: '/dashboard/projects/$projectId/activity'
+      preLoaderRoute: typeof DashboardProjectsProjectIdActivityRouteImport
+      parentRoute: typeof DashboardProjectsProjectIdRoute
+    }
   }
 }
 
+interface AuthRouteChildren {
+  AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
+  AuthLoginRoute: typeof AuthLoginRoute
+  AuthRegisterRoute: typeof AuthRegisterRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthForgotPasswordRoute: AuthForgotPasswordRoute,
+  AuthLoginRoute: AuthLoginRoute,
+  AuthRegisterRoute: AuthRegisterRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
+interface DashboardInfrastructureRouteChildren {
+  DashboardInfrastructureComputeRoute: typeof DashboardInfrastructureComputeRoute
+  DashboardInfrastructureDataRoute: typeof DashboardInfrastructureDataRoute
+}
+
+const DashboardInfrastructureRouteChildren: DashboardInfrastructureRouteChildren =
+  {
+    DashboardInfrastructureComputeRoute: DashboardInfrastructureComputeRoute,
+    DashboardInfrastructureDataRoute: DashboardInfrastructureDataRoute,
+  }
+
+const DashboardInfrastructureRouteWithChildren =
+  DashboardInfrastructureRoute._addFileChildren(
+    DashboardInfrastructureRouteChildren,
+  )
+
+interface DashboardOperationsRouteChildren {
+  DashboardOperationsBackupsRoute: typeof DashboardOperationsBackupsRoute
+  DashboardOperationsNetworkingRoute: typeof DashboardOperationsNetworkingRoute
+  DashboardOperationsWorkflowsRoute: typeof DashboardOperationsWorkflowsRoute
+}
+
+const DashboardOperationsRouteChildren: DashboardOperationsRouteChildren = {
+  DashboardOperationsBackupsRoute: DashboardOperationsBackupsRoute,
+  DashboardOperationsNetworkingRoute: DashboardOperationsNetworkingRoute,
+  DashboardOperationsWorkflowsRoute: DashboardOperationsWorkflowsRoute,
+}
+
+const DashboardOperationsRouteWithChildren =
+  DashboardOperationsRoute._addFileChildren(DashboardOperationsRouteChildren)
+
+interface DashboardProjectsProjectIdRouteChildren {
+  DashboardProjectsProjectIdActivityRoute: typeof DashboardProjectsProjectIdActivityRoute
+  DashboardProjectsProjectIdOverviewRoute: typeof DashboardProjectsProjectIdOverviewRoute
+  DashboardProjectsProjectIdResourcesRoute: typeof DashboardProjectsProjectIdResourcesRoute
+  DashboardProjectsProjectIdSettingsRoute: typeof DashboardProjectsProjectIdSettingsRoute
+}
+
+const DashboardProjectsProjectIdRouteChildren: DashboardProjectsProjectIdRouteChildren =
+  {
+    DashboardProjectsProjectIdActivityRoute:
+      DashboardProjectsProjectIdActivityRoute,
+    DashboardProjectsProjectIdOverviewRoute:
+      DashboardProjectsProjectIdOverviewRoute,
+    DashboardProjectsProjectIdResourcesRoute:
+      DashboardProjectsProjectIdResourcesRoute,
+    DashboardProjectsProjectIdSettingsRoute:
+      DashboardProjectsProjectIdSettingsRoute,
+  }
+
+const DashboardProjectsProjectIdRouteWithChildren =
+  DashboardProjectsProjectIdRoute._addFileChildren(
+    DashboardProjectsProjectIdRouteChildren,
+  )
+
+interface DashboardProjectsRouteChildren {
+  DashboardProjectsProjectIdRoute: typeof DashboardProjectsProjectIdRouteWithChildren
+}
+
+const DashboardProjectsRouteChildren: DashboardProjectsRouteChildren = {
+  DashboardProjectsProjectIdRoute: DashboardProjectsProjectIdRouteWithChildren,
+}
+
+const DashboardProjectsRouteWithChildren =
+  DashboardProjectsRoute._addFileChildren(DashboardProjectsRouteChildren)
+
+interface DashboardSettingsRouteChildren {
+  DashboardSettingsDocksRoute: typeof DashboardSettingsDocksRoute
+  DashboardSettingsOrganizationRoute: typeof DashboardSettingsOrganizationRoute
+  DashboardSettingsThemeRoute: typeof DashboardSettingsThemeRoute
+  DashboardSettingsUserRoute: typeof DashboardSettingsUserRoute
+}
+
+const DashboardSettingsRouteChildren: DashboardSettingsRouteChildren = {
+  DashboardSettingsDocksRoute: DashboardSettingsDocksRoute,
+  DashboardSettingsOrganizationRoute: DashboardSettingsOrganizationRoute,
+  DashboardSettingsThemeRoute: DashboardSettingsThemeRoute,
+  DashboardSettingsUserRoute: DashboardSettingsUserRoute,
+}
+
+const DashboardSettingsRouteWithChildren =
+  DashboardSettingsRoute._addFileChildren(DashboardSettingsRouteChildren)
+
 interface DashboardRouteChildren {
-  DashboardDocksRoute: typeof DashboardDocksRoute
-  DashboardDomainsRoute: typeof DashboardDomainsRoute
-  DashboardServersRoute: typeof DashboardServersRoute
-  DashboardSettingsRoute: typeof DashboardSettingsRoute
-  DashboardWebServicesRoute: typeof DashboardWebServicesRoute
+  DashboardInfrastructureRoute: typeof DashboardInfrastructureRouteWithChildren
+  DashboardOperationsRoute: typeof DashboardOperationsRouteWithChildren
+  DashboardProjectsRoute: typeof DashboardProjectsRouteWithChildren
+  DashboardSettingsRoute: typeof DashboardSettingsRouteWithChildren
   DashboardIndexRoute: typeof DashboardIndexRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
-  DashboardDocksRoute: DashboardDocksRoute,
-  DashboardDomainsRoute: DashboardDomainsRoute,
-  DashboardServersRoute: DashboardServersRoute,
-  DashboardSettingsRoute: DashboardSettingsRoute,
-  DashboardWebServicesRoute: DashboardWebServicesRoute,
+  DashboardInfrastructureRoute: DashboardInfrastructureRouteWithChildren,
+  DashboardOperationsRoute: DashboardOperationsRouteWithChildren,
+  DashboardProjectsRoute: DashboardProjectsRouteWithChildren,
+  DashboardSettingsRoute: DashboardSettingsRouteWithChildren,
   DashboardIndexRoute: DashboardIndexRoute,
 }
 
@@ -351,6 +781,7 @@ const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRouteWithChildren,
   DashboardRoute: DashboardRouteWithChildren,
   DemoApiNamesRoute: DemoApiNamesRoute,
   DemoStartApiRequestRoute: DemoStartApiRequestRoute,

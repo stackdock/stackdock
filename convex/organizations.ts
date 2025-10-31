@@ -66,3 +66,21 @@ export const list = query({
     return orgs.filter((org): org is NonNullable<typeof org> => org !== null)
   },
 })
+
+/**
+ * Get current user's organization ID
+ * Helper query for UI components
+ */
+export const getCurrentOrgId = query({
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx)
+    
+    // Get user's org from memberships
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .first()
+    
+    return membership?.orgId || null
+  },
+})

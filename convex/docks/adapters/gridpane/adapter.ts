@@ -76,8 +76,10 @@ export const gridpaneAdapter: DockAdapter = {
       const api = new GridPaneAPI(apiKey)
       return await api.validateCredentials()
     } catch (error) {
+      // Log error for debugging but return false for invalid credentials
       console.error("GridPane credential validation failed:", error)
-      return false
+      // Re-throw to get more detail in the mutation
+      throw error
     }
   },
 
@@ -230,4 +232,3 @@ export const gridpaneAdapter: DockAdapter = {
     }
   },
 }
-

@@ -68,3 +68,9 @@ docks/**/*.json
 !tsconfig.json
 !convex.json
 !turbo.json
+
+# Admin Scaffold Reference (Next.js -> TanStack Start Migration)
+# This folder contains a Next.js admin scaffold purchased for reference.
+# We're reverse engineering it to adapt its components and patterns to TanStack Start.
+# DO NOT COMMIT - This is a reference implementation only.
+docks/shadcn-admin-1.0.0/
