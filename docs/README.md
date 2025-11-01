@@ -43,6 +43,21 @@ Deep dive into system design, security, and permissions:
 
 Step-by-step guides for contributors:
 
+- **[SETUP.md](./guides/SETUP.md)** - Complete setup instructions
+  - Prerequisites
+  - Environment configuration
+  - Convex & Clerk setup
+  - First run
+
+- **[QUICKSTART.md](./guides/QUICKSTART.md)** - Quick start guide
+  - Fastest path to running StackDock
+  - Essential steps only
+
+- **[START.md](./guides/START.md)** - Start StackDock
+  - After dependencies installed
+  - Convex & Clerk initialization
+  - Running the dev server
+
 - **[CONTRIBUTING.md](./guides/CONTRIBUTING.md)** - Development workflow
   - Getting Started
   - Project Structure
@@ -62,6 +77,9 @@ Step-by-step guides for contributors:
   - Provider-Agnostic Design
   - Building Components
   - Publishing to Registry
+
+- **[CONVEX_SETUP.md](./guides/CONVEX_SETUP.md)** - Convex integration guide
+- **[CLERK_SETUP.md](./guides/CLERK_SETUP.md)** - Clerk authentication setup
 
 ---
 
@@ -85,6 +103,19 @@ System references and state tracking:
   - How state tracking works
   - State file format
   - Context persistence
+
+- **[AI-HALL-OF-SHAME.md](./reference/AI-HALL-OF-SHAME.md)** - Lessons learned
+  - Retrospective of development mistakes
+  - What went wrong and why
+  - Prevention strategies
+
+### Project Status (`docs/`)
+
+Current state and progress tracking:
+
+- **[PROGRESS.md](./PROGRESS.md)** - Current build progress
+- **[BUILT.md](./BUILT.md)** - What's been built
+- **[DOCS_ORGANIZED.md](./DOCS_ORGANIZED.md)** - Documentation organization notes
 
 ---
 

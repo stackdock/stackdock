@@ -105,7 +105,7 @@ Star the repo to watch the build! ⭐
 - Vercel API → Universal `webServices` table
 - Provider-specific data in `fullApiData` field
 
-**See [ARCHITECTURE.md](./ARCHITECTURE.md) for complete details.**
+**See [ARCHITECTURE.md](./docs/architecture/ARCHITECTURE.md) for complete details.**
 
 ---
 
@@ -187,7 +187,7 @@ All documentation is organized in `docs/`:
 ### Reference
 - **[docs/README.md](./docs/README.md)** - Documentation index
 - **[.cursorrules](./.cursorrules)** - AI assistant rules
-- **[AI-HALL-OF-SHAME.md](./AI-HALL-OF-SHAME.md)** - Lessons learned
+- **[AI-HALL-OF-SHAME.md](./docs/reference/AI-HALL-OF-SHAME.md)** - Lessons learned
 
 ---
 
@@ -247,9 +247,9 @@ Posthog, New Relic, Sentry, Datadog
 
 We welcome contributions! Please read:
 
-- [CONTRIBUTING.md](./CONTRIBUTING.md) - Development workflow
-- [DOCK_ADAPTER_GUIDE.md](./DOCK_ADAPTER_GUIDE.md) - Build adapters
-- [REGISTRY_GUIDE.md](./REGISTRY_GUIDE.md) - Build UI components
+- [CONTRIBUTING.md](./docs/guides/CONTRIBUTING.md) - Development workflow
+- [DOCK_ADAPTER_GUIDE.md](./docs/guides/DOCK_ADAPTER_GUIDE.md) - Build adapters
+- [REGISTRY_GUIDE.md](./docs/guides/REGISTRY_GUIDE.md) - Build UI components
 
 **Ways to contribute**:
 1. Build dock adapters for new providers
@@ -266,7 +266,7 @@ We welcome contributions! Please read:
 
 **DO NOT** create public GitHub issues for security vulnerabilities.
 
-See [SECURITY.md](./SECURITY.md) for complete security documentation.
+See [SECURITY.md](./docs/architecture/SECURITY.md) for complete security documentation.
 
 ---
 
@@ -289,7 +289,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 **StackDock** - Infrastructure's WordPress Moment
 
-[Website](https://stackdock.dev) • [Documentation](./ARCHITECTURE.md) • [Contributing](./CONTRIBUTING.md)
+[Website](https://stackdock.dev) • [Documentation](./docs/architecture/ARCHITECTURE.md) • [Contributing](./docs/guides/CONTRIBUTING.md)
 
 *Built with ⚓️ for the captains navigating the multi-cloud ocean*
 
