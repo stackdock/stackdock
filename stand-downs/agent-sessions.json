@@ -194,6 +194,29 @@
           "notes": "Balance: Protection + Owner productivity. Main is sacred but owner needs speed."
         },
         {
+          "id": "mission-2.5",
+          "title": "SST.dev Implementation Scaffolding",
+          "priority": "high",
+          "status": "pending",
+          "description": "Scaffold SST.dev infrastructure provisioning with integration pattern where SST resources sync to universal tables via docks. SST is primary for infrastructure provisioning; docks remain the unifying sync layer.",
+          "requirements": [
+            "SST Configuration: Initialize sst.config.ts for TanStack Start deployment",
+            "Integration Pattern: SST resources discoverable by docks for sync to universal tables",
+            "Provider Strategy: Use SST providers when available (150+ providers), use dock adapters when SST doesn't exist",
+            "Least Intrusive: Don't break existing dock pattern, add SST as provisioning layer"
+          ],
+          "strategies": [
+            "Two-layer approach: SST Layer (provisioning) + Dock Layer (discovery & sync)",
+            "SST provisions → Docks discover → Universal tables sync",
+            "Use SST constructs for AWS/Cloudflare/Vercel when available",
+            "Use dock adapters for providers SST doesn't support (e.g., GridPane)",
+            "SST dock adapter queries AWS API to discover SST-provisioned resources"
+          ],
+          "blockers": [],
+          "notes": "SST is PRIMARY for infrastructure provisioning. Docks remain the unifying sync layer. Least intrusive approach: existing dock pattern unchanged, SST added as provisioning layer.",
+          "stateFile": "stand-downs/mission-2.5-state.json"
+        },
+        {
           "id": "mission-3",
           "title": "Fix GridPane Auth Error",
           "priority": "high",
@@ -222,12 +245,14 @@
       "recommendations": [
         "Start with mission 1 (monorepo setup) - foundation for everything",
         "Mission 2 (repo lockdown) is critical for protection",
+        "Mission 2.5 (SST scaffolding) enables infrastructure provisioning",
         "Mission 3 (GridPane auth) can be tackled once foundation is solid"
       ],
       "nextSteps": [
         "Review current monorepo structure",
         "Plan packages/ui, packages/docks, packages/cli setup",
         "Document branch protection strategy",
+        "Plan SST integration with dock pattern",
         "Investigate GridPane auth error with fresh eyes"
       ]
     },

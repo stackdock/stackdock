@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2025-01-11T23:45:00Z",
+  "lastUpdated": "2025-01-12T01:00:00Z",
   "currentSession": {
     "id": "session-2025-01-11",
     "date": "2025-01-11",
@@ -14,6 +14,12 @@
       "priority": "critical"
     },
     {
+      "id": "mission-2.5",
+      "title": "SST.dev Implementation Scaffolding",
+      "status": "pending",
+      "priority": "high"
+    },
+    {
       "id": "mission-3",
       "title": "Fix GridPane Auth",
       "status": "pending",
@@ -24,6 +30,7 @@
     "mission-1",
     "mission-1.5",
     "mission-2",
+    "mission-2.5",
     "mission-3"
   ],
   "completedMissions": [

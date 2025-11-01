@@ -1,0 +1,365 @@
+{
+  "missionId": "mission-2.5",
+  "missionTitle": "SST.dev Implementation Scaffolding",
+  "status": "pending",
+  "priority": "high",
+  "createdAt": "2025-01-12T01:00:00Z",
+  "lastUpdated": "2025-01-12T01:00:00Z",
+  "participants": [
+    "captain",
+    "ai-assistant",
+    "backend-sst"
+  ],
+  "description": "Scaffold SST.dev infrastructure provisioning with integration pattern where SST resources sync to universal tables via docks. SST is primary for infrastructure provisioning; docks remain the unifying sync layer.",
+  "corePrinciple": "SST provisions → Docks discover → Universal tables sync",
+  "strategy": "SST is PRIMARY for infrastructure provisioning (use SST constructs when available), docks remain the unifying sync layer",
+  "requirements": [
+    {
+      "id": "req-1",
+      "description": "SST Configuration: Initialize sst.config.ts for TanStack Start deployment",
+      "priority": "critical",
+      "category": "setup"
+    },
+    {
+      "id": "req-2",
+      "description": "Integration Pattern: SST resources discoverable by docks for sync to universal tables",
+      "priority": "critical",
+      "category": "integration"
+    },
+    {
+      "id": "req-3",
+      "description": "Provider Strategy: Use SST providers when available (150+ providers), use dock adapters when SST doesn't exist",
+      "priority": "high",
+      "category": "strategy"
+    },
+    {
+      "id": "req-4",
+      "description": "Least Intrusive: Don't break existing dock pattern, add SST as provisioning layer",
+      "priority": "critical",
+      "category": "constraint"
+    }
+  ],
+  "architecture": {
+    "twoLayerApproach": {
+      "layer1": {
+        "name": "SST Layer",
+        "purpose": "Infrastructure Provisioning",
+        "components": [
+          "sst.config.ts - SST configuration",
+          "SST constructs for AWS/Cloudflare/Vercel resources",
+          "Resources provisioned via SST (sst deploy)"
+        ]
+      },
+      "layer2": {
+        "name": "Dock Layer",
+        "purpose": "Resource Discovery & Sync",
+        "components": [
+          "Existing dock adapters continue to work",
+          "New: SST dock adapter discovers SST-provisioned resources",
+          "Syncs to universal tables (servers, webServices, domains, databases)"
+        ]
+      }
+    },
+    "integrationFlow": [
+      "SST provisions resource (e.g., AWS S3 bucket)",
+      "SST outputs resource metadata (bucket name, ARN, etc.)",
+      "Dock adapter queries SST outputs OR AWS API directly",
+      "Dock syncs to universal tables (servers, webServices, domains, databases)"
+    ]
+  },
+  "implementationSteps": [
+    {
+      "step": 1,
+      "title": "Initialize SST Configuration",
+      "description": "Create sst.config.ts with TanStack Start support",
+      "files": [
+        "sst.config.ts (root)",
+        "package.json (add SST dependencies)"
+      ],
+      "tasks": [
+        "Install SST dependencies (sst, aws)",
+        "Create sst.config.ts with TanStack Start support",
+        "Configure AWS region and app name",
+        "Add environment variables for Convex/Clerk",
+        "Add example: Basic S3 bucket resource"
+      ],
+      "output": "SST configuration file ready for deployment"
+    },
+    {
+      "step": 2,
+      "title": "Create SST Dock Adapter Pattern",
+      "description": "Create SST dock adapter that discovers SST-provisioned resources",
+      "files": [
+        "convex/docks/adapters/sst/adapter.ts",
+        "convex/docks/adapters/sst/api.ts",
+        "convex/docks/adapters/sst/types.ts"
+      ],
+      "tasks": [
+        "Create SST dock adapter structure",
+        "Read SST outputs from environment or Convex config",
+        "Map SST resources to universal tables",
+        "Use AWS SDK to query actual resource state",
+        "Implement syncServers, syncWebServices, syncDatabases methods"
+      ],
+      "output": "SST dock adapter ready for resource discovery"
+    },
+    {
+      "step": 3,
+      "title": "Document Provider Strategy",
+      "description": "Document SST as primary provisioning method and dock adapter fallback",
+      "files": [
+        "docs/infrastructure/SST_INTEGRATION.md"
+      ],
+      "tasks": [
+        "Document SST as primary provisioning method",
+        "List SST providers: AWS (preloaded), Cloudflare (preloaded), 150+ others via sst add",
+        "Document dock adapter pattern for providers SST doesn't support",
+        "Create provider decision matrix"
+      ],
+      "output": "Provider strategy documentation complete"
+    },
+    {
+      "step": 4,
+      "title": "Update Dock Registry",
+      "description": "Register SST adapter in dock registry",
+      "files": [
+        "convex/docks/registry.ts",
+        "packages/docks/registry.json"
+      ],
+      "tasks": [
+        "Register SST adapter alongside existing adapters",
+        "Add sst provider to available providers list",
+        "Add SST dock entry to registry manifest",
+        "Document SST provider and resource types"
+      ],
+      "output": "SST adapter registered and discoverable"
+    },
+    {
+      "step": 5,
+      "title": "Create Example Integration",
+      "description": "Example showing SST resource provisioning and dock sync",
+      "files": [
+        "docs/infrastructure/SST_EXAMPLE.md"
+      ],
+      "tasks": [
+        "Example: Provision AWS S3 bucket via SST",
+        "Example: Discover and sync S3 bucket via SST dock adapter",
+        "Show resource flow: SST config → SST deploy → Dock sync → Universal table"
+      ],
+      "output": "Example integration documented"
+    },
+    {
+      "step": 6,
+      "title": "Update Package Dependencies",
+      "description": "Add SST dependencies to package.json",
+      "files": [
+        "package.json (root)",
+        ".gitignore (add .sst/)"
+      ],
+      "tasks": [
+        "Add sst to devDependencies",
+        "Add aws provider (preloaded with SST)",
+        "Update .gitignore for SST build artifacts"
+      ],
+      "output": "Dependencies configured"
+    }
+  ],
+  "successCriteria": {
+    "mustHave": [
+      "sst.config.ts exists and configured for TanStack Start",
+      "SST dock adapter created (convex/docks/adapters/sst/)",
+      "SST adapter registered in dock registry",
+      "Documentation: SST integration guide and provider strategy",
+      "Example: AWS resource provisioned via SST and synced via dock",
+      "Existing dock pattern unchanged (GridPane adapter still works)"
+    ],
+    "niceToHave": [
+      "Multiple SST provider examples",
+      "SST resource discovery automated",
+      "Comprehensive provider matrix"
+    ]
+  },
+  "filesToCreate": [
+    "sst.config.ts",
+    "convex/docks/adapters/sst/adapter.ts",
+    "convex/docks/adapters/sst/api.ts",
+    "convex/docks/adapters/sst/types.ts",
+    "docs/infrastructure/SST_INTEGRATION.md",
+    "docs/infrastructure/SST_EXAMPLE.md"
+  ],
+  "filesToModify": [
+    "convex/docks/registry.ts",
+    "packages/docks/registry.json",
+    "package.json",
+    ".gitignore"
+  ],
+  "providerStrategy": {
+    "useSST": [
+      "AWS EC2 (aws.ec2.Instance)",
+      "AWS S3 (Bucket)",
+      "AWS RDS (Postgres/Aurora)",
+      "Cloudflare (Worker)",
+      "Vercel (@pulumiverse/vercel)",
+      "Any of 150+ SST providers"
+    ],
+    "useDockAdapter": [
+      "GridPane (no SST provider)",
+      "Custom APIs",
+      "Providers without SST support"
+    ],
+    "matrix": [
+      {
+        "provider": "AWS EC2",
+        "provisioning": "SST (aws.ec2.Instance)",
+        "sync": "SST dock adapter"
+      },
+      {
+        "provider": "AWS S3",
+        "provisioning": "SST (Bucket)",
+        "sync": "SST dock adapter"
+      },
+      {
+        "provider": "AWS RDS",
+        "provisioning": "SST (Postgres/Aurora)",
+        "sync": "SST dock adapter"
+      },
+      {
+        "provider": "Cloudflare",
+        "provisioning": "SST (Worker)",
+        "sync": "SST dock adapter"
+      },
+      {
+        "provider": "Vercel",
+        "provisioning": "SST (@pulumiverse/vercel)",
+        "sync": "SST dock adapter"
+      },
+      {
+        "provider": "GridPane",
+        "provisioning": "N/A (no SST provider)",
+        "sync": "GridPane dock adapter"
+      },
+      {
+        "provider": "Custom API",
+        "provisioning": "N/A",
+        "sync": "Custom dock adapter"
+      }
+    ]
+  },
+  "risks": [
+    {
+      "id": "risk-1",
+      "description": "SST construct naming conflicts with TanStack Start",
+      "mitigation": "Check SST docs for TanStack Start construct compatibility",
+      "verification": "Verify sst.config.ts validates without errors"
+    },
+    {
+      "id": "risk-2",
+      "description": "Breaking existing dock pattern",
+      "mitigation": "Keep SST adapter separate, don't modify existing adapters",
+      "verification": "GridPane adapter still works after SST integration"
+    },
+    {
+      "id": "risk-3",
+      "description": "SST resource discovery complexity",
+      "mitigation": "Start with simple AWS resources, expand gradually",
+      "verification": "Example SST resource syncs successfully"
+    }
+  ],
+  "questionsToResolve": [
+    {
+      "id": "q1",
+      "question": "Does SST have TanStack Start construct or use NextjsSite?",
+      "options": [
+        "TanStack Start construct exists",
+        "Use NextjsSite with path override",
+        "Custom configuration needed"
+      ],
+      "recommendation": "Check SST docs for TanStack Start support"
+    },
+    {
+      "id": "q2",
+      "question": "How to discover SST-provisioned resources?",
+      "options": [
+        "Read SST outputs from environment",
+        "Query AWS API directly with credentials",
+        "Store SST outputs in Convex config"
+      ],
+      "recommendation": "Query AWS API directly (most reliable)"
+    },
+    {
+      "id": "q3",
+      "question": "Should SST dock adapter require AWS credentials?",
+      "options": [
+        "Yes - dock adapter needs AWS credentials to query resources",
+        "No - use SST outputs only",
+        "Hybrid - try SST outputs first, fallback to AWS API"
+      ],
+      "recommendation": "Hybrid approach for reliability"
+    }
+  ],
+  "relatedFiles": [
+    "sst.config.ts",
+    "convex/docks/adapters/sst/",
+    "convex/docks/registry.ts",
+    "packages/docks/registry.json",
+    "docs/infrastructure/SST_INTEGRATION.md",
+    "docs/infrastructure/SST_EXAMPLE.md",
+    "package.json",
+    ".gitignore"
+  ],
+  "agentInstructions": {
+    "backend-sst": {
+      "role": "Primary implementer",
+      "tasks": [
+        "Initialize SST configuration (sst.config.ts)",
+        "Create SST dock adapter pattern",
+        "Integrate SST adapter with dock registry",
+        "Document SST integration and provider strategy",
+        "Create example integration"
+      ],
+      "output": "SST configuration and dock adapter ready"
+    },
+    "captain": {
+      "role": "Decision maker",
+      "tasks": [
+        "Review SST integration approach",
+        "Approve provider strategy",
+        "Verify existing dock pattern unchanged",
+        "Final approval"
+      ],
+      "output": "Mission 2.5 approved as complete"
+    },
+    "ai-assistant": {
+      "role": "Coordinator and documenter",
+      "tasks": [
+        "Update documentation files",
+        "Create completion log",
+        "Update system state",
+        "Coordinate between agents"
+      ],
+      "output": "Documentation updated and state synced"
+    }
+  },
+  "notes": "SST is PRIMARY for infrastructure provisioning. Docks remain the unifying sync layer. Least intrusive approach: existing dock pattern unchanged, SST added as provisioning layer.",
+  "context": {
+    "missionOrder": [
+      "mission-1",
+      "mission-1.5",
+      "mission-2",
+      "mission-2.5",
+      "mission-3"
+    ],
+    "completedMissions": [
+      "mission-1",
+      "mission-1.5"
+    ],
+    "currentMission": "mission-2.5",
+    "previousMission": "mission-2",
+    "nextMission": "mission-3"
+  },
+  "references": {
+    "sstProviders": "https://sst.dev/docs/all-providers#directory",
+    "sstDocs": "https://sst.dev/docs",
+    "awsSDK": "Use @aws-sdk/client-ec2, @aws-sdk/client-s3, etc."
+  }
+}
