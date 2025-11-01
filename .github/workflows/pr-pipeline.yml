@@ -1,0 +1,49 @@
+name: PR Pipeline
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  test:
+    name: Run All Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run Lint & Type Check
+        run: npm run pipeline:lint
+      
+      - name: Run Unit Tests
+        run: npm run pipeline:test
+      
+      - name: Run E2E Tests
+        run: npm run pipeline:e2e
+      
+      - name: Security Scan
+        run: npm run pipeline:security
+      
+      - name: Build Verification
+        run: npm run pipeline:build
+      
+      - name: Check Stand-Downs
+        run: |
+          echo "Stand-downs file: ${{ github.workspace }}/stand-downs/agent-sessions.json"
+          if [ -f "stand-downs/agent-sessions.json" ]; then
+            echo "Stand-downs file exists"
+            cat stand-downs/agent-sessions.json
+          else
+            echo "No stand-downs file found (this is OK for new PRs)"
+          fi

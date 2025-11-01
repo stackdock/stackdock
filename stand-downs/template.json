@@ -1,0 +1,37 @@
+{
+  "agentId": "agent-id-here",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "prNumber": "123",
+  "branch": "feature/branch-name",
+  "status": "reviewing",
+  "findings": [
+    {
+      "type": "violation",
+      "severity": "error",
+      "file": "{REPO_ROOT}/path/to/file.ts",
+      "line": 45,
+      "issue": "Description of the issue",
+      "recommendation": "How to fix it",
+      "fixed": false
+    },
+    {
+      "type": "suggestion",
+      "severity": "info",
+      "file": "{REPO_ROOT}/path/to/file.ts",
+      "line": 50,
+      "issue": "Optional improvement",
+      "recommendation": "Suggested change",
+      "fixed": false
+    },
+    {
+      "type": "approval",
+      "severity": "info",
+      "file": "{REPO_ROOT}/path/to/file.ts",
+      "issue": "Code follows patterns correctly",
+      "fixed": true
+    }
+  ],
+  "approval": "pending",
+  "blockers": [],
+  "recommendations": []
+}

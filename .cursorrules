@@ -302,16 +302,78 @@ After ANY action that changes system state:
 
 **This is generational. Don't fuck it up.**
 
+## 🤖 Principle Engineer Agent System
+
+StackDock uses a principle engineer agent system for code review. All agents must follow their SOPs and report via stand-downs.
+
+### Agent System Documentation
+
+**Location**: `docs/workflows/AGENT_SYSTEM.md`  
+**Absolute Path**: `{REPO_ROOT}/docs/workflows/AGENT_SYSTEM.md`
+
+### Principle Engineer SOPs
+
+**Location**: `docs/workflows/principle-engineers/`  
+**Absolute Path**: `{REPO_ROOT}/docs/workflows/principle-engineers/`
+
+Each agent has a detailed SOP:
+- `frontend-shadcn.md` - shadcn/ui patterns
+- `frontend-tailwind-v4.md` - Tailwind CSS 4 standards
+- `frontend-tanstack.md` - TanStack Start/Router patterns
+- `frontend-xstate.md` - XState state machines
+- `backend-convex.md` - Convex database patterns
+- `backend-sst.md` - SST.dev infrastructure
+- `devops.md` - CI/CD and deployment
+- `security.md` - Security and encryption
+
+### Stand-Downs System
+
+**File**: `stand-downs/agent-sessions.json`  
+**Absolute Path**: `{REPO_ROOT}/stand-downs/agent-sessions.json`
+
+All agents report findings here. See `docs/workflows/STAND_DOWNS.md` for format.
+
+### Testing Pipeline
+
+**Main Script**: `scripts/pipeline/run-all-checks.sh`  
+**Absolute Path**: `{REPO_ROOT}/scripts/pipeline/run-all-checks.sh`
+
+Before committing code:
+1. Run `npm run pipeline` from repo root
+2. All checks must pass
+3. Update stand-downs if reviewing code
+4. All agents must approve before merge
+
+See `docs/workflows/PIPELINE.md` for details.
+
+### Internal Statement
+
+**File**: `docs/internal/STATEMENT.md`  
+**Absolute Path**: `{REPO_ROOT}/docs/internal/STATEMENT.md`
+
+Read this to understand StackDock's philosophy and standards.
+
+### Agent Rules
+
+1. **ALWAYS print explicit paths** - Current directory, repo root, file paths
+2. **ALWAYS check stand-downs** before major changes
+3. **ALWAYS run pipeline** before committing
+4. **ALWAYS reference SOPs** when reviewing code
+5. **ALWAYS know where you are** - Use `pwd`, print paths
+
 ## 📞 When In Doubt
 
 1. Read `.stackdock-state.json` first
 2. Check existing patterns in the codebase
 3. Read the architecture docs
-4. Ask the user (don't assume)
-5. Preserve > Delete
-6. Document > Assume
-7. Verify > Trust
+4. Read principle engineer SOPs (`docs/workflows/principle-engineers/`)
+5. Check stand-downs (`stand-downs/agent-sessions.json`)
+6. Run pipeline (`npm run pipeline`)
+7. Ask the user (don't assume)
+8. Preserve > Delete
+9. Document > Assume
+10. Verify > Trust
 
 ---
 
-**Remember: The user has $4k invested and a CEO meeting Wednesday. Every decision matters.**
+**Remember: The user has $4k invested and a CEO meeting Wednesday. Every decision matters. Standards will be followed. No exception.**
