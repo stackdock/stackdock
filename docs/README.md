@@ -104,7 +104,7 @@ System references and state tracking:
   - State file format
   - Context persistence
 
-- **[AI-HALL-OF-SHAME.md](./reference/AI-HALL-OF-SHAME.md)** - Lessons learned
+- **[AI-HALL-OF-SHAME.md](../AI-HALL-OF-SHAME.md)** - Lessons learned (located in root - never move)
   - Retrospective of development mistakes
   - What went wrong and why
   - Prevention strategies

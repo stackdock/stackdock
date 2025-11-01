@@ -2,6 +2,9 @@
 
 > An honest retrospective of every mistake made during this session, where I went wrong, and how to prevent it.
 
+**🚨 CRITICAL RULE: THIS FILE MUST ALWAYS STAY IN ROOT DIRECTORY 🚨**  
+**DO NOT MOVE THIS FILE TO docs/ OR ANY SUBDIRECTORY. IT BELONGS IN THE ROOT.**
+
 **Session Duration**: ~12 hours  
 **Cost to User**: $120 in credits  
 **Outcome**: Working foundation, but took 10x longer than needed  

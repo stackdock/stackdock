@@ -187,7 +187,7 @@ All documentation is organized in `docs/`:
 ### Reference
 - **[docs/README.md](./docs/README.md)** - Documentation index
 - **[.cursorrules](./.cursorrules)** - AI assistant rules
-- **[AI-HALL-OF-SHAME.md](./docs/reference/AI-HALL-OF-SHAME.md)** - Lessons learned
+- **[AI-HALL-OF-SHAME.md](./AI-HALL-OF-SHAME.md)** - Lessons learned (ALWAYS stays in root)
 
 ---
 
