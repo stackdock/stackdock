@@ -104,5 +104,5 @@ const branch = webService.fullApiData?.branch || "N/A"
 
 ## References
 - [ARCHITECTURE.md](../../ARCHITECTURE.md) - Universal Table Architecture section
-- [DOCK_ADAPTER_GUIDE.md](../../DOCK_ADAPTER_GUIDE.md) - How to build adapters
+- [DOCK_ADAPTER_GUIDE.md](../guides/DOCK_ADAPTER_GUIDE.md) - How to build adapters
 - [convex/schema.ts](../../convex/schema.ts) - Current schema implementation
