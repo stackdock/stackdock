@@ -94,6 +94,7 @@ export function WebServiceCard({ service }: { service: Doc<"webServices"> }) {
 #### Step 1: Create Component Directory
 
 ```bash
+# Registry location (source code)
 packages/ui/components/server-health-widget/
 ├── server-health-widget.tsx
 ├── README.md
@@ -102,13 +103,15 @@ packages/ui/components/server-health-widget/
     └── server-health-widget.test.tsx
 ```
 
+**Note**: Components are copied to `apps/web/src/components/` when installed via CLI: `npx stackdock add server-health-widget`
+
 #### Step 2: Implement Component
 
 ```typescript
 // packages/ui/components/server-health-widget/server-health-widget.tsx
-import { Card, CardHeader, CardTitle, CardContent } from "../ui/card"
-import { Badge } from "../ui/badge"
-import { Doc } from "../../../convex/_generated/dataModel"
+import { Card, CardHeader, CardTitle, CardContent } from "@stackdock/ui/card"
+import { Badge } from "@stackdock/ui/badge"
+import { Doc } from "convex/_generated/dataModel"
 
 interface ServerHealthWidgetProps {
   server: Doc<"servers">
@@ -209,8 +212,16 @@ A card component that displays server status and metrics.
 ## Installation
 
 ```bash
+# Install a component (when CLI is ready)
 npx stackdock add server-health-widget
+
+# Component is copied to apps/web/src/components/server-health-widget/
+# You own it, modify it, customize it
 ```
+
+**Registry Location**: `packages/ui/components/`  
+**Installation Location**: `apps/web/src/components/`  
+**Registry Documentation**: [packages/ui/README.md](../../packages/ui/README.md)
 
 ## Usage
 
@@ -322,6 +333,9 @@ describe('ServerHealthWidget', () => {
 }
 ```
 
+**Registry Location**: `packages/ui/registry.json`  
+**Absolute Path**: `{REPO_ROOT}/packages/ui/registry.json`
+
 ### Step 2: Submit PR
 
 ```bash
@@ -332,7 +346,7 @@ cd stackdock
 # Create branch
 git checkout -b add-server-health-widget
 
-# Add your component
+# Add your component to registry
 cp -r server-health-widget packages/ui/components/
 
 # Update registry.json
@@ -345,6 +359,8 @@ git push origin add-server-health-widget
 
 # Open PR on GitHub
 ```
+
+**Note**: After PR is merged, components can be installed via CLI: `npx stackdock add server-health-widget` (copies from `packages/ui/components/server-health-widget/` to `apps/web/src/components/server-health-widget/`).
 
 ---
 

@@ -74,18 +74,28 @@ export interface DockAdapter {
 #### Step 1: Create Adapter File
 
 ```bash
+# Registry location (source code)
 packages/docks/vercel/
 ├── adapter.ts        # Main adapter logic
 ├── api.ts            # API client
 ├── types.ts          # TypeScript types
 ├── README.md         # Documentation
 └── package.json
+
+# Runtime location (execution - copied from registry)
+convex/docks/adapters/vercel/
+├── adapter.ts        # Same as registry (copied)
+├── api.ts            # Same as registry (copied)
+├── types.ts          # Same as registry (copied)
+└── index.ts          # Export adapter
 ```
+
+**Note**: Registry (`packages/docks/`) is the source. Runtime (`convex/docks/adapters/`) is where adapters are executed. CLI copies from registry to runtime.
 
 #### Step 2: Build API Client
 
 ```typescript
-// packages/docks/vercel/api.ts
+// packages/docks/vercel/api.ts (or convex/docks/adapters/vercel/api.ts)
 export class VercelAPI {
   constructor(private apiKey: string) {}
   
@@ -211,54 +221,32 @@ export const vercelAdapter: DockAdapter = {
 
 #### Step 4: Register Adapter
 
+**Important**: There are two locations for adapters:
+
+1. **Registry** (`packages/docks/{provider}/`) - Source code, copy/paste/own model
+2. **Runtime** (`convex/docks/adapters/{provider}/`) - Imported and executed by Convex
+
+**Runtime adapters** are copies from the registry. When you run `npx stackdock add gridpane`, the CLI copies from `packages/docks/gridpane/` to `convex/docks/adapters/gridpane/`.
+
+**For development** (when building adapters directly in this repo):
+
 ```typescript
-// convex/docks/sync.ts
-import { vercelAdapter } from "../../packages/docks/vercel/adapter"
-import { gridpaneAdapter } from "../../packages/docks/gridpane/adapter"
+// convex/docks/registry.ts
+import { gridpaneAdapter } from "./adapters/gridpane/adapter"
+import { vercelAdapter } from "./adapters/vercel/adapter"
 
 const ADAPTERS: Record<string, DockAdapter> = {
-  vercel: vercelAdapter,
   gridpane: gridpaneAdapter,
+  vercel: vercelAdapter,
   // ... more adapters
 }
 
-export const syncDock = internalMutation({
-  args: { dockId: v.id("docks") },
-  handler: async (ctx, args) => {
-    const dock = await ctx.db.get(args.dockId)
-    if (!dock) throw new Error("Dock not found")
-    
-    const adapter = ADAPTERS[dock.provider]
-    if (!adapter) throw new Error(`Unknown provider: ${dock.provider}`)
-    
-    try {
-      await ctx.db.patch(dock._id, { lastSyncStatus: "syncing" })
-      
-      // Call adapter's sync functions
-      if (adapter.syncWebServices) {
-        await adapter.syncWebServices(ctx, dock)
-      }
-      if (adapter.syncServers) {
-        await adapter.syncServers(ctx, dock)
-      }
-      if (adapter.syncDomains) {
-        await adapter.syncDomains(ctx, dock)
-      }
-      
-      await ctx.db.patch(dock._id, {
-        lastSyncStatus: "success",
-        lastSyncAt: Date.now(),
-      })
-    } catch (error) {
-      await ctx.db.patch(dock._id, {
-        lastSyncStatus: "error",
-        lastSyncAt: Date.now(),
-      })
-      throw error
-    }
-  },
-})
+export function getAdapter(provider: string): DockAdapter | undefined {
+  return ADAPTERS[provider]
+}
 ```
+
+**Note**: Runtime adapters in `convex/docks/adapters/` should eventually be copied from `packages/docks/` via CLI. For now, they can be developed directly in `convex/docks/adapters/` but should match the registry structure.
 
 ---
 
@@ -622,14 +610,14 @@ npx stackdock add vercel
 ### 3. Submit PR
 
 ```bash
-# Fork https://github.com/stackdock/docks
-git clone https://github.com/YOUR_USERNAME/docks
-cd docks
+# Fork https://github.com/stackdock/stackdock
+git clone https://github.com/YOUR_USERNAME/stackdock
+cd stackdock
 
 # Create branch
 git checkout -b add-vercel-adapter
 
-# Add your adapter
+# Add your adapter to registry
 cp -r vercel packages/docks/
 
 # Update registry.json
@@ -643,11 +631,15 @@ git push origin add-vercel-adapter
 # Open PR on GitHub
 ```
 
+**Note**: After PR is merged, adapters can be installed via CLI: `npx stackdock add vercel` (copies from `packages/docks/vercel/` to `convex/docks/adapters/vercel/`).
+
 ---
 
 ## Next Steps
 
-- **See adapter examples**: `packages/docks/`
+- **See adapter examples**: `packages/docks/` (registry) and `convex/docks/adapters/` (runtime)
+- **Read registry documentation**: [packages/docks/README.md](../../packages/docks/README.md)
+- **Understand registry vs runtime**: Registry (`packages/docks/`) is source code, Runtime (`convex/docks/adapters/`) is execution
 - **Read provider API docs**: Understand their data model
 - **Test thoroughly**: Unit + integration tests
 - **Document rate limits**: Help others avoid issues

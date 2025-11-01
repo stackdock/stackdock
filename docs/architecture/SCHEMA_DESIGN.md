@@ -192,6 +192,9 @@ if (existing) {
 - **Schema**: `v.any()` (intentional flexibility)
 - **Validation**: Happens in adapter layer, not schema
 - **Documentation**: Each adapter documents expected shape in `packages/docks/{provider}/README.md`
+- **Registry Location**: `packages/docks/` (source code, copy/paste/own)
+- **Runtime Location**: `convex/docks/adapters/` (execution, copied from registry)
+- **Registry Documentation**: [packages/docks/README.md](../../packages/docks/README.md)
 - **Rationale**: Providers have vastly different APIs, strict validation would break extensibility
 
 ---
@@ -201,9 +204,10 @@ if (existing) {
 ### **Adding New Provider Types**
 
 1. **No schema changes needed** - Universal tables accept any provider
-2. **Create adapter** - `convex/docks/adapters/{provider}.ts`
-3. **Register adapter** - Add to `convex/docks/registry.ts`
+2. **Create adapter** - Registry: `packages/docks/{provider}/`, Runtime: `convex/docks/adapters/{provider}/`
+3. **Register adapter** - Add to `convex/docks/registry.ts` (runtime) and `packages/docks/registry.json` (registry)
 4. **Test sync** - Verify resources map correctly
+5. **See**: [packages/docks/README.md](../../packages/docks/README.md) for registry details
 
 ### **Adding New Resource Types**
 
@@ -246,6 +250,7 @@ if (existing) {
 
 - **Current Schema**: `convex/schema.ts`
 - **Adapter Guide**: `docs/guides/DOCK_ADAPTER_GUIDE.md`
+- **Registry Documentation**: [packages/docks/README.md](../../packages/docks/README.md)
 - **Architecture**: `docs/architecture/ARCHITECTURE.md`
 - **Security**: `docs/architecture/SECURITY.md`
 - **RBAC**: `convex/lib/rbac.ts`

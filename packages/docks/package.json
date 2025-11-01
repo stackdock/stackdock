@@ -1,0 +1,30 @@
+{
+  "name": "@stackdock/docks",
+  "version": "0.1.0",
+  "private": true,
+  "description": "StackDock dock adapter registry (copy/paste/own infrastructure adapters)",
+  "type": "module",
+  "main": "./registry.json",
+  "files": [
+    "*",
+    "!**/node_modules",
+    "!**/*.test.ts"
+  ],
+  "scripts": {
+    "validate": "node scripts/validate-registry.js"
+  },
+  "keywords": [
+    "stackdock",
+    "docks",
+    "adapters",
+    "registry",
+    "infrastructure"
+  ],
+  "author": "StackDock Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stackdock/stackdock.git",
+    "directory": "packages/docks"
+  }
+}

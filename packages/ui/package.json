@@ -1,0 +1,30 @@
+{
+  "name": "@stackdock/ui",
+  "version": "0.1.0",
+  "private": true,
+  "description": "StackDock UI component registry (shadcn/ui model for infrastructure)",
+  "type": "module",
+  "main": "./registry.json",
+  "files": [
+    "components",
+    "registry.json",
+    "README.md"
+  ],
+  "scripts": {
+    "validate": "node scripts/validate-registry.js"
+  },
+  "keywords": [
+    "stackdock",
+    "ui",
+    "components",
+    "registry",
+    "infrastructure"
+  ],
+  "author": "StackDock Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stackdock/stackdock.git",
+    "directory": "packages/ui"
+  }
+}

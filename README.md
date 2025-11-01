@@ -77,21 +77,26 @@ Star the repo to watch the build! ⭐
 ### The Three Registries
 
 1. **Docks Registry**: Infrastructure adapters (copy/paste/own)
+   - Location: `packages/docks/`
    - GridPane, Vercel, AWS, DigitalOcean, Cloudflare, etc.
    - Community-built and official adapters
    - Translates provider APIs to universal schema
+   - See: [packages/docks/README.md](./packages/docks/README.md)
 
 2. **UI Registry**: Dashboard components (shadcn/ui model)
+   - Location: `packages/ui/`
    - Server health widgets, deployment timelines, etc.
    - Works with ANY provider (provider-agnostic)
    - Copy, customize, own
+   - See: [packages/ui/README.md](./packages/ui/README.md)
 
 3. **The Platform**: Orchestration layer
-   - Universal data model (schema.ts)
+   - Universal data model (`convex/schema.ts`)
    - RBAC enforcement (unlimited users)
    - Encryption & security (AES-256-GCM)
    - Audit logging
    - Real-time sync
+   - CLI tool (`packages/cli/`) for registry management
 
 ### Core Architecture
 
@@ -104,6 +109,8 @@ Star the repo to watch the build! ⭐
 - GridPane API → Universal `webServices` table
 - Vercel API → Universal `webServices` table
 - Provider-specific data in `fullApiData` field
+- Runtime adapters: `convex/docks/adapters/` (execution)
+- Registry adapters: `packages/docks/` (copy/paste/own)
 
 **See [ARCHITECTURE.md](./docs/architecture/ARCHITECTURE.md) for complete details.**
 
@@ -179,10 +186,17 @@ All documentation is organized in `docs/`:
 - **[CLERK_SETUP.md](./docs/guides/CLERK_SETUP.md)** - Clerk authentication setup ⭐
 - **[DOCK_ADAPTER_GUIDE.md](./docs/guides/DOCK_ADAPTER_GUIDE.md)** - Build adapters
 - **[REGISTRY_GUIDE.md](./docs/guides/REGISTRY_GUIDE.md)** - Build UI components
+- **[SETUP.md](./docs/guides/SETUP.md)** - Complete setup instructions
+- **[QUICKSTART.md](./docs/guides/QUICKSTART.md)** - Quick start guide
+- **[START.md](./docs/guides/START.md)** - Start StackDock
+
+### Registries
+- **[packages/ui/README.md](./packages/ui/README.md)** - UI component registry (shadcn model)
+- **[packages/docks/README.md](./packages/docks/README.md)** - Dock adapter registry
+- **[packages/cli/README.md](./packages/cli/README.md)** - CLI tool documentation
 
 ### Troubleshooting
 - **[TROUBLESHOOTING.md](./docs/troubleshooting/TROUBLESHOOTING.md)** - Common issues
-- **[CURRENT_ISSUE.md](./docs/troubleshooting/CURRENT_ISSUE.md)** - Active issues
 
 ### Reference
 - **[docs/README.md](./docs/README.md)** - Documentation index

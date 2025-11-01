@@ -81,6 +81,25 @@ Step-by-step guides for contributors:
 - **[CONVEX_SETUP.md](./guides/CONVEX_SETUP.md)** - Convex integration guide
 - **[CLERK_SETUP.md](./guides/CLERK_SETUP.md)** - Clerk authentication setup
 
+### Registries (`packages/`)
+
+Registry documentation and guides:
+
+- **[packages/ui/README.md](../packages/ui/README.md)** - UI component registry
+  - shadcn/ui model for infrastructure components
+  - Copy/paste/own components
+  - Registry manifest format
+
+- **[packages/docks/README.md](../packages/docks/README.md)** - Dock adapter registry
+  - Infrastructure adapter registry
+  - Registry vs runtime distinction
+  - How to add adapters
+
+- **[packages/cli/README.md](../packages/cli/README.md)** - CLI tool
+  - Command-line interface for registry management
+  - Installing components and adapters
+  - CLI commands and usage
+
 ---
 
 ### Troubleshooting (`docs/troubleshooting/`)

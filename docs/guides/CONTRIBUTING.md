@@ -188,6 +188,7 @@ convex/
 ### Dock Adapter Structure
 
 ```
+# Registry (source code)
 packages/docks/gridpane/
 ├── adapter.ts           # Main adapter implementation
 ├── api.ts               # API client
@@ -196,7 +197,16 @@ packages/docks/gridpane/
 ├── package.json
 └── tests/
     └── adapter.test.ts
+
+# Runtime (execution - copied from registry)
+convex/docks/adapters/gridpane/
+├── adapter.ts           # Same as registry (copied)
+├── api.ts               # Same as registry (copied)
+├── types.ts             # Same as registry (copied)
+└── index.ts             # Export adapter
 ```
+
+**Note**: Registry (`packages/docks/`) is source code for copy/paste/own model. Runtime (`convex/docks/adapters/`) is where adapters execute. CLI copies from registry to runtime.
 
 ---
 

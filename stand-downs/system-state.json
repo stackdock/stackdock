@@ -1,0 +1,62 @@
+{
+  "lastUpdated": "2025-01-11T23:45:00Z",
+  "currentSession": {
+    "id": "session-2025-01-11",
+    "date": "2025-01-11",
+    "time": "2:00 PM EST",
+    "status": "active"
+  },
+  "activeMissions": [
+    {
+      "id": "mission-2",
+      "title": "Repo Lockdown",
+      "status": "pending",
+      "priority": "critical"
+    },
+    {
+      "id": "mission-3",
+      "title": "Fix GridPane Auth",
+      "status": "pending",
+      "priority": "high"
+    }
+  ],
+  "missionOrder": [
+    "mission-1",
+    "mission-1.5",
+    "mission-2",
+    "mission-3"
+  ],
+  "completedMissions": [
+    {
+      "id": "mission-1",
+      "title": "Monorepo & Docs Setup",
+      "completedAt": "2025-01-11T23:00:00Z",
+      "packages": {
+        "ui": {
+          "status": "complete",
+          "location": "packages/ui",
+          "verifiedBy": "frontend-agents"
+        },
+        "docks": {
+          "status": "complete",
+          "location": "packages/docks",
+          "verifiedBy": "backend-convex"
+        },
+        "cli": {
+          "status": "complete",
+          "location": "packages/cli",
+          "verifiedBy": "devops"
+        }
+      },
+      "completionLog": "stand-downs/mission-1-completion-log.json"
+    },
+    {
+      "id": "mission-1.5",
+      "title": "Repo-Wide Documentation Update",
+      "completedAt": "2025-01-11T23:30:00Z",
+      "summary": "Updated all documentation links, references, and paths to reflect new monorepo structure (packages/ui, packages/docks, packages/cli)"
+    }
+  ],
+  "blockers": [],
+  "notes": "Captain and AI Assistant are the brains. Captain controls agents. Main branch is sacred - owner holds the only key."
+}

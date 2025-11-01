@@ -720,22 +720,32 @@ stackdock/
 │       └── package.json
 │
 ├── packages/
-│   ├── docks/                    # Dock adapter registry
+│   ├── docks/                    # Dock adapter registry (source code)
 │   │   ├── gridpane/
 │   │   │   ├── adapter.ts
 │   │   │   ├── api.ts
+│   │   │   ├── types.ts
 │   │   │   ├── README.md
 │   │   │   └── package.json
 │   │   ├── vercel/
 │   │   ├── digitalocean/
-│   │   └── registry.json         # Registry manifest
+│   │   ├── registry.json         # Registry manifest
+│   │   └── README.md             # Registry documentation
 │   │
-│   ├── ui/                       # UI component registry
+│   ├── ui/                       # UI component registry (shadcn model)
 │   │   ├── components/
 │   │   │   ├── server-health-widget/
 │   │   │   ├── deployment-timeline/
 │   │   │   └── domain-status-card/
-│   │   └── registry.json
+│   │   ├── registry.json         # Component manifest
+│   │   └── README.md             # Registry documentation
+│   │
+│   ├── cli/                      # CLI tool for registry management
+│   │   ├── src/
+│   │   │   └── index.ts          # CLI entry point
+│   │   ├── bin/                  # Executable
+│   │   ├── package.json
+│   │   └── README.md            # CLI documentation
 │   │
 │   └── shared/                   # Shared utilities
 │       ├── types/                # Shared TypeScript types
@@ -754,8 +764,13 @@ stackdock/
 │   ├── docks/
 │   │   ├── mutations.ts
 │   │   ├── queries.ts
-│   │   ├── sync.ts               # Sync orchestration
-│   │   └── adapters/             # Import from packages/docks
+│   │   ├── actions.ts
+│   │   └── adapters/             # Runtime adapters (copied from packages/docks/)
+│   │       ├── gridpane/
+│   │       │   ├── adapter.ts
+│   │       │   ├── api.ts
+│   │       │   └── index.ts
+│   │       └── vercel/
 │   ├── resources/
 │   │   ├── servers.ts
 │   │   ├── webServices.ts
