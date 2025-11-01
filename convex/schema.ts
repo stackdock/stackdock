@@ -102,7 +102,9 @@ export default defineSchema({
     clientId: v.id("clients"),
     name: v.string(), // "Client A Website"
     linearId: v.optional(v.string()),
-    githubRepo: v.optional(v.string()),
+    githubRepo: v.optional(v.string()), // Repository URL only, not branch
+    // Note: Branch information is not stored here as it's deployment-specific
+    // and should be tracked in the linked webServices resources
   })
     .index("by_orgId", ["orgId"])
     .index("by_teamId", ["teamId"])
@@ -124,6 +126,8 @@ export default defineSchema({
 
   // *** NEW TABLE ***
   // Master Fleet List: Web Services (PaaS)
+  // Note: Git branch info is provider-specific and should be stored in fullApiData,
+  // not as a universal field. Different providers handle branches differently.
   webServices: defineTable({
     orgId: v.id("organizations"),
     dockId: v.id("docks"),
@@ -131,9 +135,9 @@ export default defineSchema({
     providerResourceId: v.string(),
     name: v.string(),
     productionUrl: v.string(),
-    gitRepo: v.optional(v.string()),
+    gitRepo: v.optional(v.string()), // Repository URL only, not branch
     status: v.string(),
-    fullApiData: v.any(),
+    fullApiData: v.any(), // Provider-specific data (e.g., branch, environment, etc.)
   })
     .index("by_orgId", ["orgId"])
     .index("by_dockId", ["dockId"]),
