@@ -1,0 +1,362 @@
+{
+  "missionId": "mission-2",
+  "missionTitle": "Repo Lockdown for Best Development Workflow",
+  "status": "pending",
+  "priority": "critical",
+  "createdAt": "2025-01-11T23:50:00Z",
+  "lastUpdated": "2025-01-11T23:50:00Z",
+  "participants": [
+    "captain",
+    "ai-assistant",
+    "devops"
+  ],
+  "description": "Implement repository protection that protects main branch while allowing owner to work at rapid pace",
+  "corePrinciple": "Main branch is sacred - owner holds the only key",
+  "balance": "Protection + Owner productivity. Main is sacred but owner needs speed.",
+  "requirements": [
+    {
+      "id": "req-1",
+      "description": "Main branch is sacred - owner holds the only key",
+      "priority": "critical",
+      "category": "governance"
+    },
+    {
+      "id": "req-2",
+      "description": "Protect main from accidental pushes",
+      "priority": "high",
+      "category": "protection"
+    },
+    {
+      "id": "req-3",
+      "description": "Allow owner to work rapidly without friction",
+      "priority": "critical",
+      "category": "productivity"
+    },
+    {
+      "id": "req-4",
+      "description": "Easy workflow for owner",
+      "priority": "high",
+      "category": "productivity"
+    },
+    {
+      "id": "req-5",
+      "description": "Block others from pushing to main directly",
+      "priority": "high",
+      "category": "protection"
+    }
+  ],
+  "strategies": [
+    {
+      "id": "strat-1",
+      "name": "Branch protection rules on main",
+      "description": "Enable GitHub branch protection rules for main branch",
+      "location": "GitHub repository settings → Branches → Branch protection rules",
+      "category": "branch-protection"
+    },
+    {
+      "id": "strat-2",
+      "name": "Owner bypass permissions",
+      "description": "Configure owner to bypass branch protection rules",
+      "location": "GitHub branch protection settings → Include administrators",
+      "category": "bypass-configuration"
+    },
+    {
+      "id": "strat-3",
+      "name": "PR requirements for others",
+      "description": "Force non-owners to use pull requests",
+      "location": "Branch protection rules → Require pull request reviews",
+      "category": "pr-requirements"
+    },
+    {
+      "id": "strat-4",
+      "name": "Owner can push directly",
+      "description": "Owner bypasses protection (can push directly to main)",
+      "location": "Branch protection settings → Include administrators checkbox",
+      "category": "bypass-configuration"
+    },
+    {
+      "id": "strat-5",
+      "name": "Others must use PRs",
+      "description": "Non-owners cannot push directly to main",
+      "location": "Branch protection rules → Restrict pushes",
+      "category": "pr-requirements"
+    },
+    {
+      "id": "strat-6",
+      "name": "Automated checks on PRs",
+      "description": "Run pipeline checks on all pull requests",
+      "location": ".github/workflows/pr-pipeline.yml (already exists)",
+      "category": "automated-checks"
+    }
+  ],
+  "implementationCategories": [
+    {
+      "category": "github-branch-protection",
+      "title": "GitHub Branch Protection Rules",
+      "description": "Configure branch protection for main branch",
+      "location": "GitHub repository settings → Branches → Branch protection rules",
+      "configuration": {
+        "requirePullRequestReviews": true,
+        "requireStatusChecks": true,
+        "requireBranchesUpToDate": true,
+        "includeAdministrators": true,
+        "restrictPushes": true,
+        "doNotAllowBypass": false
+      },
+      "notes": "Include administrators = owner bypass. Do not allow bypass = false (allows owner bypass)"
+    },
+    {
+      "category": "owner-bypass",
+      "title": "Owner Bypass Configuration",
+      "description": "Allow owner to bypass protection rules",
+      "location": "GitHub branch protection settings",
+      "configuration": {
+        "includeAdministrators": true,
+        "ownerCanPushDirectly": true,
+        "ownerCanMergeWithoutPR": true,
+        "ownerCanBypassStatusChecks": true
+      },
+      "notes": "Owner bypass is critical for rapid development workflow"
+    },
+    {
+      "category": "pr-requirements",
+      "title": "PR Requirements for Others",
+      "description": "Force others to use pull requests",
+      "location": "Branch protection rules",
+      "configuration": {
+        "requirePullRequestReviews": true,
+        "requiredApprovals": 1,
+        "dismissStaleReviews": true,
+        "requireStatusChecks": true,
+        "requireBranchesUpToDate": true
+      },
+      "notes": "Others must use PRs. PRs require review/approval and passing checks"
+    },
+    {
+      "category": "automated-checks",
+      "title": "Automated Checks",
+      "description": "Run pipeline checks on PRs",
+      "location": ".github/workflows/pr-pipeline.yml",
+      "configuration": {
+        "requireStatusChecks": true,
+        "requiredChecks": [
+          "pipeline:lint",
+          "pipeline:test",
+          "pipeline:security",
+          "pipeline:build"
+        ]
+      },
+      "notes": "Pipeline checks already exist. Need to configure as required status checks"
+    },
+    {
+      "category": "documentation",
+      "title": "Documentation Updates",
+      "description": "Document the workflow for contributors",
+      "files": [
+        "docs/workflows/WORKFLOW.md",
+        "README.md",
+        ".cursorrules"
+      ],
+      "content": {
+        "ownerWorkflow": "Owner can push directly to main (bypass protection)",
+        "contributorWorkflow": "Contributors must use PRs (require review/approval)",
+        "bypassExplanation": "Owner bypass allows rapid development while maintaining protection",
+        "mainBranchSacred": "Main branch is sacred - owner holds the only key"
+      },
+      "notes": "Documentation must be clear for both owners and contributors"
+    }
+  ],
+  "implementationSteps": [
+    {
+      "step": 1,
+      "title": "Research GitHub Branch Protection Options",
+      "description": "Review GitHub documentation and understand options",
+      "tasks": [
+        "Review GitHub branch protection documentation",
+        "Understand owner bypass options",
+        "Understand PR requirement options",
+        "Document findings"
+      ],
+      "output": "Research findings documented"
+    },
+    {
+      "step": 2,
+      "title": "Configure Branch Protection",
+      "description": "Set up branch protection rules for main branch",
+      "tasks": [
+        "Navigate to GitHub repository settings",
+        "Go to Branches → Branch protection rules",
+        "Create/update rule for main branch",
+        "Enable: Require pull request reviews",
+        "Enable: Require status checks to pass",
+        "Enable: Require branches to be up to date",
+        "Enable: Include administrators (owner bypass)",
+        "Enable: Restrict pushes that create matching branches",
+        "Disable: Do not allow bypassing (allows owner bypass)"
+      ],
+      "output": "Branch protection configured"
+    },
+    {
+      "step": 3,
+      "title": "Configure PR Requirements",
+      "description": "Set PR review and approval requirements",
+      "tasks": [
+        "Set number of required approvals (default: 1)",
+        "Configure review dismissal rules",
+        "Set required status checks from pipeline"
+      ],
+      "output": "PR requirements configured"
+    },
+    {
+      "step": 4,
+      "title": "Verify Owner Bypass",
+      "description": "Test that owner bypass works correctly",
+      "tasks": [
+        "Test: Owner pushes directly to main (should work)",
+        "Test: Others try to push to main (should fail)",
+        "Test: Others create PR (should require review)"
+      ],
+      "output": "Owner bypass verified working"
+    },
+    {
+      "step": 5,
+      "title": "Document Workflow",
+      "description": "Update documentation with branch protection details",
+      "tasks": [
+        "Update docs/workflows/WORKFLOW.md with branch protection section",
+        "Add owner workflow explanation",
+        "Add contributor workflow explanation",
+        "Explain bypass mechanism",
+        "Update README.md if needed"
+      ],
+      "output": "Documentation updated"
+    }
+  ],
+  "successCriteria": {
+    "mustHave": [
+      "Main branch protected from direct pushes (except owner)",
+      "Owner can push directly to main (bypass works)",
+      "Others must use PRs to contribute",
+      "PRs require review/approval",
+      "Pipeline checks run on PRs"
+    ],
+    "niceToHave": [
+      "Documentation updated",
+      "Workflow documented",
+      "Process clear for contributors"
+    ]
+  },
+  "risks": [
+    {
+      "id": "risk-1",
+      "description": "Owner bypass not working",
+      "mitigation": "Test owner bypass before closing mission",
+      "verification": "Owner pushes directly, confirms it works"
+    },
+    {
+      "id": "risk-2",
+      "description": "Too restrictive",
+      "mitigation": "Owner can always bypass, so can adjust if needed",
+      "balance": "Protection for others, speed for owner"
+    },
+    {
+      "id": "risk-3",
+      "description": "Contributors confused",
+      "mitigation": "Document workflow clearly",
+      "solution": "Clear contributor guide in docs"
+    }
+  ],
+  "questionsToResolve": [
+    {
+      "id": "q1",
+      "question": "How many approvals required for PRs?",
+      "options": [
+        "Default: 1 approval",
+        "More for critical changes?"
+      ],
+      "recommendation": "Start with 1 approval, can increase if needed"
+    },
+    {
+      "id": "q2",
+      "question": "Which status checks are required?",
+      "options": [
+        "All pipeline checks",
+        "Only critical checks"
+      ],
+      "recommendation": "All pipeline checks: lint, test, security, build"
+    },
+    {
+      "id": "q3",
+      "question": "Stale review dismissal?",
+      "options": [
+        "Yes - dismiss stale reviews when new commits pushed",
+        "No - keep reviews until manually dismissed"
+      ],
+      "recommendation": "Yes - prevents stale approvals"
+    },
+    {
+      "id": "q4",
+      "question": "Documentation updates required?",
+      "options": [
+        "Yes - document workflow",
+        "No - self-explanatory"
+      ],
+      "recommendation": "Yes - update docs/workflows/WORKFLOW.md"
+    }
+  ],
+  "relatedFiles": [
+    ".github/workflows/pr-pipeline.yml",
+    "docs/workflows/WORKFLOW.md",
+    "README.md",
+    ".cursorrules",
+    "stand-downs/system-state.json"
+  ],
+  "agentInstructions": {
+    "devops": {
+      "role": "Primary implementer",
+      "tasks": [
+        "Research GitHub branch protection options",
+        "Configure branch protection rules",
+        "Test owner bypass functionality",
+        "Verify PR requirements work correctly",
+        "Document GitHub configuration"
+      ],
+      "output": "Branch protection configured and tested"
+    },
+    "captain": {
+      "role": "Decision maker",
+      "tasks": [
+        "Review configuration options",
+        "Approve implementation approach",
+        "Verify owner bypass works",
+        "Final approval"
+      ],
+      "output": "Mission 2 approved as complete"
+    },
+    "ai-assistant": {
+      "role": "Coordinator and documenter",
+      "tasks": [
+        "Update documentation files",
+        "Create completion log",
+        "Update system state",
+        "Coordinate between agents"
+      ],
+      "output": "Documentation updated and state synced"
+    }
+  },
+  "notes": "Mission 2 is critical for protecting main branch while maintaining owner productivity. Balance is key: protection for others, speed for owner.",
+  "context": {
+    "missionOrder": [
+      "mission-1",
+      "mission-1.5",
+      "mission-2",
+      "mission-3"
+    ],
+    "completedMissions": [
+      "mission-1",
+      "mission-1.5"
+    ],
+    "currentMission": "mission-2",
+    "nextMission": "mission-3"
+  }
+}
