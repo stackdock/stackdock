@@ -1,0 +1,37 @@
+{
+  "name": "@stackdock/core",
+  "version": "0.1.0",
+  "description": "StackDock core provisioning engine - Extracted and refactored from SST.dev",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aws-sdk/client-ec2": "^3.0.0",
+    "@aws-sdk/client-s3": "^3.0.0",
+    "@aws-sdk/client-rds": "^3.0.0",
+    "@pulumi/pulumi": "^3.0.0",
+    "@pulumi/aws": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.2.0",
+    "vitest": "^3.0.5",
+    "@vitest/ui": "^3.0.5"
+  },
+  "keywords": [
+    "infrastructure",
+    "provisioning",
+    "cloud",
+    "sst"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stackdock/stackdock.git",
+    "directory": "packages/core/provisioning"
+  }
+}

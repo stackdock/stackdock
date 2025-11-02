@@ -6,13 +6,14 @@
 
 1. [Threat Model](#threat-model)
 2. [Encryption](#encryption)
-3. [Authentication & Authorization](#authentication--authorization)
-4. [RBAC Enforcement](#rbac-enforcement)
-5. [Audit Logging](#audit-logging)
-6. [Network Security](#network-security)
-7. [Data Protection](#data-protection)
-8. [Security Best Practices](#security-best-practices)
-9. [Vulnerability Reporting](#vulnerability-reporting)
+3. [Provisioning Credential Security](#provisioning-credential-security)
+4. [Authentication & Authorization](#authentication--authorization)
+5. [RBAC Enforcement](#rbac-enforcement)
+6. [Audit Logging](#audit-logging)
+7. [Network Security](#network-security)
+8. [Data Protection](#data-protection)
+9. [Security Best Practices](#security-best-practices)
+10. [Vulnerability Reporting](#vulnerability-reporting)
 
 ---
 
@@ -190,6 +191,7 @@ ENCRYPTION_MASTER_KEY=<64-char-hex>
 | Data | Encrypted? | Storage |
 |------|------------|---------|
 | API keys (docks) | ✅ | Convex `docks.encryptedApiKey` |
+| Provisioning credentials | ✅ | Convex `docks.provisioningCredentials` |
 | User passwords | ✅ (Clerk) | Clerk (not in our DB) |
 | User emails | ❌ (searchable) | Convex `users.email` |
 | Resource metadata | ❌ (queryable) | Convex (servers, webServices, etc.) |
@@ -238,6 +240,330 @@ ENCRYPTION_MASTER_KEY=<64-char-hex>
    console.log('API key length:', apiKey.length)
    console.log('API key prefix:', apiKey.substring(0, 4) + '****')
    ```
+
+---
+
+## Provisioning Credential Security
+
+### Overview
+
+Provisioning credentials (AWS keys, Cloudflare tokens, etc.) are used to provision infrastructure resources via StackDock's provisioning engine. These credentials are **CROWN JEWELS** and require the same level of security as dock API keys.
+
+### Encryption Strategy
+
+**Reuse Existing Encryption**: Provisioning credentials use the same `encryptApiKey()` function as dock API keys.
+
+```typescript
+// convex/lib/encryption.ts
+import { encryptApiKey } from "../lib/encryption"
+
+// Encrypt provisioning credentials before storage
+const encryptedCredentials = await encryptApiKey(plaintextCredentials)
+await ctx.db.patch(dockId, {
+  provisioningCredentials: encryptedCredentials,
+})
+```
+
+**Why Reuse?**
+- Same AES-256-GCM algorithm (secure)
+- Same master key management
+- Same security guarantees
+- Simpler codebase (no duplicate encryption logic)
+
+### Storage Location
+
+**Convex Docks Table**: Provisioning credentials stored in `docks.provisioningCredentials` field.
+
+```typescript
+// convex/schema.ts
+docks: defineTable({
+  orgId: v.id("organizations"),
+  name: v.string(),
+  provider: v.string(),
+  encryptedApiKey: v.bytes(),           // Sync credentials
+  provisioningCredentials: v.optional(v.bytes()), // Provisioning credentials
+  // ...
+})
+```
+
+**Why Docks Table?**
+- Consistent with existing dock pattern
+- Same RBAC checks (docks:full for creation, provisioning:full for use)
+- Same encryption lifecycle
+- Unified credential management
+
+### RBAC Requirements
+
+**Permission Required**: `provisioning:full`
+
+```typescript
+// convex/docks/mutations.ts
+export const provisionResource = mutation({
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx)
+    
+    // Check provisioning:full permission
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      dock.orgId,
+      "provisioning:full"
+    )
+    
+    if (!hasPermission) {
+      throw new ConvexError("Permission denied: provisioning:full required")
+    }
+    
+    // Proceed with provisioning...
+  }
+})
+```
+
+**Why Separate Permission?**
+- Provisioning is more dangerous than operations (creates billable resources)
+- Fine-grained access control (some users can view but not provision)
+- Compliance requirements (who can provision resources)
+
+### Credential Lifecycle
+
+#### 1. Encryption
+
+**When**: Before storage (in Convex mutation context)
+
+```typescript
+// Encrypt before storing
+const encrypted = await encryptApiKey(plaintextCredentials)
+await ctx.db.patch(dockId, {
+  provisioningCredentials: encrypted,
+})
+```
+
+**Never**: Expose plaintext credentials to client
+
+#### 2. Storage
+
+**Where**: `docks.provisioningCredentials` field (encrypted bytes)
+
+**When**: Created with dock or rotated via `rotateProvisioningCredentials` mutation
+
+#### 3. Decryption
+
+**When**: Only during provisioning operations (never exposed to client)
+
+```typescript
+// Decrypt only in server-side Convex mutations/actions
+const credentials = await decryptApiKey(
+  dock.provisioningCredentials,
+  ctx,
+  { dockId: dock._id, orgId: dock.orgId }
+)
+```
+
+**Security**:
+- Decryption only in Convex server functions
+- RBAC check before decryption
+- Audit logging on every decryption
+
+#### 4. Rotation
+
+**Mutation**: `rotateProvisioningCredentials`
+
+**Flow**:
+1. Validate new credentials (test API call)
+2. Encrypt new credentials
+3. Atomically update `docks.provisioningCredentials`
+4. Audit log rotation
+5. Preserve old credentials on failure
+
+```typescript
+// convex/docks/mutations.ts
+export const rotateProvisioningCredentials = mutation({
+  args: {
+    dockId: v.id("docks"),
+    newCredentials: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // 1. Get dock and check RBAC (provisioning:full)
+    // 2. Validate new credentials via adapter.validateCredentials()
+    // 3. Encrypt new credentials
+    // 4. Atomically update docks.provisioningCredentials
+    // 5. Audit log rotation
+    // 6. Preserve old credentials on failure
+  }
+})
+```
+
+**Graceful Rotation**:
+- Validates new credentials before replacing old ones
+- Old credentials preserved if validation fails
+- Atomic update ensures no partial state
+- Rollback preserves old credentials on unexpected errors
+
+### Audit Logging Requirements
+
+**All Credential Operations Logged**:
+
+1. **Credential Decryption** (`credential.decrypt`)
+   - Logs: userId, orgId, dockId, timestamp
+   - Never logs: decrypted credential values
+
+2. **Credential Rotation** (`credential.rotate`)
+   - Success: dockId, orgId, provider, rotatedAt
+   - Error: dockId, orgId, provider, errorMessage
+   - Never logs: oldCredentials, newCredentials
+
+3. **Provisioning Operations** (`resource.provision`)
+   - Logs: userId, orgId, dockId, resourceType, resourceId
+   - Never logs: credentialsUsed, spec (may contain secrets)
+
+**Implementation**:
+```typescript
+// convex/lib/audit.ts
+await auditLog(ctx, "credential.rotate", "success", {
+  dockId: dock._id,
+  orgId: dock.orgId,
+  provider: dock.provider,
+  rotatedAt: Date.now(),
+  // NEVER log: newCredentials, oldCredentials
+})
+```
+
+### Secure Credential Passing
+
+**Flow**: Provisioning credentials passed securely from Convex mutations to provisioning engine.
+
+```
+1. User calls provisionResource mutation
+2. Mutation checks RBAC (provisioning:full)
+3. Mutation decrypts provisioning credentials (server-side only)
+4. Mutation calls Convex action for provisioning (internal API)
+5. Action calls SST provisioning engine or dock adapter
+6. Credentials cleared from memory after use
+7. Audit log created (no credential values)
+```
+
+**Security Requirements**:
+- ✅ Credentials never exposed to client
+- ✅ Decryption only in Convex mutations (server-side)
+- ✅ Internal Convex actions can receive decrypted credentials (Convex-to-Convex is secure)
+- ✅ Never log credentials in plaintext
+- ✅ Clear credentials from memory after use
+- ✅ Use temporary credentials when possible (AWS STS assume role)
+
+**Example**:
+```typescript
+// convex/docks/mutations.ts
+export const provisionResource = mutation({
+  handler: async (ctx, args) => {
+    // Decrypt credentials (never exposed to client)
+    const credentials = await decryptApiKey(
+      dock.provisioningCredentials,
+      ctx,
+      { dockId: dock._id, orgId: dock.orgId }
+    )
+    
+    // Pass to Convex action (internal, secure)
+    await ctx.runAction(internal.docks.actions.provisionResource, {
+      credentials, // Safe: Convex-to-Convex communication
+      spec: args.spec,
+    })
+    
+    // Credentials cleared from memory after use
+  }
+})
+```
+
+### Best Practices
+
+1. **Never Log Credentials**
+   ```typescript
+   // ❌ NEVER DO THIS
+   await auditLog(ctx, "credential.rotate", "success", {
+     newCredentials: args.newCredentials, // EXPOSES CREDENTIALS!
+   })
+   
+   // ✅ Safe logging
+   await auditLog(ctx, "credential.rotate", "success", {
+     dockId: dock._id,
+     provider: dock.provider,
+     rotatedAt: Date.now(),
+   })
+   ```
+
+2. **Always Encrypt Before Storage**
+   ```typescript
+   // ✅ Correct
+   const encrypted = await encryptApiKey(plaintextCredentials)
+   await ctx.db.patch(dockId, { provisioningCredentials: encrypted })
+   
+   // ❌ Wrong
+   await ctx.db.patch(dockId, { provisioningCredentials: plaintextCredentials })
+   ```
+
+3. **Always Check RBAC Before Decryption**
+   ```typescript
+   // ✅ Correct
+   const hasPermission = await checkPermission(ctx, user._id, orgId, "provisioning:full")
+   if (!hasPermission) throw new ConvexError("Permission denied")
+   const credentials = await decryptApiKey(dock.provisioningCredentials, ctx, {...})
+   
+   // ❌ Wrong (no RBAC check)
+   const credentials = await decryptApiKey(dock.provisioningCredentials)
+   ```
+
+4. **Rotate Credentials Regularly**
+   - Best practice: Every 90 days
+   - On suspected compromise
+   - When team member leaves
+   - Use `rotateProvisioningCredentials` mutation
+
+5. **Use Audit Logs for Compliance**
+   - All credential operations logged
+   - Query audit logs: `by_org`, `by_user`, `by_resource`
+   - Review logs weekly for suspicious activity
+
+### Credential Rotation Best Practices
+
+**When to Rotate**:
+- Every 90 days (recommended)
+- On suspected compromise
+- When team member with access leaves
+- When provider requires rotation
+
+**How to Rotate**:
+```typescript
+// Use rotateProvisioningCredentials mutation
+await convex.mutation(api.docks.mutations.rotateProvisioningCredentials, {
+  dockId: dock._id,
+  newCredentials: newPlaintextCredentials,
+})
+```
+
+**Graceful Rotation Process**:
+1. Validate new credentials before replacing
+2. Test new credentials with provider API
+3. Only replace after successful validation
+4. Preserve old credentials on failure
+5. Audit log all rotation attempts
+
+**Rollback on Failure**:
+- If validation fails: Old credentials preserved (never replaced)
+- If encryption fails: Old credentials preserved (never replaced)
+- If database update fails: Old credentials preserved (never replaced)
+- Clear error messages: "Old credentials have been preserved"
+
+### Security Checklist for Provisioning
+
+- [ ] All provisioning credentials encrypted (AES-256-GCM)
+- [ ] RBAC checks enforce `provisioning:full` permission
+- [ ] Audit logging enabled for all credential operations
+- [ ] Credentials never logged in plaintext
+- [ ] Credentials never exposed to client
+- [ ] Credential rotation mutation implemented
+- [ ] Graceful rotation logic (validate before replace)
+- [ ] Old credentials preserved on rotation failure
+- [ ] Secure credential passing to provisioning engine
+- [ ] Credentials cleared from memory after use
 
 ---
 
@@ -681,10 +1007,12 @@ export const deleteUserData = mutation({
 ### For Operations
 
 1. **Rotate encryption keys** quarterly
-2. **Review audit logs** weekly
-3. **Monitor failed auth attempts**
-4. **Update dependencies** monthly
-5. **Security audit** annually
+2. **Rotate provisioning credentials** every 90 days
+3. **Review audit logs** weekly
+4. **Monitor failed auth attempts**
+5. **Monitor credential rotation events**
+6. **Update dependencies** monthly
+7. **Security audit** annually
 
 ---
 
@@ -734,7 +1062,9 @@ export const deleteUserData = mutation({
 ### Regular Maintenance
 
 - [ ] Rotate encryption keys (90 days)
+- [ ] Rotate provisioning credentials (90 days)
 - [ ] Review audit logs (weekly)
+- [ ] Monitor credential rotation events
 - [ ] Update dependencies (monthly)
 - [ ] Security audit (annually)
 - [ ] Penetration test (annually)

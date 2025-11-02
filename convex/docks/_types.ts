@@ -210,5 +210,148 @@ export interface DockAdapter {
    * @throws Error if cache clear fails
    */
   clearCache?(ctx: MutationCtx, siteId: string): Promise<void>
-}
 
+  // ============================================================================
+  // OPTIONAL: Provisioning Operations (Step 4 - Mission 2.5)
+  // ============================================================================
+  // These methods allow adapters to provision new resources, not just sync existing ones.
+  // Implementation is optional and depends on provider API capabilities.
+  // Used by StackDock core provisioning engine when provisioning via dock adapter.
+
+  /**
+   * Provision a new server
+   * 
+   * Called by StackDock core provisioning engine when provisioning via dock adapter.
+   * Should create a new server instance via provider API and return provisioned resource metadata.
+   * 
+   * @param ctx - Convex mutation context
+   * @param dock - The dock document (contains encrypted API key)
+   * @param spec - Resource specification (configuration, region, size, etc.)
+   * @returns Provisioned server metadata with providerResourceId
+   * @throws Error if provisioning fails
+   * 
+   * @example
+   * ```typescript
+   * async provisionServer(ctx: MutationCtx, dock: Doc<"docks">, spec: ServerSpec) {
+   *   const apiKey = await decryptApiKey(dock.encryptedApiKey)
+   *   const server = await providerAPI.createServer({
+   *     apiKey,
+   *     name: spec.name,
+   *     region: spec.region,
+   *     size: spec.size,
+   *   })
+   *   return {
+   *     providerResourceId: server.id.toString(),
+   *     name: server.name,
+   *     primaryIpAddress: server.ip,
+   *     region: server.region,
+   *     status: "running",
+   *     fullApiData: server,
+   *   }
+   * }
+   * ```
+   */
+  provisionServer?(
+    ctx: MutationCtx,
+    dock: Doc<"docks">,
+    spec: {
+      name: string
+      region?: string
+      size?: string
+      [key: string]: any
+    }
+  ): Promise<{
+    providerResourceId: string
+    name: string
+    primaryIpAddress?: string
+    region?: string
+    status: string
+    fullApiData: any
+  }>
+
+  /**
+   * Provision a new web service
+   * 
+   * Called by StackDock core provisioning engine when provisioning via dock adapter.
+   * Should create a new web service (site, deployment, app) via provider API.
+   * 
+   * @param ctx - Convex mutation context
+   * @param dock - The dock document
+   * @param spec - Resource specification (name, domain, configuration, etc.)
+   * @returns Provisioned web service metadata
+   * @throws Error if provisioning fails
+   */
+  provisionWebService?(
+    ctx: MutationCtx,
+    dock: Doc<"docks">,
+    spec: {
+      name: string
+      domain?: string
+      environment?: string
+      [key: string]: any
+    }
+  ): Promise<{
+    providerResourceId: string
+    name: string
+    productionUrl?: string
+    environment?: string
+    status: string
+    fullApiData: any
+  }>
+
+  /**
+   * Provision a new database
+   * 
+   * Called by StackDock core provisioning engine when provisioning via dock adapter.
+   * Should create a new database instance via provider API.
+   * 
+   * @param ctx - Convex mutation context
+   * @param dock - The dock document
+   * @param spec - Resource specification (name, engine, version, size, etc.)
+   * @returns Provisioned database metadata
+   * @throws Error if provisioning fails
+   */
+  provisionDatabase?(
+    ctx: MutationCtx,
+    dock: Doc<"docks">,
+    spec: {
+      name: string
+      engine?: string
+      version?: string
+      [key: string]: any
+    }
+  ): Promise<{
+    providerResourceId: string
+    name: string
+    engine?: string
+    version?: string
+    status: string
+    fullApiData: any
+  }>
+
+  /**
+   * Provision a new domain
+   * 
+   * Called by StackDock core provisioning engine when provisioning via dock adapter.
+   * Should register or configure a new domain via provider API.
+   * 
+   * @param ctx - Convex mutation context
+   * @param dock - The dock document
+   * @param spec - Resource specification (domainName, configuration, etc.)
+   * @returns Provisioned domain metadata
+   * @throws Error if provisioning fails
+   */
+  provisionDomain?(
+    ctx: MutationCtx,
+    dock: Doc<"docks">,
+    spec: {
+      domainName: string
+      [key: string]: any
+    }
+  ): Promise<{
+    providerResourceId: string
+    domainName: string
+    status: string
+    fullApiData: any
+  }>
+}

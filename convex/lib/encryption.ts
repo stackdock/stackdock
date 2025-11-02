@@ -113,18 +113,29 @@ export async function encryptApiKey(plaintext: string): Promise<ArrayBuffer> {
  * Decrypt an API key that was encrypted with encryptApiKey
  * 
  * @param encrypted - Encrypted bytes (ArrayBuffer) - IV + ciphertext (from Convex v.bytes())
+ * @param ctx - Optional Convex context for audit logging
+ * @param auditMetadata - Optional metadata for audit logging (dockId, orgId)
  * @returns Decrypted API key string
  * 
  * @throws Error if decryption fails (wrong key, corrupted data, etc.)
  * 
  * @example
  * ```typescript
- * const dock = await ctx.db.get(dockId)
+ * // Without audit logging (backward compatible)
  * const apiKey = await decryptApiKey(dock.encryptedApiKey)
- * // Use apiKey to call provider API
+ * 
+ * // With audit logging (recommended)
+ * const apiKey = await decryptApiKey(dock.encryptedApiKey, ctx, {
+ *   dockId: dock._id,
+ *   orgId: dock.orgId,
+ * })
  * ```
  */
-export async function decryptApiKey(encrypted: ArrayBuffer): Promise<string> {
+export async function decryptApiKey(
+  encrypted: ArrayBuffer,
+  ctx?: any, // MutationCtx | QueryCtx, but using any for backward compatibility
+  auditMetadata?: { dockId?: any; orgId?: any } // Id types, but using any for backward compatibility
+): Promise<string> {
   // Convert ArrayBuffer to Uint8Array for easier manipulation
   const encryptedUint8 = new Uint8Array(encrypted)
   
@@ -155,6 +166,7 @@ export async function decryptApiKey(encrypted: ArrayBuffer): Promise<string> {
   // Decrypt with authenticated encryption
   // GCM mode will throw if data was tampered with
   let decrypted: ArrayBuffer
+  let decryptionError: Error | null = null
   try {
     decrypted = await webcrypto.subtle.decrypt(
       { name: 'AES-GCM', iv },
@@ -162,12 +174,58 @@ export async function decryptApiKey(encrypted: ArrayBuffer): Promise<string> {
       ciphertext
     )
   } catch (error) {
-    throw new Error(
+    decryptionError = new Error(
       `Decryption failed: ${error instanceof Error ? error.message : 'Unknown error'}. ` +
       "This usually means the encryption key is incorrect or the data is corrupted."
     )
+    
+    // Log audit entry for failed decryption (if ctx provided)
+    if (ctx) {
+      try {
+        // Dynamic import to avoid circular dependency
+        const { auditLog } = await import("./audit")
+        await auditLog(
+          ctx,
+          "credential.decrypt",
+          "error",
+          {
+            dockId: auditMetadata?.dockId,
+            orgId: auditMetadata?.orgId,
+            errorMessage: decryptionError.message,
+          }
+        )
+      } catch (auditError) {
+        // Audit logging failure shouldn't break decryption error handling
+        console.error("[Encryption] Failed to log audit entry:", auditError)
+      }
+    }
+    
+    throw decryptionError
   }
   
   const decoder = new TextDecoder()
-  return decoder.decode(decrypted)
+  const decryptedKey = decoder.decode(decrypted)
+  
+  // Log audit entry for successful decryption (if ctx provided)
+  if (ctx) {
+    try {
+      // Dynamic import to avoid circular dependency
+      const { auditLog } = await import("./audit")
+      await auditLog(
+        ctx,
+        "credential.decrypt",
+        "success",
+        {
+          dockId: auditMetadata?.dockId,
+          orgId: auditMetadata?.orgId,
+        }
+      )
+    } catch (auditError) {
+      // Audit logging failure shouldn't break decryption
+      // Log to console but don't throw
+      console.error("[Encryption] Failed to log audit entry:", auditError)
+    }
+  }
+  
+  return decryptedKey
 }

@@ -51,12 +51,20 @@ export async function checkPermission(
   }
   
   // Parse permission (format: "resource:level")
+  // Supports: "projects:full", "docks:read", "provisioning:full", etc.
   const [resource, level] = permission.split(":") as [
     keyof typeof role.permissions,
     "read" | "full"
   ]
   
   const rolePermission = role.permissions[resource]
+  
+  // Handle undefined permissions (e.g., "provisioning" may be undefined for old roles)
+  if (rolePermission === undefined) {
+    // Default behavior: if permission doesn't exist, deny access
+    // This ensures new permissions (like "provisioning") are opt-in
+    return false
+  }
   
   // Check permission level
   if (rolePermission === "none") return false

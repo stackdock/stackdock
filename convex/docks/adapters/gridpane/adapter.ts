@@ -88,7 +88,11 @@ export const gridpaneAdapter: DockAdapter = {
    * GET /oauth/api/v1/server
    */
   async syncServers(ctx: MutationCtx, dock: Doc<"docks">): Promise<void> {
-    const apiKey = await decryptApiKey(dock.encryptedApiKey)
+    // Decrypt API key with audit logging
+    const apiKey = await decryptApiKey(dock.encryptedApiKey, ctx, {
+      dockId: dock._id,
+      orgId: dock.orgId,
+    })
     const api = new GridPaneAPI(apiKey)
 
     const servers = await api.getServers()
@@ -135,7 +139,11 @@ export const gridpaneAdapter: DockAdapter = {
     ctx: MutationCtx,
     dock: Doc<"docks">
   ): Promise<void> {
-    const apiKey = await decryptApiKey(dock.encryptedApiKey)
+    // Decrypt API key with audit logging
+    const apiKey = await decryptApiKey(dock.encryptedApiKey, ctx, {
+      dockId: dock._id,
+      orgId: dock.orgId,
+    })
     const api = new GridPaneAPI(apiKey)
 
     const sites = await api.getSites()
@@ -189,7 +197,11 @@ export const gridpaneAdapter: DockAdapter = {
    * GET /oauth/api/v1/domain
    */
   async syncDomains(ctx: MutationCtx, dock: Doc<"docks">): Promise<void> {
-    const apiKey = await decryptApiKey(dock.encryptedApiKey)
+    // Decrypt API key with audit logging
+    const apiKey = await decryptApiKey(dock.encryptedApiKey, ctx, {
+      dockId: dock._id,
+      orgId: dock.orgId,
+    })
     const api = new GridPaneAPI(apiKey)
 
     const domains = await api.getDomains()

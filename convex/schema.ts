@@ -46,6 +46,7 @@ export default defineSchema({
       docks: v.union(v.literal("full"), v.literal("read"), v.literal("none")),
       operations: v.union(v.literal("full"), v.literal("read"), v.literal("none")),
       settings: v.union(v.literal("full"), v.literal("read"), v.literal("none")),
+      provisioning: v.optional(v.union(v.literal("full"), v.literal("read"), v.literal("none"))),
     }),
   }).index("by_orgId", ["orgId"]),
 
@@ -75,6 +76,7 @@ export default defineSchema({
     name: v.string(), // "Client A - Vultr"
     provider: v.string(), // "vultr", "aws", "vercel"
     encryptedApiKey: v.bytes(),
+    provisioningCredentials: v.optional(v.bytes()), // Encrypted provisioning credentials (AWS keys, Cloudflare tokens, etc.)
     lastSyncStatus: v.union(
       v.literal("pending"),
       v.literal("syncing"),
@@ -123,10 +125,18 @@ export default defineSchema({
     status: v.string(),
     fullApiData: v.any(),
     updatedAt: v.optional(v.number()), // Track modification time
+    // Provisioning metadata
+    provisioningSource: v.optional(v.union(v.literal("sst"), v.literal("api"), v.literal("manual"))),
+    sstResourceId: v.optional(v.string()), // SST resource identifier (e.g., "MyServer")
+    sstStackName: v.optional(v.string()), // SST stack name (e.g., "production", "staging")
+    provisioningState: v.optional(v.union(v.literal("provisioning"), v.literal("provisioned"), v.literal("failed"), v.literal("deprovisioning"))),
+    provisionedAt: v.optional(v.number()), // Timestamp when resource was provisioned
   })
     .index("by_orgId", ["orgId"])
     .index("by_dockId", ["dockId"])
-    .index("by_dock_resource", ["dockId", "providerResourceId"]), // Prevent duplicate syncs
+    .index("by_dock_resource", ["dockId", "providerResourceId"]) // Prevent duplicate syncs
+    .index("by_provisioning_source", ["provisioningSource", "orgId"])
+    .index("by_sst_resource", ["sstStackName", "sstResourceId"]),
 
   // *** NEW TABLE ***
   // Master Fleet List: Web Services (PaaS)
@@ -142,10 +152,18 @@ export default defineSchema({
     status: v.string(),
     fullApiData: v.any(),
     updatedAt: v.optional(v.number()), // Track modification time
+    // Provisioning metadata
+    provisioningSource: v.optional(v.union(v.literal("sst"), v.literal("api"), v.literal("manual"))),
+    sstResourceId: v.optional(v.string()), // SST resource identifier (e.g., "MyBucket")
+    sstStackName: v.optional(v.string()), // SST stack name (e.g., "production", "staging")
+    provisioningState: v.optional(v.union(v.literal("provisioning"), v.literal("provisioned"), v.literal("failed"), v.literal("deprovisioning"))),
+    provisionedAt: v.optional(v.number()), // Timestamp when resource was provisioned
   })
     .index("by_orgId", ["orgId"])
     .index("by_dockId", ["dockId"])
-    .index("by_dock_resource", ["dockId", "providerResourceId"]), // Prevent duplicate syncs
+    .index("by_dock_resource", ["dockId", "providerResourceId"]) // Prevent duplicate syncs
+    .index("by_provisioning_source", ["provisioningSource", "orgId"])
+    .index("by_sst_resource", ["sstStackName", "sstResourceId"]),
 
   // Master Fleet List: Domains
   domains: defineTable({
@@ -158,10 +176,18 @@ export default defineSchema({
     status: v.string(),
     fullApiData: v.any(),
     updatedAt: v.optional(v.number()), // Track modification time
+    // Provisioning metadata
+    provisioningSource: v.optional(v.union(v.literal("sst"), v.literal("api"), v.literal("manual"))),
+    sstResourceId: v.optional(v.string()), // SST resource identifier (e.g., "MyDomain")
+    sstStackName: v.optional(v.string()), // SST stack name (e.g., "production", "staging")
+    provisioningState: v.optional(v.union(v.literal("provisioning"), v.literal("provisioned"), v.literal("failed"), v.literal("deprovisioning"))),
+    provisionedAt: v.optional(v.number()), // Timestamp when resource was provisioned
   })
     .index("by_orgId", ["orgId"])
     .index("by_dockId", ["dockId"])
-    .index("by_dock_resource", ["dockId", "providerResourceId"]), // Prevent duplicate syncs
+    .index("by_dock_resource", ["dockId", "providerResourceId"]) // Prevent duplicate syncs
+    .index("by_provisioning_source", ["provisioningSource", "orgId"])
+    .index("by_sst_resource", ["sstStackName", "sstResourceId"]),
 
   // Master Fleet List: Databases
   databases: defineTable({
@@ -175,10 +201,18 @@ export default defineSchema({
     status: v.string(),
     fullApiData: v.any(),
     updatedAt: v.optional(v.number()), // Track modification time
+    // Provisioning metadata
+    provisioningSource: v.optional(v.union(v.literal("sst"), v.literal("api"), v.literal("manual"))),
+    sstResourceId: v.optional(v.string()), // SST resource identifier (e.g., "MyDatabase")
+    sstStackName: v.optional(v.string()), // SST stack name (e.g., "production", "staging")
+    provisioningState: v.optional(v.union(v.literal("provisioning"), v.literal("provisioned"), v.literal("failed"), v.literal("deprovisioning"))),
+    provisionedAt: v.optional(v.number()), // Timestamp when resource was provisioned
   })
     .index("by_orgId", ["orgId"])
     .index("by_dockId", ["dockId"])
-    .index("by_dock_resource", ["dockId", "providerResourceId"]), // Prevent duplicate syncs
+    .index("by_dock_resource", ["dockId", "providerResourceId"]) // Prevent duplicate syncs
+    .index("by_provisioning_source", ["provisioningSource", "orgId"])
+    .index("by_sst_resource", ["sstStackName", "sstResourceId"]),
 
   // *** UPDATED TABLE ***
   // The "Glue" Table (Layer 5 Linking)
