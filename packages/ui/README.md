@@ -2,7 +2,7 @@
 
 > **shadcn/ui model for infrastructure components**
 
-**Last Updated**: January 12, 2025
+**Last Updated**: November 11, 2025
 
 The UI Registry is a collection of dashboard components that work with StackDock's universal resource tables. Components follow the copy/paste/own model - you install them into your codebase and own the code.
 

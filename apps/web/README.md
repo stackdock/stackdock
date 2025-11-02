@@ -2,7 +2,7 @@
 
 > **Main StackDock dashboard application**
 
-**Last Updated**: January 12, 2025
+**Last Updated**: November 11, 2025
 
 ## Overview
 
@@ -157,4 +157,4 @@ const [state, send] = useMachine(provisionResourceMachine)
 
 ---
 
-**Last Updated**: January 12, 2025
+**Last Updated**: November 11, 2025

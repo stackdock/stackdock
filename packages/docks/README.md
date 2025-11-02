@@ -2,7 +2,7 @@
 
 > **Copy/paste/own infrastructure adapters**
 
-**Last Updated**: January 12, 2025
+**Last Updated**: November 11, 2025
 
 The Docks Registry is a collection of provider adapters that translate provider APIs to StackDock's universal schema. Adapters follow the copy/paste/own model - you install them into your codebase and own the code.
 

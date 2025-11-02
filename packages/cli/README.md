@@ -2,7 +2,7 @@
 
 > **Command-line tool for managing StackDock components and adapters**
 
-**Last Updated**: January 12, 2025
+**Last Updated**: November 11, 2025
 
 The StackDock CLI allows you to install components and adapters from the registry into your codebase, following the copy/paste/own model.
 

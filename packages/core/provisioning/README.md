@@ -2,7 +2,7 @@
 
 StackDock core provisioning engine - Extracted and refactored from SST.dev.
 
-**Last Updated**: January 12, 2025
+**Last Updated**: November 11, 2025
 
 ## Overview
 

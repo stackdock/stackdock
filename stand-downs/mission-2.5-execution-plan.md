@@ -2,7 +2,7 @@
 
 > **Location**: `stand-downs/mission-2.5-execution-plan.md`  
 > **Absolute Path**: `{REPO_ROOT}/stand-downs/mission-2.5-execution-plan.md`  
-> **Last Updated**: 2025-01-12
+> **Last Updated**: 2025-11-11
 
 ## Overview
 
