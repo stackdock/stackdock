@@ -2,7 +2,11 @@
 
 > **shadcn/ui model for infrastructure components**
 
+**Last Updated**: January 12, 2025
+
 The UI Registry is a collection of dashboard components that work with StackDock's universal resource tables. Components follow the copy/paste/own model - you install them into your codebase and own the code.
+
+**Current Status**: Registry structure ready. Provisioning components added (provision-form, provision-status-card, resource-spec-form, provision-progress-indicator). Ready for component contributions.
 
 ## Quick Start
 
@@ -83,7 +87,13 @@ See `registry.json` for the manifest format. Each component entry includes:
 
 ## Current Components
 
-_No components yet. Check back soon!_
+**Provisioning Components** (Mission 2.5):
+- `provision-form` - Multi-step provisioning form with XState integration
+- `provision-status-card` - Real-time provisioning status display
+- `resource-spec-form` - Provider-specific resource configuration form
+- `provision-progress-indicator` - Step-by-step progress visualization
+
+**Registry**: See `packages/ui/registry.json` for complete component manifest.
 
 ## Contributing
 

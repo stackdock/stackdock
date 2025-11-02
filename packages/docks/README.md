@@ -2,7 +2,11 @@
 
 > **Copy/paste/own infrastructure adapters**
 
+**Last Updated**: January 12, 2025
+
 The Docks Registry is a collection of provider adapters that translate provider APIs to StackDock's universal schema. Adapters follow the copy/paste/own model - you install them into your codebase and own the code.
+
+**Current Status**: Registry structure ready. GridPane adapter exists in runtime (`convex/docks/adapters/gridpane/`). Registry manifest structure defined. Ready for adapter contributions.
 
 ## ⚠️ Important: Registry vs Runtime
 

@@ -2,7 +2,14 @@
 
 > **Command-line tool for managing StackDock components and adapters**
 
+**Last Updated**: January 12, 2025
+
 The StackDock CLI allows you to install components and adapters from the registry into your codebase, following the copy/paste/own model.
+
+**Planned Commands**:
+- `stackdock provision` - Provision infrastructure resources
+- `stackdock deploy` - Deploy StackDock provisioning engine
+- `stackdock add` - Install components/adapters from registry
 
 ## Installation
 
@@ -102,11 +109,12 @@ packages/cli/
 
 ## Implementation Status
 
-**⚠️ Pre-Alpha**: CLI is being developed. Commands are not yet implemented.
+**⚠️ Pre-Alpha**: CLI is being developed. Commands are being designed.
 
 Current status:
 - ✅ Package structure created
-- ⏳ CLI commands (in progress)
+- ✅ Command designs complete (provision, deploy) - See Mission 2.5 Step 5
+- ⏳ CLI command implementation (pending)
 - ⏳ Registry integration (planned)
 - ⏳ Component installation (planned)
 

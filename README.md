@@ -163,11 +163,18 @@ You should see:
 
 ## ✅ Current Status
 
+**Last Updated**: January 12, 2025
+
 - ✅ **TanStack Start** - Fully configured with file-based routing
-- ✅ **Convex** - Connected and working (test query available)
+- ✅ **Convex** - Connected and working (real-time database)
 - ✅ **Clerk** - Authentication integrated and working
 - ✅ **User Sync** - Auto-syncs users from Clerk to Convex
-- ⏳ **Dock Adapters** - Ready to build once encryption is added
+- ✅ **RBAC System** - Role-based access control implemented
+- ✅ **Encryption** - AES-256-GCM encryption for API keys
+- ✅ **Audit Logging** - Comprehensive audit trail infrastructure
+- ✅ **Provisioning Infrastructure** - SST core engine, mutations, queries, UI (Mission 2.5 complete)
+- ✅ **Dock Adapter System** - Registry structure ready, GridPane adapter exists
+- ⚠️ **Current Blocker** - GridPane credential validation needs fixing (Mission 3)
 
 ---
 
@@ -214,16 +221,120 @@ All documentation is organized in `docs/`:
 - [x] Convex integration ⭐
 - [x] Clerk authentication ⭐
 - [x] User auto-sync to Convex ⭐
-- [ ] RBAC implementation
-- [ ] Encryption system
-- [ ] GridPane dock adapter
+- [x] RBAC implementation ⭐
+- [x] Encryption system ⭐
+- [x] Audit logging infrastructure ⭐
+- [x] Provisioning infrastructure (SST core, mutations, queries, UI) ⭐
+- [x] GridPane dock adapter (runtime ready, validation pending fix)
+- [ ] Fix GridPane credential validation (Mission 3 - current blocker)
 - [ ] Vercel dock adapter
 - [ ] DigitalOcean dock adapter
-- [ ] Unified infrastructure dashboard
+- [ ] Unified infrastructure dashboard (UI ready, needs working docks)
 - [ ] Project resource linking
 - [ ] Client portal
 
-**Target**: Working demo with 3-5 providers
+**Target**: Working demo with 3-5 providers (blocked on API key validation)
+
+**Current Progress**: Core platform complete, provisioning infrastructure ready. Blocked on fixing GridPane API key validation to enable dock creation and resource syncing.
+
+---
+
+## 🔧 How It Works (For Developers)
+
+### The Architecture
+
+**StackDock is infrastructure's WordPress moment** - a composable platform where you own the code.
+
+**Three Registries Model**:
+1. **Docks Registry** (`packages/docks/`) - Infrastructure adapters (copy/paste/own)
+2. **UI Registry** (`packages/ui/`) - Dashboard components (shadcn/ui model)
+3. **The Platform** (`convex/`, `apps/web/`) - Orchestration layer (RBAC, encryption, audit)
+
+### Universal Table Pattern
+
+**Key Innovation**: One table per resource type, not one per provider.
+
+```typescript
+// ✅ CORRECT: Universal table
+webServices: {
+  provider: "gridpane" | "vercel" | "railway",
+  name: string,
+  productionUrl: string,
+  status: string,
+  fullApiData: any  // Provider-specific data preserved
+}
+
+// ❌ WRONG: Provider-specific tables
+gridPaneSites: { ... }
+vercelDeployments: { ... }
+```
+
+**Why This Works**:
+- Unified dashboard works with ANY provider
+- Cross-provider operations possible
+- Scales infinitely (100 providers = 4 tables, not 100)
+- UI components are provider-agnostic
+
+### How It Works (When API Keys Are Fixed)
+
+**1. Connect Provider (Create Dock)**:
+```
+User → Enters API key → System validates → Encrypts → Stores in docks table
+```
+
+**2. Sync Resources**:
+```
+User clicks "Sync" → Adapter decrypts API key → Calls provider API → 
+Translates to universal schema → Inserts into universal tables
+```
+
+**3. View Unified Dashboard**:
+```
+Dashboard queries universal tables → Shows resources from ALL providers → 
+Provider-agnostic UI components render everything
+```
+
+**4. Provision Infrastructure**:
+```
+User fills form → System calls provisionResource mutation → 
+Uses SST core engine OR dock adapter → Creates resource → 
+Real-time status updates via Convex subscriptions
+```
+
+### Current State
+
+**✅ What's Ready**:
+- Core platform (auth, RBAC, encryption, audit)
+- Provisioning infrastructure (SST core, mutations, queries, UI)
+- Dock adapter system (registry structure, GridPane adapter exists)
+- Real-time sync (Convex subscriptions)
+
+**⚠️ Current Blocker**:
+- GridPane credential validation failing (Mission 3)
+- Blocks: Dock creation, resource syncing, provisioning flows
+
+**🎯 What to Expect When Fixed**:
+- Create docks with real API keys
+- Sync resources from providers
+- Unified dashboard showing all resources
+- Provision new infrastructure
+- Real-time status updates
+
+### For Developers Finding This Repo
+
+**You can**:
+- Explore the architecture (well-documented)
+- Review code (all open source)
+- Understand the patterns (universal tables, dock adapters)
+- Set up locally (see Quick Start)
+- Contribute adapters/components
+
+**You can't yet** (until Mission 3 fix):
+- Create docks with real API keys
+- Sync resources from providers
+- Test provisioning flows
+
+**The code is ready** - just needs the credential validation fix.
 
 ---
 

@@ -2,9 +2,13 @@
 
 StackDock core provisioning engine - Extracted and refactored from SST.dev.
 
+**Last Updated**: January 12, 2025
+
 ## Overview
 
 This package provides infrastructure provisioning capabilities for StackDock, derived from SST.dev's core provisioning engine. It manages resource lifecycle, state tracking, deployment orchestration, and provider integration.
+
+**Status**: ✅ Core structure ready. Phase 1-2 complete (structure setup, placeholder components). Full SST code extraction pending when repository access is available.
 
 ## Attribution
 

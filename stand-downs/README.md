@@ -1,11 +1,14 @@
 # Stand-Downs System
 
 > **Location**: `stand-downs/README.md`  
-> **Absolute Path**: `{REPO_ROOT}/stand-downs/README.md`
+> **Absolute Path**: `{REPO_ROOT}/stand-downs/README.md`  
+> **Last Updated**: January 12, 2025
 
 ## Overview
 
 Stand-downs are the communication system between principle engineer agents and the Captain. All agents report findings, recommendations, and approval status in a single JSON file.
+
+**Current Status**: Active system used for Mission 1, 2, and 2.5. Mission 2.5 (SST Core Refactoring) completed January 12, 2025. See `stand-downs/system-state.json` for current mission status.
 
 ## Stand-Downs File
 
