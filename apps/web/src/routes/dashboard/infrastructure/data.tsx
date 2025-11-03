@@ -1,10 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router"
+import { useQuery } from "convex/react"
+import { api } from "convex/_generated/api"
+import { DatabasesTable } from "@/components/resources/databases-table"
 
 export const Route = createFileRoute("/dashboard/infrastructure/data")({
   component: DataPage,
 })
 
 function DataPage() {
+  const databases = useQuery(api["resources/queries"].listDatabases)
+
   return (
     <div className="flex flex-1 flex-col gap-4">
       <div className="space-y-0.5">
@@ -14,9 +19,7 @@ function DataPage() {
         </p>
       </div>
       
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <p className="text-gray-600">Databases list coming soon...</p>
-      </div>
+      <DatabasesTable data={databases} />
     </div>
   )
 }

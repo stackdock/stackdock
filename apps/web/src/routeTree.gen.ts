@@ -20,6 +20,7 @@ import { Route as DashboardInfrastructureRouteImport } from './routes/dashboard/
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
+import { Route as DashboardProvisionIndexRouteImport } from './routes/dashboard/provision/index'
 import { Route as DemoStartServerFuncsRouteImport } from './routes/demo/start.server-funcs'
 import { Route as DemoStartApiRequestRouteImport } from './routes/demo/start.api-request'
 import { Route as DemoApiNamesRouteImport } from './routes/demo/api.names'
@@ -27,6 +28,7 @@ import { Route as DashboardSettingsUserRouteImport } from './routes/dashboard/se
 import { Route as DashboardSettingsThemeRouteImport } from './routes/dashboard/settings/theme'
 import { Route as DashboardSettingsOrganizationRouteImport } from './routes/dashboard/settings/organization'
 import { Route as DashboardSettingsDocksRouteImport } from './routes/dashboard/settings/docks'
+import { Route as DashboardProvisionProviderRouteImport } from './routes/dashboard/provision/$provider'
 import { Route as DashboardProjectsProjectIdRouteImport } from './routes/dashboard/projects/$projectId'
 import { Route as DashboardOperationsWorkflowsRouteImport } from './routes/dashboard/operations/workflows'
 import { Route as DashboardOperationsNetworkingRouteImport } from './routes/dashboard/operations/networking'
@@ -37,10 +39,12 @@ import { Route as DemoStartSsrIndexRouteImport } from './routes/demo/start.ssr.i
 import { Route as DemoStartSsrSpaModeRouteImport } from './routes/demo/start.ssr.spa-mode'
 import { Route as DemoStartSsrFullSsrRouteImport } from './routes/demo/start.ssr.full-ssr'
 import { Route as DemoStartSsrDataOnlyRouteImport } from './routes/demo/start.ssr.data-only'
+import { Route as DashboardProvisionProviderResourceTypeRouteImport } from './routes/dashboard/provision/$provider.$resourceType'
 import { Route as DashboardProjectsProjectIdSettingsRouteImport } from './routes/dashboard/projects/$projectId/settings'
 import { Route as DashboardProjectsProjectIdResourcesRouteImport } from './routes/dashboard/projects/$projectId/resources'
 import { Route as DashboardProjectsProjectIdOverviewRouteImport } from './routes/dashboard/projects/$projectId/overview'
 import { Route as DashboardProjectsProjectIdActivityRouteImport } from './routes/dashboard/projects/$projectId/activity'
+import { Route as DashboardProvisionProviderResourceTypeProvisionIdRouteImport } from './routes/dashboard/provision/$provider.$resourceType.$provisionId'
 
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
@@ -97,6 +101,11 @@ const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
   path: '/forgot-password',
   getParentRoute: () => AuthRoute,
 } as any)
+const DashboardProvisionIndexRoute = DashboardProvisionIndexRouteImport.update({
+  id: '/provision/',
+  path: '/provision/',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DemoStartServerFuncsRoute = DemoStartServerFuncsRouteImport.update({
   id: '/demo/start/server-funcs',
   path: '/demo/start/server-funcs',
@@ -133,6 +142,12 @@ const DashboardSettingsDocksRoute = DashboardSettingsDocksRouteImport.update({
   path: '/docks',
   getParentRoute: () => DashboardSettingsRoute,
 } as any)
+const DashboardProvisionProviderRoute =
+  DashboardProvisionProviderRouteImport.update({
+    id: '/provision/$provider',
+    path: '/provision/$provider',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 const DashboardProjectsProjectIdRoute =
   DashboardProjectsProjectIdRouteImport.update({
     id: '/$projectId',
@@ -189,6 +204,12 @@ const DemoStartSsrDataOnlyRoute = DemoStartSsrDataOnlyRouteImport.update({
   path: '/demo/start/ssr/data-only',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardProvisionProviderResourceTypeRoute =
+  DashboardProvisionProviderResourceTypeRouteImport.update({
+    id: '/$resourceType',
+    path: '/$resourceType',
+    getParentRoute: () => DashboardProvisionProviderRoute,
+  } as any)
 const DashboardProjectsProjectIdSettingsRoute =
   DashboardProjectsProjectIdSettingsRouteImport.update({
     id: '/settings',
@@ -213,6 +234,12 @@ const DashboardProjectsProjectIdActivityRoute =
     path: '/activity',
     getParentRoute: () => DashboardProjectsProjectIdRoute,
   } as any)
+const DashboardProvisionProviderResourceTypeProvisionIdRoute =
+  DashboardProvisionProviderResourceTypeProvisionIdRouteImport.update({
+    id: '/$provisionId',
+    path: '/$provisionId',
+    getParentRoute: () => DashboardProvisionProviderResourceTypeRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -232,6 +259,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/operations/networking': typeof DashboardOperationsNetworkingRoute
   '/dashboard/operations/workflows': typeof DashboardOperationsWorkflowsRoute
   '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRouteWithChildren
+  '/dashboard/provision/$provider': typeof DashboardProvisionProviderRouteWithChildren
   '/dashboard/settings/docks': typeof DashboardSettingsDocksRoute
   '/dashboard/settings/organization': typeof DashboardSettingsOrganizationRoute
   '/dashboard/settings/theme': typeof DashboardSettingsThemeRoute
@@ -239,14 +267,17 @@ export interface FileRoutesByFullPath {
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
+  '/dashboard/provision': typeof DashboardProvisionIndexRoute
   '/dashboard/projects/$projectId/activity': typeof DashboardProjectsProjectIdActivityRoute
   '/dashboard/projects/$projectId/overview': typeof DashboardProjectsProjectIdOverviewRoute
   '/dashboard/projects/$projectId/resources': typeof DashboardProjectsProjectIdResourcesRoute
   '/dashboard/projects/$projectId/settings': typeof DashboardProjectsProjectIdSettingsRoute
+  '/dashboard/provision/$provider/$resourceType': typeof DashboardProvisionProviderResourceTypeRouteWithChildren
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
   '/demo/start/ssr': typeof DemoStartSsrIndexRoute
+  '/dashboard/provision/$provider/$resourceType/$provisionId': typeof DashboardProvisionProviderResourceTypeProvisionIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -265,6 +296,7 @@ export interface FileRoutesByTo {
   '/dashboard/operations/networking': typeof DashboardOperationsNetworkingRoute
   '/dashboard/operations/workflows': typeof DashboardOperationsWorkflowsRoute
   '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRouteWithChildren
+  '/dashboard/provision/$provider': typeof DashboardProvisionProviderRouteWithChildren
   '/dashboard/settings/docks': typeof DashboardSettingsDocksRoute
   '/dashboard/settings/organization': typeof DashboardSettingsOrganizationRoute
   '/dashboard/settings/theme': typeof DashboardSettingsThemeRoute
@@ -272,14 +304,17 @@ export interface FileRoutesByTo {
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
+  '/dashboard/provision': typeof DashboardProvisionIndexRoute
   '/dashboard/projects/$projectId/activity': typeof DashboardProjectsProjectIdActivityRoute
   '/dashboard/projects/$projectId/overview': typeof DashboardProjectsProjectIdOverviewRoute
   '/dashboard/projects/$projectId/resources': typeof DashboardProjectsProjectIdResourcesRoute
   '/dashboard/projects/$projectId/settings': typeof DashboardProjectsProjectIdSettingsRoute
+  '/dashboard/provision/$provider/$resourceType': typeof DashboardProvisionProviderResourceTypeRouteWithChildren
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
   '/demo/start/ssr': typeof DemoStartSsrIndexRoute
+  '/dashboard/provision/$provider/$resourceType/$provisionId': typeof DashboardProvisionProviderResourceTypeProvisionIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -300,6 +335,7 @@ export interface FileRoutesById {
   '/dashboard/operations/networking': typeof DashboardOperationsNetworkingRoute
   '/dashboard/operations/workflows': typeof DashboardOperationsWorkflowsRoute
   '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRouteWithChildren
+  '/dashboard/provision/$provider': typeof DashboardProvisionProviderRouteWithChildren
   '/dashboard/settings/docks': typeof DashboardSettingsDocksRoute
   '/dashboard/settings/organization': typeof DashboardSettingsOrganizationRoute
   '/dashboard/settings/theme': typeof DashboardSettingsThemeRoute
@@ -307,14 +343,17 @@ export interface FileRoutesById {
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
+  '/dashboard/provision/': typeof DashboardProvisionIndexRoute
   '/dashboard/projects/$projectId/activity': typeof DashboardProjectsProjectIdActivityRoute
   '/dashboard/projects/$projectId/overview': typeof DashboardProjectsProjectIdOverviewRoute
   '/dashboard/projects/$projectId/resources': typeof DashboardProjectsProjectIdResourcesRoute
   '/dashboard/projects/$projectId/settings': typeof DashboardProjectsProjectIdSettingsRoute
+  '/dashboard/provision/$provider/$resourceType': typeof DashboardProvisionProviderResourceTypeRouteWithChildren
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
   '/demo/start/ssr/': typeof DemoStartSsrIndexRoute
+  '/dashboard/provision/$provider/$resourceType/$provisionId': typeof DashboardProvisionProviderResourceTypeProvisionIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -336,6 +375,7 @@ export interface FileRouteTypes {
     | '/dashboard/operations/networking'
     | '/dashboard/operations/workflows'
     | '/dashboard/projects/$projectId'
+    | '/dashboard/provision/$provider'
     | '/dashboard/settings/docks'
     | '/dashboard/settings/organization'
     | '/dashboard/settings/theme'
@@ -343,14 +383,17 @@ export interface FileRouteTypes {
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
+    | '/dashboard/provision'
     | '/dashboard/projects/$projectId/activity'
     | '/dashboard/projects/$projectId/overview'
     | '/dashboard/projects/$projectId/resources'
     | '/dashboard/projects/$projectId/settings'
+    | '/dashboard/provision/$provider/$resourceType'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
     | '/demo/start/ssr'
+    | '/dashboard/provision/$provider/$resourceType/$provisionId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -369,6 +412,7 @@ export interface FileRouteTypes {
     | '/dashboard/operations/networking'
     | '/dashboard/operations/workflows'
     | '/dashboard/projects/$projectId'
+    | '/dashboard/provision/$provider'
     | '/dashboard/settings/docks'
     | '/dashboard/settings/organization'
     | '/dashboard/settings/theme'
@@ -376,14 +420,17 @@ export interface FileRouteTypes {
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
+    | '/dashboard/provision'
     | '/dashboard/projects/$projectId/activity'
     | '/dashboard/projects/$projectId/overview'
     | '/dashboard/projects/$projectId/resources'
     | '/dashboard/projects/$projectId/settings'
+    | '/dashboard/provision/$provider/$resourceType'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
     | '/demo/start/ssr'
+    | '/dashboard/provision/$provider/$resourceType/$provisionId'
   id:
     | '__root__'
     | '/'
@@ -403,6 +450,7 @@ export interface FileRouteTypes {
     | '/dashboard/operations/networking'
     | '/dashboard/operations/workflows'
     | '/dashboard/projects/$projectId'
+    | '/dashboard/provision/$provider'
     | '/dashboard/settings/docks'
     | '/dashboard/settings/organization'
     | '/dashboard/settings/theme'
@@ -410,14 +458,17 @@ export interface FileRouteTypes {
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
+    | '/dashboard/provision/'
     | '/dashboard/projects/$projectId/activity'
     | '/dashboard/projects/$projectId/overview'
     | '/dashboard/projects/$projectId/resources'
     | '/dashboard/projects/$projectId/settings'
+    | '/dashboard/provision/$provider/$resourceType'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
     | '/demo/start/ssr/'
+    | '/dashboard/provision/$provider/$resourceType/$provisionId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -512,6 +563,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthForgotPasswordRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/dashboard/provision/': {
+      id: '/dashboard/provision/'
+      path: '/provision'
+      fullPath: '/dashboard/provision'
+      preLoaderRoute: typeof DashboardProvisionIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/demo/start/server-funcs': {
       id: '/demo/start/server-funcs'
       path: '/demo/start/server-funcs'
@@ -560,6 +618,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/settings/docks'
       preLoaderRoute: typeof DashboardSettingsDocksRouteImport
       parentRoute: typeof DashboardSettingsRoute
+    }
+    '/dashboard/provision/$provider': {
+      id: '/dashboard/provision/$provider'
+      path: '/provision/$provider'
+      fullPath: '/dashboard/provision/$provider'
+      preLoaderRoute: typeof DashboardProvisionProviderRouteImport
+      parentRoute: typeof DashboardRoute
     }
     '/dashboard/projects/$projectId': {
       id: '/dashboard/projects/$projectId'
@@ -631,6 +696,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoStartSsrDataOnlyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard/provision/$provider/$resourceType': {
+      id: '/dashboard/provision/$provider/$resourceType'
+      path: '/$resourceType'
+      fullPath: '/dashboard/provision/$provider/$resourceType'
+      preLoaderRoute: typeof DashboardProvisionProviderResourceTypeRouteImport
+      parentRoute: typeof DashboardProvisionProviderRoute
+    }
     '/dashboard/projects/$projectId/settings': {
       id: '/dashboard/projects/$projectId/settings'
       path: '/settings'
@@ -658,6 +730,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/projects/$projectId/activity'
       preLoaderRoute: typeof DashboardProjectsProjectIdActivityRouteImport
       parentRoute: typeof DashboardProjectsProjectIdRoute
+    }
+    '/dashboard/provision/$provider/$resourceType/$provisionId': {
+      id: '/dashboard/provision/$provider/$resourceType/$provisionId'
+      path: '/$provisionId'
+      fullPath: '/dashboard/provision/$provider/$resourceType/$provisionId'
+      preLoaderRoute: typeof DashboardProvisionProviderResourceTypeProvisionIdRouteImport
+      parentRoute: typeof DashboardProvisionProviderResourceTypeRoute
     }
   }
 }
@@ -759,12 +838,44 @@ const DashboardSettingsRouteChildren: DashboardSettingsRouteChildren = {
 const DashboardSettingsRouteWithChildren =
   DashboardSettingsRoute._addFileChildren(DashboardSettingsRouteChildren)
 
+interface DashboardProvisionProviderResourceTypeRouteChildren {
+  DashboardProvisionProviderResourceTypeProvisionIdRoute: typeof DashboardProvisionProviderResourceTypeProvisionIdRoute
+}
+
+const DashboardProvisionProviderResourceTypeRouteChildren: DashboardProvisionProviderResourceTypeRouteChildren =
+  {
+    DashboardProvisionProviderResourceTypeProvisionIdRoute:
+      DashboardProvisionProviderResourceTypeProvisionIdRoute,
+  }
+
+const DashboardProvisionProviderResourceTypeRouteWithChildren =
+  DashboardProvisionProviderResourceTypeRoute._addFileChildren(
+    DashboardProvisionProviderResourceTypeRouteChildren,
+  )
+
+interface DashboardProvisionProviderRouteChildren {
+  DashboardProvisionProviderResourceTypeRoute: typeof DashboardProvisionProviderResourceTypeRouteWithChildren
+}
+
+const DashboardProvisionProviderRouteChildren: DashboardProvisionProviderRouteChildren =
+  {
+    DashboardProvisionProviderResourceTypeRoute:
+      DashboardProvisionProviderResourceTypeRouteWithChildren,
+  }
+
+const DashboardProvisionProviderRouteWithChildren =
+  DashboardProvisionProviderRoute._addFileChildren(
+    DashboardProvisionProviderRouteChildren,
+  )
+
 interface DashboardRouteChildren {
   DashboardInfrastructureRoute: typeof DashboardInfrastructureRouteWithChildren
   DashboardOperationsRoute: typeof DashboardOperationsRouteWithChildren
   DashboardProjectsRoute: typeof DashboardProjectsRouteWithChildren
   DashboardSettingsRoute: typeof DashboardSettingsRouteWithChildren
   DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardProvisionProviderRoute: typeof DashboardProvisionProviderRouteWithChildren
+  DashboardProvisionIndexRoute: typeof DashboardProvisionIndexRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
@@ -773,6 +884,8 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardProjectsRoute: DashboardProjectsRouteWithChildren,
   DashboardSettingsRoute: DashboardSettingsRouteWithChildren,
   DashboardIndexRoute: DashboardIndexRoute,
+  DashboardProvisionProviderRoute: DashboardProvisionProviderRouteWithChildren,
+  DashboardProvisionIndexRoute: DashboardProvisionIndexRoute,
 }
 
 const DashboardRouteWithChildren = DashboardRoute._addFileChildren(

@@ -92,8 +92,16 @@ export async function auditLog(
     }
     
     // Prepare audit log entry
+    // orgId is required by schema, so we must have it
+    const finalOrgId = orgId || user.defaultOrgId
+    if (!finalOrgId) {
+      // If we can't determine orgId, skip audit logging rather than failing
+      console.warn("[Audit Log] Cannot create audit log: orgId not available. Action:", action)
+      return
+    }
+
     const auditEntry = {
-      orgId: orgId || user.defaultOrgId || undefined,
+      orgId: finalOrgId,
       userId: user._id,
       action,
       resourceType: metadata?.resourceType,
@@ -107,7 +115,16 @@ export async function auditLog(
     }
     
     // Write to auditLogs table
-    await ctx.db.insert("auditLogs", auditEntry)
+    // Type guard: Check if we can write (MutationCtx) or if we're in QueryCtx (read-only)
+    if ("insert" in ctx.db) {
+      // MutationCtx - can write directly
+      await ctx.db.insert("auditLogs", auditEntry)
+    } else {
+      // QueryCtx - cannot write, log warning
+      // Note: For queries, audit logging should ideally be done via a scheduled mutation
+      // For now, we'll skip audit logging from queries to avoid breaking the query
+      console.warn("[Audit Log] Cannot write audit log from query context. Action:", action)
+    }
   } catch (error) {
     // Audit logging should never break operations
     // Log error to console but don't throw

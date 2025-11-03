@@ -99,7 +99,7 @@ export const linkResource = mutation({
     switch (args.resourceTable) {
       case "servers": {
         const server = await ctx.db.get(args.resourceId as any)
-        if (server) {
+        if (server && "name" in server && "status" in server) {
           denormalizedName = server.name
           denormalizedStatus = server.status
         }
@@ -107,7 +107,7 @@ export const linkResource = mutation({
       }
       case "webServices": {
         const webService = await ctx.db.get(args.resourceId as any)
-        if (webService) {
+        if (webService && "name" in webService && "status" in webService) {
           denormalizedName = webService.name
           denormalizedStatus = webService.status
         }
@@ -115,7 +115,7 @@ export const linkResource = mutation({
       }
       case "domains": {
         const domain = await ctx.db.get(args.resourceId as any)
-        if (domain) {
+        if (domain && "domainName" in domain && "status" in domain) {
           denormalizedName = domain.domainName
           denormalizedStatus = domain.status
         }
@@ -123,7 +123,7 @@ export const linkResource = mutation({
       }
       case "databases": {
         const database = await ctx.db.get(args.resourceId as any)
-        if (database) {
+        if (database && "name" in database && "status" in database) {
           denormalizedName = database.name
           denormalizedStatus = database.status
         }

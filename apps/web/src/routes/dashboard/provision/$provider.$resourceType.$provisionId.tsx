@@ -14,7 +14,7 @@ import { ProvisionStatusCard } from "@/components/provisioning/provision-status-
 import type { ResourceType } from "@/machines/provision-resource.machine"
 
 export const Route = createFileRoute(
-  "/dashboard/provision/$provider.$resourceType.$provisionId"
+  "/dashboard/provision/$provider/$resourceType/$provisionId"
 )({
   component: ProvisionStatusPage,
 })

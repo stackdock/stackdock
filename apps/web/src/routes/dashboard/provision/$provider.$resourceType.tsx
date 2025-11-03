@@ -13,7 +13,7 @@ import { Link } from "@tanstack/react-router"
 import { ProvisionForm } from "@/components/provisioning/provision-form"
 import type { ResourceType } from "@/machines/provision-resource.machine"
 
-export const Route = createFileRoute("/dashboard/provision/$provider.$resourceType")({
+export const Route = createFileRoute("/dashboard/provision/$provider/$resourceType")({
   component: ResourceProvisionPage,
 })
 

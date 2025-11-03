@@ -14,6 +14,8 @@
  * @see docs/architecture/SECURITY.md for full security documentation
  */
 
+import { auditLog } from "./audit"
+
 // Web Crypto API is available globally in Convex
 const webcrypto = crypto
 
@@ -182,8 +184,6 @@ export async function decryptApiKey(
     // Log audit entry for failed decryption (if ctx provided)
     if (ctx) {
       try {
-        // Dynamic import to avoid circular dependency
-        const { auditLog } = await import("./audit")
         await auditLog(
           ctx,
           "credential.decrypt",
@@ -209,8 +209,6 @@ export async function decryptApiKey(
   // Log audit entry for successful decryption (if ctx provided)
   if (ctx) {
     try {
-      // Dynamic import to avoid circular dependency
-      const { auditLog } = await import("./audit")
       await auditLog(
         ctx,
         "credential.decrypt",

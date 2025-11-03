@@ -90,6 +90,33 @@ export const listDomains = query({
 })
 
 /**
+ * List all databases for the current user's organization
+ */
+export const listDatabases = query({
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx)
+    
+    // Get user's org from memberships
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .first()
+    
+    if (!membership) {
+      return []
+    }
+    
+    // Fetch all databases for this org
+    const databases = await ctx.db
+      .query("databases")
+      .withIndex("by_orgId", (q) => q.eq("orgId", membership.orgId))
+      .collect()
+    
+    return databases
+  },
+})
+
+/**
  * Get counts for dashboard stats
  */
 export const getCounts = query({

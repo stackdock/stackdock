@@ -104,18 +104,17 @@ export const getProvisionStatus = query({
     }
 
     // If not found by direct lookup, try querying by sstResourceId or providerResourceId
+    // Note: Composite indexes require all fields, so we use filter() instead
     if (!resource) {
       for (const tableType of tableTypes) {
-        // Try querying by sstResourceId using the by_sst_resource index
-        const bySstResource = await ctx.db
+        // Try querying by sstResourceId (use filter since we don't have sstStackName)
+        const resources = await ctx.db
           .query(tableType)
-          .withIndex("by_sst_resource", (q) =>
-            q.eq("sstResourceId", args.provisionId)
-          )
-          .first()
+          .filter((q) => q.eq(q.field("sstResourceId"), args.provisionId))
+          .collect()
 
-        if (bySstResource) {
-          resource = bySstResource
+        if (resources.length > 0) {
+          resource = resources[0]
           foundTable = tableType
           resourceType =
             tableType === "servers"
@@ -128,18 +127,16 @@ export const getProvisionStatus = query({
           break
         }
 
-        // Try querying by providerResourceId (no index, so this is slower)
+        // Try querying by providerResourceId (use filter since we don't have dockId)
         // Only do this if we haven't found it yet
         if (!resource) {
-          const byProviderResource = await ctx.db
+          const providerResources = await ctx.db
             .query(tableType)
-            .withIndex("by_dock_resource", (q) =>
-              q.eq("providerResourceId", args.provisionId)
-            )
-            .first()
+            .filter((q) => q.eq(q.field("providerResourceId"), args.provisionId))
+            .collect()
 
-          if (byProviderResource) {
-            resource = byProviderResource
+          if (providerResources.length > 0) {
+            resource = providerResources[0]
             foundTable = tableType
             resourceType =
               tableType === "servers"

@@ -17,11 +17,13 @@ import type * as docks_adapters_gridpane_types from "../docks/adapters/gridpane/
 import type * as docks_mutations from "../docks/mutations.js";
 import type * as docks_queries from "../docks/queries.js";
 import type * as docks_registry from "../docks/registry.js";
+import type * as lib_audit from "../lib/audit.js";
 import type * as lib_encryption from "../lib/encryption.js";
 import type * as lib_rbac from "../lib/rbac.js";
 import type * as organizations from "../organizations.js";
 import type * as projects_mutations from "../projects/mutations.js";
 import type * as projects_queries from "../projects/queries.js";
+import type * as provisioning_queries from "../provisioning/queries.js";
 import type * as resources_queries from "../resources/queries.js";
 import type * as test from "../test.js";
 import type * as users from "../users.js";
@@ -50,11 +52,13 @@ declare const fullApi: ApiFromModules<{
   "docks/mutations": typeof docks_mutations;
   "docks/queries": typeof docks_queries;
   "docks/registry": typeof docks_registry;
+  "lib/audit": typeof lib_audit;
   "lib/encryption": typeof lib_encryption;
   "lib/rbac": typeof lib_rbac;
   organizations: typeof organizations;
   "projects/mutations": typeof projects_mutations;
   "projects/queries": typeof projects_queries;
+  "provisioning/queries": typeof provisioning_queries;
   "resources/queries": typeof resources_queries;
   test: typeof test;
   users: typeof users;

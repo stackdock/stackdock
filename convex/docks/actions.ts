@@ -7,6 +7,9 @@
 import { v } from "convex/values"
 import { internalAction } from "../_generated/server"
 import { getAdapter } from "./registry"
+import { GridPaneAPI } from "./adapters/gridpane/api"
+import { internal } from "../_generated/api"
+import type { Id } from "../_generated/dataModel"
 
 /**
  * Validate API credentials for a provider
@@ -37,6 +40,115 @@ export const validateCredentials = internalAction({
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error"
       throw new Error(`Failed to validate credentials: ${errorMessage}`)
+    }
+  },
+})
+
+/**
+ * Sync dock resources from provider API
+ * 
+ * This action handles all external HTTP requests (fetch) required for syncing.
+ * The mutation will call this action, receive the data, and insert it into the database.
+ * 
+ * Flow:
+ * 1. Mutation decrypts API key (for audit logging)
+ * 2. Mutation calls this action with decrypted key
+ * 3. Action makes API calls (fetch allowed in actions)
+ * 4. Action returns raw provider data
+ * 5. Mutation transforms and inserts data into universal tables
+ * 
+ * @param dockId - Dock ID (for logging/debugging)
+ * @param provider - Provider name (e.g., "gridpane")
+ * @param apiKey - Decrypted API key (passed from mutation)
+ * @param resourceTypes - Array of resource types to sync (e.g., ["servers", "webServices", "domains"])
+ */
+export const syncDockResources = internalAction({
+  args: {
+    dockId: v.id("docks"),
+    provider: v.string(),
+    apiKey: v.string(), // Decrypted API key (passed from mutation)
+    resourceTypes: v.array(v.string()), // ["servers", "webServices", "domains", "databases"]
+  },
+  handler: async (ctx, args) => {
+    console.log(`[Dock Action] Syncing resources for dock ${args.dockId}, provider: ${args.provider}`)
+    
+    const adapter = getAdapter(args.provider)
+    if (!adapter) {
+      throw new Error(`No adapter found for provider: ${args.provider}`)
+    }
+
+    // Import GridPaneAPI directly (or use adapter pattern)
+    // For GridPane, we'll use the API class directly
+    let servers: any[] = []
+    let webServices: any[] = []
+    let domains: any[] = []
+    let databases: any[] = []
+
+    try {
+      // GridPane-specific: Use GridPaneAPI directly
+      if (args.provider === "gridpane") {
+        const api = new GridPaneAPI(args.apiKey)
+
+        // Sync requested resource types
+        if (args.resourceTypes.includes("servers")) {
+          console.log(`[Dock Action] Fetching servers for ${args.provider}`)
+          servers = await api.getServers()
+        }
+
+        if (args.resourceTypes.includes("webServices")) {
+          console.log(`[Dock Action] Fetching sites for ${args.provider}`)
+          webServices = await api.getSites()
+        }
+
+        if (args.resourceTypes.includes("domains")) {
+          console.log(`[Dock Action] Fetching domains for ${args.provider}`)
+          domains = await api.getDomains()
+        }
+
+        // GridPane doesn't have databases endpoint yet
+        if (args.resourceTypes.includes("databases")) {
+          console.log(`[Dock Action] Databases not supported for ${args.provider}`)
+          databases = []
+        }
+      } else {
+        // For other providers, use adapter pattern
+        // TODO: Implement adapter pattern for other providers
+        throw new Error(`Provider ${args.provider} sync not yet implemented in action`)
+      }
+
+      console.log(`[Dock Action] Sync complete: ${servers.length} servers, ${webServices.length} webServices, ${domains.length} domains`)
+
+      // Call internal mutation to insert results into database
+      // Actions can call mutations using ctx.runMutation()
+      // Note: internal.docks.mutations should be available after insertSyncResults is exported
+      await ctx.runMutation(internal.docks.mutations.insertSyncResults as any, {
+        dockId: args.dockId,
+        provider: args.provider,
+        servers,
+        webServices,
+        domains,
+        databases,
+      })
+
+      return { success: true }
+    } catch (error) {
+      console.error(`[Dock Action] Sync error for dock ${args.dockId}:`, error)
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error"
+      
+      // Mark sync as failed via internal mutation
+      try {
+        await ctx.runMutation(internal.docks.mutations.updateSyncStatus as any, {
+          dockId: args.dockId,
+          status: "error",
+          error: errorMessage,
+        })
+      } catch (statusError) {
+        // If updating status fails, log but don't throw (original error is more important)
+        console.error(`[Dock Action] Failed to update sync status:`, statusError)
+      }
+      
+      throw new Error(`Failed to sync dock resources: ${errorMessage}`)
     }
   },
 })

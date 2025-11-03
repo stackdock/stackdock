@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useQuery } from "convex/react"
 import { api } from "convex/_generated/api"
+import { DomainsTable } from "@/components/resources/domains-table"
 
 export const Route = createFileRoute("/dashboard/operations/networking")({
   component: NetworkingPage,
@@ -18,12 +19,7 @@ function NetworkingPage() {
         </p>
       </div>
       
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <h3 className="text-sm font-medium text-gray-500 mb-2">Domains</h3>
-        <pre className="bg-gray-50 border border-gray-200 rounded p-4 overflow-auto text-sm">
-          {JSON.stringify(domains || [], null, 2)}
-        </pre>
-      </div>
+      <DomainsTable data={domains} />
     </div>
   )
 }
