@@ -13,6 +13,7 @@
 7. [Dock Adapter Pattern](#dock-adapter-pattern)
 8. [Tech Stack](#tech-stack)
 9. [Monorepo Structure](#monorepo-structure)
+10. [Development Priority](#development-priority)
 
 ---
 
@@ -822,12 +823,25 @@ stackdock/
 
 ---
 
+## Development Priority
+
+StackDock follows a strategic development priority: **Convex/Translation Layer → TanStack Tables → XState State Machines**.
+
+**Why?** The universal schema is the foundation. Validate it across multiple providers before optimizing frontend components.
+
+**See**: [`DEVELOPMENT_PRIORITY.md`](./DEVELOPMENT_PRIORITY.md) for the complete strategy, validation process, and roadmap.
+
+**Current Phase**: Phase 1 (Convex/Translation Layer) - Adding providers to validate universal schema
+
+---
+
 ## Next Steps
 
-1. **Read CONTRIBUTING.md**: Development workflow
-2. **Read DOCK_ADAPTER_GUIDE.md**: Build your first adapter
-3. **Read SECURITY.md**: Security patterns
-4. **Read RBAC.md**: Permission system details
+1. **Read DEVELOPMENT_PRIORITY.md**: Development strategy and roadmap
+2. **Read CONTRIBUTING.md**: Development workflow
+3. **Read DOCK_ADAPTER_GUIDE.md**: Build your first adapter
+4. **Read SECURITY.md**: Security patterns
+5. **Read RBAC.md**: Permission system details
 
 ---
 

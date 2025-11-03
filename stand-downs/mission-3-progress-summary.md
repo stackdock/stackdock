@@ -3,6 +3,8 @@
 **Status**: In Progress (85% Complete)  
 **Mission**: Fix GridPane Auth & Data Tables
 
+> **Note**: See [`docs/architecture/DEVELOPMENT_PRIORITY.md`](../docs/architecture/DEVELOPMENT_PRIORITY.md) for the strategic development priority (Convex → TanStack → XState) that guides this mission and future work.
+
 ---
 
 ## ✅ Completed Today
