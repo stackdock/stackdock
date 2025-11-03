@@ -173,8 +173,10 @@ You should see:
 - ✅ **Encryption** - AES-256-GCM encryption for API keys
 - ✅ **Audit Logging** - Comprehensive audit trail infrastructure
 - ✅ **Provisioning Infrastructure** - SST core engine, mutations, queries, UI (Mission 2.5 complete)
-- ✅ **Dock Adapter System** - Registry structure ready, GridPane adapter exists
-- ⚠️ **Current Blocker** - GridPane credential validation needs fixing (Mission 3)
+- ✅ **GridPane Integration** - Authentication working, data syncing successfully
+- ✅ **Resource Tables** - All 4 tables (Servers, Web Services, Domains, Databases) displaying real-time data
+- ✅ **UI Foundation** - TanStack Table components integrated, ready for read-only MVP
+- 🎯 **Next Phase** - Adding more providers to validate universal schema (see MVP Roadmap)
 
 ---
 
@@ -212,10 +214,11 @@ All documentation is organized in `docs/`:
 
 ---
 
-## 🎯 MVP Roadmap (First Demo)
+## 🎯 MVP Roadmap (Read-Only Dashboard)
 
-**Goal**: Multi-provider read-only dashboard
+**Goal**: Multi-provider read-only dashboard with validated universal schema
 
+### ✅ Phase 1: Foundation (Complete)
 - [x] Architecture documentation
 - [x] TanStack Start app setup
 - [x] Convex integration ⭐
@@ -225,17 +228,50 @@ All documentation is organized in `docs/`:
 - [x] Encryption system ⭐
 - [x] Audit logging infrastructure ⭐
 - [x] Provisioning infrastructure (SST core, mutations, queries, UI) ⭐
-- [x] GridPane dock adapter (runtime ready, validation pending fix)
-- [ ] Fix GridPane credential validation (Mission 3 - current blocker)
+- [x] GridPane dock adapter - **AUTHENTICATION WORKING** ✅
+- [x] Resource tables (Servers, Web Services, Domains, Databases) - **DATA DISPLAYING** ✅
+- [x] UI foundation (TanStack Table components) - **FULLY MAPPED OUT** ✅
+
+### 🎯 Phase 2: Translation Layer Validation (Current Focus)
+
+**Strategy**: Add more providers to validate and refine universal schema before frontend optimization. See [`docs/architecture/DEVELOPMENT_PRIORITY.md`](./docs/architecture/DEVELOPMENT_PRIORITY.md) for complete strategy.
+
+**PaaS Providers** (Web Services):
 - [ ] Vercel dock adapter
+- [ ] Netlify dock adapter
+- [ ] Cloudflare Pages dock adapter
+
+**IaaS Providers** (Servers):
 - [ ] DigitalOcean dock adapter
-- [ ] Unified infrastructure dashboard (UI ready, needs working docks)
-- [ ] Project resource linking
-- [ ] Client portal
+- [ ] Vultr dock adapter (or AWS/DigitalOcean alternative)
+- [ ] Hetzner dock adapter (or third IaaS option)
 
-**Target**: Working demo with 3-5 providers (blocked on API key validation)
+**Translation Layer Refinement**:
+- [ ] Validate field mappings across all providers
+- [ ] Standardize status mappings
+- [ ] Document edge cases
+- [ ] Refine universal schema based on real patterns
 
-**Current Progress**: Core platform complete, provisioning infrastructure ready. Blocked on fixing GridPane API key validation to enable dock creation and resource syncing.
+**Target**: 3-5 providers total (GridPane + 2-4 more) to validate universal schema
+
+### 📋 Phase 3: Read-Only MVP Checkpoint
+
+**UI Fully Mapped Out**:
+- [x] Servers table (filtering, sorting, pagination)
+- [x] Web Services table (filtering, sorting, pagination)
+- [x] Domains table (filtering, sorting, pagination)
+- [x] Databases table (filtering, sorting, pagination)
+- [x] Provider badges (color-coded)
+- [x] Status badges (color-coded)
+- [x] Real-time updates (Convex subscriptions)
+
+**Ready for Enhancement** (after schema validation):
+- [ ] Advanced filtering
+- [ ] Bulk operations
+- [ ] Export functionality
+- [ ] Resource detail views
+
+**Current Progress**: Core platform complete. GridPane working end-to-end. UI foundation ready. **Next**: Add 2-4 more providers to validate universal schema, then optimize frontend.
 
 ---
 
@@ -275,50 +311,64 @@ vercelDeployments: { ... }
 - Scales infinitely (100 providers = 4 tables, not 100)
 - UI components are provider-agnostic
 
-### How It Works (When API Keys Are Fixed)
+### How It Works
 
-**1. Connect Provider (Create Dock)**:
+**1. Connect Provider (Create Dock)** ✅:
 ```
 User → Enters API key → System validates → Encrypts → Stores in docks table
 ```
+*GridPane working, other providers being added*
 
-**2. Sync Resources**:
+**2. Sync Resources** ✅:
 ```
 User clicks "Sync" → Adapter decrypts API key → Calls provider API → 
 Translates to universal schema → Inserts into universal tables
 ```
+*GridPane syncing successfully, displaying in tables*
 
-**3. View Unified Dashboard**:
+**3. View Unified Dashboard** ✅:
 ```
 Dashboard queries universal tables → Shows resources from ALL providers → 
 Provider-agnostic UI components render everything
 ```
+*All 4 resource tables displaying real-time data via Convex queries*
 
-**4. Provision Infrastructure**:
+**4. Provision Infrastructure** (Ready):
 ```
 User fills form → System calls provisionResource mutation → 
 Uses SST core engine OR dock adapter → Creates resource → 
 Real-time status updates via Convex subscriptions
 ```
+*Infrastructure ready, testing with GridPane*
 
 ### Current State
 
-**✅ What's Ready**:
+**✅ What's Working**:
 - Core platform (auth, RBAC, encryption, audit)
 - Provisioning infrastructure (SST core, mutations, queries, UI)
-- Dock adapter system (registry structure, GridPane adapter exists)
+- GridPane integration (authentication working, data syncing)
+- Resource tables displaying real-time data
+- UI foundation fully mapped out (TanStack Table components)
 - Real-time sync (Convex subscriptions)
 
-**⚠️ Current Blocker**:
-- GridPane credential validation failing (Mission 3)
-- Blocks: Dock creation, resource syncing, provisioning flows
+**🎯 Current Focus**:
+- Adding more providers (Vercel, Netlify, Cloudflare + 1-3 IaaS)
+- Validating universal schema across multiple providers
+- Refining translation layer based on real patterns
+- See [`docs/architecture/DEVELOPMENT_PRIORITY.md`](./docs/architecture/DEVELOPMENT_PRIORITY.md) for strategy
 
-**🎯 What to Expect When Fixed**:
-- Create docks with real API keys
-- Sync resources from providers
-- Unified dashboard showing all resources
-- Provision new infrastructure
-- Real-time status updates
+**🚀 What You Can Do Now**:
+- Create GridPane docks with real API keys ✅
+- Sync GridPane resources ✅
+- View resources in unified dashboard ✅
+- See real-time updates ✅
+- Add more provider adapters (Vercel, Netlify, etc.)
+
+**📋 Next Milestone**: Read-Only MVP Checkpoint
+- 3-5 providers integrated
+- Universal schema validated
+- UI fully functional for read-only operations
+- Ready for Phase 2 (frontend optimization)
 
 ### For Developers Finding This Repo
 
@@ -327,14 +377,14 @@ Real-time status updates via Convex subscriptions
 - Review code (all open source)
 - Understand the patterns (universal tables, dock adapters)
 - Set up locally (see Quick Start)
-- Contribute adapters/components
+- Create GridPane docks and sync resources ✅
+- Contribute adapters for new providers
+- Build UI components
 
-**You can't yet** (until Mission 3 fix):
-- Create docks with real API keys
-- Sync resources from providers
-- Test provisioning flows
-
-**The code is ready** - just needs the credential validation fix.
+**You should**:
+- Read [`DEVELOPMENT_PRIORITY.md`](./docs/architecture/DEVELOPMENT_PRIORITY.md) to understand development strategy
+- Focus on Convex/translation layer before frontend optimization
+- Validate universal schema with multiple providers
 
 ---
 
