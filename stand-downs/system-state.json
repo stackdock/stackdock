@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2025-11-11T21:00:00Z",
+  "lastUpdated": "2025-11-11T22:30:00Z",
   "currentSession": {
     "id": "session-2025-01-11",
     "date": "2025-01-11",
@@ -40,6 +40,48 @@
           "details": "All 4 resource tables (Servers, Web Services, Domains, Databases) integrated and displaying real-time data from Convex queries."
         }
       ]
+    },
+    {
+      "id": "mission-4",
+      "title": "UI Polish + Multi-Provider Integration → Beacons Extraction",
+      "status": "in-progress",
+      "priority": "high",
+      "timeline": "9 days (7 days + 2 buffer)",
+      "progress": {
+        "stepsCompleted": [
+          "mission-planning",
+          "frontend-review-documentation",
+          "frontend-agent-brief-created"
+        ],
+        "currentStep": "ui-table-fixes",
+        "completion": 15
+      },
+      "milestones": [
+        {
+          "id": "ui-fixes",
+          "title": "UI Tables Polished",
+          "status": "in-progress",
+          "details": "Fix table bugs and align with template. All 4 tables (servers, webServices, domains, databases) visually match template and functionally working. Frontend review document created with specific fixes identified. Making meaningful improvements.",
+          "startedAt": "2025-11-11T22:30:00Z"
+        },
+        {
+          "id": "providers-integrated",
+          "title": "8+ Providers Integrated",
+          "status": "pending",
+          "details": "Add 11 providers (Vercel, Netlify, Cloudflare, DNSimple, DigitalOcean, Vultr, Linode, AWS, GCP, Azure, Rocket.net) with GET endpoints only for hackathon MVP."
+        },
+        {
+          "id": "extraction-ready",
+          "title": "Beacons Extraction Ready",
+          "status": "pending",
+          "details": "Extraction guide complete, codebase prepared for clean extraction to Beacons (independent repo). RBAC + encryption + universal translation layer ready."
+        }
+      ],
+      "documentation": "stand-downs/mission-4-execution-plan.md",
+      "relatedDocuments": [
+        "stand-downs/mission-4-frontend-table-review.md",
+        "stand-downs/mission-4-frontend-agent-prompt.md"
+      ]
     }
   ],
   "missionOrder": [
@@ -47,7 +89,8 @@
     "mission-1.5",
     "mission-2",
     "mission-2.5",
-    "mission-3"
+    "mission-3",
+    "mission-4"
   ],
   "completedMissions": [
     {
