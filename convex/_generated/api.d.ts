@@ -14,6 +14,10 @@ import type * as docks_adapters_gridpane_adapter from "../docks/adapters/gridpan
 import type * as docks_adapters_gridpane_api from "../docks/adapters/gridpane/api.js";
 import type * as docks_adapters_gridpane_index from "../docks/adapters/gridpane/index.js";
 import type * as docks_adapters_gridpane_types from "../docks/adapters/gridpane/types.js";
+import type * as docks_adapters_vercel_adapter from "../docks/adapters/vercel/adapter.js";
+import type * as docks_adapters_vercel_api from "../docks/adapters/vercel/api.js";
+import type * as docks_adapters_vercel_index from "../docks/adapters/vercel/index.js";
+import type * as docks_adapters_vercel_types from "../docks/adapters/vercel/types.js";
 import type * as docks_mutations from "../docks/mutations.js";
 import type * as docks_queries from "../docks/queries.js";
 import type * as docks_registry from "../docks/registry.js";
@@ -49,6 +53,10 @@ declare const fullApi: ApiFromModules<{
   "docks/adapters/gridpane/api": typeof docks_adapters_gridpane_api;
   "docks/adapters/gridpane/index": typeof docks_adapters_gridpane_index;
   "docks/adapters/gridpane/types": typeof docks_adapters_gridpane_types;
+  "docks/adapters/vercel/adapter": typeof docks_adapters_vercel_adapter;
+  "docks/adapters/vercel/api": typeof docks_adapters_vercel_api;
+  "docks/adapters/vercel/index": typeof docks_adapters_vercel_index;
+  "docks/adapters/vercel/types": typeof docks_adapters_vercel_types;
   "docks/mutations": typeof docks_mutations;
   "docks/queries": typeof docks_queries;
   "docks/registry": typeof docks_registry;

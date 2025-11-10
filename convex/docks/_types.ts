@@ -97,20 +97,26 @@ export interface DockAdapter {
    * Sync web services (sites, deployments, apps) to universal `webServices` table
    * 
    * Called during dock sync. Should:
-   * 1. Decrypt API key using `decryptApiKey(dock.encryptedApiKey)`
-   * 2. Fetch resources from provider API
-   * 3. Upsert into `webServices` table (check for existing via `by_dock_resource` index)
-   * 4. Map provider fields to universal schema
-   * 5. Store all provider-specific data in `fullApiData`
+   * 1. Use pre-fetched data if provided, otherwise fetch from provider API
+   * 2. Upsert into `webServices` table (check for existing via `by_dock_resource` index)
+   * 3. Map provider fields to universal schema
+   * 4. Store all provider-specific data in `fullApiData`
    * 
    * @param ctx - Convex mutation context (has database access)
    * @param dock - The dock document (contains encrypted API key)
+   * @param preFetchedData - Optional: Pre-fetched data from action (if provided, skips fetch)
    * 
    * @example
    * ```typescript
-   * async syncWebServices(ctx: MutationCtx, dock: Doc<"docks">) {
-   *   const apiKey = await decryptApiKey(dock.encryptedApiKey)
-   *   const sites = await fetchProviderSites(apiKey)
+   * async syncWebServices(ctx: MutationCtx, dock: Doc<"docks">, preFetchedData?: ProviderSite[]) {
+   *   let sites: ProviderSite[]
+   *   
+   *   if (preFetchedData) {
+   *     sites = preFetchedData
+   *   } else {
+   *     const apiKey = await decryptApiKey(dock.encryptedApiKey)
+   *     sites = await fetchProviderSites(apiKey)
+   *   }
    *   
    *   for (const site of sites) {
    *     const existing = await ctx.db
@@ -145,7 +151,11 @@ export interface DockAdapter {
    * }
    * ```
    */
-  syncWebServices?(ctx: MutationCtx, dock: Doc<"docks">): Promise<void>
+  syncWebServices?(
+    ctx: MutationCtx,
+    dock: Doc<"docks">,
+    preFetchedData?: any[]
+  ): Promise<void>
 
   /**
    * Sync servers (IaaS instances) to universal `servers` table
@@ -155,8 +165,13 @@ export interface DockAdapter {
    * 
    * @param ctx - Convex mutation context
    * @param dock - The dock document
+   * @param preFetchedData - Optional: Pre-fetched data from action (if provided, skips fetch)
    */
-  syncServers?(ctx: MutationCtx, dock: Doc<"docks">): Promise<void>
+  syncServers?(
+    ctx: MutationCtx,
+    dock: Doc<"docks">,
+    preFetchedData?: any[]
+  ): Promise<void>
 
   /**
    * Sync domains (DNS zones) to universal `domains` table
@@ -165,8 +180,13 @@ export interface DockAdapter {
    * 
    * @param ctx - Convex mutation context
    * @param dock - The dock document
+   * @param preFetchedData - Optional: Pre-fetched data from action (if provided, skips fetch)
    */
-  syncDomains?(ctx: MutationCtx, dock: Doc<"docks">): Promise<void>
+  syncDomains?(
+    ctx: MutationCtx,
+    dock: Doc<"docks">,
+    preFetchedData?: any[]
+  ): Promise<void>
 
   /**
    * Sync databases to universal `databases` table
@@ -175,8 +195,13 @@ export interface DockAdapter {
    * 
    * @param ctx - Convex mutation context
    * @param dock - The dock document
+   * @param preFetchedData - Optional: Pre-fetched data from action (if provided, skips fetch)
    */
-  syncDatabases?(ctx: MutationCtx, dock: Doc<"docks">): Promise<void>
+  syncDatabases?(
+    ctx: MutationCtx,
+    dock: Doc<"docks">,
+    preFetchedData?: any[]
+  ): Promise<void>
 
   // ============================================================================
   // OPTIONAL: Mutation Operations (Future Feature)

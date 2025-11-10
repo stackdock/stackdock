@@ -174,164 +174,54 @@ export const syncDock = mutation({
 })
 
 /**
- * Internal mutation: Insert sync results into universal tables
+ * Internal mutation: Sync dock resources using adapter methods
  * 
- * Called by syncDockResources action after fetching data from provider API.
- * This allows the action (which can use fetch) to insert data via mutation.
+ * Called by syncDockResources action after fetching data.
+ * Uses adapter sync methods to transform and insert data.
+ * 
+ * This replaces insertSyncResults and eliminates provider-specific code.
  */
-export const insertSyncResults = internalMutation({
+export const syncDockResourcesMutation = internalMutation({
   args: {
     dockId: v.id("docks"),
     provider: v.string(),
-    servers: v.array(v.any()),
-    webServices: v.array(v.any()),
-    domains: v.array(v.any()),
-    databases: v.array(v.any()),
+    fetchedData: v.object({
+      servers: v.optional(v.array(v.any())),
+      webServices: v.optional(v.array(v.any())),
+      domains: v.optional(v.array(v.any())),
+      databases: v.optional(v.array(v.any())),
+    }),
   },
   handler: async (ctx, args) => {
-    // Get dock to access orgId
+    // Get dock to access orgId and verify dock exists
     const dock = await ctx.db.get(args.dockId)
     if (!dock) {
       throw new ConvexError("Dock not found")
     }
 
-    // Transform and insert data into universal tables
-    // Sync servers
-    if (args.servers && args.servers.length > 0) {
-      for (const server of args.servers) {
-        const existing = await ctx.db
-          .query("servers")
-          .withIndex("by_dock_resource", (q) =>
-            q
-              .eq("dockId", dock._id)
-              .eq("providerResourceId", server.id.toString())
-          )
-          .first()
-
-        const statusMap: Record<string, string> = {
-          active: "running",
-          inactive: "stopped",
-          building: "pending",
-          error: "error",
-        }
-        const status = statusMap[server.status?.toLowerCase() || ""] || server.status?.toLowerCase() || "unknown"
-
-        const universalServer = {
-          orgId: dock.orgId,
-          dockId: dock._id,
-          provider: args.provider,
-          providerResourceId: server.id.toString(),
-          name: server.label,
-          primaryIpAddress: server.ip || undefined,
-          region: server.region || undefined,
-          status,
-          fullApiData: server,
-          updatedAt: Date.now(),
-        }
-
-        if (existing) {
-          await ctx.db.patch(existing._id, universalServer)
-        } else {
-          await ctx.db.insert("servers", universalServer)
-        }
-      }
+    // Get adapter
+    const adapter = getAdapter(args.provider)
+    if (!adapter) {
+      throw new ConvexError(`No adapter found for provider: ${args.provider}`)
     }
 
-    // Sync web services
-    if (args.webServices && args.webServices.length > 0) {
-      for (const site of args.webServices) {
-        const existing = await ctx.db
-          .query("webServices")
-          .withIndex("by_dock_resource", (q) =>
-            q
-              .eq("dockId", dock._id)
-              .eq("providerResourceId", site.id.toString())
-          )
-          .first()
-
-        let environment: string | undefined
-        if (site.url.includes("staging.")) {
-          environment = "staging"
-        } else if (site.url.includes("canary.")) {
-          environment = "development"
-        } else {
-          environment = "production"
-        }
-
-        let siteStatus = "pending"
-        if (site.ssl_status === "succeed" && site.resolved_at) {
-          siteStatus = "running"
-        } else if (site.ssl_status === "failed") {
-          siteStatus = "error"
-        }
-
-        const universalWebService = {
-          orgId: dock.orgId,
-          dockId: dock._id,
-          provider: args.provider,
-          providerResourceId: site.id.toString(),
-          name: site.url,
-          productionUrl: site.url.startsWith("http") ? site.url : `https://${site.url}`,
-          environment,
-          status: siteStatus,
-          fullApiData: site,
-          updatedAt: Date.now(),
-        }
-
-        if (existing) {
-          await ctx.db.patch(existing._id, universalWebService)
-        } else {
-          await ctx.db.insert("webServices", universalWebService)
-        }
-      }
+    // Use adapter methods to sync each resource type
+    // Adapter methods handle transformation and insertion
+    
+    if (args.fetchedData.servers && adapter.syncServers) {
+      await adapter.syncServers(ctx, dock, args.fetchedData.servers)
     }
 
-    // Sync domains
-    if (args.domains && args.domains.length > 0) {
-      for (const domain of args.domains) {
-        const existing = await ctx.db
-          .query("domains")
-          .withIndex("by_dock_resource", (q) =>
-            q
-              .eq("dockId", dock._id)
-              .eq("providerResourceId", domain.id.toString())
-          )
-          .first()
-
-        const expiresAt = domain.updated_at
-          ? new Date(domain.updated_at).getTime() + 365 * 24 * 60 * 60 * 1000
-          : undefined
-
-        let domainStatus = "pending"
-        if (domain.ssl_status === "succeed" && domain.resolved_at) {
-          domainStatus = "active"
-        } else if (domain.ssl_status === "failed") {
-          domainStatus = "error"
-        }
-
-        const universalDomain = {
-          orgId: dock.orgId,
-          dockId: dock._id,
-          provider: args.provider,
-          providerResourceId: domain.id.toString(),
-          domainName: domain.url,
-          expiresAt,
-          status: domainStatus,
-          fullApiData: domain,
-          updatedAt: Date.now(),
-        }
-
-        if (existing) {
-          await ctx.db.patch(existing._id, universalDomain)
-        } else {
-          await ctx.db.insert("domains", universalDomain)
-        }
-      }
+    if (args.fetchedData.webServices && adapter.syncWebServices) {
+      await adapter.syncWebServices(ctx, dock, args.fetchedData.webServices)
     }
 
-    // Sync databases (if supported)
-    if (args.databases && args.databases.length > 0) {
-      // TODO: Implement database sync when GridPane adds database endpoint
+    if (args.fetchedData.domains && adapter.syncDomains) {
+      await adapter.syncDomains(ctx, dock, args.fetchedData.domains)
+    }
+
+    if (args.fetchedData.databases && adapter.syncDatabases) {
+      await adapter.syncDatabases(ctx, dock, args.fetchedData.databases)
     }
 
     // Mark sync as successful
@@ -346,6 +236,7 @@ export const insertSyncResults = internalMutation({
     return { success: true }
   },
 })
+
 
 /**
  * Internal mutation: Update sync status

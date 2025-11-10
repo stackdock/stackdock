@@ -174,7 +174,8 @@ You should see:
 - ✅ **Audit Logging** - Comprehensive audit trail infrastructure
 - ✅ **Provisioning Infrastructure** - SST core engine, mutations, queries, UI (Mission 2.5 complete)
 - ✅ **GridPane Integration (Partial MVP)** - Authentication working, servers & webServices syncing successfully. Sufficient for observability mode. Full API coverage deferred until after multi-provider schema validation.
-- 🔄 **Multi-Provider Integration (Mission 5)** - Adding Vercel, Netlify, DigitalOcean, Cloudflare to validate universal schema
+- ✅ **Vercel Integration (Mission 5 - Checkpoint)** - Vercel adapter implemented, API key encryption working, web services syncing to universal tables, data rendering in UI. First multi-provider validation successful.
+- 🔄 **Multi-Provider Integration (Mission 5)** - Continuing with Netlify, DigitalOcean, Cloudflare to further validate universal schema
 - ✅ **Resource Tables** - All 4 tables (Servers, Web Services, Domains, Databases) displaying real-time data
 - ✅ **UI Foundation** - TanStack Table components integrated, ready for read-only MVP
 - 🎯 **Next Phase** - Adding more providers to validate universal schema (see MVP Roadmap)
@@ -240,10 +241,10 @@ All documentation is organized in `docs/`:
 
 **Strategy**: Add more providers to validate and refine universal schema before frontend optimization. See [`docs/architecture/DEVELOPMENT_PRIORITY.md`](./docs/architecture/DEVELOPMENT_PRIORITY.md) for complete strategy.
 
-**Status**: IN PROGRESS - Starting with Vercel adapter
+**Status**: IN PROGRESS - Vercel adapter complete ✅
 
 **PaaS Providers** (Web Services):
-- [ ] Vercel dock adapter
+- [x] Vercel dock adapter ✅ (API key encryption working, web services syncing, data rendering in UI)
 - [ ] Netlify dock adapter
 - [ ] Cloudflare Pages dock adapter
 

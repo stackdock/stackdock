@@ -6,6 +6,7 @@
 
 import { query } from "../_generated/server"
 import { getCurrentUser } from "../lib/rbac"
+import { listProvidersWithMetadata } from "./registry"
 
 /**
  * List all docks for the current user's organization
@@ -45,5 +46,16 @@ export const listDocks = query({
       updatedAt: dock.updatedAt,
       // Don't expose encryptedApiKey - it's sensitive
     }))
+  },
+})
+
+/**
+ * List all available providers (for UI dropdown)
+ * 
+ * Returns providers with display names for the dock creation form.
+ */
+export const listAvailableProviders = query({
+  handler: async () => {
+    return listProvidersWithMetadata()
   },
 })

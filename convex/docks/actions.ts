@@ -8,6 +8,7 @@ import { v } from "convex/values"
 import { internalAction } from "../_generated/server"
 import { getAdapter } from "./registry"
 import { GridPaneAPI } from "./adapters/gridpane/api"
+import { VercelAPI } from "./adapters/vercel/api"
 import { internal } from "../_generated/api"
 import type { Id } from "../_generated/dataModel"
 
@@ -110,6 +111,31 @@ export const syncDockResources = internalAction({
           console.log(`[Dock Action] Databases not supported for ${args.provider}`)
           databases = []
         }
+      } else if (args.provider === "vercel") {
+        // Vercel-specific: Use VercelAPI directly
+        const api = new VercelAPI(args.apiKey)
+
+        // Vercel only supports webServices (projects)
+        if (args.resourceTypes.includes("webServices")) {
+          console.log(`[Dock Action] Fetching projects for ${args.provider}`)
+          webServices = await api.getProjects()
+        }
+
+        // Vercel doesn't support servers, domains, or databases via this API
+        if (args.resourceTypes.includes("servers")) {
+          console.log(`[Dock Action] Servers not supported for ${args.provider}`)
+          servers = []
+        }
+
+        if (args.resourceTypes.includes("domains")) {
+          console.log(`[Dock Action] Domains not supported for ${args.provider} (use separate domains API)`)
+          domains = []
+        }
+
+        if (args.resourceTypes.includes("databases")) {
+          console.log(`[Dock Action] Databases not supported for ${args.provider}`)
+          databases = []
+        }
       } else {
         // For other providers, use adapter pattern
         // TODO: Implement adapter pattern for other providers
@@ -118,16 +144,16 @@ export const syncDockResources = internalAction({
 
       console.log(`[Dock Action] Sync complete: ${servers.length} servers, ${webServices.length} webServices, ${domains.length} domains`)
 
-      // Call internal mutation to insert results into database
-      // Actions can call mutations using ctx.runMutation()
-      // Note: internal.docks.mutations should be available after insertSyncResults is exported
-      await ctx.runMutation(internal.docks.mutations.insertSyncResults as any, {
+      // Call internal mutation to sync using adapter methods
+      await ctx.runMutation(internal.docks.mutations.syncDockResourcesMutation, {
         dockId: args.dockId,
         provider: args.provider,
-        servers,
-        webServices,
-        domains,
-        databases,
+        fetchedData: {
+          servers: servers.length > 0 ? servers : undefined,
+          webServices: webServices.length > 0 ? webServices : undefined,
+          domains: domains.length > 0 ? domains : undefined,
+          databases: databases.length > 0 ? databases : undefined,
+        },
       })
 
       return { success: true }

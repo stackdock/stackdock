@@ -11,6 +11,7 @@
 
 import type { DockAdapter } from "./_types"
 import { gridpaneAdapter } from "./adapters/gridpane"
+import { vercelAdapter } from "./adapters/vercel"
 
 /**
  * Registry of all dock adapters
@@ -20,8 +21,8 @@ import { gridpaneAdapter } from "./adapters/gridpane"
  */
 const adapterRegistry: Record<string, DockAdapter> = {
   gridpane: gridpaneAdapter,
+  vercel: vercelAdapter,
   // Add more adapters here:
-  // vercel: vercelAdapter,
   // digitalocean: digitaloceanAdapter,
 }
 
@@ -50,9 +51,34 @@ export function listProviders(): string[] {
 }
 
 /**
+ * Provider display metadata
+ * Maps provider ID to display name for UI
+ * 
+ * Add entries here as new adapters are added.
+ */
+const providerMetadata: Record<string, { displayName: string }> = {
+  gridpane: { displayName: "GridPane" },
+  vercel: { displayName: "Vercel" },
+  // Add more as adapters are added:
+  // digitalocean: { displayName: "DigitalOcean" },
+  // netlify: { displayName: "Netlify" },
+}
+
+/**
+ * List all available providers with metadata
+ * 
+ * Returns array of providers with display names for UI consumption.
+ */
+export function listProvidersWithMetadata(): Array<{ id: string; displayName: string }> {
+  return Object.keys(adapterRegistry).map(id => ({
+    id,
+    displayName: providerMetadata[id]?.displayName || id.charAt(0).toUpperCase() + id.slice(1),
+  }))
+}
+
+/**
  * Register a new adapter (for dynamic registration if needed)
  */
 export function registerAdapter(provider: string, adapter: DockAdapter): void {
   adapterRegistry[provider.toLowerCase()] = adapter
 }
-

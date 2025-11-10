@@ -28,9 +28,10 @@ export const Route = createFileRoute("/dashboard/settings/docks")({
 function DocksPage() {
   const docks = useQuery(api["docks/queries"].listDocks)
   const currentOrgId = useQuery(api.organizations.getCurrentOrgId)
+  const availableProviders = useQuery(api["docks/queries"].listAvailableProviders)
   
   const [showAddForm, setShowAddForm] = useState(false)
-  const [provider, setProvider] = useState("gridpane")
+  const [provider, setProvider] = useState("")
   const [name, setName] = useState("")
   const [apiKey, setApiKey] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -47,6 +48,12 @@ function DocksPage() {
 
     if (!currentOrgId) {
       setError("No organization found. Please create an organization first.")
+      setIsSubmitting(false)
+      return
+    }
+
+    if (!provider) {
+      setError("Please select a provider")
       setIsSubmitting(false)
       return
     }
@@ -154,12 +161,16 @@ function DocksPage() {
             <form onSubmit={handleCreateDock} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="provider">Provider</Label>
-                <Select value={provider} onValueChange={setProvider}>
+                <Select value={provider} onValueChange={setProvider} disabled={!availableProviders}>
                   <SelectTrigger id="provider">
-                    <SelectValue placeholder="Select provider" />
+                    <SelectValue placeholder={availableProviders ? "Select provider" : "Loading providers..."} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="gridpane">GridPane</SelectItem>
+                    {availableProviders?.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.displayName}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -168,7 +179,7 @@ function DocksPage() {
                 <Label htmlFor="name">Name</Label>
                 <Input
                   id="name"
-                  placeholder="e.g., Production GridPane"
+                  placeholder={provider ? `e.g., Production ${availableProviders?.find(p => p.id === provider)?.displayName || ''}` : "e.g., Production Dock"}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required

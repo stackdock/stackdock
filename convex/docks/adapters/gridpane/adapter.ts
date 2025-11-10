@@ -18,6 +18,7 @@ import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
 import { decryptApiKey } from "../../../lib/encryption"
 import { GridPaneAPI } from "./api"
+import type { GridPaneServer, GridPaneSite, GridPaneDomain } from "./types"
 
 /**
  * Map GridPane server status to universal status
@@ -87,15 +88,25 @@ export const gridpaneAdapter: DockAdapter = {
    * Sync GridPane servers to universal servers table
    * GET /oauth/api/v1/server
    */
-  async syncServers(ctx: MutationCtx, dock: Doc<"docks">): Promise<void> {
-    // Decrypt API key with audit logging
-    const apiKey = await decryptApiKey(dock.encryptedApiKey, ctx, {
-      dockId: dock._id,
-      orgId: dock.orgId,
-    })
-    const api = new GridPaneAPI(apiKey)
+  async syncServers(
+    ctx: MutationCtx,
+    dock: Doc<"docks">,
+    preFetchedData?: GridPaneServer[]
+  ): Promise<void> {
+    let servers: GridPaneServer[]
 
-    const servers = await api.getServers()
+    if (preFetchedData) {
+      // Use pre-fetched data from action
+      servers = preFetchedData
+    } else {
+      // Fetch data directly (for direct mutation calls or testing)
+      const apiKey = await decryptApiKey(dock.encryptedApiKey, ctx, {
+        dockId: dock._id,
+        orgId: dock.orgId,
+      })
+      const api = new GridPaneAPI(apiKey)
+      servers = await api.getServers()
+    }
 
     for (const server of servers) {
       // Check if server already exists
@@ -137,16 +148,23 @@ export const gridpaneAdapter: DockAdapter = {
    */
   async syncWebServices(
     ctx: MutationCtx,
-    dock: Doc<"docks">
+    dock: Doc<"docks">,
+    preFetchedData?: GridPaneSite[]
   ): Promise<void> {
-    // Decrypt API key with audit logging
-    const apiKey = await decryptApiKey(dock.encryptedApiKey, ctx, {
-      dockId: dock._id,
-      orgId: dock.orgId,
-    })
-    const api = new GridPaneAPI(apiKey)
+    let sites: GridPaneSite[]
 
-    const sites = await api.getSites()
+    if (preFetchedData) {
+      // Use pre-fetched data from action
+      sites = preFetchedData
+    } else {
+      // Fetch data directly (for direct mutation calls or testing)
+      const apiKey = await decryptApiKey(dock.encryptedApiKey, ctx, {
+        dockId: dock._id,
+        orgId: dock.orgId,
+      })
+      const api = new GridPaneAPI(apiKey)
+      sites = await api.getSites()
+    }
 
     for (const site of sites) {
       // Check if site already exists
@@ -196,15 +214,25 @@ export const gridpaneAdapter: DockAdapter = {
    * Sync GridPane domains to universal domains table
    * GET /oauth/api/v1/domain
    */
-  async syncDomains(ctx: MutationCtx, dock: Doc<"docks">): Promise<void> {
-    // Decrypt API key with audit logging
-    const apiKey = await decryptApiKey(dock.encryptedApiKey, ctx, {
-      dockId: dock._id,
-      orgId: dock.orgId,
-    })
-    const api = new GridPaneAPI(apiKey)
+  async syncDomains(
+    ctx: MutationCtx,
+    dock: Doc<"docks">,
+    preFetchedData?: GridPaneDomain[]
+  ): Promise<void> {
+    let domains: GridPaneDomain[]
 
-    const domains = await api.getDomains()
+    if (preFetchedData) {
+      // Use pre-fetched data from action
+      domains = preFetchedData
+    } else {
+      // Fetch data directly (for direct mutation calls or testing)
+      const apiKey = await decryptApiKey(dock.encryptedApiKey, ctx, {
+        dockId: dock._id,
+        orgId: dock.orgId,
+      })
+      const api = new GridPaneAPI(apiKey)
+      domains = await api.getDomains()
+    }
 
     for (const domain of domains) {
       // Check if domain already exists
