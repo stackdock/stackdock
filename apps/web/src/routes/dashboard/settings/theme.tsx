@@ -8,13 +8,13 @@ function ThemePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold">Theme</h2>
-        <p className="text-muted-foreground text-sm">
+        <h2 className="text-base font-semibold">Theme</h2>
+        <p className="text-muted-foreground text-xs">
           Customize your theme preferences
         </p>
       </div>
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <p className="text-gray-600">Theme settings coming soon...</p>
+      <div className="rounded-lg border border-border bg-card p-6">
+        <p className="text-muted-foreground">Theme settings coming soon...</p>
       </div>
     </div>
   )

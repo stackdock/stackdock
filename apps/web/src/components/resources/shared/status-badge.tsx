@@ -14,23 +14,24 @@ export interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
-  const statusColors: Record<string, string> = {
-    running: "bg-green-500 text-green-50",
-    active: "bg-green-500 text-green-50",
-    stopped: "bg-muted-foreground/60 text-primary-foreground",
-    inactive: "bg-muted-foreground/60 text-primary-foreground",
-    pending: "bg-yellow-500 text-yellow-50",
-    provisioning: "bg-yellow-500 text-yellow-50",
-    error: "",
-    failed: "",
+  // Use shadcn design tokens - black/white theme
+  // Status-specific styling using CSS variables
+  const statusStyles: Record<string, string> = {
+    running: "bg-muted/50 text-foreground border-border capitalize",
+    active: "bg-muted/50 text-foreground border-border capitalize",
+    stopped: "bg-muted/30 text-muted-foreground border-border capitalize",
+    inactive: "bg-muted/30 text-muted-foreground border-border capitalize",
+    pending: "bg-muted/40 text-muted-foreground border-border capitalize",
+    provisioning: "bg-muted/40 text-muted-foreground border-border capitalize",
+    suspended: "bg-destructive/10 text-destructive border-destructive/20 capitalize",
+    error: "bg-destructive/10 text-destructive border-destructive/20 capitalize",
+    failed: "bg-destructive/10 text-destructive border-destructive/20 capitalize",
   }
-  
-  const isError = status === "error" || status === "failed"
   
   return (
     <Badge 
-      variant={isError ? "destructive" : "default"}
-      className={cn(!isError && statusColors[status], className)}
+      variant="outline"
+      className={cn(statusStyles[status] || "bg-muted/30 text-muted-foreground border-border capitalize", className)}
     >
       {status}
     </Badge>

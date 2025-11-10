@@ -94,15 +94,15 @@ function DocksPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "success":
-        return <Badge className="bg-green-100 text-green-800">Connected</Badge>
+        return <Badge variant="outline" className="bg-muted text-muted-foreground">Connected</Badge>
       case "error":
         return <Badge variant="destructive">Error</Badge>
       case "syncing":
-        return <Badge className="bg-blue-100 text-blue-800">Syncing...</Badge>
+        return <Badge variant="outline" className="bg-muted/50 text-muted-foreground">Syncing...</Badge>
       case "pending":
-        return <Badge className="bg-gray-100 text-gray-800">Pending</Badge>
+        return <Badge variant="outline" className="bg-muted/30 text-muted-foreground">Pending</Badge>
       default:
-        return <Badge>{status}</Badge>
+        return <Badge variant="outline">{status}</Badge>
     }
   }
 
@@ -110,8 +110,8 @@ function DocksPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold">Docks</h2>
-          <p className="text-muted-foreground text-sm">
+          <h2 className="text-base font-semibold">Docks</h2>
+          <p className="text-muted-foreground text-xs">
             Manage your infrastructure provider connections
           </p>
         </div>
@@ -122,9 +122,9 @@ function DocksPage() {
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 flex items-center gap-2">
-          <AlertCircle className="h-5 w-5 text-red-600" />
-          <p className="text-red-800 text-sm">{error}</p>
+        <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-4 flex items-center gap-2">
+          <AlertCircle className="h-5 w-5 text-destructive" />
+          <p className="text-destructive text-xs">{error}</p>
         </div>
       )}
 
@@ -243,7 +243,7 @@ function DocksPage() {
                       <h3 className="font-semibold">{dock.name}</h3>
                       {getStatusBadge(dock.lastSyncStatus)}
                     </div>
-                    <p className="text-muted-foreground text-sm">
+                    <p className="text-muted-foreground text-xs">
                       Provider: <span className="font-medium capitalize">{dock.provider}</span>
                     </p>
                     {dock.lastSyncError && (

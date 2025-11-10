@@ -58,21 +58,21 @@ const ProvisionStatusCard = React.forwardRef<
         )
       case 'validating':
         return (
-          <Badge className="bg-yellow-500 text-yellow-50">
+          <Badge variant="outline" className="bg-muted/50 text-muted-foreground">
             <Loader2 className="mr-1 h-3 w-3 animate-spin" />
             Validating...
           </Badge>
         )
       case 'provisioning':
         return (
-          <Badge className="bg-blue-500 text-blue-50">
+          <Badge variant="outline" className="bg-muted/50 text-muted-foreground">
             <Loader2 className="mr-1 h-3 w-3 animate-spin" />
             Provisioning...
           </Badge>
         )
       case 'success':
         return (
-          <Badge className="bg-green-500 text-green-50">
+          <Badge variant="outline" className="bg-muted text-muted-foreground">
             <CheckCircle2 className="mr-1 h-3 w-3" />
             Success
           </Badge>
@@ -92,7 +92,7 @@ const ProvisionStatusCard = React.forwardRef<
   const getStatusIcon = () => {
     switch (status) {
       case 'success':
-        return <CheckCircle2 className="h-8 w-8 text-green-500" />
+        return <CheckCircle2 className="h-8 w-8 text-foreground" />
       case 'error':
         return <AlertCircle className="h-8 w-8 text-destructive" />
       case 'validating':

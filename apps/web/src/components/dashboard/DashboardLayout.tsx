@@ -6,6 +6,7 @@ import { useNavigate } from "@tanstack/react-router"
 import { useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
+import { SkipLink } from "@/components/ui/skip-link"
 import { AppSidebar } from "./AppSidebar"
 import { Header } from "./Header"
 
@@ -30,6 +31,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <RedirectToLogin />
       </SignedOut>
       <SignedIn>
+        <SkipLink />
         <div className="border-grid flex flex-1 flex-col">
           <SidebarProvider defaultOpen={true}>
             <AppSidebar />

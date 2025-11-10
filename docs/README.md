@@ -37,6 +37,12 @@ Deep dive into system design, security, and permissions:
   - Common Scenarios
   - API Reference
 
+- **[ACCESSIBILITY.md](./architecture/ACCESSIBILITY.md)** - Accessibility Standards
+  - WCAG 2.1 AA Compliance
+  - Implementation Guidelines
+  - Component Patterns
+  - Testing Requirements
+
 ---
 
 ### Guides (`docs/guides/`)

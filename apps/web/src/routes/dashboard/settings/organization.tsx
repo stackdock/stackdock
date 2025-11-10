@@ -20,8 +20,8 @@ function OrganizationPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold">Organization</h2>
-          <p className="text-muted-foreground text-sm">
+          <h2 className="text-base font-semibold">Organization</h2>
+          <p className="text-muted-foreground text-xs">
             Manage your organization settings
           </p>
         </div>
@@ -70,7 +70,7 @@ function OrganizationPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <Users className="h-4 w-4" />
                     <span>Owner</span>

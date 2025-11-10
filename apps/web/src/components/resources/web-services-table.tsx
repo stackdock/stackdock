@@ -167,7 +167,7 @@ const columns: ColumnDef<WebService>[] = [
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1 text-blue-600 hover:underline"
+          className="flex items-center gap-1 text-foreground hover:underline"
         >
           {domain}
           <ExternalLinkIcon className="h-3 w-3" />
@@ -201,7 +201,7 @@ const columns: ColumnDef<WebService>[] = [
           href={repo}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-blue-600 hover:underline text-sm"
+          className="text-foreground hover:underline text-xs"
         >
           {repo.replace(/^https?:\/\//, "").replace(/\.git$/, "")}
         </a>
@@ -319,14 +319,14 @@ export function WebServicesTable({ data = [], onDelete }: WebServicesTableProps)
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between">
+        <div className="flex flex-1 flex-col-reverse items-start gap-y-2 sm:flex-row sm:items-center sm:space-x-2">
           {/* Search */}
           <div className="relative">
             <Input
               id={`${id}-input`}
               ref={inputRef}
-              className={cn("peer min-w-60 ps-9", Boolean(table.getColumn("name")?.getFilterValue()) && "pe-9")}
+              className={cn("h-8 w-[150px] lg:w-[250px] ps-9", Boolean(table.getColumn("name")?.getFilterValue()) && "pe-9")}
               value={(table.getColumn("name")?.getFilterValue() ?? "") as string}
               onChange={(e) => table.getColumn("name")?.setFilterValue(e.target.value)}
               placeholder="Filter by name or URL..."
@@ -347,19 +347,20 @@ export function WebServicesTable({ data = [], onDelete }: WebServicesTableProps)
               </button>
             )}
           </div>
-          {/* Status Filter */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline">
-                <FilterIcon className="-ms-1 opacity-60" size={16} />
-                Status
-                {selectedStatuses.length > 0 && (
-                  <span className="-me-1 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70">
-                    {selectedStatuses.length}
-                  </span>
-                )}
-              </Button>
-            </PopoverTrigger>
+          <div className="flex gap-x-2">
+            {/* Status Filter */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="h-8 !border-dashed">
+                  <FilterIcon className="-ms-1 opacity-60" size={16} />
+                  Status
+                  {selectedStatuses.length > 0 && (
+                    <span className="-me-1 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] text-xs font-medium text-muted-foreground/70">
+                      {selectedStatuses.length}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
             <PopoverContent className="w-auto min-w-36 p-3" align="start">
               <div className="space-y-3">
                 <div className="text-xs font-medium text-muted-foreground">Filters</div>
@@ -380,19 +381,19 @@ export function WebServicesTable({ data = [], onDelete }: WebServicesTableProps)
               </div>
             </PopoverContent>
           </Popover>
-          {/* Provider Filter */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline">
-                <FilterIcon className="-ms-1 opacity-60" size={16} />
-                Provider
-                {selectedProviders.length > 0 && (
-                  <span className="-me-1 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70">
-                    {selectedProviders.length}
-                  </span>
-                )}
-              </Button>
-            </PopoverTrigger>
+            {/* Provider Filter */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="h-8 !border-dashed">
+                  <FilterIcon className="-ms-1 opacity-60" size={16} />
+                  Provider
+                  {selectedProviders.length > 0 && (
+                    <span className="-me-1 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] text-xs font-medium text-muted-foreground/70">
+                      {selectedProviders.length}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
             <PopoverContent className="w-auto min-w-36 p-3" align="start">
               <div className="space-y-3">
                 <div className="text-xs font-medium text-muted-foreground">Filters</div>
@@ -413,19 +414,19 @@ export function WebServicesTable({ data = [], onDelete }: WebServicesTableProps)
               </div>
             </PopoverContent>
           </Popover>
-          {/* Environment Filter */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline">
-                <FilterIcon className="-ms-1 opacity-60" size={16} />
-                Environment
-                {selectedEnvironments.length > 0 && (
-                  <span className="-me-1 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70">
-                    {selectedEnvironments.length}
-                  </span>
-                )}
-              </Button>
-            </PopoverTrigger>
+            {/* Environment Filter */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="h-8 !border-dashed">
+                  <FilterIcon className="-ms-1 opacity-60" size={16} />
+                  Environment
+                  {selectedEnvironments.length > 0 && (
+                    <span className="-me-1 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] text-xs font-medium text-muted-foreground/70">
+                      {selectedEnvironments.length}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
             <PopoverContent className="w-auto min-w-36 p-3" align="start">
               <div className="space-y-3">
                 <div className="text-xs font-medium text-muted-foreground">Filters</div>
@@ -446,30 +447,31 @@ export function WebServicesTable({ data = [], onDelete }: WebServicesTableProps)
               </div>
             </PopoverContent>
           </Popover>
-          {/* Column Visibility */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <Columns3Icon className="-ms-1 opacity-60" size={16} />
-                View
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
-              {table.getAllColumns().filter((column) => column.getCanHide()).map((column) => (
-                <DropdownMenuCheckboxItem
-                  key={column.id}
-                  className="capitalize"
-                  checked={column.getIsVisible()}
-                  onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                  onSelect={(e) => e.preventDefault()}
-                >
-                  {column.id}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          </div>
         </div>
+        {/* Column Visibility */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="ml-auto hidden h-8 lg:flex">
+              <Columns3Icon className="-ms-1 opacity-60" size={16} />
+              View
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+            {table.getAllColumns().filter((column) => column.getCanHide()).map((column) => (
+              <DropdownMenuCheckboxItem
+                key={column.id}
+                className="capitalize"
+                checked={column.getIsVisible()}
+                onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                onSelect={(e) => e.preventDefault()}
+              >
+                {column.id}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
         {/* Delete Button */}
         {table.getSelectedRowModel().rows.length > 0 && (
           <AlertDialog>
@@ -508,17 +510,28 @@ export function WebServicesTable({ data = [], onDelete }: WebServicesTableProps)
                   <TableHead
                     key={header.id}
                     style={{ width: `${header.getSize()}px` }}
-                    className="h-11"
+                    className={cn(
+                      header.id === "select" && "sticky md:table-cell left-0 z-10 rounded-tl bg-background transition-colors duration-200 group-hover/row:bg-muted group-data-[state=selected]/row:bg-muted pr-2 md:pr-0"
+                    )}
                   >
                     {header.isPlaceholder ? null : header.column.getCanSort() ? (
                       <div
                         className="flex h-full cursor-pointer items-center justify-between gap-2 select-none"
                         onClick={header.column.getToggleSortingHandler()}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Sort by ${header.column.id}`}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault()
+                            header.column.getToggleSortingHandler()?.(e)
+                          }
+                        }}
                       >
                         {flexRender(header.column.columnDef.header, header.getContext())}
                         {{
-                          asc: <ChevronUpIcon className="shrink-0 opacity-60" size={16} />,
-                          desc: <ChevronDownIcon className="shrink-0 opacity-60" size={16} />,
+                          asc: <ChevronUpIcon className="shrink-0 opacity-60" size={16} aria-hidden="true" />,
+                          desc: <ChevronDownIcon className="shrink-0 opacity-60" size={16} aria-hidden="true" />,
                         }[header.column.getIsSorted() as string] ?? null}
                       </div>
                     ) : (
@@ -532,9 +545,17 @@ export function WebServicesTable({ data = [], onDelete }: WebServicesTableProps)
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                <TableRow 
+                  key={row.id} 
+                  data-state={row.getIsSelected() ? "selected" : undefined}
+                >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="last:py-0">
+                    <TableCell 
+                      key={cell.id}
+                      className={cn(
+                        cell.column.id === "select" && "sticky md:table-cell left-0 z-10 bg-background transition-colors duration-200 group-hover/row:bg-muted group-data-[state=selected]/row:bg-muted pr-2 md:pr-0"
+                      )}
+                    >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
@@ -571,7 +592,7 @@ export function WebServicesTable({ data = [], onDelete }: WebServicesTableProps)
             </SelectContent>
           </Select>
         </div>
-        <div className="flex grow justify-end text-sm whitespace-nowrap text-muted-foreground">
+        <div className="flex grow justify-end text-xs whitespace-nowrap text-muted-foreground">
           <p>
             <span className="text-foreground">
               {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1}-
@@ -592,8 +613,9 @@ export function WebServicesTable({ data = [], onDelete }: WebServicesTableProps)
                 className="disabled:pointer-events-none disabled:opacity-50"
                 onClick={() => table.firstPage()}
                 disabled={!table.getCanPreviousPage()}
+                aria-label="Go to first page"
               >
-                <ChevronFirstIcon size={16} />
+                <ChevronFirstIcon size={16} aria-hidden="true" />
               </Button>
             </PaginationItem>
             <PaginationItem>
@@ -603,8 +625,9 @@ export function WebServicesTable({ data = [], onDelete }: WebServicesTableProps)
                 className="disabled:pointer-events-none disabled:opacity-50"
                 onClick={() => table.previousPage()}
                 disabled={!table.getCanPreviousPage()}
+                aria-label="Go to previous page"
               >
-                <ChevronLeftIcon size={16} />
+                <ChevronLeftIcon size={16} aria-hidden="true" />
               </Button>
             </PaginationItem>
             <PaginationItem>
@@ -614,8 +637,9 @@ export function WebServicesTable({ data = [], onDelete }: WebServicesTableProps)
                 className="disabled:pointer-events-none disabled:opacity-50"
                 onClick={() => table.nextPage()}
                 disabled={!table.getCanNextPage()}
+                aria-label="Go to next page"
               >
-                <ChevronRightIcon size={16} />
+                <ChevronRightIcon size={16} aria-hidden="true" />
               </Button>
             </PaginationItem>
             <PaginationItem>
@@ -625,8 +649,9 @@ export function WebServicesTable({ data = [], onDelete }: WebServicesTableProps)
                 className="disabled:pointer-events-none disabled:opacity-50"
                 onClick={() => table.lastPage()}
                 disabled={!table.getCanNextPage()}
+                aria-label="Go to last page"
               >
-                <ChevronLastIcon size={16} />
+                <ChevronLastIcon size={16} aria-hidden="true" />
               </Button>
             </PaginationItem>
           </PaginationContent>
@@ -637,11 +662,12 @@ export function WebServicesTable({ data = [], onDelete }: WebServicesTableProps)
 }
 
 function RowActions({ row }: { row: Row<WebService> }) {
+  const serviceName = row.getValue("name") as string
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button size="icon" variant="ghost" className="shadow-none">
-          <EllipsisIcon size={16} />
+        <Button size="icon" variant="ghost" className="shadow-none" aria-label={`Actions for ${serviceName}`}>
+          <EllipsisIcon size={16} aria-hidden="true" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

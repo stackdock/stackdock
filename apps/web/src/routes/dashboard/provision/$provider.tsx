@@ -78,8 +78,8 @@ function ProviderProvisionPage() {
           </Link>
         </Button>
         <div className="space-y-0.5">
-          <h2 className="text-lg font-semibold capitalize">Provision on {provider}</h2>
-          <p className="text-muted-foreground text-sm">
+          <h2 className="text-base font-semibold capitalize">Provision on {provider}</h2>
+          <p className="text-muted-foreground text-xs">
             Select a resource type to provision
           </p>
         </div>
@@ -113,7 +113,7 @@ function ProviderProvisionPage() {
 
       {/* Available Docks */}
       <div className="mt-8">
-        <h3 className="text-sm font-medium mb-4">Available Docks</h3>
+        <h3 className="text-xs font-medium mb-4">Available Docks</h3>
         <div className="space-y-2">
           {providerDocks.map((dock) => (
             <Card key={dock._id}>
@@ -121,7 +121,7 @@ function ProviderProvisionPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">{dock.name}</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       Status: {dock.lastSyncStatus}
                     </p>
                   </div>

@@ -12,14 +12,14 @@ export function AuthStatus() {
       </Authenticated>
       <Unauthenticated>
         <div className="flex items-center justify-center gap-2">
-          <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
-          <span className="text-gray-400 text-sm">Not signed in</span>
+          <div className="w-2 h-2 bg-muted-foreground rounded-full"></div>
+          <span className="text-muted-foreground text-sm">Not signed in</span>
         </div>
       </Unauthenticated>
       <AuthLoading>
         <div className="flex items-center justify-center gap-2">
-          <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
-          <span className="text-yellow-400 text-sm">Authenticating...</span>
+          <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse"></div>
+          <span className="text-muted-foreground text-sm">Authenticating...</span>
         </div>
       </AuthLoading>
     </>
@@ -32,19 +32,18 @@ function AuthStatusContent() {
   if (!isLoaded) {
     return (
       <div className="flex items-center justify-center gap-2">
-        <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
-        <span className="text-yellow-400 text-sm">Loading...</span>
+        <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse"></div>
+        <span className="text-muted-foreground text-sm">Loading...</span>
       </div>
     )
   }
   
   return (
     <div className="flex items-center justify-center gap-2">
-      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-      <span className="text-green-400 text-sm">
+      <div className="w-2 h-2 bg-foreground rounded-full animate-pulse"></div>
+      <span className="text-foreground text-sm">
         Authenticated • User ID: {userId?.substring(0, 8)}...
       </span>
     </div>
   )
 }
-

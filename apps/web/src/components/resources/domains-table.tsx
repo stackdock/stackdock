@@ -274,14 +274,14 @@ export function DomainsTable({ data = [], onDelete }: DomainsTableProps) {
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between">
+        <div className="flex flex-1 flex-col-reverse items-start gap-y-2 sm:flex-row sm:items-center sm:space-x-2">
           {/* Search */}
           <div className="relative">
             <Input
               id={`${id}-input`}
               ref={inputRef}
-              className={cn("peer min-w-60 ps-9", Boolean(table.getColumn("domainName")?.getFilterValue()) && "pe-9")}
+              className={cn("h-8 w-[150px] lg:w-[250px] ps-9", Boolean(table.getColumn("domainName")?.getFilterValue()) && "pe-9")}
               value={(table.getColumn("domainName")?.getFilterValue() ?? "") as string}
               onChange={(e) => table.getColumn("domainName")?.setFilterValue(e.target.value)}
               placeholder="Filter by domain name..."
@@ -302,19 +302,20 @@ export function DomainsTable({ data = [], onDelete }: DomainsTableProps) {
               </button>
             )}
           </div>
-          {/* Status Filter */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline">
-                <FilterIcon className="-ms-1 opacity-60" size={16} />
-                Status
-                {selectedStatuses.length > 0 && (
-                  <span className="-me-1 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70">
-                    {selectedStatuses.length}
-                  </span>
-                )}
-              </Button>
-            </PopoverTrigger>
+          <div className="flex gap-x-2">
+            {/* Status Filter */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="h-8 !border-dashed">
+                  <FilterIcon className="-ms-1 opacity-60" size={16} />
+                  Status
+                  {selectedStatuses.length > 0 && (
+                    <span className="-me-1 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70">
+                      {selectedStatuses.length}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
             <PopoverContent className="w-auto min-w-36 p-3" align="start">
               <div className="space-y-3">
                 <div className="text-xs font-medium text-muted-foreground">Filters</div>
@@ -335,19 +336,19 @@ export function DomainsTable({ data = [], onDelete }: DomainsTableProps) {
               </div>
             </PopoverContent>
           </Popover>
-          {/* Provider Filter */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline">
-                <FilterIcon className="-ms-1 opacity-60" size={16} />
-                Provider
-                {selectedProviders.length > 0 && (
-                  <span className="-me-1 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70">
-                    {selectedProviders.length}
-                  </span>
-                )}
-              </Button>
-            </PopoverTrigger>
+            {/* Provider Filter */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="h-8 !border-dashed">
+                  <FilterIcon className="-ms-1 opacity-60" size={16} />
+                  Provider
+                  {selectedProviders.length > 0 && (
+                    <span className="-me-1 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70">
+                      {selectedProviders.length}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
             <PopoverContent className="w-auto min-w-36 p-3" align="start">
               <div className="space-y-3">
                 <div className="text-xs font-medium text-muted-foreground">Filters</div>
@@ -368,17 +369,17 @@ export function DomainsTable({ data = [], onDelete }: DomainsTableProps) {
               </div>
             </PopoverContent>
           </Popover>
-          {/* Expiring Soon Filter */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline">
-                <FilterIcon className="-ms-1 opacity-60" size={16} />
-                Expiring Soon
-                {expiringSoonFilter && (
-                  <Badge variant="destructive" className="ml-2">!</Badge>
-                )}
-              </Button>
-            </PopoverTrigger>
+            {/* Expiring Soon Filter */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="h-8 !border-dashed">
+                  <FilterIcon className="-ms-1 opacity-60" size={16} />
+                  Expiring Soon
+                  {expiringSoonFilter && (
+                    <Badge variant="destructive" className="ml-2">!</Badge>
+                  )}
+                </Button>
+              </PopoverTrigger>
             <PopoverContent className="w-auto min-w-36 p-3" align="start">
               <div className="space-y-3">
                 <div className="text-xs font-medium text-muted-foreground">Filters</div>
@@ -395,30 +396,31 @@ export function DomainsTable({ data = [], onDelete }: DomainsTableProps) {
               </div>
             </PopoverContent>
           </Popover>
-          {/* Column Visibility */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <Columns3Icon className="-ms-1 opacity-60" size={16} />
-                View
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
-              {table.getAllColumns().filter((column) => column.getCanHide()).map((column) => (
-                <DropdownMenuCheckboxItem
-                  key={column.id}
-                  className="capitalize"
-                  checked={column.getIsVisible()}
-                  onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                  onSelect={(e) => e.preventDefault()}
-                >
-                  {column.id}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          </div>
         </div>
+        {/* Column Visibility */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="ml-auto hidden h-8 lg:flex">
+              <Columns3Icon className="-ms-1 opacity-60" size={16} />
+              View
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+            {table.getAllColumns().filter((column) => column.getCanHide()).map((column) => (
+              <DropdownMenuCheckboxItem
+                key={column.id}
+                className="capitalize"
+                checked={column.getIsVisible()}
+                onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                onSelect={(e) => e.preventDefault()}
+              >
+                {column.id}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
         {/* Delete Button */}
         {table.getSelectedRowModel().rows.length > 0 && (
           <AlertDialog>
@@ -457,7 +459,9 @@ export function DomainsTable({ data = [], onDelete }: DomainsTableProps) {
                   <TableHead
                     key={header.id}
                     style={{ width: `${header.getSize()}px` }}
-                    className="h-11"
+                    className={cn(
+                      header.id === "select" && "sticky md:table-cell left-0 z-10 rounded-tl bg-background transition-colors duration-200 group-hover/row:bg-muted group-data-[state=selected]/row:bg-muted pr-2 md:pr-0"
+                    )}
                   >
                     {header.isPlaceholder ? null : header.column.getCanSort() ? (
                       <div
@@ -481,9 +485,17 @@ export function DomainsTable({ data = [], onDelete }: DomainsTableProps) {
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                <TableRow 
+                  key={row.id} 
+                  data-state={row.getIsSelected() ? "selected" : undefined}
+                >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="last:py-0">
+                    <TableCell 
+                      key={cell.id}
+                      className={cn(
+                        cell.column.id === "select" && "sticky md:table-cell left-0 z-10 bg-background transition-colors duration-200 group-hover/row:bg-muted group-data-[state=selected]/row:bg-muted pr-2 md:pr-0"
+                      )}
+                    >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
@@ -520,7 +532,7 @@ export function DomainsTable({ data = [], onDelete }: DomainsTableProps) {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex grow justify-end text-sm whitespace-nowrap text-muted-foreground">
+        <div className="flex grow justify-end text-xs whitespace-nowrap text-muted-foreground">
           <p>
             <span className="text-foreground">
               {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1}-

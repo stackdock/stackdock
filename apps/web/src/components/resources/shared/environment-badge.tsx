@@ -16,14 +16,16 @@ export interface EnvironmentBadgeProps {
 export function EnvironmentBadge({ environment, className }: EnvironmentBadgeProps) {
   if (!environment) return null
   
-  const colors: Record<string, string> = {
-    production: "bg-blue-500 text-blue-50",
-    staging: "bg-yellow-500 text-yellow-50",
-    development: "bg-gray-500 text-gray-50",
+  // Use shadcn design tokens - black/white theme
+  // All environments use neutral styling with slight variations
+  const environmentStyles: Record<string, string> = {
+    production: "bg-muted text-muted-foreground",
+    staging: "bg-muted/50 text-muted-foreground",
+    development: "bg-muted/30 text-muted-foreground",
   }
   
   return (
-    <Badge className={cn(colors[environment] || "bg-gray-500 text-gray-50", className)}>
+    <Badge variant="outline" className={cn(environmentStyles[environment] || "bg-muted/30 text-muted-foreground", className)}>
       {environment}
     </Badge>
   )

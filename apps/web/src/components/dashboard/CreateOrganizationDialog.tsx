@@ -109,7 +109,7 @@ export function CreateOrganizationDialog() {
               )}
             />
             {form.formState.errors.root && (
-              <p className="text-sm text-destructive">
+              <p className="text-xs text-destructive">
                 {form.formState.errors.root.message}
               </p>
             )}

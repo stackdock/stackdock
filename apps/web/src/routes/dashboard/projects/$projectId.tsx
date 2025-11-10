@@ -11,7 +11,7 @@ function ProjectLayout() {
   return (
     <div className="flex flex-1 flex-col gap-4 p-4">
       <div className="space-y-0.5">
-        <h1 className="text-xl font-bold tracking-tight md:text-2xl">
+        <h1 className="text-lg font-bold tracking-tight md:text-xl">
           Project: {projectId}
         </h1>
         <p className="text-muted-foreground">

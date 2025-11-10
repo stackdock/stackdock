@@ -46,8 +46,8 @@ function ProvisionHubPage() {
     return (
       <div className="flex flex-1 flex-col gap-4 p-4">
         <div className="space-y-0.5">
-          <h2 className="text-lg font-semibold">Provision Resources</h2>
-          <p className="text-muted-foreground text-sm">
+          <h2 className="text-base font-semibold">Provision Resources</h2>
+          <p className="text-muted-foreground text-xs">
             Provision infrastructure resources through your connected providers
           </p>
         </div>
@@ -72,8 +72,8 @@ function ProvisionHubPage() {
   return (
     <div className="flex flex-1 flex-col gap-4 p-4">
       <div className="space-y-0.5">
-        <h2 className="text-lg font-semibold">Provision Resources</h2>
-        <p className="text-muted-foreground text-sm">
+        <h2 className="text-base font-semibold">Provision Resources</h2>
+        <p className="text-muted-foreground text-xs">
           Select a provider to start provisioning infrastructure resources
         </p>
       </div>
@@ -103,13 +103,13 @@ function ProvisionHubPage() {
 
       {/* Resource Type Quick Links */}
       <div className="mt-8">
-        <h3 className="text-sm font-medium mb-4">Common Resource Types</h3>
+        <h3 className="text-xs font-medium mb-4">Common Resource Types</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="hover:shadow-md transition-shadow cursor-pointer">
             <CardContent className="pt-6">
               <div className="flex flex-col items-center gap-2">
                 <Server className="h-8 w-8 text-muted-foreground" />
-                <p className="text-sm font-medium">Servers</p>
+                <p className="text-xs font-medium">Servers</p>
               </div>
             </CardContent>
           </Card>
@@ -117,7 +117,7 @@ function ProvisionHubPage() {
             <CardContent className="pt-6">
               <div className="flex flex-col items-center gap-2">
                 <Cloud className="h-8 w-8 text-muted-foreground" />
-                <p className="text-sm font-medium">Web Services</p>
+                <p className="text-xs font-medium">Web Services</p>
               </div>
             </CardContent>
           </Card>
@@ -125,7 +125,7 @@ function ProvisionHubPage() {
             <CardContent className="pt-6">
               <div className="flex flex-col items-center gap-2">
                 <Database className="h-8 w-8 text-muted-foreground" />
-                <p className="text-sm font-medium">Databases</p>
+                <p className="text-xs font-medium">Databases</p>
               </div>
             </CardContent>
           </Card>
@@ -133,7 +133,7 @@ function ProvisionHubPage() {
             <CardContent className="pt-6">
               <div className="flex flex-col items-center gap-2">
                 <Globe className="h-8 w-8 text-muted-foreground" />
-                <p className="text-sm font-medium">Domains</p>
+                <p className="text-xs font-medium">Domains</p>
               </div>
             </CardContent>
           </Card>

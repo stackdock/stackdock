@@ -212,8 +212,8 @@ const ProvisionForm = React.forwardRef<
 
           {/* Success State */}
           {state.matches('success') && (
-            <div className="rounded-md border border-green-500 bg-green-50 p-4">
-              <p className="text-sm text-green-800">
+            <div className="rounded-md border border-border bg-muted p-4">
+              <p className="text-sm text-foreground">
                 Resource provisioned successfully! Resource ID: {state.context.resourceId}
               </p>
             </div>
