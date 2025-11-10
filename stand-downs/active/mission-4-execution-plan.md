@@ -14,8 +14,9 @@
 **Objective**: Polish UI tables, integrate 11 additional providers (GET endpoints only for hackathon MVP), and prepare StackDock codebase for clean extraction to Beacons (independent repo).
 
 **Context**: 
-- StackDock has GridPane working end-to-end
-- UI tables are functional but buggy and don't match template
+- StackDock has GridPane partial MVP (servers + webServices working, sufficient for observability)
+- UI tables polished and functional (Days 1-2 complete)
+- Provider integration moved to Mission 5 (multi-provider validation priority)
 - Beacons needs to be extracted as independent repo (created after Nov 1st)
 - Beacons requires: RBAC + encryption + universal translation layer + polished UI
 
@@ -121,14 +122,14 @@ Before starting, ensure you've read:
 
 ---
 
-### **Days 3-7: Provider Integration Sprint**
+### **Days 3-7: Provider Integration Sprint** ⏸️ MOVED TO MISSION 5
 
 **Priority**: HIGH  
 **Agent**: `backend-convex` (with parallel frontend support)  
-**Status**: Pending  
-**Estimated Time**: 5 days
+**Status**: ⏸️ Moved to Mission 5  
+**Reason**: Multi-provider integration prioritized for schema validation. See `mission-5-provider-integration-strategy.md`
 
-**Goal**: Add 11 providers with GET endpoints only (MVP for hackathon)
+**Goal**: Add 11 providers with GET endpoints only (MVP for hackathon) - **NOW IN MISSION 5**
 
 **Strategy**: Batch by complexity, parallelize where possible
 

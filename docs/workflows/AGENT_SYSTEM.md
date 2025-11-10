@@ -136,7 +136,7 @@ ls -la docs/workflows/principle-engineers/
 **View stand-downs**:
 ```bash
 # Current directory must be: {REPO_ROOT}
-cat stand-downs/agent-sessions.json
+cat stand-downs/agents/agent-sessions.json
 ```
 
 **Run agent review simulation**:

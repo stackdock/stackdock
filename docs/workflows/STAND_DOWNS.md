@@ -9,8 +9,8 @@ Stand-downs are the communication system between principle engineer agents and t
 
 ## Stand-Downs File Location
 
-**File**: `stand-downs/agent-sessions.json`  
-**Absolute Path**: `{REPO_ROOT}/stand-downs/agent-sessions.json`
+**File**: `stand-downs/agents/agent-sessions.json`  
+**Absolute Path**: `{REPO_ROOT}/stand-downs/agents/agent-sessions.json`
 
 ## File Structure
 
@@ -212,10 +212,10 @@ cat stand-downs/agent-sessions.json | jq '.sessions[] | {agentId, approval}'
 
 ## Template
 
-See `stand-downs/template.json` for a template agent session.
+See `stand-downs/templates/template.json` for a template agent session.
 
-**Location**: `stand-downs/template.json`  
-**Absolute Path**: `{REPO_ROOT}/stand-downs/template.json`
+**Location**: `stand-downs/templates/template.json`  
+**Absolute Path**: `{REPO_ROOT}/stand-downs/templates/template.json`
 
 ## Important Rules
 

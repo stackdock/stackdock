@@ -32,8 +32,8 @@
 
 ### 2. All Principle Engineer Reviews Approved
 
-**Stand-Downs File**: `stand-downs/agent-sessions.json`  
-**Absolute Path**: `{REPO_ROOT}/stand-downs/agent-sessions.json`
+**Stand-Downs File**: `stand-downs/agents/agent-sessions.json`  
+**Absolute Path**: `{REPO_ROOT}/stand-downs/agents/agent-sessions.json`
 
 **All Agents Must Approve**:
 - ✅ `frontend-shadcn` - `approved`
@@ -54,7 +54,7 @@ cat stand-downs/agent-sessions.json | jq '.sessions[] | select(.approval != "app
 
 ### 3. Stand-Downs Updated
 
-**File**: `stand-downs/agent-sessions.json`
+**File**: `stand-downs/agents/agent-sessions.json`
 
 **Required**:
 - ✅ All agents have submitted stand-downs

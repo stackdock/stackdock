@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2025-01-11T20:00:00Z",
+  "lastUpdated": "2025-01-11T21:00:00Z",
   "currentSession": {
     "id": "session-2025-01-11",
     "date": "2025-01-11",
@@ -9,20 +9,21 @@
   "activeMissions": [
     {
       "id": "mission-3",
-      "title": "Fix GridPane Auth & Data Tables",
-      "status": "in-progress",
-      "priority": "high",
+      "title": "GridPane Integration (Partial MVP)",
+      "status": "pending",
+      "priority": "medium",
       "progress": {
         "stepsCompleted": [
           "typescript-errors-fixed",
           "encryption-key-configured",
           "dynamic-imports-fixed",
           "gridpane-auth-working",
-          "data-syncing-successfully",
+          "servers-syncing",
+          "web-services-syncing",
           "tables-integrated"
         ],
-        "currentStep": "data-displaying-in-tables",
-        "completion": 85
+        "currentStep": "complete-partial-mvp",
+        "completion": 60
       },
       "milestones": [
         {
@@ -33,12 +34,64 @@
           "details": "GridPane API authentication successfully working. Data syncing from GridPane API and storing in Convex database."
         },
         {
-          "id": "tables-displaying-data",
-          "title": "Data Displaying in Tables",
+          "id": "servers-web-services-working",
+          "title": "Servers & Web Services Syncing",
           "status": "complete",
           "completedAt": "2025-11-11T20:00:00Z",
-          "details": "All 4 resource tables (Servers, Web Services, Domains, Databases) integrated and displaying real-time data from Convex queries."
+          "details": "Servers and Web Services tables displaying GridPane data. Sufficient for read-only MVP observability mode."
+        },
+        {
+          "id": "full-api-coverage",
+          "title": "Full GridPane API Coverage",
+          "status": "pending",
+          "details": "Complete remaining GridPane endpoints (domains testing, additional GET endpoints). Deferred until after schema validation across multiple providers."
         }
+      ],
+      "notes": "Partial MVP - sufficient for observability mode. Servers and Web Services working. Full API coverage deferred until after Mission 5 (multi-provider validation)."
+    },
+    {
+      "id": "mission-5",
+      "title": "Multi-Provider Integration",
+      "status": "in-progress",
+      "priority": "high",
+      "timeline": "3 weeks (15 days)",
+      "progress": {
+        "stepsCompleted": [
+          "strategy-documentation",
+          "mission-planning"
+        ],
+        "currentStep": "vercel-adapter",
+        "completion": 5
+      },
+      "milestones": [
+        {
+          "id": "batch-1-providers",
+          "title": "Batch 1: Simple REST APIs (Vercel, Netlify, DigitalOcean, Cloudflare)",
+          "status": "in-progress",
+          "details": "Add 4 providers with simple REST APIs to validate universal schema. Estimated 2-3 days."
+        },
+        {
+          "id": "schema-validation",
+          "title": "Schema Validation Across Providers",
+          "status": "pending",
+          "details": "Validate field mappings, status mappings, and data types across multiple providers. Refine universal schema if needed."
+        },
+        {
+          "id": "batch-2-providers",
+          "title": "Batch 2: Additional Providers (Linode, DNSimple, Rocket.net)",
+          "status": "pending",
+          "details": "Add 3 more providers after schema validation. Estimated 1.5 days."
+        },
+        {
+          "id": "cloud-providers",
+          "title": "Cloud Providers (AWS, GCP, Azure)",
+          "status": "pending",
+          "details": "Add major cloud providers if time allows. Estimated 3 days."
+        }
+      ],
+      "documentation": "stand-downs/active/mission-5-provider-integration-strategy.md",
+      "relatedDocuments": [
+        "docs/architecture/DEVELOPMENT_PRIORITY.md"
       ]
     },
     {
@@ -62,8 +115,9 @@
           "semantic-html-added",
           "skip-links-implemented"
         ],
-        "currentStep": "provider-integration",
-        "completion": 40
+        "currentStep": "deferred-until-after-mission-5",
+        "completion": 40,
+        "notes": "UI fixes complete. Provider integration moved to Mission 5. Remaining UI polish deferred until after multi-provider data available."
       },
       "milestones": [
         {
@@ -87,10 +141,10 @@
           "details": "Extraction guide complete, codebase prepared for clean extraction to Beacons (independent repo). RBAC + encryption + universal translation layer ready."
         }
       ],
-      "documentation": "stand-downs/mission-4-execution-plan.md",
+      "documentation": "stand-downs/active/mission-4-execution-plan.md",
       "relatedDocuments": [
-        "stand-downs/mission-4-frontend-table-review.md",
-        "stand-downs/mission-4-frontend-agent-prompt.md"
+        "stand-downs/active/mission-4-frontend-table-review.md",
+        "stand-downs/active/mission-4-frontend-agent-prompt.md"
       ]
     }
   ],
@@ -100,7 +154,8 @@
     "mission-2",
     "mission-2.5",
     "mission-3",
-    "mission-4"
+    "mission-4",
+    "mission-5"
   ],
   "completedMissions": [
     {
@@ -124,7 +179,7 @@
           "verifiedBy": "devops"
         }
       },
-      "completionLog": "stand-downs/mission-1-completion-log.json"
+      "completionLog": "stand-downs/archived/mission-1-completion-log.json"
     },
     {
       "id": "mission-1.5",
@@ -163,9 +218,11 @@
       "priority": "critical",
       "mission": "mission-3",
       "assignedAgent": "backend-convex",
+      "reportedAt": "2025-11-11T16:00:00Z",
       "resolvedAt": "2025-11-11T17:00:00Z",
       "resolution": "All 20 TypeScript errors fixed. Convex dev server starts successfully. Static imports replaced dynamic imports. Type guards added for proper type narrowing. Index queries corrected.",
-      "documentation": "stand-downs/blocker-typescript-errors-mission-3.md"
+      "documentation": "stand-downs/blockers/blocker-typescript-errors-mission-3.md",
+      "agentSession": "stand-downs/agents/mission-3/backend-convex.json"
     }
   ],
   "notes": "Captain and AI Assistant are the brains. Captain controls agents. Main branch is sacred - owner holds the only key."

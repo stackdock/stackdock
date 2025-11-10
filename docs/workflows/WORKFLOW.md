@@ -54,8 +54,8 @@ Status checks run automatically via `.github/workflows/pr-pipeline.yml`.
 
 After each review cycle, agents report findings via stand-downs:
 
-**Location**: `stand-downs/agent-sessions.json`  
-**Absolute Path**: `{REPO_ROOT}/stand-downs/agent-sessions.json`
+**Location**: `stand-downs/agents/agent-sessions.json`  
+**Absolute Path**: `{REPO_ROOT}/stand-downs/agents/agent-sessions.json`
 
 See [STAND_DOWNS.md](./STAND_DOWNS.md) for detailed process.
 
@@ -85,7 +85,7 @@ cd /path/to/stackdock
 **Check stand-downs**:
 ```bash
 # Current directory must be: {REPO_ROOT}
-cat stand-downs/agent-sessions.json
+cat stand-downs/agents/agent-sessions.json
 ```
 
 **View principle engineer docs**:

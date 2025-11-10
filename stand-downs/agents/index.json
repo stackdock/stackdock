@@ -1,0 +1,37 @@
+{
+  "lastUpdated": "2025-01-11T20:00:00Z",
+  "structure": "mission-based",
+  "missions": {
+    "mission-1": {
+      "path": "stand-downs/agents/mission-1/",
+      "status": "completed",
+      "agents": []
+    },
+    "mission-2": {
+      "path": "stand-downs/agents/mission-2/",
+      "status": "completed",
+      "agents": []
+    },
+    "mission-2.5": {
+      "path": "stand-downs/agents/mission-2.5/",
+      "status": "completed",
+      "agents": []
+    },
+    "mission-3": {
+      "path": "stand-downs/agents/mission-3/",
+      "status": "in-progress",
+      "agents": []
+    },
+    "mission-4": {
+      "path": "stand-downs/agents/mission-4/",
+      "status": "in-progress",
+      "agents": []
+    },
+    "mission-frontend-tables": {
+      "path": "stand-downs/agents/mission-frontend-tables/",
+      "status": "completed",
+      "agents": []
+    }
+  },
+  "instructions": "Agent sessions are now organized by mission. Each mission folder contains agent-specific JSON files. See SYNC_GUIDE.md for syncing with system-state.json."
+}
