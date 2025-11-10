@@ -9,6 +9,7 @@ import { internalAction } from "../_generated/server"
 import { getAdapter } from "./registry"
 import { GridPaneAPI } from "./adapters/gridpane/api"
 import { VercelAPI } from "./adapters/vercel/api"
+import { NetlifyAPI } from "./adapters/netlify/api"
 import { internal } from "../_generated/api"
 import type { Id } from "../_generated/dataModel"
 
@@ -122,6 +123,31 @@ export const syncDockResources = internalAction({
         }
 
         // Vercel doesn't support servers, domains, or databases via this API
+        if (args.resourceTypes.includes("servers")) {
+          console.log(`[Dock Action] Servers not supported for ${args.provider}`)
+          servers = []
+        }
+
+        if (args.resourceTypes.includes("domains")) {
+          console.log(`[Dock Action] Domains not supported for ${args.provider} (use separate domains API)`)
+          domains = []
+        }
+
+        if (args.resourceTypes.includes("databases")) {
+          console.log(`[Dock Action] Databases not supported for ${args.provider}`)
+          databases = []
+        }
+      } else if (args.provider === "netlify") {
+        // Netlify-specific: Use NetlifyAPI directly
+        const api = new NetlifyAPI(args.apiKey)
+
+        // Netlify only supports webServices (sites)
+        if (args.resourceTypes.includes("webServices")) {
+          console.log(`[Dock Action] Fetching sites for ${args.provider}`)
+          webServices = await api.getSites()
+        }
+
+        // Netlify doesn't support servers, domains, or databases via this API
         if (args.resourceTypes.includes("servers")) {
           console.log(`[Dock Action] Servers not supported for ${args.provider}`)
           servers = []
