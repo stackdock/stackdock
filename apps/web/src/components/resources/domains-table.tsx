@@ -230,6 +230,7 @@ const columns: ColumnDef<Domain>[] = [
       )
     },
     size: 120,
+    enableHiding: false, // Always visible - core feature for read-only phase
   },
   {
     id: "actions",
