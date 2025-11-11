@@ -77,6 +77,8 @@ export default defineSchema({
     provider: v.string(), // "vultr", "aws", "vercel"
     encryptedApiKey: v.bytes(),
     provisioningCredentials: v.optional(v.bytes()), // Encrypted provisioning credentials (AWS keys, Cloudflare tokens, etc.)
+    accountId: v.optional(v.string()), // Provider account ID (Cloudflare, AWS, etc.)
+    providerMetadata: v.optional(v.any()), // Provider-specific metadata
     lastSyncStatus: v.union(
       v.literal("pending"),
       v.literal("syncing"),

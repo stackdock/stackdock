@@ -10,6 +10,7 @@ import { getAdapter } from "./registry"
 import { GridPaneAPI } from "./adapters/gridpane/api"
 import { VercelAPI } from "./adapters/vercel/api"
 import { NetlifyAPI } from "./adapters/netlify/api"
+import { CloudflareAPI } from "./adapters/cloudflare/api"
 import { internal } from "../_generated/api"
 import type { Id } from "../_generated/dataModel"
 
@@ -156,6 +157,49 @@ export const syncDockResources = internalAction({
         if (args.resourceTypes.includes("domains")) {
           console.log(`[Dock Action] Domains not supported for ${args.provider} (use separate domains API)`)
           domains = []
+        }
+
+        if (args.resourceTypes.includes("databases")) {
+          console.log(`[Dock Action] Databases not supported for ${args.provider}`)
+          databases = []
+        }
+      } else if (args.provider === "cloudflare") {
+        // Cloudflare-specific: Use CloudflareAPI directly
+        const api = new CloudflareAPI(args.apiKey)
+
+        // Get zones first (to extract account ID)
+        let accountId: string | undefined
+        if (args.resourceTypes.includes("domains")) {
+          console.log(`[Dock Action] Fetching zones for ${args.provider}`)
+          domains = await api.getZones()
+
+          // Extract account ID from first zone
+          if (domains.length > 0 && domains[0].account?.id) {
+            accountId = domains[0].account.id
+            console.log(`[Dock Action] Extracted account ID: ${accountId}`)
+          }
+        }
+
+        // Get Pages (requires account ID)
+        if (args.resourceTypes.includes("webServices") && accountId) {
+          console.log(`[Dock Action] Fetching Pages for ${args.provider}`)
+          const pages = await api.getPages(accountId)
+          // Mark as pages type for adapter to distinguish
+          webServices.push(...pages.map((p: any) => ({ ...p, _type: "pages" })))
+        }
+
+        // Get Workers (requires account ID)
+        if (args.resourceTypes.includes("webServices") && accountId) {
+          console.log(`[Dock Action] Fetching Workers for ${args.provider}`)
+          const workers = await api.getWorkers(accountId)
+          // Mark as workers type for adapter to distinguish
+          webServices.push(...workers.map((w: any) => ({ ...w, _type: "workers" })))
+        }
+
+        // Cloudflare doesn't support servers or databases via this API
+        if (args.resourceTypes.includes("servers")) {
+          console.log(`[Dock Action] Servers not supported for ${args.provider}`)
+          servers = []
         }
 
         if (args.resourceTypes.includes("databases")) {

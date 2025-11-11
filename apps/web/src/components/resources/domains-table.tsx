@@ -180,6 +180,58 @@ const columns: ColumnDef<Domain>[] = [
     size: 120,
   },
   {
+    id: "dnsRecords",
+    header: "DNS Records",
+    cell: ({ row }) => {
+      const records = row.original.fullApiData?.dnsRecords as Array<{
+        id: string
+        type: string
+        name: string
+        content: string
+        proxied?: boolean
+      }> | undefined
+      
+      if (!records || records.length === 0) {
+        return <span className="text-muted-foreground text-xs">None</span>
+      }
+      
+      return (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-7 text-xs">
+              {records.length} {records.length === 1 ? "record" : "records"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[400px] max-h-[300px] overflow-y-auto">
+            <div className="space-y-2">
+              <div className="font-medium text-sm mb-2">DNS Records</div>
+              {records.map((record) => (
+                <div key={record.id} className="text-xs border-b border-border pb-2 last:border-0">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="bg-muted/30 text-muted-foreground font-mono text-[10px]">
+                      {record.type}
+                    </Badge>
+                    {record.proxied && (
+                      <Badge variant="outline" className="bg-muted/50 text-muted-foreground text-[10px]">
+                        Proxied
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="mt-1">
+                    <span className="font-medium">{record.name}</span>
+                    <span className="text-muted-foreground mx-1">→</span>
+                    <span className="font-mono">{record.content}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+      )
+    },
+    size: 120,
+  },
+  {
     id: "actions",
     header: () => <span className="sr-only">Actions</span>,
     cell: ({ row }) => <RowActions row={row} />,

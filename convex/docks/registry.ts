@@ -13,6 +13,7 @@ import type { DockAdapter } from "./_types"
 import { gridpaneAdapter } from "./adapters/gridpane"
 import { vercelAdapter } from "./adapters/vercel"
 import { netlifyAdapter } from "./adapters/netlify"
+import { cloudflareAdapter } from "./adapters/cloudflare"
 
 /**
  * Registry of all dock adapters
@@ -24,6 +25,7 @@ const adapterRegistry: Record<string, DockAdapter> = {
   gridpane: gridpaneAdapter,
   vercel: vercelAdapter,
   netlify: netlifyAdapter,
+  cloudflare: cloudflareAdapter,
   // Add more adapters here:
   // digitalocean: digitaloceanAdapter,
 }
@@ -62,6 +64,7 @@ const providerMetadata: Record<string, { displayName: string }> = {
   gridpane: { displayName: "GridPane" },
   vercel: { displayName: "Vercel" },
   netlify: { displayName: "Netlify" },
+  cloudflare: { displayName: "Cloudflare" },
   // Add more as adapters are added:
   // digitalocean: { displayName: "DigitalOcean" },
 }

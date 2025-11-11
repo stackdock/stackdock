@@ -10,6 +10,10 @@
 
 import type * as docks__types from "../docks/_types.js";
 import type * as docks_actions from "../docks/actions.js";
+import type * as docks_adapters_cloudflare_adapter from "../docks/adapters/cloudflare/adapter.js";
+import type * as docks_adapters_cloudflare_api from "../docks/adapters/cloudflare/api.js";
+import type * as docks_adapters_cloudflare_index from "../docks/adapters/cloudflare/index.js";
+import type * as docks_adapters_cloudflare_types from "../docks/adapters/cloudflare/types.js";
 import type * as docks_adapters_gridpane_adapter from "../docks/adapters/gridpane/adapter.js";
 import type * as docks_adapters_gridpane_api from "../docks/adapters/gridpane/api.js";
 import type * as docks_adapters_gridpane_index from "../docks/adapters/gridpane/index.js";
@@ -53,6 +57,10 @@ import type {
 declare const fullApi: ApiFromModules<{
   "docks/_types": typeof docks__types;
   "docks/actions": typeof docks_actions;
+  "docks/adapters/cloudflare/adapter": typeof docks_adapters_cloudflare_adapter;
+  "docks/adapters/cloudflare/api": typeof docks_adapters_cloudflare_api;
+  "docks/adapters/cloudflare/index": typeof docks_adapters_cloudflare_index;
+  "docks/adapters/cloudflare/types": typeof docks_adapters_cloudflare_types;
   "docks/adapters/gridpane/adapter": typeof docks_adapters_gridpane_adapter;
   "docks/adapters/gridpane/api": typeof docks_adapters_gridpane_api;
   "docks/adapters/gridpane/index": typeof docks_adapters_gridpane_index;

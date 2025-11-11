@@ -241,7 +241,7 @@ All documentation is organized in `docs/`:
 
 **Strategy**: Add more providers to validate and refine universal schema before frontend optimization. See [`docs/architecture/DEVELOPMENT_PRIORITY.md`](./docs/architecture/DEVELOPMENT_PRIORITY.md) for complete strategy.
 
-**Status**: IN PROGRESS - Vercel adapter complete ✅
+**Status**: IN PROGRESS - Vercel ✅ Netlify ✅ Cloudflare docs ready
 
 **PaaS Providers** (Web Services):
 - [x] Vercel dock adapter ✅ (API key encryption working, web services syncing, data rendering in UI)

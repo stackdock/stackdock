@@ -8,24 +8,27 @@
 
 Stand-downs are the communication system between principle engineer agents and the Captain. All agents report findings, recommendations, and approval status in a single JSON file.
 
-**Current Status**: Active system used for Mission 1, 2, 2.5, 3, and 4. See `stand-downs/system-state.json` for current mission status.
+**Current Status**: Active system used for Mission 1, 2, 2.5, 3, 4, and 5. See `stand-downs/system-state.json` for current mission status.
 
 ## Folder Structure
 
 ```
 stand-downs/
 ├── active/              # Current active missions
-│   ├── mission-4-execution-plan.md
-│   ├── mission-4-frontend-agent-prompt.md
-│   ├── mission-4-frontend-audit-completion.md
-│   ├── mission-4-frontend-table-review.md
-│   └── mission-5-provider-integration-strategy.md
+│   ├── mission-5-provider-integration-strategy.md
+│   ├── mission-5-vercel-adapter-implementation-guide.md
+│   ├── mission-5-netlify-adapter-implementation-guide.md
+│   ├── mission-5-cloudflare-adapter-implementation-guide.md
+│   └── ... (other Mission 5 docs)
 ├── archived/            # Completed missions and historical docs
 │   ├── mission-1-completion-log.json
 │   ├── mission-2-state.json
 │   ├── mission-2.5-execution-plan.md
 │   ├── mission-3-backend-convex-brief.md
 │   ├── mission-3-progress-summary.md
+│   ├── mission-5-vercel-checkpoint.md
+│   ├── mission-5-netlify-checkpoint.md
+│   ├── mission-5-status-update.md
 │   └── ...
 ├── blockers/           # Blocker documentation
 │   ├── blocker-resolution-summary.md
