@@ -91,6 +91,11 @@ export function useSidebarData(): SidebarData {
                 url: "/dashboard/infrastructure/data",
                 icon: Database,
               },
+              {
+                title: "Networking",
+                url: "/dashboard/infrastructure/networking",
+                icon: Network,
+              },
             ],
           },
         ],
@@ -106,11 +111,6 @@ export function useSidebarData(): SidebarData {
                 title: "Backups",
                 url: "/dashboard/operations/backups",
                 icon: HardDrive,
-              },
-              {
-                title: "Networking",
-                url: "/dashboard/operations/networking",
-                icon: Network,
               },
               {
                 title: "Workflows",
@@ -203,6 +203,11 @@ export const sidebarData: SidebarData = {
               url: "/dashboard/infrastructure/data",
               icon: Database,
             },
+            {
+              title: "Networking",
+              url: "/dashboard/infrastructure/networking",
+              icon: Network,
+            },
           ],
         },
       ],
@@ -218,11 +223,6 @@ export const sidebarData: SidebarData = {
               title: "Backups",
               url: "/dashboard/operations/backups",
               icon: HardDrive,
-            },
-            {
-              title: "Networking",
-              url: "/dashboard/operations/networking",
-              icon: Network,
             },
             {
               title: "Workflows",

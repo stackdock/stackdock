@@ -3,7 +3,7 @@ import { useQuery } from "convex/react"
 import { api } from "convex/_generated/api"
 import { DomainsTable } from "@/components/resources/domains-table"
 
-export const Route = createFileRoute("/dashboard/operations/networking")({
+export const Route = createFileRoute("/dashboard/infrastructure/networking")({
   component: NetworkingPage,
 })
 

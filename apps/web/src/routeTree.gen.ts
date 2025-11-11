@@ -28,8 +28,8 @@ import { Route as DashboardSettingsDocksRouteImport } from './routes/dashboard/s
 import { Route as DashboardProvisionProviderRouteImport } from './routes/dashboard/provision/$provider'
 import { Route as DashboardProjectsProjectIdRouteImport } from './routes/dashboard/projects/$projectId'
 import { Route as DashboardOperationsWorkflowsRouteImport } from './routes/dashboard/operations/workflows'
-import { Route as DashboardOperationsNetworkingRouteImport } from './routes/dashboard/operations/networking'
 import { Route as DashboardOperationsBackupsRouteImport } from './routes/dashboard/operations/backups'
+import { Route as DashboardInfrastructureNetworkingRouteImport } from './routes/dashboard/infrastructure/networking'
 import { Route as DashboardInfrastructureDataRouteImport } from './routes/dashboard/infrastructure/data'
 import { Route as DashboardInfrastructureComputeRouteImport } from './routes/dashboard/infrastructure/compute'
 import { Route as DashboardProvisionProviderResourceTypeRouteImport } from './routes/dashboard/provision/$provider.$resourceType'
@@ -138,17 +138,17 @@ const DashboardOperationsWorkflowsRoute =
     path: '/workflows',
     getParentRoute: () => DashboardOperationsRoute,
   } as any)
-const DashboardOperationsNetworkingRoute =
-  DashboardOperationsNetworkingRouteImport.update({
-    id: '/networking',
-    path: '/networking',
-    getParentRoute: () => DashboardOperationsRoute,
-  } as any)
 const DashboardOperationsBackupsRoute =
   DashboardOperationsBackupsRouteImport.update({
     id: '/backups',
     path: '/backups',
     getParentRoute: () => DashboardOperationsRoute,
+  } as any)
+const DashboardInfrastructureNetworkingRoute =
+  DashboardInfrastructureNetworkingRouteImport.update({
+    id: '/networking',
+    path: '/networking',
+    getParentRoute: () => DashboardInfrastructureRoute,
   } as any)
 const DashboardInfrastructureDataRoute =
   DashboardInfrastructureDataRouteImport.update({
@@ -213,8 +213,8 @@ export interface FileRoutesByFullPath {
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/infrastructure/compute': typeof DashboardInfrastructureComputeRoute
   '/dashboard/infrastructure/data': typeof DashboardInfrastructureDataRoute
+  '/dashboard/infrastructure/networking': typeof DashboardInfrastructureNetworkingRoute
   '/dashboard/operations/backups': typeof DashboardOperationsBackupsRoute
-  '/dashboard/operations/networking': typeof DashboardOperationsNetworkingRoute
   '/dashboard/operations/workflows': typeof DashboardOperationsWorkflowsRoute
   '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRouteWithChildren
   '/dashboard/provision/$provider': typeof DashboardProvisionProviderRouteWithChildren
@@ -243,8 +243,8 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/infrastructure/compute': typeof DashboardInfrastructureComputeRoute
   '/dashboard/infrastructure/data': typeof DashboardInfrastructureDataRoute
+  '/dashboard/infrastructure/networking': typeof DashboardInfrastructureNetworkingRoute
   '/dashboard/operations/backups': typeof DashboardOperationsBackupsRoute
-  '/dashboard/operations/networking': typeof DashboardOperationsNetworkingRoute
   '/dashboard/operations/workflows': typeof DashboardOperationsWorkflowsRoute
   '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRouteWithChildren
   '/dashboard/provision/$provider': typeof DashboardProvisionProviderRouteWithChildren
@@ -275,8 +275,8 @@ export interface FileRoutesById {
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/infrastructure/compute': typeof DashboardInfrastructureComputeRoute
   '/dashboard/infrastructure/data': typeof DashboardInfrastructureDataRoute
+  '/dashboard/infrastructure/networking': typeof DashboardInfrastructureNetworkingRoute
   '/dashboard/operations/backups': typeof DashboardOperationsBackupsRoute
-  '/dashboard/operations/networking': typeof DashboardOperationsNetworkingRoute
   '/dashboard/operations/workflows': typeof DashboardOperationsWorkflowsRoute
   '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRouteWithChildren
   '/dashboard/provision/$provider': typeof DashboardProvisionProviderRouteWithChildren
@@ -308,8 +308,8 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/dashboard/infrastructure/compute'
     | '/dashboard/infrastructure/data'
+    | '/dashboard/infrastructure/networking'
     | '/dashboard/operations/backups'
-    | '/dashboard/operations/networking'
     | '/dashboard/operations/workflows'
     | '/dashboard/projects/$projectId'
     | '/dashboard/provision/$provider'
@@ -338,8 +338,8 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/dashboard/infrastructure/compute'
     | '/dashboard/infrastructure/data'
+    | '/dashboard/infrastructure/networking'
     | '/dashboard/operations/backups'
-    | '/dashboard/operations/networking'
     | '/dashboard/operations/workflows'
     | '/dashboard/projects/$projectId'
     | '/dashboard/provision/$provider'
@@ -369,8 +369,8 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/dashboard/infrastructure/compute'
     | '/dashboard/infrastructure/data'
+    | '/dashboard/infrastructure/networking'
     | '/dashboard/operations/backups'
-    | '/dashboard/operations/networking'
     | '/dashboard/operations/workflows'
     | '/dashboard/projects/$projectId'
     | '/dashboard/provision/$provider'
@@ -528,19 +528,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardOperationsWorkflowsRouteImport
       parentRoute: typeof DashboardOperationsRoute
     }
-    '/dashboard/operations/networking': {
-      id: '/dashboard/operations/networking'
-      path: '/networking'
-      fullPath: '/dashboard/operations/networking'
-      preLoaderRoute: typeof DashboardOperationsNetworkingRouteImport
-      parentRoute: typeof DashboardOperationsRoute
-    }
     '/dashboard/operations/backups': {
       id: '/dashboard/operations/backups'
       path: '/backups'
       fullPath: '/dashboard/operations/backups'
       preLoaderRoute: typeof DashboardOperationsBackupsRouteImport
       parentRoute: typeof DashboardOperationsRoute
+    }
+    '/dashboard/infrastructure/networking': {
+      id: '/dashboard/infrastructure/networking'
+      path: '/networking'
+      fullPath: '/dashboard/infrastructure/networking'
+      preLoaderRoute: typeof DashboardInfrastructureNetworkingRouteImport
+      parentRoute: typeof DashboardInfrastructureRoute
     }
     '/dashboard/infrastructure/data': {
       id: '/dashboard/infrastructure/data'
@@ -618,12 +618,15 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 interface DashboardInfrastructureRouteChildren {
   DashboardInfrastructureComputeRoute: typeof DashboardInfrastructureComputeRoute
   DashboardInfrastructureDataRoute: typeof DashboardInfrastructureDataRoute
+  DashboardInfrastructureNetworkingRoute: typeof DashboardInfrastructureNetworkingRoute
 }
 
 const DashboardInfrastructureRouteChildren: DashboardInfrastructureRouteChildren =
   {
     DashboardInfrastructureComputeRoute: DashboardInfrastructureComputeRoute,
     DashboardInfrastructureDataRoute: DashboardInfrastructureDataRoute,
+    DashboardInfrastructureNetworkingRoute:
+      DashboardInfrastructureNetworkingRoute,
   }
 
 const DashboardInfrastructureRouteWithChildren =
@@ -633,13 +636,11 @@ const DashboardInfrastructureRouteWithChildren =
 
 interface DashboardOperationsRouteChildren {
   DashboardOperationsBackupsRoute: typeof DashboardOperationsBackupsRoute
-  DashboardOperationsNetworkingRoute: typeof DashboardOperationsNetworkingRoute
   DashboardOperationsWorkflowsRoute: typeof DashboardOperationsWorkflowsRoute
 }
 
 const DashboardOperationsRouteChildren: DashboardOperationsRouteChildren = {
   DashboardOperationsBackupsRoute: DashboardOperationsBackupsRoute,
-  DashboardOperationsNetworkingRoute: DashboardOperationsNetworkingRoute,
   DashboardOperationsWorkflowsRoute: DashboardOperationsWorkflowsRoute,
 }
 
