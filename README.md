@@ -246,7 +246,10 @@ All documentation is organized in `docs/`:
 **PaaS Providers** (Web Services):
 - [x] Vercel dock adapter ✅ (API key encryption working, web services syncing, data rendering in UI)
 - [x] Netlify dock adapter ✅ (API key encryption working, web services syncing, data rendering in UI)
-- [ ] Cloudflare Pages dock adapter
+- [ ] Cloudflare Pages/Workers dock adapter (Documentation ready, ready for implementation)
+
+**DNS Providers** (Domains):
+- [ ] Cloudflare Zones dock adapter (Documentation ready, ready for implementation - first adapter to populate domains table)
 
 **IaaS Providers** (Servers):
 - [ ] DigitalOcean dock adapter

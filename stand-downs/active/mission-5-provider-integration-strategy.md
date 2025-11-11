@@ -221,13 +221,15 @@
 
 ---
 
-#### Cloudflare (Pages/Workers)
+#### Cloudflare (Comprehensive - Zones, Pages, Workers, DNS)
 **Core Endpoints**:
+- `GET /client/v4/zones` → Sync DNS zones to `domains` table
+- `GET /client/v4/zones/{zone_id}/dns_records` → Store DNS records in `domains.fullApiData.dnsRecords`
 - `GET /client/v4/accounts/{account}/pages/projects` → Sync Pages projects to `webServices`
 - `GET /client/v4/accounts/{account}/workers/scripts` → Sync Workers to `webServices`
 - `GET /client/v4/user/tokens/verify` → Validate credentials
 
-**Depth Endpoints**:
+**Depth Endpoints** (Post-MVP):
 - `GET /client/v4/accounts/{account}/pages/projects/{project}` → Detailed Pages project
 - `GET /client/v4/accounts/{account}/workers/scripts/{script}` → Detailed Worker
 - `GET /client/v4/accounts/{account}/pages/projects/{project}/deployments` → Deployment list
@@ -237,8 +239,10 @@
 - `GET /client/v4/accounts/{account}/subscription` → Subscription info
 
 **Priority**: HIGH  
-**Estimated Time**: 0.75 days (two services: Pages + Workers)  
-**Universal Table**: `webServices`
+**Estimated Time**: 1 day (zones + pages + workers + DNS records)  
+**Universal Tables**: `domains` (zones) + `webServices` (pages + workers)  
+**Status**: Documentation ready, ready for implementation  
+**Notes**: First adapter to populate `domains` table. Account ID extracted from zones response.
 
 ---
 
@@ -263,9 +267,11 @@
 
 ### Category 3: DNS/Domain Providers (→ `domains` table)
 
-#### Cloudflare (Zones)
+#### Cloudflare (Zones) - See Category 2 for full implementation
+**Note**: Cloudflare zones are implemented as part of comprehensive Cloudflare adapter (see Category 2).
 **Core Endpoints**:
 - `GET /client/v4/zones` → Sync all zones to `domains`
+- `GET /client/v4/zones/{zone_id}/dns_records` → Store DNS records
 - `GET /client/v4/user/tokens/verify` → Validate credentials
 
 **Depth Endpoints**:

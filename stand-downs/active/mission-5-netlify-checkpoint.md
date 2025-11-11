@@ -117,4 +117,3 @@
 ---
 
 **Checkpoint complete. Ready to commit and continue.**
-
