@@ -70,7 +70,7 @@
           "netlify-api-key-encryption-working",
           "netlify-webservices-syncing"
         ],
-        "currentStep": "netlify-testing-complete",
+        "currentStep": "cloudflare-docs-complete-navigation-refactor-planned",
         "completion": 35
       },
       "milestones": [
