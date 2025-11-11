@@ -159,6 +159,7 @@ export const cloudflareAdapter: DockAdapter = {
     }
 
     // Sync each zone to domains table
+    // DNS records are already fetched in the action and attached to zone objects
     for (const zone of zones) {
       const existing = await ctx.db
         .query("domains")
@@ -166,6 +167,10 @@ export const cloudflareAdapter: DockAdapter = {
           q.eq("dockId", dock._id).eq("providerResourceId", zone.id)
         )
         .first()
+
+      // Get DNS records from zone object (pre-fetched in action)
+      // If not present (e.g., direct adapter call), use empty array
+      const dnsRecords = (zone as any).dnsRecords || []
 
       const domainData = {
         orgId: dock.orgId,
@@ -175,7 +180,10 @@ export const cloudflareAdapter: DockAdapter = {
         domainName: zone.name,
         status: mapCloudflareZoneStatus(zone.status),
         expiresAt: undefined, // DNS zones don't expire (domain registrations do)
-        fullApiData: zone, // Store entire zone object
+        fullApiData: {
+          ...zone,
+          dnsRecords: dnsRecords, // Include DNS records in fullApiData
+        },
         updatedAt: isoToTimestamp(zone.modified_on),
       }
 
@@ -183,40 +191,6 @@ export const cloudflareAdapter: DockAdapter = {
         await ctx.db.patch(existing._id, domainData)
       } else {
         await ctx.db.insert("domains", domainData)
-      }
-    }
-
-    // Fetch and store DNS records for each zone
-    const apiKey = await decryptApiKey(dock.encryptedApiKey, ctx, {
-      dockId: dock._id,
-      orgId: dock.orgId,
-    })
-    const api = new CloudflareAPI(apiKey)
-
-    for (const zone of zones) {
-      try {
-        const records = await api.getDNSRecords(zone.id)
-
-        // Update domain with DNS records in fullApiData
-        const existing = await ctx.db
-          .query("domains")
-          .withIndex("by_dock_resource", (q) =>
-            q.eq("dockId", dock._id).eq("providerResourceId", zone.id)
-          )
-          .first()
-
-        if (existing) {
-          await ctx.db.patch(existing._id, {
-            fullApiData: {
-              ...existing.fullApiData,
-              dnsRecords: records,
-            },
-            updatedAt: Date.now(),
-          })
-        }
-      } catch (error) {
-        console.error(`Failed to fetch DNS records for zone ${zone.id}:`, error)
-        // Continue with other zones even if one fails
       }
     }
   },

@@ -178,6 +178,20 @@ export const syncDockResources = internalAction({
             accountId = domains[0].account.id
             console.log(`[Dock Action] Extracted account ID: ${accountId}`)
           }
+
+          // Fetch DNS records for each zone (must be done in action, not mutation)
+          console.log(`[Dock Action] Fetching DNS records for ${domains.length} zones`)
+          for (const zone of domains) {
+            try {
+              const records = await api.getDNSRecords(zone.id)
+              // Attach DNS records to zone object (will be passed to adapter)
+              ;(zone as any).dnsRecords = records
+              console.log(`[Dock Action] Fetched ${records.length} DNS records for zone ${zone.id} (${zone.name})`)
+            } catch (error) {
+              console.error(`[Dock Action] Failed to fetch DNS records for zone ${zone.id} (${zone.name}):`, error)
+              ;(zone as any).dnsRecords = [] // Empty array if fetch fails
+            }
+          }
         }
 
         // Get Pages (requires account ID)

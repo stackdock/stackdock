@@ -49,6 +49,7 @@ export interface CloudflareZone {
   modified_on: string // ISO 8601
   activated_on: string // ISO 8601
   name_servers: string[]
+  dnsRecords?: CloudflareDNSRecord[] // Optional - added by action when fetching DNS records
   [key: string]: any // All other fields go to fullApiData
 }
 
