@@ -86,6 +86,8 @@ export const syncDockResources = internalAction({
     let webServices: any[] = []
     let domains: any[] = []
     let databases: any[] = []
+    let backupSchedules: any[] = []
+    let backupIntegrations: any[] = []
 
     try {
       // GridPane-specific: Use GridPaneAPI directly
@@ -113,6 +115,13 @@ export const syncDockResources = internalAction({
           console.log(`[Dock Action] Databases not supported for ${args.provider}`)
           databases = []
         }
+
+        // Always fetch backups for GridPane (not in resourceTypes, but always sync)
+        console.log(`[Dock Action] Fetching backup schedules for ${args.provider}`)
+        backupSchedules = await api.getAllBackupSchedules()
+
+        console.log(`[Dock Action] Fetching backup integrations for ${args.provider}`)
+        backupIntegrations = await api.getBackupIntegrations()
       } else if (args.provider === "vercel") {
         // Vercel-specific: Use VercelAPI directly
         const api = new VercelAPI(args.apiKey)
@@ -226,7 +235,7 @@ export const syncDockResources = internalAction({
         throw new Error(`Provider ${args.provider} sync not yet implemented in action`)
       }
 
-      console.log(`[Dock Action] Sync complete: ${servers.length} servers, ${webServices.length} webServices, ${domains.length} domains`)
+      console.log(`[Dock Action] Sync complete: ${servers.length} servers, ${webServices.length} webServices, ${domains.length} domains, ${backupSchedules.length} backup schedules, ${backupIntegrations.length} backup integrations`)
 
       // Call internal mutation to sync using adapter methods
       await ctx.runMutation(internal.docks.mutations.syncDockResourcesMutation, {
@@ -237,6 +246,8 @@ export const syncDockResources = internalAction({
           webServices: webServices.length > 0 ? webServices : undefined,
           domains: domains.length > 0 ? domains : undefined,
           databases: databases.length > 0 ? databases : undefined,
+          backupSchedules: backupSchedules.length > 0 ? backupSchedules : undefined,
+          backupIntegrations: backupIntegrations.length > 0 ? backupIntegrations : undefined,
         },
       })
 

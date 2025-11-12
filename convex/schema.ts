@@ -216,6 +216,51 @@ export default defineSchema({
     .index("by_provisioning_source", ["provisioningSource", "orgId"])
     .index("by_sst_resource", ["sstStackName", "sstResourceId"]),
 
+  // Master Fleet List: Backup Schedules
+  backupSchedules: defineTable({
+    orgId: v.id("organizations"),
+    dockId: v.id("docks"),
+    provider: v.string(), // "gridpane", etc.
+    providerResourceId: v.string(), // Site ID or schedule ID (provider-specific)
+    siteId: v.number(), // GridPane site ID
+    siteUrl: v.string(),
+    scheduleId: v.number(), // GridPane schedule ID
+    type: v.union(v.literal("local"), v.literal("remote")),
+    frequency: v.string(), // "daily", "weekly", "hourly"
+    hour: v.string(),
+    minute: v.string(),
+    time: v.string(), // Formatted "HH:mm"
+    dayOfWeek: v.optional(v.number()), // 0-6 for weekly, null otherwise
+    serviceId: v.optional(v.number()), // Integration ID for remote backups
+    serviceName: v.optional(v.string()), // e.g., "aws-s3"
+    enabled: v.boolean(),
+    remoteBackupsEnabled: v.boolean(),
+    fullApiData: v.any(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_orgId", ["orgId"])
+    .index("by_dockId", ["dockId"])
+    .index("by_dock_schedule", ["dockId", "scheduleId"]) // Prevent duplicate syncs
+    .index("by_siteId", ["siteId"]),
+
+  // Master Fleet List: Backup Integrations
+  backupIntegrations: defineTable({
+    orgId: v.id("organizations"),
+    dockId: v.id("docks"),
+    provider: v.string(), // "gridpane", etc.
+    providerResourceId: v.string(), // Integration ID (provider-specific)
+    integrationId: v.number(), // GridPane integration ID
+    integratedService: v.string(), // "aws-s3", etc.
+    integrationName: v.string(),
+    region: v.optional(v.string()),
+    fullApiData: v.any(), // Note: Don't store tokens/secrets here - they're sensitive
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_orgId", ["orgId"])
+    .index("by_dockId", ["dockId"])
+    .index("by_dock_integration", ["dockId", "integrationId"]) // Prevent duplicate syncs
+    .index("by_integrationId", ["integrationId"]),
+
   // *** UPDATED TABLE ***
   // The "Glue" Table (Layer 5 Linking)
   projectResources: defineTable({

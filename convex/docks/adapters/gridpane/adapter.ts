@@ -18,7 +18,13 @@ import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
 import { decryptApiKey } from "../../../lib/encryption"
 import { GridPaneAPI } from "./api"
-import type { GridPaneServer, GridPaneSite, GridPaneDomain } from "./types"
+import type {
+  GridPaneServer,
+  GridPaneSite,
+  GridPaneDomain,
+  GridPaneBackupSchedule,
+  GridPaneBackupIntegration,
+} from "./types"
 
 /**
  * Map GridPane server status to universal status
@@ -268,6 +274,142 @@ export const gridpaneAdapter: DockAdapter = {
       } else {
         // Insert new domain
         await ctx.db.insert("domains", universalDomain)
+      }
+    }
+  },
+
+  /**
+   * Sync GridPane backup schedules to universal backupSchedules table
+   * GET /oauth/api/v1/backups/schedules
+   */
+  async syncBackupSchedules(
+    ctx: MutationCtx,
+    dock: Doc<"docks">,
+    preFetchedData?: GridPaneBackupSchedule[]
+  ): Promise<void> {
+    let schedules: GridPaneBackupSchedule[]
+
+    if (preFetchedData) {
+      // Use pre-fetched data from action
+      schedules = preFetchedData
+    } else {
+      // Fetch from API
+      const apiKey = await decryptApiKey(dock.encryptedApiKey, ctx, {
+        dockId: dock._id,
+        orgId: dock.orgId,
+      })
+      const api = new GridPaneAPI(apiKey)
+      schedules = await api.getAllBackupSchedules()
+    }
+
+    // Sync each schedule
+    for (const schedule of schedules) {
+      // Check if schedule already exists
+      const existing = await ctx.db
+        .query("backupSchedules")
+        .withIndex("by_dock_schedule", (q) =>
+          q.eq("dockId", dock._id).eq("scheduleId", schedule.site_id)
+        )
+        .first()
+
+      // Map GridPane schedule to universal schema
+      const universalSchedule = {
+        orgId: dock.orgId,
+        dockId: dock._id,
+        provider: "gridpane",
+        providerResourceId: schedule.site_id.toString(),
+        siteId: schedule.site_id,
+        siteUrl: schedule.site_url,
+        scheduleId: schedule.site_id, // Using site_id as schedule ID
+        type: schedule.remote_backups_enabled ? ("remote" as const) : ("local" as const),
+        frequency: schedule.frequency,
+        hour: schedule.time?.split(":")[0] || "00",
+        minute: schedule.time?.split(":")[1] || "00",
+        time: schedule.time || "00:00",
+        dayOfWeek: schedule.day_of_week ?? undefined, // Convert null to undefined
+        serviceId: schedule.integration_id ?? undefined, // Convert null/undefined to undefined
+        enabled: schedule.enabled,
+        remoteBackupsEnabled: schedule.remote_backups_enabled,
+        fullApiData: schedule,
+        updatedAt: Date.now(),
+      }
+
+      if (existing) {
+        // Patch only updatable fields (exclude required fields that can't change)
+        await ctx.db.patch(existing._id, {
+          siteUrl: universalSchedule.siteUrl,
+          type: universalSchedule.type,
+          frequency: universalSchedule.frequency,
+          hour: universalSchedule.hour,
+          minute: universalSchedule.minute,
+          time: universalSchedule.time,
+          dayOfWeek: universalSchedule.dayOfWeek,
+          serviceId: universalSchedule.serviceId,
+          enabled: universalSchedule.enabled,
+          remoteBackupsEnabled: universalSchedule.remoteBackupsEnabled,
+          fullApiData: universalSchedule.fullApiData,
+          updatedAt: universalSchedule.updatedAt,
+        })
+      } else {
+        await ctx.db.insert("backupSchedules", universalSchedule)
+      }
+    }
+  },
+
+  /**
+   * Sync GridPane backup integrations to universal backupIntegrations table
+   * GET /oauth/api/v1/backups/integrations
+   */
+  async syncBackupIntegrations(
+    ctx: MutationCtx,
+    dock: Doc<"docks">,
+    preFetchedData?: GridPaneBackupIntegration[]
+  ): Promise<void> {
+    let integrations: GridPaneBackupIntegration[]
+
+    if (preFetchedData) {
+      // Use pre-fetched data from action
+      integrations = preFetchedData
+    } else {
+      // Fetch from API
+      const apiKey = await decryptApiKey(dock.encryptedApiKey, ctx, {
+        dockId: dock._id,
+        orgId: dock.orgId,
+      })
+      const api = new GridPaneAPI(apiKey)
+      integrations = await api.getBackupIntegrations()
+    }
+
+    // Sync each integration
+    for (const integration of integrations) {
+      // Check if integration already exists
+      const existing = await ctx.db
+        .query("backupIntegrations")
+        .withIndex("by_dock_integration", (q) =>
+          q.eq("dockId", dock._id).eq("integrationId", integration.id)
+        )
+        .first()
+
+      // Map GridPane integration to universal schema
+      // Note: Don't store tokens/secrets in fullApiData - they're sensitive
+      const { token, secret_token, ...safeData } = integration
+      const universalIntegration = {
+        orgId: dock.orgId,
+        dockId: dock._id,
+        provider: "gridpane",
+        providerResourceId: integration.id.toString(),
+        integrationId: integration.id,
+        integratedService: integration.integrated_service,
+        integrationName: integration.integration_name,
+        region: integration.region,
+        fullApiData: safeData, // Exclude tokens/secrets
+        updatedAt: Date.now(),
+      }
+
+      if (existing) {
+        await ctx.db.patch(existing._id, universalIntegration)
+      } else {
+        await ctx.db.insert("backupIntegrations", universalIntegration)
       }
     }
   },

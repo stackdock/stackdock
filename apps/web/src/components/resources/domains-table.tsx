@@ -70,6 +70,14 @@ import {
   PaginationItem,
 } from "@/components/ui/pagination"
 import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -114,6 +122,72 @@ const providerFilterFn: FilterFn<Domain> = (row, columnId, filterValue: string[]
 const expiryFilterFn: FilterFn<Domain> = (row, columnId, filterValue: boolean) => {
   if (!filterValue) return true
   return isExpiringSoon(row.original.expiresAt)
+}
+
+function DNSRecordsCell({ row }: { row: Row<Domain> }) {
+  const [open, setOpen] = useState(false)
+  const records = row.original.fullApiData?.dnsRecords as Array<{
+    id: string
+    type: string
+    name: string
+    content: string
+    proxied?: boolean
+    ttl?: number
+  }> | undefined
+  
+  if (!records || records.length === 0) {
+    return <span className="text-muted-foreground text-xs">None</span>
+  }
+  
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-7 text-xs">
+          {records.length} {records.length === 1 ? "record" : "records"}
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>DNS Records</SheetTitle>
+          <SheetDescription>
+            {row.original.domainName} • {records.length} {records.length === 1 ? "record" : "records"}
+          </SheetDescription>
+        </SheetHeader>
+        <div className="mt-6 space-y-4">
+          {records.map((record) => (
+            <div 
+              key={record.id} 
+              className="rounded-lg border bg-card p-4 space-y-2"
+            >
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant="outline" className="font-mono">
+                  {record.type}
+                </Badge>
+                {record.proxied && (
+                  <Badge variant="secondary" className="text-xs">
+                    Proxied
+                  </Badge>
+                )}
+                {record.ttl && (
+                  <Badge variant="outline" className="text-xs">
+                    TTL: {record.ttl}
+                  </Badge>
+                )}
+              </div>
+              <div className="space-y-1">
+                <div className="text-sm font-medium text-muted-foreground">Name</div>
+                <div className="font-mono text-sm break-all">{record.name}</div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-sm font-medium text-muted-foreground">Content</div>
+                <div className="font-mono text-sm break-all">{record.content}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </SheetContent>
+    </Sheet>
+  )
 }
 
 const columns: ColumnDef<Domain>[] = [
@@ -182,53 +256,7 @@ const columns: ColumnDef<Domain>[] = [
   {
     id: "dnsRecords",
     header: "DNS Records",
-    cell: ({ row }) => {
-      const records = row.original.fullApiData?.dnsRecords as Array<{
-        id: string
-        type: string
-        name: string
-        content: string
-        proxied?: boolean
-      }> | undefined
-      
-      if (!records || records.length === 0) {
-        return <span className="text-muted-foreground text-xs">None</span>
-      }
-      
-      return (
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 text-xs">
-              {records.length} {records.length === 1 ? "record" : "records"}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[400px] max-h-[300px] overflow-y-auto">
-            <div className="space-y-2">
-              <div className="font-medium text-sm mb-2">DNS Records</div>
-              {records.map((record) => (
-                <div key={record.id} className="text-xs border-b border-border pb-2 last:border-0">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="bg-muted/30 text-muted-foreground font-mono text-[10px]">
-                      {record.type}
-                    </Badge>
-                    {record.proxied && (
-                      <Badge variant="outline" className="bg-muted/50 text-muted-foreground text-[10px]">
-                        Proxied
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="mt-1">
-                    <span className="font-medium">{record.name}</span>
-                    <span className="text-muted-foreground mx-1">→</span>
-                    <span className="font-mono">{record.content}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
-      )
-    },
+    cell: ({ row }) => <DNSRecordsCell row={row} />,
     size: 120,
     enableHiding: false, // Always visible - core feature for read-only phase
   },
