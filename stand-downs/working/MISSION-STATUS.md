@@ -62,7 +62,7 @@ This document provides a brief summary of each mission's current state so we can
 ---
 
 ### Mission 6: Navigation Cleanup
-**Status**: ✅ **CHECKPOINT REACHED** - Happy path working
+**Status**: ✅ **CHECKPOINT COMPLETE** - Happy path working
 
 #### ✅ Completed
 - **Navigation Structure**: Removed redundant group labels
@@ -77,17 +77,136 @@ This document provides a brief summary of each mission's current state so we can
 - **Settings** ▼ → Organization, User, Theme, Docks
 - **Future**: Monitoring group (Activity, Alerts, Logs) - documented
 
-#### ✅ Checkpoint Details
-- Removed group labels (redundant with parent items)
-- Made Dashboard consistent (collapsible parent)
-- All top-level navs working as collapsible dropdowns
-- UI fixed (was showing as active tabs, now proper dropdowns)
-
-**Status**: ✅ **CHECKPOINT** - Happy path working, documented  
+**Status**: ✅ **CHECKPOINT COMPLETE** - Happy path working, documented  
 **Checkpoint Doc**: `stand-downs/CHECKPOINT-2025-01-12-NAVIGATION.md`
 
-#### 📋 Open (Not Started)
-- **DigitalOcean Adapter**: Next provider to add (after cleanup)
+---
+
+### Mission 7: Read-Only Infrastructure MVP
+**Status**: 📋 **PLANNED** - Next Mission
+
+#### 🎯 Goal
+Complete read-only infrastructure MVP - all billable accounts/resources visible in one interface (solo developer view)
+
+#### 📋 Planned Components
+**Phase 1: Database Providers**
+- Turso adapter (read-only)
+- Neon adapter (read-only)
+- Convex adapter (read-only) - meta (storing Convex DB info in Convex)
+
+**Phase 2: IaaS Providers**
+- Vultr adapter (read-only) - easy API, single key auth
+- DigitalOcean adapter (read-only) - easy API, single key auth
+- AWS adapter (read-only) - IAM role, multi-field auth
+- GCP adapter (read-only) - service account, multi-field auth
+- Azure adapter (read-only) - client ID/secret/tenant, multi-field auth
+
+**Phase 3: Monitoring**
+- Sentry adapter (read-only) - alerts table
+
+#### ✅ Checkpoint Completion Criteria
+- ✅ All database providers syncing (Turso, Neon, Convex)
+- ✅ All IaaS providers syncing (Vultr, DO, AWS, GCP, Azure)
+- ✅ Sentry alerts syncing
+- ✅ Auth schema finalized (multi-field credentials pattern locked)
+- ✅ All resources visible in universal tables
+- ✅ Solo developer can see all billable accounts/resources
+
+**Status**: 📋 **PLANNED** - Ready to start  
+**Focus**: Solo developer workflow - single org owner, project-level organization
+
+---
+
+### Mission 8: Projects Feature (Linear + GitHub)
+**Status**: 📋 **PLANNED** - After Mission 7
+
+#### 🎯 Goal
+Build out Projects feature with resource linking - organize resources by project
+
+#### 📋 Planned Components
+- Linear adapter (read-only) - issues, projects
+- GitHub adapter (read-only) - repos, issues
+- Resource linking (projects → resources)
+- Project-level organization (handles grouping without teams/roles)
+
+#### ✅ Checkpoint Completion Criteria
+- ✅ Linear integration working
+- ✅ GitHub integration working
+- ✅ Projects table enhanced
+- ✅ Resource linking functional
+- ✅ Project-level organization working
+
+**Status**: 📋 **PLANNED** - After Mission 7  
+**Focus**: Solo developer workflow - organize resources by project
+
+---
+
+### Mission 9: Insights Board
+**Status**: 📋 **PLANNED** - After Mission 8
+
+#### 🎯 Goal
+Data visualization and aggregated dashboards showing all collected data
+
+#### 📋 Planned Components
+- Insights dashboard
+- Data visualization
+- Aggregated analytics
+- Cross-provider views
+
+#### ✅ Checkpoint Completion Criteria
+- ✅ Insights board displaying data
+- ✅ Visualizations working
+- ✅ Aggregated views functional
+- ✅ Solo developer can see all data in one place
+
+**Status**: 📋 **PLANNED** - After Mission 8  
+**Focus**: Solo developer MVP complete
+
+---
+
+### Mission 10: RBAC Hardening & Refinement
+**Status**: 📋 **PLANNED** - After Mission 9
+
+#### 🎯 Goal
+Multi-user support - RBAC improvements, permission refinement, security hardening
+
+#### 📋 Planned Components
+- RBAC improvements
+- Permission refinement
+- Security hardening
+- Teams + roles activation (schema exists, activate when needed)
+
+#### ✅ Checkpoint Completion Criteria
+- ✅ RBAC hardened
+- ✅ Permissions refined
+- ✅ Security improvements
+- ✅ Multi-user support functional
+
+**Status**: 📋 **PLANNED** - After Mission 9 (solo developer MVP first)  
+**Focus**: Multi-user support (deferred until after solo developer MVP)
+
+---
+
+### Mission 11: Dynamic Routes
+**Status**: 📋 **PLANNED** - After Mission 10 (Last Priority)
+
+#### 🎯 Goal
+Resource detail pages - polish and detail views
+
+#### 📋 Planned Components
+- Resource detail pages
+- Breadcrumb navigation
+- Detail page patterns
+- Follows Projects pattern
+
+#### ✅ Checkpoint Completion Criteria
+- ✅ Detail pages working
+- ✅ Breadcrumbs functional
+- ✅ Pattern established
+- ✅ All resource types have detail pages
+
+**Status**: 📋 **PLANNED** - Last priority (after RBAC)  
+**Focus**: Polish - detail views for resources
 
 #### 📚 Reference Documents
 - **Provider Integration Strategy**: Main strategy document
@@ -149,10 +268,12 @@ This document provides a brief summary of each mission's current state so we can
 - [ ] Fix any navigation issues
 - [ ] Clean up before adding more adapters
 
-**Before Adding More Adapters**:
-- [x] ~~Fix GridPane domains dashboard display~~ ✅ Complete
-- [x] ~~Clean up top-level navigation~~ ✅ **CHECKPOINT REACHED**
-- [ ] User will lay out final MVP adapters after cleanup
+**Mission 7 Plan**:
+- [x] ~~Clean up top-level navigation~~ ✅ **CHECKPOINT COMPLETE**
+- [ ] Database providers (Turso, Neon, Convex)
+- [ ] IaaS providers (Vultr, DO, AWS, GCP, Azure)
+- [ ] Sentry (monitoring/alerts)
+- [ ] Auth schema finalized
 
 ---
 

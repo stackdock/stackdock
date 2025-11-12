@@ -11,7 +11,7 @@ Missions and tasks that are open but not actively being worked on.
 ### Mission 5: DNS Records UI Enhancements
 **Status**: ⏸️ Deferred  
 **Priority**: Low  
-**Location**: `stand-downs/working/in-progress/mission-5-dns-records-sheet-refactor.md`
+**Location**: `stand-downs/active/mission-5-dns-records-sheet-refactor.md`
 
 **Summary**: 
 - Sheet transition complete ✅
@@ -45,19 +45,81 @@ Missions and tasks that are open but not actively being worked on.
 
 ## 📋 OPEN MISSIONS
 
-### Mission 5: DigitalOcean Adapter
-**Status**: 📋 Open (Not Started)  
-**Priority**: Medium  
-**Dependencies**: After cleanup complete
+### Mission 7: Read-Only Infrastructure MVP
+**Status**: 📋 **PLANNED** - Next Mission  
+**Priority**: High  
+**Dependencies**: Mission 6 checkpoint complete ✅
 
 **Summary**: 
-- Next provider adapter to implement
-- IaaS provider (servers)
-- Will follow Vercel/Netlify/Cloudflare pattern
+- Database providers: Turso, Neon, Convex
+- IaaS providers: Vultr, DO, AWS, GCP, Azure
+- Monitoring: Sentry (alerts)
+- Auth schema finalized
 
-**Why Not Started**: 
-- User wants to clean up first (top-level nav concerns)
-- Will lay out final MVP adapters after cleanup
+**Goal**: Solo developer can see all billable accounts/resources in one interface
+
+**Why Next**: 
+- Mission 6 checkpoint complete ✅
+- Ready to build out read-only infrastructure MVP
+- Focus: Solo developer workflow first
+
+---
+
+### Mission 8: Projects Feature (Linear + GitHub)
+**Status**: 📋 **PLANNED** - After Mission 7  
+**Priority**: High  
+**Dependencies**: Mission 7 checkpoint complete
+
+**Summary**: 
+- Linear adapter (read-only)
+- GitHub adapter (read-only)
+- Resource linking (projects → resources)
+- Project-level organization
+
+**Goal**: Organize resources by project (solo developer workflow)
+
+---
+
+### Mission 9: Insights Board
+**Status**: 📋 **PLANNED** - After Mission 8  
+**Priority**: Medium  
+**Dependencies**: Mission 8 checkpoint complete
+
+**Summary**: 
+- Data visualization
+- Aggregated dashboards
+- Analytics from collected data
+
+**Goal**: Solo developer can see all data in one place
+
+---
+
+### Mission 10: RBAC Hardening & Refinement
+**Status**: 📋 **PLANNED** - After Mission 9  
+**Priority**: Medium  
+**Dependencies**: Mission 9 checkpoint complete (solo developer MVP first)
+
+**Summary**: 
+- RBAC improvements
+- Permission refinement
+- Security hardening
+- Teams + roles activation
+
+**Goal**: Multi-user support (deferred until after solo developer MVP)
+
+---
+
+### Mission 11: Dynamic Routes
+**Status**: 📋 **PLANNED** - After Mission 10 (Last Priority)  
+**Priority**: Low  
+**Dependencies**: Mission 10 checkpoint complete
+
+**Summary**: 
+- Resource detail pages
+- Breadcrumb navigation
+- Detail page patterns
+
+**Goal**: Polish - detail views for resources
 
 ---
 
@@ -81,25 +143,16 @@ These documents are available for reference but don't represent active work:
 
 ## 🔄 IN PROGRESS (See `working/in-progress/`)
 
-- **Mission 3**: GridPane Domains Dashboard Display (HIGH PRIORITY)
-- DNS Records Sheet Refactor (deferred, but file still in in-progress)
+**Currently Empty** - Mission 6 checkpoint complete, Mission 7 ready to start
 
 ---
 
 ## ✅ COMPLETED (See `working/completed/`)
 
-- GridPane Pagination
-- Backup System (Database + Frontend) - GridPane read-only working
-- Backup Frontend Agent Guide
-
----
-
-## 🧹 CLEANUP PRIORITIES
-
-**Before Adding More Adapters**:
-1. Fix GridPane domains dashboard display (HIGH)
-2. Clean up top-level navigation (User Priority)
-3. User will lay out final MVP adapters after cleanup
+- GridPane Pagination ✅
+- Backup System (Database + Frontend) ✅
+- Backup Frontend Agent Guide ✅
+- Navigation Cleanup ✅ (Mission 6 checkpoint complete)
 
 ---
 

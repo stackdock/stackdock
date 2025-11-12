@@ -2,43 +2,39 @@
 
 > **Location**: `stand-downs/README.md`  
 > **Absolute Path**: `{REPO_ROOT}/stand-downs/README.md`  
-> **Last Updated**: January 11, 2025
+> **Last Updated**: November 12, 2025
 
 ## Overview
 
 Stand-downs are the communication system between principle engineer agents and the Captain. All agents report findings, recommendations, and approval status in a single JSON file.
 
-**Current Status**: Active system used for Mission 1, 2, 2.5, 3, 4, and 5. See `stand-downs/system-state.json` for current mission status.
+**Current Status**: Active system used for Mission 1-6. See `stand-downs/working/MISSION-STATUS.md` for current mission status.
 
 ## Folder Structure
 
 ```
 stand-downs/
-├── active/              # Current active missions
-│   ├── mission-5-provider-integration-strategy.md
-│   ├── mission-5-vercel-adapter-implementation-guide.md
-│   ├── mission-5-netlify-adapter-implementation-guide.md
-│   ├── mission-5-cloudflare-adapter-implementation-guide.md
-│   └── ... (other Mission 5 docs)
-├── archived/            # Completed missions and historical docs
-│   ├── mission-1-completion-log.json
-│   ├── mission-2-state.json
-│   ├── mission-2.5-execution-plan.md
-│   ├── mission-3-backend-convex-brief.md
-│   ├── mission-3-progress-summary.md
-│   ├── mission-5-vercel-checkpoint.md
-│   ├── mission-5-netlify-checkpoint.md
-│   ├── mission-5-status-update.md
-│   └── ...
-├── blockers/           # Blocker documentation
-│   ├── blocker-resolution-summary.md
-│   └── blocker-typescript-errors-mission-3.md
-├── agents/             # Agent session logs
-│   └── agent-sessions.json
-├── templates/          # Template files
-│   └── template.json
-├── system-state.json   # Current project state (source of truth)
-└── README.md           # This file
+├── active/              # Open missions & reference docs (not actively worked on)
+│   ├── OPEN-MISSIONS.md     # List of open/deferred missions (Mission 7-11)
+│   └── [reference docs]     # Strategy, guides, technical references
+├── working/             # Active work
+│   ├── completed/       # ✅ Recently completed & tested
+│   ├── in-progress/     # 🔄 Currently being worked on (empty - ready for Mission 7)
+│   └── MISSION-STATUS.md    # Detailed mission breakdown (source of truth)
+├── archived/            # Historical completed work
+│   ├── mission-3-completed/  # GridPane integration (blockers archived here)
+│   ├── mission-4-completed/  # Frontend tables
+│   ├── mission-5-completed/  # Multi-provider integration
+│   └── mission-6-completed/  # Navigation cleanup
+├── agents/              # Agent session logs
+│   ├── templates/       # Template files
+│   └── [mission folders] # Mission-based agent reports
+├── CHECKPOINT-*.md      # ✅ Checkpoint documents (success milestones)
+├── SUCCESS-LOG.md       # 🏆 Success hall of fame (rapid progress)
+├── OVERARCHING-GOALS.md # 🎯 Big picture vision & end goals
+├── ORGANIZATION-SUMMARY.md # Organization guide
+├── DOCS-ASSESSMENT-2025-11-12.md # Structure assessment
+└── README.md            # This file
 ```
 
 ## Stand-Downs File Structure

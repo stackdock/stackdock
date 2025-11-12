@@ -78,20 +78,27 @@
 - **Status**: ⏳ Not started
 - **Planned**: Workflow builder, automation rules, scheduled tasks
 
-### More Providers (Future)
-- **Goal**: Support major cloud providers
-- **Status**: ⏳ Not started
-- **Planned**: DigitalOcean, AWS, GCP, Azure, Vultr, etc.
+### More Providers (Mission 7 - Planned)
+- **Goal**: Support major cloud providers (read-only infrastructure MVP)
+- **Status**: 📋 **PLANNED** - Mission 7
+- **Planned**: 
+  - Database: Turso, Neon, Convex
+  - IaaS: Vultr, DigitalOcean, AWS, GCP, Azure
+  - Monitoring: Sentry
 
 ### Resource Detail Pages (Future)
 - **Goal**: Detailed views for each resource
 - **Status**: ⏳ Not started
 - **Planned**: Server details, web service details, domain details, etc.
 
-### Project Management (Future)
+### Project Management (Mission 8 - Planned)
 - **Goal**: Organize resources into projects
-- **Status**: ⏳ Partially started (Projects route exists)
-- **Planned**: Project-based resource organization, project settings
+- **Status**: 📋 **PLANNED** - Mission 8
+- **Planned**: 
+  - Linear integration (read-only)
+  - GitHub integration (read-only)
+  - Resource linking (projects → resources)
+  - Project-level organization (solo developer workflow)
 
 ---
 
@@ -106,11 +113,11 @@
 6. ✅ Provider-agnostic UI working
 
 ### Next Checkpoints (Planned)
-1. ⏳ More providers (DigitalOcean, AWS, etc.)
-2. ⏳ Write operations (provisioning)
-3. ⏳ Monitoring group
-4. ⏳ Resource detail pages
-5. ⏳ Workflows & automation
+1. 📋 **Mission 7**: Read-Only Infrastructure MVP (DB + IaaS + Sentry)
+2. 📋 **Mission 8**: Projects Feature (Linear + GitHub)
+3. 📋 **Mission 9**: Insights Board
+4. 📋 **Mission 10**: RBAC Hardening & Refinement
+5. 📋 **Mission 11**: Dynamic Routes (detail pages)
 
 ---
 
