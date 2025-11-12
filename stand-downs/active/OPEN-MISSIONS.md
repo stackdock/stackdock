@@ -1,6 +1,6 @@
 # Open Missions & Tasks
 
-**Last Updated**: January 12, 2025
+**Last Updated**: November 12, 2025
 
 Missions and tasks that are open but not actively being worked on.
 

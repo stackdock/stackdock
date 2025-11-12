@@ -151,5 +151,5 @@
 
 ---
 
-**Last Updated**: January 12, 2025  
+**Last Updated**: November 12, 2025  
 **Next Review**: After next major checkpoint

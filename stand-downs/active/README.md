@@ -60,4 +60,4 @@ See `../working/MISSION-STATUS.md` for detailed breakdown of all missions.
 
 ---
 
-Last Updated: January 12, 2025
+Last Updated: November 12, 2025
