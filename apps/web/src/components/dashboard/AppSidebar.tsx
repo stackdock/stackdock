@@ -22,8 +22,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <TeamSwitcher teams={sidebarData.teams} />
         </SidebarHeader>
         <SidebarContent>
-          {sidebarData.navGroups.map((props) => (
-            <NavGroup key={props.title} {...props} />
+          {sidebarData.navGroups.map((props, index) => (
+            <NavGroup 
+              key={props.title || props.items[0]?.title || `nav-group-${index}`} 
+              {...props} 
+            />
           ))}
         </SidebarContent>
         <SidebarFooter>

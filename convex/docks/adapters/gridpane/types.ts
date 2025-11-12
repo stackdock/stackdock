@@ -7,11 +7,62 @@
  */
 
 /**
+ * GridPane Paginated Response Structure
+ * Detected from actual API responses (sites, servers, domains, etc.)
+ * @see docks/gridpane/site/getallsites.json
+ */
+export interface GridPanePaginatedResponse<T> {
+  data: T[]
+  links?: {
+    first: string | null
+    last: string | null
+    prev: string | null
+    next: string | null
+  }
+  meta?: {
+    current_page: number
+    from: number
+    last_page: number
+    per_page: number
+    to: number
+    total: number
+    path?: string
+    links?: Array<{
+      url: string | null
+      label: string
+      active: boolean
+    }>
+  }
+}
+
+/**
  * GridPane API Response Wrapper
- * All list endpoints return { data: T[] }
+ * Can be paginated or non-paginated
+ * Non-paginated: { data: T[] }
+ * Paginated: { data: T[], links: {...}, meta: {...} }
  */
 export interface GridPaneResponse<T> {
   data: T[]
+  links?: {
+    first: string | null
+    last: string | null
+    prev: string | null
+    next: string | null
+  }
+  meta?: {
+    current_page: number
+    from: number
+    last_page: number
+    per_page: number
+    to: number
+    total: number
+    path?: string
+    links?: Array<{
+      url: string | null
+      label: string
+      active: boolean
+    }>
+  }
 }
 
 /**

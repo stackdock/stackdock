@@ -60,22 +60,28 @@ export function useSidebarData(): SidebarData {
     teams,
     navGroups: [
       {
-        title: "General",
+        title: "",
         items: [
           {
             title: "Dashboard",
-            url: "/dashboard",
             icon: LayoutDashboard,
-          },
-          {
-            title: "Projects",
-            url: "/dashboard/projects",
-            icon: FolderKanban,
+            items: [
+              {
+                title: "Insights",
+                url: "/dashboard",
+                icon: LayoutDashboard,
+              },
+              {
+                title: "Projects",
+                url: "/dashboard/projects",
+                icon: FolderKanban,
+              },
+            ],
           },
         ],
       },
       {
-        title: "Infrastructure",
+        title: "",
         items: [
           {
             title: "Infrastructure",
@@ -101,7 +107,7 @@ export function useSidebarData(): SidebarData {
         ],
       },
       {
-        title: "Operations",
+        title: "",
         items: [
           {
             title: "Operations",
@@ -122,7 +128,7 @@ export function useSidebarData(): SidebarData {
         ],
       },
       {
-        title: "Settings",
+        title: "",
         items: [
           {
             title: "Settings",
@@ -172,22 +178,28 @@ export const sidebarData: SidebarData = {
   ],
   navGroups: [
     {
-      title: "General",
+      title: "",
       items: [
         {
           title: "Dashboard",
-          url: "/dashboard",
           icon: LayoutDashboard,
-        },
-        {
-          title: "Projects",
-          url: "/dashboard/projects",
-          icon: FolderKanban,
+          items: [
+            {
+              title: "Insights",
+              url: "/dashboard",
+              icon: LayoutDashboard,
+            },
+            {
+              title: "Projects",
+              url: "/dashboard/projects",
+              icon: FolderKanban,
+            },
+          ],
         },
       ],
     },
     {
-      title: "Infrastructure",
+      title: "",
       items: [
         {
           title: "Infrastructure",
@@ -213,7 +225,7 @@ export const sidebarData: SidebarData = {
       ],
     },
     {
-      title: "Operations",
+      title: "",
       items: [
         {
           title: "Operations",
@@ -234,7 +246,7 @@ export const sidebarData: SidebarData = {
       ],
     },
     {
-      title: "Settings",
+      title: "",
       items: [
         {
           title: "Settings",

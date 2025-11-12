@@ -27,7 +27,7 @@ export type NavItem =
     })
 
 interface NavGroup {
-  title: string
+  title?: string
   items: NavItem[]
 }
 

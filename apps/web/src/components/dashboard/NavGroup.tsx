@@ -29,7 +29,7 @@ export function NavGroup({ title, items }: NavGroup) {
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>{title}</SidebarGroupLabel>
+      {title && <SidebarGroupLabel>{title}</SidebarGroupLabel>}
       <SidebarMenu>
         {items.map((item) => {
           if (!item.items) {
