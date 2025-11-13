@@ -100,6 +100,7 @@ Complete read-only infrastructure MVP - all billable accounts/resources visible 
 #### ✅ Completed Components (Phase 2: IaaS Providers)
 - **Vultr adapter** ✅ - Complete, syncing instances to `servers` table
 - **DigitalOcean adapter** ✅ - Complete, syncing droplets to `servers` table
+- **Linode adapter** ✅ - Complete, syncing linodes to `servers` table
 
 #### 📋 Planned Components
 **Phase 1: Database Providers** ✅ **COMPLETE**
@@ -112,6 +113,7 @@ Complete read-only infrastructure MVP - all billable accounts/resources visible 
 **Phase 2: IaaS Providers** 🔄 **IN PROGRESS**
 - ✅ Vultr adapter (read-only) - easy API, single key auth - **COMPLETE**
 - ✅ DigitalOcean adapter (read-only) - easy API, single key auth - **COMPLETE**
+- ✅ Linode adapter (read-only) - easy API, single key auth - **COMPLETE**
 - 🔄 AWS adapter (read-only) - IAM role, multi-field auth - **NEXT**
 - GCP adapter (read-only) - service account, multi-field auth
 - Azure adapter (read-only) - client ID/secret/tenant, multi-field auth
@@ -121,7 +123,7 @@ Complete read-only infrastructure MVP - all billable accounts/resources visible 
 
 #### ✅ Checkpoint Completion Criteria
 - ✅ All database providers syncing (Turso, Neon, Convex, PlanetScale)
-- 🔄 IaaS providers syncing (Vultr ✅, DigitalOcean ✅, AWS - NEXT, GCP, Azure)
+- 🔄 IaaS providers syncing (Vultr ✅, DigitalOcean ✅, Linode ✅, AWS - NEXT, GCP, Azure)
 - ⏳ Sentry alerts syncing
 - ⏳ Auth schema finalized (multi-field credentials pattern locked)
 - ✅ All database resources visible in universal tables

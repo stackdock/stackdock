@@ -155,9 +155,10 @@
 - ✅ PlanetScale (databases)
 - ✅ Vultr (servers/instances)
 - ✅ DigitalOcean (servers/droplets)
+- ✅ Linode (servers/linodes)
 
 ### Universal Tables Populated
-- ✅ `servers` - Multi-provider (GridPane, Vultr, DigitalOcean)
+- ✅ `servers` - Multi-provider (GridPane, Vultr, DigitalOcean, Linode)
 - ✅ `webServices` - Multi-provider (GridPane, Vercel, Netlify, Cloudflare)
 - ✅ `domains` - Multi-provider (GridPane, Cloudflare)
 - ✅ `databases` - Multi-provider (Turso, Neon, Convex, PlanetScale)
@@ -269,15 +270,17 @@
 **What We Built**:
 - **Vultr Adapter**: Instances syncing to `servers` table ✅
 - **DigitalOcean Adapter**: Droplets syncing to `servers` table ✅
+- **Linode Adapter**: Linodes syncing to `servers` table ✅
 
 **Key Achievement**:
-- **First IaaS Providers**: Vultr and DigitalOcean establish pattern for AWS, GCP, Azure
-- **Instances → Servers**: Both map to universal `servers` table
+- **Simple Auth IaaS Providers**: Vultr, DigitalOcean, and Linode establish pattern for AWS, GCP, Azure
+- **Instances → Servers**: All three map to universal `servers` table
 - **Simple Auth**: Single API key/token, Bearer token format
-- **Status Mapping**: Vultr uses `power_status`, DigitalOcean uses `status` field
-- **IP Extraction**: DigitalOcean extracts public IP from networks.v4 array
+- **Status Mapping**: Vultr uses `power_status`, DigitalOcean/Linode use `status` field
+- **IP Extraction**: DigitalOcean extracts from networks.v4 array, Linode from ipv4 array
+- **Pattern Consistency**: All follow same adapter structure
 
-**Status**: ✅ **Happy path working** - Vultr and DigitalOcean complete, AWS/GCP/Azure next
+**Status**: ✅ **Happy path working** - Vultr, DigitalOcean, and Linode complete, AWS/GCP/Azure next
 
 ---
 

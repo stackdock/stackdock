@@ -17,6 +17,7 @@ import { ConvexAPI } from "./adapters/convex/api"
 import { PlanetScaleAPI } from "./adapters/planetscale/api"
 import { VultrAPI } from "./adapters/vultr/api"
 import { DigitalOceanAPI } from "./adapters/digitalocean/api"
+import { LinodeAPI } from "./adapters/linode/api"
 import { internal } from "../_generated/api"
 import type { Id } from "../_generated/dataModel"
 
@@ -470,6 +471,29 @@ export const syncDockResources = internalAction({
         }
 
         // DigitalOcean doesn't support databases, webServices, or domains
+        if (args.resourceTypes.includes("databases")) {
+          console.log(`[Dock Action] Databases not supported for ${args.provider}`)
+          databases = []
+        }
+        if (args.resourceTypes.includes("webServices")) {
+          console.log(`[Dock Action] Web services not supported for ${args.provider}`)
+          webServices = []
+        }
+        if (args.resourceTypes.includes("domains")) {
+          console.log(`[Dock Action] Domains not supported for ${args.provider}`)
+          domains = []
+        }
+      } else if (args.provider === "linode") {
+        // Linode-specific: Use LinodeAPI directly
+        const api = new LinodeAPI(args.apiKey)
+
+        if (args.resourceTypes.includes("servers")) {
+          console.log(`[Dock Action] Fetching linodes for ${args.provider}`)
+          const linodes = await api.listLinodes()
+          servers = linodes
+        }
+
+        // Linode doesn't support databases, webServices, or domains
         if (args.resourceTypes.includes("databases")) {
           console.log(`[Dock Action] Databases not supported for ${args.provider}`)
           databases = []

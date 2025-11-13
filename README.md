@@ -175,7 +175,7 @@ You should see:
 - ✅ **Provisioning Infrastructure** - SST core engine, mutations, queries, UI (Mission 2.5 complete)
 - ✅ **GridPane Integration (Partial MVP)** - Authentication working, servers & webServices syncing successfully. Sufficient for observability mode. Full API coverage deferred until after multi-provider schema validation.
 - ✅ **Vercel Integration (Mission 5 - Checkpoint)** - Vercel adapter implemented, API key encryption working, web services syncing to universal tables, data rendering in UI. First multi-provider validation successful.
-- ✅ **Multi-Provider Integration (Mission 5)** - Vercel, Netlify, Cloudflare, Turso, Neon, Convex, PlanetScale, Vultr, DigitalOcean all integrated and syncing
+- ✅ **Multi-Provider Integration (Mission 5)** - Vercel, Netlify, Cloudflare, Turso, Neon, Convex, PlanetScale, Vultr, DigitalOcean, Linode all integrated and syncing
 - ✅ **Resource Tables** - All 4 tables (Servers, Web Services, Domains, Databases) displaying real-time data
 - ✅ **UI Foundation** - TanStack Table components integrated, ready for read-only MVP
 - 🎯 **Next Phase** - Adding more providers to validate universal schema (see MVP Roadmap)
@@ -254,7 +254,8 @@ All documentation is organized in `docs/`:
 **IaaS Providers** (Servers):
 - [x] Vultr dock adapter ✅ (instances syncing to servers table)
 - [x] DigitalOcean dock adapter ✅ (droplets syncing to servers table)
-- [ ] Hetzner dock adapter (or third IaaS option)
+- [x] Linode dock adapter ✅ (linodes syncing to servers table)
+- [ ] Hetzner dock adapter (or fourth IaaS option)
 
 **Translation Layer Refinement**:
 - [ ] Validate field mappings across all providers

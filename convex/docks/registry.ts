@@ -20,6 +20,7 @@ import { convexAdapter } from "./adapters/convex"
 import { planetscaleAdapter } from "./adapters/planetscale"
 import { vultrAdapter } from "./adapters/vultr"
 import { digitaloceanAdapter } from "./adapters/digitalocean"
+import { linodeAdapter } from "./adapters/linode"
 
 /**
  * Registry of all dock adapters
@@ -38,6 +39,7 @@ const adapterRegistry: Record<string, DockAdapter> = {
   planetscale: planetscaleAdapter,
   vultr: vultrAdapter,
   digitalocean: digitaloceanAdapter,
+  linode: linodeAdapter,
   // Add more adapters here:
   // aws: awsAdapter,
 }
@@ -83,6 +85,7 @@ const providerMetadata: Record<string, { displayName: string }> = {
   planetscale: { displayName: "PlanetScale" },
   vultr: { displayName: "Vultr" },
   digitalocean: { displayName: "DigitalOcean" },
+  linode: { displayName: "Linode" },
   // Add more as adapters are added:
   // aws: { displayName: "AWS" },
 }

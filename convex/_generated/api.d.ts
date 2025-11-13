@@ -26,6 +26,10 @@ import type * as docks_adapters_gridpane_adapter from "../docks/adapters/gridpan
 import type * as docks_adapters_gridpane_api from "../docks/adapters/gridpane/api.js";
 import type * as docks_adapters_gridpane_index from "../docks/adapters/gridpane/index.js";
 import type * as docks_adapters_gridpane_types from "../docks/adapters/gridpane/types.js";
+import type * as docks_adapters_linode_adapter from "../docks/adapters/linode/adapter.js";
+import type * as docks_adapters_linode_api from "../docks/adapters/linode/api.js";
+import type * as docks_adapters_linode_index from "../docks/adapters/linode/index.js";
+import type * as docks_adapters_linode_types from "../docks/adapters/linode/types.js";
 import type * as docks_adapters_neon_adapter from "../docks/adapters/neon/adapter.js";
 import type * as docks_adapters_neon_api from "../docks/adapters/neon/api.js";
 import type * as docks_adapters_neon_index from "../docks/adapters/neon/index.js";
@@ -97,6 +101,10 @@ declare const fullApi: ApiFromModules<{
   "docks/adapters/gridpane/api": typeof docks_adapters_gridpane_api;
   "docks/adapters/gridpane/index": typeof docks_adapters_gridpane_index;
   "docks/adapters/gridpane/types": typeof docks_adapters_gridpane_types;
+  "docks/adapters/linode/adapter": typeof docks_adapters_linode_adapter;
+  "docks/adapters/linode/api": typeof docks_adapters_linode_api;
+  "docks/adapters/linode/index": typeof docks_adapters_linode_index;
+  "docks/adapters/linode/types": typeof docks_adapters_linode_types;
   "docks/adapters/neon/adapter": typeof docks_adapters_neon_adapter;
   "docks/adapters/neon/api": typeof docks_adapters_neon_api;
   "docks/adapters/neon/index": typeof docks_adapters_neon_index;
