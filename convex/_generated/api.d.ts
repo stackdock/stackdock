@@ -18,6 +18,10 @@ import type * as docks_adapters_gridpane_adapter from "../docks/adapters/gridpan
 import type * as docks_adapters_gridpane_api from "../docks/adapters/gridpane/api.js";
 import type * as docks_adapters_gridpane_index from "../docks/adapters/gridpane/index.js";
 import type * as docks_adapters_gridpane_types from "../docks/adapters/gridpane/types.js";
+import type * as docks_adapters_neon_adapter from "../docks/adapters/neon/adapter.js";
+import type * as docks_adapters_neon_api from "../docks/adapters/neon/api.js";
+import type * as docks_adapters_neon_index from "../docks/adapters/neon/index.js";
+import type * as docks_adapters_neon_types from "../docks/adapters/neon/types.js";
 import type * as docks_adapters_netlify_adapter from "../docks/adapters/netlify/adapter.js";
 import type * as docks_adapters_netlify_api from "../docks/adapters/netlify/api.js";
 import type * as docks_adapters_netlify_index from "../docks/adapters/netlify/index.js";
@@ -69,6 +73,10 @@ declare const fullApi: ApiFromModules<{
   "docks/adapters/gridpane/api": typeof docks_adapters_gridpane_api;
   "docks/adapters/gridpane/index": typeof docks_adapters_gridpane_index;
   "docks/adapters/gridpane/types": typeof docks_adapters_gridpane_types;
+  "docks/adapters/neon/adapter": typeof docks_adapters_neon_adapter;
+  "docks/adapters/neon/api": typeof docks_adapters_neon_api;
+  "docks/adapters/neon/index": typeof docks_adapters_neon_index;
+  "docks/adapters/neon/types": typeof docks_adapters_neon_types;
   "docks/adapters/netlify/adapter": typeof docks_adapters_netlify_adapter;
   "docks/adapters/netlify/api": typeof docks_adapters_netlify_api;
   "docks/adapters/netlify/index": typeof docks_adapters_netlify_index;

@@ -12,6 +12,7 @@ import { VercelAPI } from "./adapters/vercel/api"
 import { NetlifyAPI } from "./adapters/netlify/api"
 import { CloudflareAPI } from "./adapters/cloudflare/api"
 import { TursoAPI } from "./adapters/turso/api"
+import { NeonAPI } from "./adapters/neon/api"
 import { internal } from "../_generated/api"
 import type { Id } from "../_generated/dataModel"
 
@@ -250,6 +251,83 @@ export const syncDockResources = internalAction({
         }
 
         // Turso doesn't support servers, webServices, or domains
+        if (args.resourceTypes.includes("servers")) {
+          console.log(`[Dock Action] Servers not supported for ${args.provider}`)
+          servers = []
+        }
+        if (args.resourceTypes.includes("webServices")) {
+          console.log(`[Dock Action] Web services not supported for ${args.provider}`)
+          webServices = []
+        }
+        if (args.resourceTypes.includes("domains")) {
+          console.log(`[Dock Action] Domains not supported for ${args.provider}`)
+          domains = []
+        }
+      } else if (args.provider === "neon") {
+        // Neon-specific: Use NeonAPI directly
+        const api = new NeonAPI(args.apiKey)
+
+        // Neon requires fetching projects first
+        const projects = await api.listProjects()
+        
+        if (projects.length === 0) {
+          console.log(`[Dock Action] No projects found for Neon account`)
+          databases = []
+          backupSchedules = []
+        } else {
+          // For each project, get branches, then databases
+          const allDatabases: Array<{
+            project: any
+            branch: any
+            database: any
+          }> = []
+
+          for (const project of projects) {
+            const branches = await api.listBranches(project.id)
+            for (const branch of branches) {
+              const branchDatabases = await api.listDatabases(project.id, branch.id)
+              for (const database of branchDatabases) {
+                allDatabases.push({ project, branch, database })
+              }
+            }
+          }
+
+          if (args.resourceTypes.includes("databases")) {
+            console.log(`[Dock Action] Fetching databases for ${args.provider} (${allDatabases.length} databases found)`)
+            databases = allDatabases
+          }
+
+          // Always fetch snapshots for Neon (similar to GridPane backups)
+          console.log(`[Dock Action] Fetching snapshots for ${args.provider}`)
+          const allSnapshots: Array<{
+            project: any
+            branch: any
+            snapshot: any
+          }> = []
+          
+          for (const project of projects) {
+            // Snapshots are at project level, not branch level
+            const projectSnapshots = await api.listSnapshots(project.id)
+            
+            // Find the branch for each snapshot using source_branch_id
+            for (const snapshot of projectSnapshots) {
+              // Find the branch that matches this snapshot's source_branch_id
+              const branches = await api.listBranches(project.id)
+              const branch = branches.find((b: any) => b.id === snapshot.source_branch_id)
+              
+              if (branch) {
+                allSnapshots.push({ project, branch, snapshot })
+              } else {
+                // If branch not found, still include snapshot (branch might be deleted)
+                allSnapshots.push({ project, branch: null, snapshot })
+              }
+            }
+          }
+          
+          backupSchedules = allSnapshots
+        }
+
+        // Neon doesn't support servers, webServices, or domains
         if (args.resourceTypes.includes("servers")) {
           console.log(`[Dock Action] Servers not supported for ${args.provider}`)
           servers = []

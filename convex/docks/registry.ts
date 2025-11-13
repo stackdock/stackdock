@@ -15,6 +15,7 @@ import { vercelAdapter } from "./adapters/vercel"
 import { netlifyAdapter } from "./adapters/netlify"
 import { cloudflareAdapter } from "./adapters/cloudflare"
 import { tursoAdapter } from "./adapters/turso"
+import { neonAdapter } from "./adapters/neon"
 
 /**
  * Registry of all dock adapters
@@ -28,6 +29,7 @@ const adapterRegistry: Record<string, DockAdapter> = {
   netlify: netlifyAdapter,
   cloudflare: cloudflareAdapter,
   turso: tursoAdapter,
+  neon: neonAdapter,
   // Add more adapters here:
   // digitalocean: digitaloceanAdapter,
 }
@@ -68,6 +70,7 @@ const providerMetadata: Record<string, { displayName: string }> = {
   netlify: { displayName: "Netlify" },
   cloudflare: { displayName: "Cloudflare" },
   turso: { displayName: "Turso" },
+  neon: { displayName: "Neon" },
   // Add more as adapters are added:
   // digitalocean: { displayName: "DigitalOcean" },
 }
