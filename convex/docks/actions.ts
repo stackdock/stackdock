@@ -11,6 +11,7 @@ import { GridPaneAPI } from "./adapters/gridpane/api"
 import { VercelAPI } from "./adapters/vercel/api"
 import { NetlifyAPI } from "./adapters/netlify/api"
 import { CloudflareAPI } from "./adapters/cloudflare/api"
+import { TursoAPI } from "./adapters/turso/api"
 import { internal } from "../_generated/api"
 import type { Id } from "../_generated/dataModel"
 
@@ -228,6 +229,38 @@ export const syncDockResources = internalAction({
         if (args.resourceTypes.includes("databases")) {
           console.log(`[Dock Action] Databases not supported for ${args.provider}`)
           databases = []
+        }
+      } else if (args.provider === "turso") {
+        // Turso-specific: Use TursoAPI directly
+        const api = new TursoAPI(args.apiKey)
+
+        // Turso requires fetching orgs first to get slugs
+        const orgs = await api.listOrgs()
+        
+        // For MVP: Use first org (one dock = one org)
+        // Future: Store org slug in dock metadata
+        const orgSlug = orgs[0]?.slug
+        if (!orgSlug) {
+          throw new Error("No organizations found for Turso account")
+        }
+
+        if (args.resourceTypes.includes("databases")) {
+          console.log(`[Dock Action] Fetching databases for ${args.provider} (org: ${orgSlug})`)
+          databases = await api.listDatabases(orgSlug)
+        }
+
+        // Turso doesn't support servers, webServices, or domains
+        if (args.resourceTypes.includes("servers")) {
+          console.log(`[Dock Action] Servers not supported for ${args.provider}`)
+          servers = []
+        }
+        if (args.resourceTypes.includes("webServices")) {
+          console.log(`[Dock Action] Web services not supported for ${args.provider}`)
+          webServices = []
+        }
+        if (args.resourceTypes.includes("domains")) {
+          console.log(`[Dock Action] Domains not supported for ${args.provider}`)
+          domains = []
         }
       } else {
         // For other providers, use adapter pattern
