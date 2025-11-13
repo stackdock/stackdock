@@ -83,7 +83,7 @@ This document provides a brief summary of each mission's current state so we can
 ---
 
 ### Mission 7: Read-Only Infrastructure MVP
-**Status**: 🔄 **IN PROGRESS** - Database Providers Phase
+**Status**: 🔄 **IN PROGRESS** - IaaS Providers Phase
 
 #### 🎯 Goal
 Complete read-only infrastructure MVP - all billable accounts/resources visible in one interface (solo developer view)
@@ -91,24 +91,26 @@ Complete read-only infrastructure MVP - all billable accounts/resources visible 
 #### ✅ Completed Components (Phase 1: Database Providers)
 - **Turso adapter** ✅ - Complete, syncing databases
 - **Neon adapter** ✅ - Complete, syncing databases + snapshots (backups)
+- **Convex adapter** ✅ - Complete, syncing projects + deployments
+- **PlanetScale adapter** ✅ - Complete, syncing databases
 
-#### 🔄 In Progress (Phase 1: Database Providers)
-- **Convex adapter** 🔄 - Planning complete, ready for implementation
-  - Projects → `databases` table
-  - Deployments → NEW `deployments` table
-  - Operations > Deployments page (NEW)
-  - **This is the LAST database provider** before moving to IaaS
+#### 🎯 Phase 1 Complete: Database Providers ✅
+**All database providers integrated** - Phase 1 checkpoint reached
+
+#### ✅ Completed Components (Phase 2: IaaS Providers)
+- **Vultr adapter** ✅ - Complete, syncing instances to `servers` table
 
 #### 📋 Planned Components
-**Phase 1: Database Providers** (Almost Complete)
+**Phase 1: Database Providers** ✅ **COMPLETE**
 - ✅ Turso adapter (read-only)
 - ✅ Neon adapter (read-only)
-- 🔄 Convex adapter (read-only) - meta (storing Convex DB info in Convex)
+- ✅ Convex adapter (read-only) - meta (storing Convex DB info in Convex)
   - **Special**: Includes deployments table + Operations page
+- ✅ PlanetScale adapter (read-only)
 
-**Phase 2: IaaS Providers**
-- Vultr adapter (read-only) - easy API, single key auth
-- DigitalOcean adapter (read-only) - easy API, single key auth
+**Phase 2: IaaS Providers** 🔄 **IN PROGRESS**
+- ✅ Vultr adapter (read-only) - easy API, single key auth - **COMPLETE**
+- 🔄 DigitalOcean adapter (read-only) - easy API, single key auth - **CURRENT**
 - AWS adapter (read-only) - IAM role, multi-field auth
 - GCP adapter (read-only) - service account, multi-field auth
 - Azure adapter (read-only) - client ID/secret/tenant, multi-field auth
@@ -117,12 +119,12 @@ Complete read-only infrastructure MVP - all billable accounts/resources visible 
 - Sentry adapter (read-only) - alerts table
 
 #### ✅ Checkpoint Completion Criteria
-- ✅ All database providers syncing (Turso, Neon, Convex)
-- ✅ All IaaS providers syncing (Vultr, DO, AWS, GCP, Azure)
-- ✅ Sentry alerts syncing
-- ✅ Auth schema finalized (multi-field credentials pattern locked)
-- ✅ All resources visible in universal tables
-- ✅ Solo developer can see all billable accounts/resources
+- ✅ All database providers syncing (Turso, Neon, Convex, PlanetScale)
+- 🔄 IaaS providers syncing (Vultr ✅, DO - NEXT, AWS, GCP, Azure)
+- ⏳ Sentry alerts syncing
+- ⏳ Auth schema finalized (multi-field credentials pattern locked)
+- ✅ All database resources visible in universal tables
+- 🔄 All IaaS resources visible (in progress)
 
 **Status**: 📋 **PLANNED** - Ready to start  
 **Focus**: Solo developer workflow - single org owner, project-level organization

@@ -46,7 +46,7 @@ export function SettingsLayout({ children }: Props) {
         <aside className="lg:sticky lg:w-1/5">
           <SettingsSidebarNav items={sidebarNavItems} />
         </aside>
-        <div className="flex w-full overflow-y-scroll p-1 pr-4 md:overflow-y-hidden">
+        <div className="flex w-full overflow-y-auto p-1 pr-4">
           {children}
         </div>
       </div>

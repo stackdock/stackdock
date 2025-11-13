@@ -30,6 +30,10 @@ import type * as docks_adapters_netlify_adapter from "../docks/adapters/netlify/
 import type * as docks_adapters_netlify_api from "../docks/adapters/netlify/api.js";
 import type * as docks_adapters_netlify_index from "../docks/adapters/netlify/index.js";
 import type * as docks_adapters_netlify_types from "../docks/adapters/netlify/types.js";
+import type * as docks_adapters_planetscale_adapter from "../docks/adapters/planetscale/adapter.js";
+import type * as docks_adapters_planetscale_api from "../docks/adapters/planetscale/api.js";
+import type * as docks_adapters_planetscale_index from "../docks/adapters/planetscale/index.js";
+import type * as docks_adapters_planetscale_types from "../docks/adapters/planetscale/types.js";
 import type * as docks_adapters_turso_adapter from "../docks/adapters/turso/adapter.js";
 import type * as docks_adapters_turso_api from "../docks/adapters/turso/api.js";
 import type * as docks_adapters_turso_index from "../docks/adapters/turso/index.js";
@@ -38,6 +42,10 @@ import type * as docks_adapters_vercel_adapter from "../docks/adapters/vercel/ad
 import type * as docks_adapters_vercel_api from "../docks/adapters/vercel/api.js";
 import type * as docks_adapters_vercel_index from "../docks/adapters/vercel/index.js";
 import type * as docks_adapters_vercel_types from "../docks/adapters/vercel/types.js";
+import type * as docks_adapters_vultr_adapter from "../docks/adapters/vultr/adapter.js";
+import type * as docks_adapters_vultr_api from "../docks/adapters/vultr/api.js";
+import type * as docks_adapters_vultr_index from "../docks/adapters/vultr/index.js";
+import type * as docks_adapters_vultr_types from "../docks/adapters/vultr/types.js";
 import type * as docks_mutations from "../docks/mutations.js";
 import type * as docks_queries from "../docks/queries.js";
 import type * as docks_registry from "../docks/registry.js";
@@ -89,6 +97,10 @@ declare const fullApi: ApiFromModules<{
   "docks/adapters/netlify/api": typeof docks_adapters_netlify_api;
   "docks/adapters/netlify/index": typeof docks_adapters_netlify_index;
   "docks/adapters/netlify/types": typeof docks_adapters_netlify_types;
+  "docks/adapters/planetscale/adapter": typeof docks_adapters_planetscale_adapter;
+  "docks/adapters/planetscale/api": typeof docks_adapters_planetscale_api;
+  "docks/adapters/planetscale/index": typeof docks_adapters_planetscale_index;
+  "docks/adapters/planetscale/types": typeof docks_adapters_planetscale_types;
   "docks/adapters/turso/adapter": typeof docks_adapters_turso_adapter;
   "docks/adapters/turso/api": typeof docks_adapters_turso_api;
   "docks/adapters/turso/index": typeof docks_adapters_turso_index;
@@ -97,6 +109,10 @@ declare const fullApi: ApiFromModules<{
   "docks/adapters/vercel/api": typeof docks_adapters_vercel_api;
   "docks/adapters/vercel/index": typeof docks_adapters_vercel_index;
   "docks/adapters/vercel/types": typeof docks_adapters_vercel_types;
+  "docks/adapters/vultr/adapter": typeof docks_adapters_vultr_adapter;
+  "docks/adapters/vultr/api": typeof docks_adapters_vultr_api;
+  "docks/adapters/vultr/index": typeof docks_adapters_vultr_index;
+  "docks/adapters/vultr/types": typeof docks_adapters_vultr_types;
   "docks/mutations": typeof docks_mutations;
   "docks/queries": typeof docks_queries;
   "docks/registry": typeof docks_registry;

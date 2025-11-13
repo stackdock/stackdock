@@ -14,6 +14,8 @@ import { CloudflareAPI } from "./adapters/cloudflare/api"
 import { TursoAPI } from "./adapters/turso/api"
 import { NeonAPI } from "./adapters/neon/api"
 import { ConvexAPI } from "./adapters/convex/api"
+import { PlanetScaleAPI } from "./adapters/planetscale/api"
+import { VultrAPI } from "./adapters/vultr/api"
 import { internal } from "../_generated/api"
 import type { Id } from "../_generated/dataModel"
 
@@ -381,6 +383,72 @@ export const syncDockResources = internalAction({
         if (args.resourceTypes.includes("servers")) {
           console.log(`[Dock Action] Servers not supported for ${args.provider}`)
           servers = []
+        }
+        if (args.resourceTypes.includes("webServices")) {
+          console.log(`[Dock Action] Web services not supported for ${args.provider}`)
+          webServices = []
+        }
+        if (args.resourceTypes.includes("domains")) {
+          console.log(`[Dock Action] Domains not supported for ${args.provider}`)
+          domains = []
+        }
+      } else if (args.provider === "planetscale") {
+        // PlanetScale-specific: Use PlanetScaleAPI directly
+        const api = new PlanetScaleAPI(args.apiKey)
+
+        // PlanetScale requires fetching orgs first to get names
+        const orgs = await api.listOrganizations()
+        
+        if (orgs.length === 0) {
+          console.log(`[Dock Action] No organizations found for PlanetScale account`)
+          databases = []
+        } else {
+          // For each organization, get databases
+          const allDatabases: Array<{
+            organization: any
+            database: any
+          }> = []
+
+          for (const org of orgs) {
+            const orgDatabases = await api.listDatabases(org.name)
+            for (const db of orgDatabases) {
+              allDatabases.push({ organization: org, database: db })
+            }
+          }
+
+          if (args.resourceTypes.includes("databases")) {
+            console.log(`[Dock Action] Fetching databases for ${args.provider} (${allDatabases.length} databases found)`)
+            databases = allDatabases
+          }
+        }
+
+        // PlanetScale doesn't support servers, webServices, or domains
+        if (args.resourceTypes.includes("servers")) {
+          console.log(`[Dock Action] Servers not supported for ${args.provider}`)
+          servers = []
+        }
+        if (args.resourceTypes.includes("webServices")) {
+          console.log(`[Dock Action] Web services not supported for ${args.provider}`)
+          webServices = []
+        }
+        if (args.resourceTypes.includes("domains")) {
+          console.log(`[Dock Action] Domains not supported for ${args.provider}`)
+          domains = []
+        }
+      } else if (args.provider === "vultr") {
+        // Vultr-specific: Use VultrAPI directly
+        const api = new VultrAPI(args.apiKey)
+
+        if (args.resourceTypes.includes("servers")) {
+          console.log(`[Dock Action] Fetching instances for ${args.provider}`)
+          const instances = await api.listInstances()
+          servers = instances
+        }
+
+        // Vultr doesn't support databases, webServices, or domains
+        if (args.resourceTypes.includes("databases")) {
+          console.log(`[Dock Action] Databases not supported for ${args.provider}`)
+          databases = []
         }
         if (args.resourceTypes.includes("webServices")) {
           console.log(`[Dock Action] Web services not supported for ${args.provider}`)

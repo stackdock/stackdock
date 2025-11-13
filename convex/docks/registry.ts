@@ -17,6 +17,8 @@ import { cloudflareAdapter } from "./adapters/cloudflare"
 import { tursoAdapter } from "./adapters/turso"
 import { neonAdapter } from "./adapters/neon"
 import { convexAdapter } from "./adapters/convex"
+import { planetscaleAdapter } from "./adapters/planetscale"
+import { vultrAdapter } from "./adapters/vultr"
 
 /**
  * Registry of all dock adapters
@@ -32,6 +34,8 @@ const adapterRegistry: Record<string, DockAdapter> = {
   turso: tursoAdapter,
   neon: neonAdapter,
   convex: convexAdapter,
+  planetscale: planetscaleAdapter,
+  vultr: vultrAdapter,
   // Add more adapters here:
   // digitalocean: digitaloceanAdapter,
 }
@@ -74,6 +78,8 @@ const providerMetadata: Record<string, { displayName: string }> = {
   turso: { displayName: "Turso" },
   neon: { displayName: "Neon" },
   convex: { displayName: "Convex" },
+  planetscale: { displayName: "PlanetScale" },
+  vultr: { displayName: "Vultr" },
   // Add more as adapters are added:
   // digitalocean: { displayName: "DigitalOcean" },
 }
