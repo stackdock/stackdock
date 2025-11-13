@@ -13,6 +13,7 @@ import { NetlifyAPI } from "./adapters/netlify/api"
 import { CloudflareAPI } from "./adapters/cloudflare/api"
 import { TursoAPI } from "./adapters/turso/api"
 import { NeonAPI } from "./adapters/neon/api"
+import { ConvexAPI } from "./adapters/convex/api"
 import { internal } from "../_generated/api"
 import type { Id } from "../_generated/dataModel"
 
@@ -90,6 +91,7 @@ export const syncDockResources = internalAction({
     let databases: any[] = []
     let backupSchedules: any[] = []
     let backupIntegrations: any[] = []
+    let deployments: any[] = []
 
     try {
       // GridPane-specific: Use GridPaneAPI directly
@@ -340,13 +342,61 @@ export const syncDockResources = internalAction({
           console.log(`[Dock Action] Domains not supported for ${args.provider}`)
           domains = []
         }
+      } else if (args.provider === "convex") {
+        // Convex-specific: Use ConvexAPI directly
+        const api = new ConvexAPI(args.apiKey)
+
+        // Convex requires 3-step flow: Token → Projects → Deployments
+        // Step 1: Get token details to extract teamId
+        const tokenDetails = await api.getTokenDetails()
+        const teamId = tokenDetails.teamId
+
+        // Step 2: List projects for teamId
+        const projects = await api.listProjects(teamId)
+
+        if (projects.length === 0) {
+          console.log(`[Dock Action] No projects found for Convex account`)
+          databases = []
+          deployments = []
+        } else {
+          // Step 3: For each project, get deployments
+          if (args.resourceTypes.includes("databases")) {
+            console.log(`[Dock Action] Fetching databases (projects) for ${args.provider} (${projects.length} projects found)`)
+            databases = projects
+          }
+
+          // Always fetch deployments for Convex
+          console.log(`[Dock Action] Fetching deployments for ${args.provider}`)
+          const allDeployments: any[] = []
+          
+          for (const project of projects) {
+            const projectDeployments = await api.listDeployments(project.id)
+            allDeployments.push(...projectDeployments)
+          }
+          
+          deployments = allDeployments
+        }
+
+        // Convex doesn't support servers, webServices, or domains
+        if (args.resourceTypes.includes("servers")) {
+          console.log(`[Dock Action] Servers not supported for ${args.provider}`)
+          servers = []
+        }
+        if (args.resourceTypes.includes("webServices")) {
+          console.log(`[Dock Action] Web services not supported for ${args.provider}`)
+          webServices = []
+        }
+        if (args.resourceTypes.includes("domains")) {
+          console.log(`[Dock Action] Domains not supported for ${args.provider}`)
+          domains = []
+        }
       } else {
         // For other providers, use adapter pattern
         // TODO: Implement adapter pattern for other providers
         throw new Error(`Provider ${args.provider} sync not yet implemented in action`)
       }
 
-      console.log(`[Dock Action] Sync complete: ${servers.length} servers, ${webServices.length} webServices, ${domains.length} domains, ${backupSchedules.length} backup schedules, ${backupIntegrations.length} backup integrations`)
+      console.log(`[Dock Action] Sync complete: ${servers.length} servers, ${webServices.length} webServices, ${domains.length} domains, ${databases.length} databases, ${deployments.length} deployments, ${backupSchedules.length} backup schedules, ${backupIntegrations.length} backup integrations`)
 
       // Call internal mutation to sync using adapter methods
       await ctx.runMutation(internal.docks.mutations.syncDockResourcesMutation, {
@@ -357,6 +407,7 @@ export const syncDockResources = internalAction({
           webServices: webServices.length > 0 ? webServices : undefined,
           domains: domains.length > 0 ? domains : undefined,
           databases: databases.length > 0 ? databases : undefined,
+          deployments: deployments.length > 0 ? deployments : undefined,
           backupSchedules: backupSchedules.length > 0 ? backupSchedules : undefined,
           backupIntegrations: backupIntegrations.length > 0 ? backupIntegrations : undefined,
         },

@@ -16,6 +16,7 @@ import { netlifyAdapter } from "./adapters/netlify"
 import { cloudflareAdapter } from "./adapters/cloudflare"
 import { tursoAdapter } from "./adapters/turso"
 import { neonAdapter } from "./adapters/neon"
+import { convexAdapter } from "./adapters/convex"
 
 /**
  * Registry of all dock adapters
@@ -30,6 +31,7 @@ const adapterRegistry: Record<string, DockAdapter> = {
   cloudflare: cloudflareAdapter,
   turso: tursoAdapter,
   neon: neonAdapter,
+  convex: convexAdapter,
   // Add more adapters here:
   // digitalocean: digitaloceanAdapter,
 }
@@ -71,6 +73,7 @@ const providerMetadata: Record<string, { displayName: string }> = {
   cloudflare: { displayName: "Cloudflare" },
   turso: { displayName: "Turso" },
   neon: { displayName: "Neon" },
+  convex: { displayName: "Convex" },
   // Add more as adapters are added:
   // digitalocean: { displayName: "DigitalOcean" },
 }

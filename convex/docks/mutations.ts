@@ -190,6 +190,7 @@ export const syncDockResourcesMutation = internalMutation({
       webServices: v.optional(v.array(v.any())),
       domains: v.optional(v.array(v.any())),
       databases: v.optional(v.array(v.any())),
+      deployments: v.optional(v.array(v.any())),
       backupSchedules: v.optional(v.array(v.any())),
       backupIntegrations: v.optional(v.array(v.any())),
     }),
@@ -224,6 +225,10 @@ export const syncDockResourcesMutation = internalMutation({
 
     if (args.fetchedData.databases && adapter.syncDatabases) {
       await adapter.syncDatabases(ctx, dock, args.fetchedData.databases)
+    }
+
+    if (args.fetchedData.deployments && adapter.syncDeployments) {
+      await adapter.syncDeployments(ctx, dock, args.fetchedData.deployments)
     }
 
     if (args.fetchedData.backupSchedules && adapter.syncBackupSchedules) {

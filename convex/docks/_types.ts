@@ -241,6 +241,25 @@ export interface DockAdapter {
     preFetchedData?: any[]
   ): Promise<void>
 
+  /**
+   * Sync deployments to universal `deployments` table
+   * 
+   * Called during dock sync. Should:
+   * 1. Use pre-fetched data if provided, otherwise fetch from provider API
+   * 2. Upsert into `deployments` table
+   * 3. Map provider fields to universal schema
+   * 4. Store all provider-specific data in `fullApiData`
+   * 
+   * @param ctx - Convex mutation context (has database access)
+   * @param dock - The dock document (contains encrypted API key)
+   * @param preFetchedData - Optional: Pre-fetched data from action (if provided, skips fetch)
+   */
+  syncDeployments?(
+    ctx: MutationCtx,
+    dock: Doc<"docks">,
+    preFetchedData?: any[]
+  ): Promise<void>
+
   // ============================================================================
   // OPTIONAL: Mutation Operations (Future Feature)
   // ============================================================================

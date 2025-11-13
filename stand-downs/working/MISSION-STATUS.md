@@ -83,16 +83,28 @@ This document provides a brief summary of each mission's current state so we can
 ---
 
 ### Mission 7: Read-Only Infrastructure MVP
-**Status**: 📋 **PLANNED** - Next Mission
+**Status**: 🔄 **IN PROGRESS** - Database Providers Phase
 
 #### 🎯 Goal
 Complete read-only infrastructure MVP - all billable accounts/resources visible in one interface (solo developer view)
 
+#### ✅ Completed Components (Phase 1: Database Providers)
+- **Turso adapter** ✅ - Complete, syncing databases
+- **Neon adapter** ✅ - Complete, syncing databases + snapshots (backups)
+
+#### 🔄 In Progress (Phase 1: Database Providers)
+- **Convex adapter** 🔄 - Planning complete, ready for implementation
+  - Projects → `databases` table
+  - Deployments → NEW `deployments` table
+  - Operations > Deployments page (NEW)
+  - **This is the LAST database provider** before moving to IaaS
+
 #### 📋 Planned Components
-**Phase 1: Database Providers**
-- Turso adapter (read-only)
-- Neon adapter (read-only)
-- Convex adapter (read-only) - meta (storing Convex DB info in Convex)
+**Phase 1: Database Providers** (Almost Complete)
+- ✅ Turso adapter (read-only)
+- ✅ Neon adapter (read-only)
+- 🔄 Convex adapter (read-only) - meta (storing Convex DB info in Convex)
+  - **Special**: Includes deployments table + Operations page
 
 **Phase 2: IaaS Providers**
 - Vultr adapter (read-only) - easy API, single key auth

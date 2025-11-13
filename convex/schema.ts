@@ -216,6 +216,25 @@ export default defineSchema({
     .index("by_provisioning_source", ["provisioningSource", "orgId"])
     .index("by_sst_resource", ["sstStackName", "sstResourceId"]),
 
+  // Master Fleet List: Deployments
+  deployments: defineTable({
+    orgId: v.id("organizations"),
+    dockId: v.id("docks"),
+    provider: v.string(), // "convex", etc.
+    providerResourceId: v.string(), // Deployment name/ID (provider-specific)
+    projectId: v.optional(v.number()), // Convex project ID
+    name: v.string(), // Deployment name
+    deploymentType: v.string(), // "dev", "prod", "preview"
+    status: v.string(), // "active", "inactive", "error"
+    createdAt: v.optional(v.number()), // Creation timestamp
+    fullApiData: v.any(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_orgId", ["orgId"])
+    .index("by_dockId", ["dockId"])
+    .index("by_dock_deployment", ["dockId", "providerResourceId"]) // Prevent duplicate syncs
+    .index("by_projectId", ["projectId"]),
+
   // Master Fleet List: Backup Schedules
   backupSchedules: defineTable({
     orgId: v.id("organizations"),

@@ -14,6 +14,10 @@ import type * as docks_adapters_cloudflare_adapter from "../docks/adapters/cloud
 import type * as docks_adapters_cloudflare_api from "../docks/adapters/cloudflare/api.js";
 import type * as docks_adapters_cloudflare_index from "../docks/adapters/cloudflare/index.js";
 import type * as docks_adapters_cloudflare_types from "../docks/adapters/cloudflare/types.js";
+import type * as docks_adapters_convex_adapter from "../docks/adapters/convex/adapter.js";
+import type * as docks_adapters_convex_api from "../docks/adapters/convex/api.js";
+import type * as docks_adapters_convex_index from "../docks/adapters/convex/index.js";
+import type * as docks_adapters_convex_types from "../docks/adapters/convex/types.js";
 import type * as docks_adapters_gridpane_adapter from "../docks/adapters/gridpane/adapter.js";
 import type * as docks_adapters_gridpane_api from "../docks/adapters/gridpane/api.js";
 import type * as docks_adapters_gridpane_index from "../docks/adapters/gridpane/index.js";
@@ -69,6 +73,10 @@ declare const fullApi: ApiFromModules<{
   "docks/adapters/cloudflare/api": typeof docks_adapters_cloudflare_api;
   "docks/adapters/cloudflare/index": typeof docks_adapters_cloudflare_index;
   "docks/adapters/cloudflare/types": typeof docks_adapters_cloudflare_types;
+  "docks/adapters/convex/adapter": typeof docks_adapters_convex_adapter;
+  "docks/adapters/convex/api": typeof docks_adapters_convex_api;
+  "docks/adapters/convex/index": typeof docks_adapters_convex_index;
+  "docks/adapters/convex/types": typeof docks_adapters_convex_types;
   "docks/adapters/gridpane/adapter": typeof docks_adapters_gridpane_adapter;
   "docks/adapters/gridpane/api": typeof docks_adapters_gridpane_api;
   "docks/adapters/gridpane/index": typeof docks_adapters_gridpane_index;
