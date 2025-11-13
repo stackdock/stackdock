@@ -16,6 +16,7 @@ import { NeonAPI } from "./adapters/neon/api"
 import { ConvexAPI } from "./adapters/convex/api"
 import { PlanetScaleAPI } from "./adapters/planetscale/api"
 import { VultrAPI } from "./adapters/vultr/api"
+import { DigitalOceanAPI } from "./adapters/digitalocean/api"
 import { internal } from "../_generated/api"
 import type { Id } from "../_generated/dataModel"
 
@@ -446,6 +447,29 @@ export const syncDockResources = internalAction({
         }
 
         // Vultr doesn't support databases, webServices, or domains
+        if (args.resourceTypes.includes("databases")) {
+          console.log(`[Dock Action] Databases not supported for ${args.provider}`)
+          databases = []
+        }
+        if (args.resourceTypes.includes("webServices")) {
+          console.log(`[Dock Action] Web services not supported for ${args.provider}`)
+          webServices = []
+        }
+        if (args.resourceTypes.includes("domains")) {
+          console.log(`[Dock Action] Domains not supported for ${args.provider}`)
+          domains = []
+        }
+      } else if (args.provider === "digitalocean") {
+        // DigitalOcean-specific: Use DigitalOceanAPI directly
+        const api = new DigitalOceanAPI(args.apiKey)
+
+        if (args.resourceTypes.includes("servers")) {
+          console.log(`[Dock Action] Fetching droplets for ${args.provider}`)
+          const droplets = await api.listDroplets()
+          servers = droplets
+        }
+
+        // DigitalOcean doesn't support databases, webServices, or domains
         if (args.resourceTypes.includes("databases")) {
           console.log(`[Dock Action] Databases not supported for ${args.provider}`)
           databases = []

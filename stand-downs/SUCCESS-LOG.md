@@ -154,9 +154,10 @@
 - ✅ Convex (databases, projects, deployments)
 - ✅ PlanetScale (databases)
 - ✅ Vultr (servers/instances)
+- ✅ DigitalOcean (servers/droplets)
 
 ### Universal Tables Populated
-- ✅ `servers` - Multi-provider (GridPane, Vultr)
+- ✅ `servers` - Multi-provider (GridPane, Vultr, DigitalOcean)
 - ✅ `webServices` - Multi-provider (GridPane, Vercel, Netlify, Cloudflare)
 - ✅ `domains` - Multi-provider (GridPane, Cloudflare)
 - ✅ `databases` - Multi-provider (Turso, Neon, Convex, PlanetScale)
@@ -267,16 +268,18 @@
 
 **What We Built**:
 - **Vultr Adapter**: Instances syncing to `servers` table ✅
+- **DigitalOcean Adapter**: Droplets syncing to `servers` table ✅
 
 **Key Achievement**:
-- **First IaaS Provider**: Vultr establishes pattern for DigitalOcean, AWS, GCP, Azure
-- **Instances → Servers**: Vultr instances map to universal `servers` table
-- **Simple Auth**: Single API key, Bearer token format
-- **Status Mapping**: Uses `power_status` field (running → running, stopped → stopped)
+- **First IaaS Providers**: Vultr and DigitalOcean establish pattern for AWS, GCP, Azure
+- **Instances → Servers**: Both map to universal `servers` table
+- **Simple Auth**: Single API key/token, Bearer token format
+- **Status Mapping**: Vultr uses `power_status`, DigitalOcean uses `status` field
+- **IP Extraction**: DigitalOcean extracts public IP from networks.v4 array
 
-**Status**: ✅ **Happy path working** - Vultr complete, DigitalOcean next
+**Status**: ✅ **Happy path working** - Vultr and DigitalOcean complete, AWS/GCP/Azure next
 
 ---
 
 **Last Updated**: November 12, 2025  
-**Next Checkpoint**: IaaS Providers Phase (DigitalOcean - NEXT)
+**Next Checkpoint**: IaaS Providers Phase (AWS/GCP/Azure - NEXT)

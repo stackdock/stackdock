@@ -1,0 +1,139 @@
+/**
+ * DigitalOcean Dock Adapter
+ * 
+ * Translates DigitalOcean API responses to StackDock's universal schema.
+ * 
+ * Endpoints implemented:
+ * - GET /account → validateCredentials()
+ * - GET /droplets → syncServers()
+ * 
+ * @see https://docs.digitalocean.com/reference/api/api-reference/
+ * @see convex/docks/_types.ts for DockAdapter interface
+ */
+
+import type { DockAdapter } from "../../_types"
+import type { MutationCtx } from "../../../_generated/server"
+import type { Doc } from "../../../_generated/dataModel"
+import { decryptApiKey } from "../../../lib/encryption"
+import { DigitalOceanAPI } from "./api"
+import type { DigitalOceanDroplet } from "./types"
+
+/**
+ * Map DigitalOcean droplet status to universal status
+ * 
+ * Uses status field
+ * Priority order:
+ * 1. status === "active" → "running"
+ * 2. status === "off" → "stopped"
+ * 3. status === "archive" → "archived"
+ * 4. status === "new" → "pending"
+ * 5. else → use status as-is
+ * 
+ * @see docks/digitalocean/getDroplets.json - status is "active" in example
+ */
+function mapDigitalOceanStatus(droplet: DigitalOceanDroplet): string {
+  const statusMap: Record<string, string> = {
+    active: "running",
+    off: "stopped",
+    archive: "archived",
+    new: "pending",
+  }
+  
+  const status = droplet.status?.toLowerCase()
+  return statusMap[status] || status || "unknown"
+}
+
+/**
+ * Extract public IPv4 address from droplet networks
+ */
+function getPublicIp(droplet: DigitalOceanDroplet): string {
+  const publicNetwork = droplet.networks.v4.find(net => net.type === "public")
+  return publicNetwork?.ip_address || ""
+}
+
+export const digitaloceanAdapter: DockAdapter = {
+  provider: "digitalocean",
+
+  /**
+   * Validate DigitalOcean API credentials
+   */
+  async validateCredentials(apiKey: string): Promise<boolean> {
+    try {
+      const api = new DigitalOceanAPI(apiKey)
+      return await api.validateCredentials()
+    } catch (error) {
+      console.error("DigitalOcean credential validation failed:", error)
+      throw error
+    }
+  },
+
+  /**
+   * Sync DigitalOcean droplets to universal `servers` table
+   * 
+   * Flow:
+   * 1. If preFetchedData provided, use it (from action)
+   * 2. Otherwise, decrypt API key and fetch data
+   * 3. For each droplet, upsert into `servers` table
+   * 4. Map status using priority order
+   * 5. Store all DigitalOcean fields in fullApiData
+   */
+  async syncServers(
+    ctx: MutationCtx,
+    dock: Doc<"docks">,
+    preFetchedData?: DigitalOceanDroplet[]
+  ): Promise<void> {
+    let droplets: DigitalOceanDroplet[]
+
+    if (preFetchedData) {
+      // Use pre-fetched data from action
+      droplets = preFetchedData
+    } else {
+      // Fetch data directly (fallback, shouldn't happen in normal flow)
+      const apiKey = await decryptApiKey(dock.encryptedApiKey, ctx, {
+        dockId: dock._id,
+        orgId: dock.orgId,
+      })
+
+      const api = new DigitalOceanAPI(apiKey)
+      droplets = await api.listDroplets()
+    }
+
+    // Sync each droplet to universal table
+    for (const droplet of droplets) {
+      // Convert droplet.id (number) to string for providerResourceId
+      const providerResourceId = droplet.id.toString()
+
+      const existing = await ctx.db
+        .query("servers")
+        .withIndex("by_dock_resource", (q) =>
+          q.eq("dockId", dock._id).eq("providerResourceId", providerResourceId)
+        )
+        .first()
+
+      const serverData = {
+        orgId: dock.orgId,
+        dockId: dock._id,
+        provider: "digitalocean",
+        providerResourceId,
+        name: droplet.name,
+        status: mapDigitalOceanStatus(droplet),
+        region: droplet.region.slug,
+        primaryIpAddress: getPublicIp(droplet),
+        fullApiData: {
+          // Store all DigitalOcean fields
+          droplet: {
+            // Include all fields from API response (size/instanceType stored here)
+            ...droplet,
+          },
+        },
+        updatedAt: Date.now(),
+      }
+
+      if (existing) {
+        await ctx.db.patch(existing._id, serverData)
+      } else {
+        await ctx.db.insert("servers", serverData)
+      }
+    }
+  },
+}

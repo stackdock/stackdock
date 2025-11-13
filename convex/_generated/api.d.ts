@@ -18,6 +18,10 @@ import type * as docks_adapters_convex_adapter from "../docks/adapters/convex/ad
 import type * as docks_adapters_convex_api from "../docks/adapters/convex/api.js";
 import type * as docks_adapters_convex_index from "../docks/adapters/convex/index.js";
 import type * as docks_adapters_convex_types from "../docks/adapters/convex/types.js";
+import type * as docks_adapters_digitalocean_adapter from "../docks/adapters/digitalocean/adapter.js";
+import type * as docks_adapters_digitalocean_api from "../docks/adapters/digitalocean/api.js";
+import type * as docks_adapters_digitalocean_index from "../docks/adapters/digitalocean/index.js";
+import type * as docks_adapters_digitalocean_types from "../docks/adapters/digitalocean/types.js";
 import type * as docks_adapters_gridpane_adapter from "../docks/adapters/gridpane/adapter.js";
 import type * as docks_adapters_gridpane_api from "../docks/adapters/gridpane/api.js";
 import type * as docks_adapters_gridpane_index from "../docks/adapters/gridpane/index.js";
@@ -85,6 +89,10 @@ declare const fullApi: ApiFromModules<{
   "docks/adapters/convex/api": typeof docks_adapters_convex_api;
   "docks/adapters/convex/index": typeof docks_adapters_convex_index;
   "docks/adapters/convex/types": typeof docks_adapters_convex_types;
+  "docks/adapters/digitalocean/adapter": typeof docks_adapters_digitalocean_adapter;
+  "docks/adapters/digitalocean/api": typeof docks_adapters_digitalocean_api;
+  "docks/adapters/digitalocean/index": typeof docks_adapters_digitalocean_index;
+  "docks/adapters/digitalocean/types": typeof docks_adapters_digitalocean_types;
   "docks/adapters/gridpane/adapter": typeof docks_adapters_gridpane_adapter;
   "docks/adapters/gridpane/api": typeof docks_adapters_gridpane_api;
   "docks/adapters/gridpane/index": typeof docks_adapters_gridpane_index;
