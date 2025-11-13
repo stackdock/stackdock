@@ -101,9 +101,10 @@ Star the repo to watch the build! ⭐
 ### Core Architecture
 
 **Universal Tables** (Provider-Agnostic):
-- `servers`: AWS, DigitalOcean, Vultr, Hetzner → ONE table
-- `webServices`: Vercel, Netlify, Railway, GridPane → ONE table
-- `domains`: Cloudflare, Route53, Namecheap → ONE table
+- `servers`: GridPane, Vultr, DigitalOcean, Linode → ONE table (AWS/GCP/Azure next)
+- `webServices`: GridPane, Vercel, Netlify, Cloudflare → ONE table
+- `domains`: GridPane, Cloudflare → ONE table
+- `databases`: Turso, Neon, Convex, PlanetScale → ONE table
 
 **Dock Adapters** (Translators):
 - GridPane API → Universal `webServices` table
@@ -165,20 +166,47 @@ You should see:
 
 **Last Updated**: November 12, 2025
 
+### Core Platform ✅
 - ✅ **TanStack Start** - Fully configured with file-based routing
-- ✅ **Convex** - Connected and working (real-time database)
+- ✅ **Convex** - Real-time database connected and working
 - ✅ **Clerk** - Authentication integrated and working
 - ✅ **User Sync** - Auto-syncs users from Clerk to Convex
 - ✅ **RBAC System** - Role-based access control implemented
-- ✅ **Encryption** - AES-256-GCM encryption for API keys
+- ✅ **Encryption** - AES-256-GCM encryption for API keys (no .env required)
 - ✅ **Audit Logging** - Comprehensive audit trail infrastructure
-- ✅ **Provisioning Infrastructure** - SST core engine, mutations, queries, UI (Mission 2.5 complete)
-- ✅ **GridPane Integration (Partial MVP)** - Authentication working, servers & webServices syncing successfully. Sufficient for observability mode. Full API coverage deferred until after multi-provider schema validation.
-- ✅ **Vercel Integration (Mission 5 - Checkpoint)** - Vercel adapter implemented, API key encryption working, web services syncing to universal tables, data rendering in UI. First multi-provider validation successful.
-- ✅ **Multi-Provider Integration (Mission 5)** - Vercel, Netlify, Cloudflare, Turso, Neon, Convex, PlanetScale, Vultr, DigitalOcean, Linode all integrated and syncing
-- ✅ **Resource Tables** - All 4 tables (Servers, Web Services, Domains, Databases) displaying real-time data
-- ✅ **UI Foundation** - TanStack Table components integrated, ready for read-only MVP
-- 🎯 **Next Phase** - Adding more providers to validate universal schema (see MVP Roadmap)
+- ✅ **Navigation** - Clean collapsible navigation structure
+
+### Provider Integration ✅ (11 Providers)
+
+**PaaS/Web Services** (4 providers):
+- ✅ GridPane (servers, web services, domains, backups)
+- ✅ Vercel (web services)
+- ✅ Netlify (web services)
+- ✅ Cloudflare (zones, pages, workers, DNS)
+
+**Database Providers** (4 providers):
+- ✅ Turso (databases)
+- ✅ Neon (databases, snapshots/backups)
+- ✅ Convex (databases, projects, deployments)
+- ✅ PlanetScale (databases)
+
+**IaaS Providers** (3 providers):
+- ✅ Vultr (servers/instances)
+- ✅ DigitalOcean (servers/droplets)
+- ✅ Linode (servers/linodes)
+
+### Universal Tables ✅
+- ✅ `servers` - 4 providers (GridPane, Vultr, DigitalOcean, Linode)
+- ✅ `webServices` - 4 providers (GridPane, Vercel, Netlify, Cloudflare)
+- ✅ `domains` - 2 providers (GridPane, Cloudflare)
+- ✅ `databases` - 4 providers (Turso, Neon, Convex, PlanetScale)
+- ✅ `backupSchedules` - 2 providers (GridPane, Neon)
+- ✅ `deployments` - 1 provider (Convex)
+
+### Next Phase 🎯
+- 🔄 AWS/GCP/Azure adapters (multi-field auth providers)
+- 🔄 Sentry adapter (monitoring/alerts)
+- 🔄 Projects feature (Linear + GitHub)
 
 ---
 
@@ -237,33 +265,39 @@ All documentation is organized in `docs/`:
 - [x] Resource tables (Servers, Web Services, Domains, Databases) - **DATA DISPLAYING** ✅
 - [x] UI foundation (TanStack Table components) - **POLISHED & READY** ✅
 
-### 🎯 Phase 2: Translation Layer Validation (Current Focus - Mission 5)
+### ✅ Phase 2: Translation Layer Validation (Mission 5 & 7 - Complete)
 
-**Strategy**: Add more providers to validate and refine universal schema before frontend optimization. See [`docs/architecture/DEVELOPMENT_PRIORITY.md`](./docs/architecture/DEVELOPMENT_PRIORITY.md) for complete strategy.
+**Status**: ✅ **COMPLETE** - Universal schema validated across 11 providers
 
-**Status**: IN PROGRESS - Vercel ✅ Netlify ✅ Cloudflare docs ready
+**PaaS Providers** (Web Services) ✅:
+- [x] Vercel dock adapter ✅
+- [x] Netlify dock adapter ✅
+- [x] Cloudflare adapter ✅ (zones, pages, workers, DNS)
 
-**PaaS Providers** (Web Services):
-- [x] Vercel dock adapter ✅ (API key encryption working, web services syncing, data rendering in UI)
-- [x] Netlify dock adapter ✅ (API key encryption working, web services syncing, data rendering in UI)
-- [ ] Cloudflare Pages/Workers dock adapter (Documentation ready, ready for implementation)
+**Database Providers** ✅:
+- [x] Turso adapter ✅
+- [x] Neon adapter ✅
+- [x] Convex adapter ✅
+- [x] PlanetScale adapter ✅
 
-**DNS Providers** (Domains):
-- [ ] Cloudflare Zones dock adapter (Documentation ready, ready for implementation - first adapter to populate domains table)
+**IaaS Providers** (Simple Auth) ✅:
+- [x] Vultr adapter ✅
+- [x] DigitalOcean adapter ✅
+- [x] Linode adapter ✅
 
-**IaaS Providers** (Servers):
-- [x] Vultr dock adapter ✅ (instances syncing to servers table)
-- [x] DigitalOcean dock adapter ✅ (droplets syncing to servers table)
-- [x] Linode dock adapter ✅ (linodes syncing to servers table)
-- [ ] Hetzner dock adapter (or fourth IaaS option)
+**Translation Layer**: ✅ Validated and refined across multiple provider types
 
-**Translation Layer Refinement**:
-- [ ] Validate field mappings across all providers
-- [ ] Standardize status mappings
-- [ ] Document edge cases
-- [ ] Refine universal schema based on real patterns
+### 🔄 Phase 3: Complex Auth Providers (Current Focus - Mission 7)
 
-**Target**: 3-5 providers total (GridPane + 2-4 more) to validate universal schema
+**Status**: IN PROGRESS - Simple auth providers complete, complex auth next
+
+**IaaS Providers** (Multi-Field Auth):
+- [ ] AWS adapter (IAM role, multi-field auth) - **NEXT**
+- [ ] GCP adapter (service account, multi-field auth)
+- [ ] Azure adapter (client ID/secret/tenant, multi-field auth)
+
+**Monitoring**:
+- [ ] Sentry adapter (alerts table)
 
 ### 📋 Phase 3: Read-Only MVP Checkpoint
 
@@ -282,7 +316,7 @@ All documentation is organized in `docs/`:
 - [ ] Export functionality
 - [ ] Resource detail views
 
-**Current Progress**: Core platform complete. GridPane partial MVP (servers + webServices working). UI foundation polished. **Current**: Adding Vercel, Netlify, DigitalOcean, Cloudflare to validate universal schema across multiple providers. **Next**: Schema validation, then complete GridPane full API coverage.
+**Current Progress**: Core platform complete. Universal schema validated across 11 providers. UI foundation polished. **Current**: Adding AWS/GCP/Azure (complex auth) and Sentry (monitoring). **Next**: Projects feature (Linear + GitHub), then Insights board.
 
 ---
 
@@ -326,23 +360,23 @@ vercelDeployments: { ... }
 
 **1. Connect Provider (Create Dock)** ✅:
 ```
-User → Enters API key → System validates → Encrypts → Stores in docks table
+User → Enters API key/token → System validates → Encrypts → Stores in docks table
 ```
-*GridPane working, other providers being added*
+*11 providers supported: GridPane, Vercel, Netlify, Cloudflare, Turso, Neon, Convex, PlanetScale, Vultr, DigitalOcean, Linode*
 
 **2. Sync Resources** ✅:
 ```
 User clicks "Sync" → Adapter decrypts API key → Calls provider API → 
 Translates to universal schema → Inserts into universal tables
 ```
-*GridPane syncing successfully, displaying in tables*
+*All providers syncing successfully, displaying in unified tables*
 
 **3. View Unified Dashboard** ✅:
 ```
 Dashboard queries universal tables → Shows resources from ALL providers → 
 Provider-agnostic UI components render everything
 ```
-*All 4 resource tables displaying real-time data via Convex queries*
+*6 universal tables displaying real-time data via Convex queries*
 
 **4. Provision Infrastructure** (Ready):
 ```
@@ -356,30 +390,30 @@ Real-time status updates via Convex subscriptions
 
 **✅ What's Working**:
 - Core platform (auth, RBAC, encryption, audit)
-- Provisioning infrastructure (SST core, mutations, queries, UI)
-- GridPane integration (authentication working, data syncing)
-- Resource tables displaying real-time data
-- UI foundation fully mapped out (TanStack Table components)
+- 11 providers integrated and syncing
+- Universal schema validated across multiple provider types
+- Resource tables displaying real-time data from all providers
+- UI foundation fully functional (TanStack Table components)
 - Real-time sync (Convex subscriptions)
+- Provider-agnostic UI (badges, tables, sheets)
 
 **🎯 Current Focus**:
-- Adding more providers (Vercel, Netlify, Cloudflare + 1-3 IaaS)
-- Validating universal schema across multiple providers
-- Refining translation layer based on real patterns
-- See [`docs/architecture/DEVELOPMENT_PRIORITY.md`](./docs/architecture/DEVELOPMENT_PRIORITY.md) for strategy
+- AWS/GCP/Azure adapters (complex multi-field auth)
+- Sentry adapter (monitoring/alerts)
+- Projects feature (Linear + GitHub integration)
+- See [`stand-downs/working/MISSION-STATUS.md`](./stand-downs/working/MISSION-STATUS.md) for current mission status
 
 **🚀 What You Can Do Now**:
-- Create GridPane docks with real API keys ✅
-- Sync GridPane resources ✅
-- View resources in unified dashboard ✅
-- See real-time updates ✅
-- Add more provider adapters (Vercel, Netlify, etc.)
+- Connect 11 providers with encrypted API keys ✅
+- Sync resources from all providers ✅
+- View unified dashboard with all resources ✅
+- See real-time updates across all providers ✅
+- Add more provider adapters (AWS, GCP, Azure, Sentry, etc.)
 
-**📋 Next Milestone**: Read-Only MVP Checkpoint
-- 3-5 providers integrated
-- Universal schema validated
-- UI fully functional for read-only operations
-- Ready for Phase 2 (frontend optimization)
+**📋 Next Milestone**: Solo Developer MVP
+- Complex auth providers (AWS/GCP/Azure)
+- Projects feature (resource linking)
+- Insights board (data visualization)
 
 ### For Developers Finding This Repo
 
@@ -388,14 +422,15 @@ Real-time status updates via Convex subscriptions
 - Review code (all open source)
 - Understand the patterns (universal tables, dock adapters)
 - Set up locally (see Quick Start)
-- Create GridPane docks and sync resources ✅
-- Contribute adapters for new providers
+- Connect 11 providers and sync resources ✅
+- View unified dashboard with all resources ✅
+- Contribute adapters for new providers (AWS, GCP, Azure, Sentry, etc.)
 - Build UI components
 
 **You should**:
-- Read [`DEVELOPMENT_PRIORITY.md`](./docs/architecture/DEVELOPMENT_PRIORITY.md) to understand development strategy
-- Focus on Convex/translation layer before frontend optimization
-- Validate universal schema with multiple providers
+- Read [`stand-downs/working/MISSION-STATUS.md`](./stand-downs/working/MISSION-STATUS.md) for current mission status
+- Check [`stand-downs/SUCCESS-LOG.md`](./stand-downs/SUCCESS-LOG.md) for recent progress
+- Review adapter patterns in `convex/docks/adapters/` for examples
 
 ---
 
@@ -407,7 +442,8 @@ Real-time status updates via Convex subscriptions
 GridPane, Kinsta, Rocket.net, RunCloud, Coolify, Cloudways, Vercel, Netlify, Render, Fly.io, Railway, Laravel Forge, Ploi, InstaWP
 
 **IaaS**:
-AWS, GCP, Azure, Hetzner, DigitalOcean, Linode, Vultr ✅
+✅ Vultr, ✅ DigitalOcean, ✅ Linode (simple auth complete)
+AWS, GCP, Azure (multi-field auth - next)
 
 **DNS/Domains**:
 Cloudflare, Route53, Namecheap
