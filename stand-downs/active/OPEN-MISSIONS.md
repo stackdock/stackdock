@@ -46,44 +46,31 @@ Missions and tasks that are open but not actively being worked on.
 ## 📋 OPEN MISSIONS
 
 ### Mission 7: Read-Only Infrastructure MVP
-**Status**: 📋 **PLANNED** - Next Mission  
+**Status**: 🔄 **IN PROGRESS** - Phase 3 Next  
 **Priority**: High  
 **Dependencies**: Mission 6 checkpoint complete ✅
 
 **Summary**: 
-- Database providers: Turso, Neon, Convex
-- IaaS providers: Vultr, DO, AWS, GCP, Azure
-- Monitoring: Sentry (alerts)
-- Auth schema finalized
+- ✅ Phase 1: Database providers (Turso, Neon, Convex, PlanetScale) - COMPLETE
+- ✅ Phase 2: Simple auth IaaS providers (Vultr, DO, Linode) - COMPLETE
+- 🔄 Phase 3: Projects & Monitoring providers (Linear, GitHub, Sentry) - NEXT
+- 📋 Phase 4: Complex auth IaaS providers (AWS, GCP, Azure) - AFTER Phase 3
+- Auth schema finalized (multi-field credentials pattern)
 
 **Goal**: Solo developer can see all billable accounts/resources in one interface
 
-**Why Next**: 
-- Mission 6 checkpoint complete ✅
-- Ready to build out read-only infrastructure MVP
-- Focus: Solo developer workflow first
+**Why Phase 3 Next**: 
+- Builds Projects and Monitoring pages with real data
+- Keeps momentum on simple API key auth
+- Establishes UI patterns before complex auth
+- Separates complex auth into its own phase
 
 ---
 
-### Mission 8: Projects Feature (Linear + GitHub)
+### Mission 8: Insights Board
 **Status**: 📋 **PLANNED** - After Mission 7  
-**Priority**: High  
-**Dependencies**: Mission 7 checkpoint complete
-
-**Summary**: 
-- Linear adapter (read-only)
-- GitHub adapter (read-only)
-- Resource linking (projects → resources)
-- Project-level organization
-
-**Goal**: Organize resources by project (solo developer workflow)
-
----
-
-### Mission 9: Insights Board
-**Status**: 📋 **PLANNED** - After Mission 8  
 **Priority**: Medium  
-**Dependencies**: Mission 8 checkpoint complete
+**Dependencies**: Mission 7 checkpoint complete
 
 **Summary**: 
 - Data visualization
@@ -94,10 +81,10 @@ Missions and tasks that are open but not actively being worked on.
 
 ---
 
-### Mission 10: RBAC Hardening & Refinement
-**Status**: 📋 **PLANNED** - After Mission 9  
+### Mission 9: RBAC Hardening & Refinement
+**Status**: 📋 **PLANNED** - After Mission 8  
 **Priority**: Medium  
-**Dependencies**: Mission 9 checkpoint complete (solo developer MVP first)
+**Dependencies**: Mission 8 checkpoint complete (solo developer MVP first)
 
 **Summary**: 
 - RBAC improvements
@@ -109,10 +96,10 @@ Missions and tasks that are open but not actively being worked on.
 
 ---
 
-### Mission 11: Dynamic Routes
-**Status**: 📋 **PLANNED** - After Mission 10 (Last Priority)  
+### Mission 10: Dynamic Routes
+**Status**: 📋 **PLANNED** - After Mission 9 (Last Priority)  
 **Priority**: Low  
-**Dependencies**: Mission 10 checkpoint complete
+**Dependencies**: Mission 9 checkpoint complete
 
 **Summary**: 
 - Resource detail pages
@@ -143,7 +130,7 @@ These documents are available for reference but don't represent active work:
 
 ## 🔄 IN PROGRESS (See `working/in-progress/`)
 
-**Currently Empty** - Mission 6 checkpoint complete, Mission 7 ready to start
+**Mission 7 Phase 3**: Linear + GitHub + Sentry adapters (Projects & Monitoring providers)
 
 ---
 

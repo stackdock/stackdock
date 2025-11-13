@@ -78,27 +78,30 @@
 - **Status**: ⏳ Not started
 - **Planned**: Workflow builder, automation rules, scheduled tasks
 
-### More Providers (Mission 7 - Planned)
+### More Providers (Mission 7 - In Progress)
 - **Goal**: Support major cloud providers (read-only infrastructure MVP)
-- **Status**: 📋 **PLANNED** - Mission 7
+- **Status**: 🔄 **IN PROGRESS** - Mission 7
+- **Completed**: 
+  - ✅ Database: Turso, Neon, Convex, PlanetScale (Phase 1)
+  - ✅ IaaS (Simple Auth): Vultr, DigitalOcean, Linode (Phase 2)
 - **Planned**: 
-  - Database: Turso, Neon, Convex
-  - IaaS: Vultr, DigitalOcean, AWS, GCP, Azure
-  - Monitoring: Sentry
+  - 🔄 Projects & Monitoring: Linear, GitHub, Sentry (Phase 3 - NEXT)
+  - 📋 IaaS (Complex Auth): AWS, GCP, Azure (Phase 4 - After Phase 3)
 
 ### Resource Detail Pages (Future)
 - **Goal**: Detailed views for each resource
 - **Status**: ⏳ Not started
 - **Planned**: Server details, web service details, domain details, etc.
 
-### Project Management (Mission 8 - Planned)
-- **Goal**: Organize resources into projects
-- **Status**: 📋 **PLANNED** - Mission 8
+### Projects & Monitoring (Mission 7 Phase 3 - Next)
+- **Goal**: Build Projects and Monitoring pages with real data
+- **Status**: 🔄 **NEXT** - Mission 7 Phase 3
 - **Planned**: 
-  - Linear integration (read-only)
-  - GitHub integration (read-only)
-  - Resource linking (projects → resources)
-  - Project-level organization (solo developer workflow)
+  - Linear adapter (read-only) - projects, issues
+  - GitHub adapter (read-only) - repos, issues
+  - Sentry adapter (read-only) - projects, alerts
+  - Projects page populated with Linear/GitHub data
+  - Monitoring page populated with Sentry data
 
 ---
 
@@ -113,11 +116,11 @@
 6. ✅ Provider-agnostic UI working
 
 ### Next Checkpoints (Planned)
-1. 📋 **Mission 7**: Read-Only Infrastructure MVP (DB + IaaS + Sentry)
-2. 📋 **Mission 8**: Projects Feature (Linear + GitHub)
-3. 📋 **Mission 9**: Insights Board
-4. 📋 **Mission 10**: RBAC Hardening & Refinement
-5. 📋 **Mission 11**: Dynamic Routes (detail pages)
+1. 🔄 **Mission 7 Phase 3**: Projects & Monitoring Providers (Linear + GitHub + Sentry) - **NEXT**
+2. 📋 **Mission 7 Phase 4**: Complex Auth IaaS Providers (AWS + GCP + Azure)
+3. 📋 **Mission 8**: Insights Board
+4. 📋 **Mission 9**: RBAC Hardening & Refinement
+5. 📋 **Mission 10**: Dynamic Routes (detail pages)
 
 ---
 

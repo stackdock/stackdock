@@ -83,7 +83,7 @@ This document provides a brief summary of each mission's current state so we can
 ---
 
 ### Mission 7: Read-Only Infrastructure MVP
-**Status**: 🔄 **IN PROGRESS** - IaaS Providers Phase
+**Status**: 🔄 **IN PROGRESS** - Projects & Monitoring Phase
 
 #### 🎯 Goal
 Complete read-only infrastructure MVP - all billable accounts/resources visible in one interface (solo developer view)
@@ -97,10 +97,13 @@ Complete read-only infrastructure MVP - all billable accounts/resources visible 
 #### 🎯 Phase 1 Complete: Database Providers ✅
 **All database providers integrated** - Phase 1 checkpoint reached
 
-#### ✅ Completed Components (Phase 2: IaaS Providers)
+#### ✅ Completed Components (Phase 2: Simple Auth IaaS Providers)
 - **Vultr adapter** ✅ - Complete, syncing instances to `servers` table
 - **DigitalOcean adapter** ✅ - Complete, syncing droplets to `servers` table
 - **Linode adapter** ✅ - Complete, syncing linodes to `servers` table
+
+#### 🎯 Phase 2 Complete: Simple Auth IaaS Providers ✅
+**All simple auth IaaS providers integrated** - Phase 2 checkpoint reached
 
 #### 📋 Planned Components
 **Phase 1: Database Providers** ✅ **COMPLETE**
@@ -110,56 +113,42 @@ Complete read-only infrastructure MVP - all billable accounts/resources visible 
   - **Special**: Includes deployments table + Operations page
 - ✅ PlanetScale adapter (read-only)
 
-**Phase 2: IaaS Providers** 🔄 **IN PROGRESS**
-- ✅ Vultr adapter (read-only) - easy API, single key auth - **COMPLETE**
-- ✅ DigitalOcean adapter (read-only) - easy API, single key auth - **COMPLETE**
-- ✅ Linode adapter (read-only) - easy API, single key auth - **COMPLETE**
-- 🔄 AWS adapter (read-only) - IAM role, multi-field auth - **NEXT**
+**Phase 2: Simple Auth IaaS Providers** ✅ **COMPLETE**
+- ✅ Vultr adapter (read-only) - easy API, single key auth
+- ✅ DigitalOcean adapter (read-only) - easy API, single key auth
+- ✅ Linode adapter (read-only) - easy API, single key auth
+
+**Phase 3: Projects & Monitoring Providers** 🔄 **NEXT**
+- 🔄 Linear adapter (read-only) - API key auth - **NEXT**
+  - Projects, issues → `projects` table
+- GitHub adapter (read-only) - API key auth
+  - Repos, issues → `projects` table
+- Sentry adapter (read-only) - API key auth
+  - Projects, alerts → monitoring/alerts structure
+
+**Phase 4: Complex Auth IaaS Providers** 📋 **AFTER Phase 3**
+- AWS adapter (read-only) - IAM role, multi-field auth
 - GCP adapter (read-only) - service account, multi-field auth
 - Azure adapter (read-only) - client ID/secret/tenant, multi-field auth
 
-**Phase 3: Monitoring**
-- Sentry adapter (read-only) - alerts table
-
 #### ✅ Checkpoint Completion Criteria
 - ✅ All database providers syncing (Turso, Neon, Convex, PlanetScale)
-- 🔄 IaaS providers syncing (Vultr ✅, DigitalOcean ✅, Linode ✅, AWS - NEXT, GCP, Azure)
-- ⏳ Sentry alerts syncing
+- ✅ Simple auth IaaS providers syncing (Vultr ✅, DigitalOcean ✅, Linode ✅)
+- 🔄 Projects & Monitoring providers syncing (Linear - NEXT, GitHub, Sentry)
+- ⏳ Complex auth IaaS providers syncing (AWS, GCP, Azure - after Phase 3)
 - ⏳ Auth schema finalized (multi-field credentials pattern locked)
 - ✅ All database resources visible in universal tables
-- 🔄 All IaaS resources visible (in progress)
+- ✅ Simple auth IaaS resources visible in universal tables
+- 🔄 Projects & Monitoring data visible (in progress)
 
-**Status**: 📋 **PLANNED** - Ready to start  
-**Focus**: Solo developer workflow - single org owner, project-level organization
+**Status**: 🔄 **IN PROGRESS** - Phase 3 next (Linear + GitHub + Sentry)  
+**Focus**: Solo developer workflow - single org owner, project-level organization  
+**Strategy**: Build Projects & Monitoring pages with real data before tackling complex auth
 
 ---
 
-### Mission 8: Projects Feature (Linear + GitHub)
+### Mission 8: Insights Board
 **Status**: 📋 **PLANNED** - After Mission 7
-
-#### 🎯 Goal
-Build out Projects feature with resource linking - organize resources by project
-
-#### 📋 Planned Components
-- Linear adapter (read-only) - issues, projects
-- GitHub adapter (read-only) - repos, issues
-- Resource linking (projects → resources)
-- Project-level organization (handles grouping without teams/roles)
-
-#### ✅ Checkpoint Completion Criteria
-- ✅ Linear integration working
-- ✅ GitHub integration working
-- ✅ Projects table enhanced
-- ✅ Resource linking functional
-- ✅ Project-level organization working
-
-**Status**: 📋 **PLANNED** - After Mission 7  
-**Focus**: Solo developer workflow - organize resources by project
-
----
-
-### Mission 9: Insights Board
-**Status**: 📋 **PLANNED** - After Mission 8
 
 #### 🎯 Goal
 Data visualization and aggregated dashboards showing all collected data
@@ -176,13 +165,13 @@ Data visualization and aggregated dashboards showing all collected data
 - ✅ Aggregated views functional
 - ✅ Solo developer can see all data in one place
 
-**Status**: 📋 **PLANNED** - After Mission 8  
+**Status**: 📋 **PLANNED** - After Mission 7  
 **Focus**: Solo developer MVP complete
 
 ---
 
-### Mission 10: RBAC Hardening & Refinement
-**Status**: 📋 **PLANNED** - After Mission 9
+### Mission 9: RBAC Hardening & Refinement
+**Status**: 📋 **PLANNED** - After Mission 8
 
 #### 🎯 Goal
 Multi-user support - RBAC improvements, permission refinement, security hardening
@@ -199,13 +188,13 @@ Multi-user support - RBAC improvements, permission refinement, security hardenin
 - ✅ Security improvements
 - ✅ Multi-user support functional
 
-**Status**: 📋 **PLANNED** - After Mission 9 (solo developer MVP first)  
+**Status**: 📋 **PLANNED** - After Mission 8 (solo developer MVP first)  
 **Focus**: Multi-user support (deferred until after solo developer MVP)
 
 ---
 
-### Mission 11: Dynamic Routes
-**Status**: 📋 **PLANNED** - After Mission 10 (Last Priority)
+### Mission 10: Dynamic Routes
+**Status**: 📋 **PLANNED** - After Mission 9 (Last Priority)
 
 #### 🎯 Goal
 Resource detail pages - polish and detail views
@@ -287,10 +276,11 @@ Resource detail pages - polish and detail views
 
 **Mission 7 Plan**:
 - [x] ~~Clean up top-level navigation~~ ✅ **CHECKPOINT COMPLETE**
-- [ ] Database providers (Turso, Neon, Convex)
-- [ ] IaaS providers (Vultr, DO, AWS, GCP, Azure)
-- [ ] Sentry (monitoring/alerts)
-- [ ] Auth schema finalized
+- [x] ~~Database providers (Turso, Neon, Convex, PlanetScale)~~ ✅ **PHASE 1 COMPLETE**
+- [x] ~~Simple auth IaaS providers (Vultr, DO, Linode)~~ ✅ **PHASE 2 COMPLETE**
+- [ ] Projects & Monitoring providers (Linear, GitHub, Sentry) - **PHASE 3 NEXT**
+- [ ] Complex auth IaaS providers (AWS, GCP, Azure) - **PHASE 4 AFTER PHASE 3**
+- [ ] Auth schema finalized (multi-field credentials pattern)
 
 ---
 

@@ -204,9 +204,9 @@ You should see:
 - ✅ `deployments` - 1 provider (Convex)
 
 ### Next Phase 🎯
-- 🔄 AWS/GCP/Azure adapters (multi-field auth providers)
-- 🔄 Sentry adapter (monitoring/alerts)
-- 🔄 Projects feature (Linear + GitHub)
+- 🔄 Projects & Monitoring providers (Linear + GitHub + Sentry) - **NEXT**
+- 📋 Complex auth IaaS providers (AWS/GCP/Azure) - After Projects & Monitoring
+- 📋 Insights board (data visualization)
 
 ---
 
@@ -287,36 +287,35 @@ All documentation is organized in `docs/`:
 
 **Translation Layer**: ✅ Validated and refined across multiple provider types
 
-### 🔄 Phase 3: Complex Auth Providers (Current Focus - Mission 7)
+### 🔄 Phase 3: Projects & Monitoring Providers (Current Focus - Mission 7)
 
-**Status**: IN PROGRESS - Simple auth providers complete, complex auth next
+**Status**: IN PROGRESS - Simple auth providers complete, Projects & Monitoring next
+
+**Projects & Monitoring Providers** (Simple API Key Auth):
+- [ ] Linear adapter (read-only) - **NEXT**
+  - Projects, issues → `projects` table
+- [ ] GitHub adapter (read-only)
+  - Repos, issues → `projects` table
+- [ ] Sentry adapter (read-only)
+  - Projects, alerts → monitoring/alerts structure
+
+**Strategy**: Build Projects and Monitoring pages with real data before tackling complex auth
+
+### 📋 Phase 4: Complex Auth IaaS Providers (After Phase 3 - Mission 7)
 
 **IaaS Providers** (Multi-Field Auth):
-- [ ] AWS adapter (IAM role, multi-field auth) - **NEXT**
+- [ ] AWS adapter (IAM role, multi-field auth)
 - [ ] GCP adapter (service account, multi-field auth)
 - [ ] Azure adapter (client ID/secret/tenant, multi-field auth)
 
-**Monitoring**:
-- [ ] Sentry adapter (alerts table)
+### 📋 Phase 5: Insights Board (Mission 8)
 
-### 📋 Phase 3: Read-Only MVP Checkpoint
+**Insights Board**:
+- [ ] Data visualization
+- [ ] Aggregated dashboards
+- [ ] Cross-provider analytics
 
-**UI Fully Mapped Out**:
-- [x] Servers table (filtering, sorting, pagination)
-- [x] Web Services table (filtering, sorting, pagination)
-- [x] Domains table (filtering, sorting, pagination)
-- [x] Databases table (filtering, sorting, pagination)
-- [x] Provider badges (color-coded)
-- [x] Status badges (color-coded)
-- [x] Real-time updates (Convex subscriptions)
-
-**Ready for Enhancement** (after schema validation):
-- [ ] Advanced filtering
-- [ ] Bulk operations
-- [ ] Export functionality
-- [ ] Resource detail views
-
-**Current Progress**: Core platform complete. Universal schema validated across 11 providers. UI foundation polished. **Current**: Adding AWS/GCP/Azure (complex auth) and Sentry (monitoring). **Next**: Projects feature (Linear + GitHub), then Insights board.
+**Current Progress**: Core platform complete. Universal schema validated across 11 providers. UI foundation polished. **Current**: Adding Linear/GitHub/Sentry (Projects & Monitoring). **Next**: Complex auth IaaS (AWS/GCP/Azure), then Insights board.
 
 ---
 
@@ -398,9 +397,9 @@ Real-time status updates via Convex subscriptions
 - Provider-agnostic UI (badges, tables, sheets)
 
 **🎯 Current Focus**:
-- AWS/GCP/Azure adapters (complex multi-field auth)
-- Sentry adapter (monitoring/alerts)
-- Projects feature (Linear + GitHub integration)
+- Linear + GitHub + Sentry adapters (Projects & Monitoring providers) - **NEXT**
+- Complex auth IaaS providers (AWS/GCP/Azure) - After Projects & Monitoring
+- Insights board (data visualization)
 - See [`stand-downs/working/MISSION-STATUS.md`](./stand-downs/working/MISSION-STATUS.md) for current mission status
 
 **🚀 What You Can Do Now**:
@@ -411,8 +410,8 @@ Real-time status updates via Convex subscriptions
 - Add more provider adapters (AWS, GCP, Azure, Sentry, etc.)
 
 **📋 Next Milestone**: Solo Developer MVP
+- Projects & Monitoring providers (Linear + GitHub + Sentry)
 - Complex auth providers (AWS/GCP/Azure)
-- Projects feature (resource linking)
 - Insights board (data visualization)
 
 ### For Developers Finding This Repo
