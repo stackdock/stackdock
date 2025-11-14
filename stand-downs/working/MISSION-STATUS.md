@@ -124,6 +124,8 @@ Complete read-only infrastructure MVP - all billable accounts/resources visible 
 - ✅ GitHub adapter (read-only) - API key auth - **COMPLETE**
   - Repos, branches, issues, commits → `projects` table
   - Intelligent commit pagination (hybrid approach)
+  - Host filter for multi-provider support
+  - Polished UI with column reordering and optimized display
 - 🔄 Sentry adapter (read-only) - API key auth
   - Projects, alerts → monitoring/alerts structure
 
@@ -135,12 +137,12 @@ Complete read-only infrastructure MVP - all billable accounts/resources visible 
 #### ✅ Checkpoint Completion Criteria
 - ✅ All database providers syncing (Turso, Neon, Convex, PlanetScale)
 - ✅ Simple auth IaaS providers syncing (Vultr ✅, DigitalOcean ✅, Linode ✅)
-- 🔄 Projects & Monitoring providers syncing (GitHub ✅, Linear - NEXT, Sentry)
+- 🔄 Projects & Monitoring providers syncing (GitHub ✅ complete, Linear - NEXT, Sentry)
 - ⏳ Complex auth IaaS providers syncing (AWS, GCP, Azure - after Phase 3)
 - ⏳ Auth schema finalized (multi-field credentials pattern locked)
 - ✅ All database resources visible in universal tables
 - ✅ Simple auth IaaS resources visible in universal tables
-- 🔄 Projects & Monitoring data visible (GitHub ✅, Linear + Sentry in progress)
+- 🔄 Projects & Monitoring data visible (GitHub ✅ complete with polished UI, Linear + Sentry in progress)
 
 **Status**: 🔄 **IN PROGRESS** - Phase 3 next (Linear + GitHub + Sentry)  
 **Focus**: Solo developer workflow - single org owner, project-level organization  

@@ -202,9 +202,10 @@ You should see:
 - ✅ `databases` - 4 providers (Turso, Neon, Convex, PlanetScale)
 - ✅ `backupSchedules` - 2 providers (GridPane, Neon)
 - ✅ `deployments` - 1 provider (Convex)
+- ✅ `projects` - 1 provider (GitHub - repositories, branches, issues, commits)
 
 ### Next Phase 🎯
-- 🔄 Projects & Monitoring providers (Linear + GitHub + Sentry) - **NEXT**
+- 🔄 Projects & Monitoring providers (Linear + Sentry) - **NEXT** (GitHub ✅ complete)
 - 📋 Complex auth IaaS providers (AWS/GCP/Azure) - After Projects & Monitoring
 - 📋 Insights board (data visualization)
 
@@ -294,8 +295,10 @@ All documentation is organized in `docs/`:
 **Projects & Monitoring Providers** (Simple API Key Auth):
 - [ ] Linear adapter (read-only) - **NEXT**
   - Projects, issues → `projects` table
-- [ ] GitHub adapter (read-only)
-  - Repos, issues → `projects` table
+- [x] GitHub adapter (read-only) ✅
+  - Repos, branches, issues, commits → `projects` table
+  - Intelligent commit pagination (hybrid approach)
+  - Host filter for multi-provider support
 - [ ] Sentry adapter (read-only)
   - Projects, alerts → monitoring/alerts structure
 
