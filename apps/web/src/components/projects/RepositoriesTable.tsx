@@ -362,7 +362,7 @@ function RepositoryDetailsCell({ row }: { row: any }) {
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button variant="ghost" size="sm" className="h-7 text-xs bg-muted hover:bg-muted/80">
-          Open
+          View
         </Button>
       </SheetTrigger>
       <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto">

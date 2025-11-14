@@ -25,7 +25,7 @@ function BackupsPage() {
             Backups
           </h1>
           <p className="text-sm text-muted-foreground md:text-base">
-            View backup schedules and integrations across all your infrastructure providers.
+            View your backups, schedules, and their integrations
           </p>
         </div>
         <div className="rounded-lg border border-border bg-card p-4 md:p-6">
@@ -42,7 +42,7 @@ function BackupsPage() {
           Backups
         </h1>
         <p className="text-sm text-muted-foreground md:text-base">
-          View backup schedules and integrations across all your infrastructure providers.
+          View your backups, schedules, and their integrations
         </p>
       </div>
 

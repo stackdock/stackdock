@@ -48,7 +48,7 @@ function NetworkingPage() {
           Networking
         </h1>
         <p className="text-sm text-muted-foreground md:text-base">
-          Domain management and DNS
+          View your domains and their DNS records
         </p>
       </div>
       

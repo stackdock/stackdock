@@ -11,7 +11,7 @@ function ProjectsPage() {
               Projects
             </h1>
             <p className="text-sm text-muted-foreground md:text-base">
-              Manage your projects across all platforms.
+              View your projects across all platforms.
             </p>
           </div>
           
@@ -25,7 +25,7 @@ function ProjectsPage() {
                 <h2 className="font-semibold">Code</h2>
               </div>
               <p className="text-sm text-muted-foreground">
-                GitHub repositories, branches, and issues
+                Repositories, branches, and issues
               </p>
             </Link>
             

@@ -20,7 +20,7 @@ function DataPage() {
             Data
           </h1>
           <p className="text-sm text-muted-foreground md:text-base">
-            Databases and storage
+            View your databases
           </p>
         </div>
         <div className="rounded-lg border border-border bg-card p-4 md:p-6">
@@ -37,7 +37,7 @@ function DataPage() {
           Data
         </h1>
         <p className="text-sm text-muted-foreground md:text-base">
-          Databases and storage
+          View your databases
         </p>
       </div>
       

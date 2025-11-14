@@ -142,8 +142,8 @@ function DNSRecordsCell({ row }: { row: Row<Domain> }) {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-7 text-xs">
-          {records.length} {records.length === 1 ? "record" : "records"}
+        <Button variant="ghost" size="sm" className="h-7 text-xs bg-muted hover:bg-muted/80">
+          View
         </Button>
       </SheetTrigger>
       <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">

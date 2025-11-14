@@ -23,7 +23,7 @@ function ComputePage() {
             Compute
           </h1>
           <p className="text-sm text-muted-foreground md:text-base">
-            Servers and PaaS applications
+            View your IaaS servers and PaaS applications
           </p>
         </div>
         <div className="rounded-lg border border-border bg-card p-4 md:p-6">
@@ -40,7 +40,7 @@ function ComputePage() {
           Compute
         </h1>
         <p className="text-sm text-muted-foreground md:text-base">
-          Servers and PaaS applications
+          View your IaaS servers and PaaS applications
         </p>
       </div>
       
