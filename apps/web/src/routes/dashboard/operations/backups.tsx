@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useQuery } from "convex/react"
 import { api } from "convex/_generated/api"
+import { Clock, Archive } from "lucide-react"
 import { BackupSchedulesTable } from "@/components/operations/backup-schedules-table"
 import { BackupIntegrationsTable } from "@/components/operations/backup-integrations-table"
 
@@ -13,27 +14,71 @@ function BackupsPage() {
   // undefined = loading, [] = no data, [data] = has data
   const schedules = useQuery(api["docks/queries"].getBackupSchedules)
   const integrations = useQuery(api["docks/queries"].getBackupIntegrations)
+  const schedulesList = schedules || []
+  const integrationsList = integrations || []
+
+  if (schedules === undefined || integrations === undefined) {
+    return (
+      <main className="flex flex-1 flex-col gap-4 p-4 md:p-6 lg:p-8">
+        <div className="space-y-0.5">
+          <h1 className="text-xl font-bold tracking-tight md:text-2xl lg:text-3xl">
+            Backups
+          </h1>
+          <p className="text-sm text-muted-foreground md:text-base">
+            View backup schedules and integrations across all your infrastructure providers.
+          </p>
+        </div>
+        <div className="rounded-lg border border-border bg-card p-4 md:p-6">
+          <p className="text-muted-foreground">Loading backups...</p>
+        </div>
+      </main>
+    )
+  }
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
+    <main className="flex flex-1 flex-col gap-4 p-4 md:p-6 lg:p-8">
       <div className="space-y-0.5">
-        <h2 className="text-base font-semibold">Backups</h2>
-        <p className="text-muted-foreground text-xs">
+        <h1 className="text-xl font-bold tracking-tight md:text-2xl lg:text-3xl">
+          Backups
+        </h1>
+        <p className="text-sm text-muted-foreground md:text-base">
           View backup schedules and integrations across all your infrastructure providers.
         </p>
       </div>
 
-      <div className="space-y-6">
-        <section>
-          <h3 className="text-sm font-semibold mb-4">Backup Schedules</h3>
+      <div className="space-y-4">
+        {/* Backup Schedules Table */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Backup Schedules
+            </h2>
+            {schedulesList.length > 0 && (
+              <span className="text-sm text-muted-foreground">
+                {schedulesList.length} {schedulesList.length === 1 ? 'schedule' : 'schedules'}
+              </span>
+            )}
+          </div>
           <BackupSchedulesTable data={schedules} />
-        </section>
+        </div>
 
-        <section>
-          <h3 className="text-sm font-semibold mb-4">Backup Integrations</h3>
+        {/* Backup Integrations Table */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Archive className="h-5 w-5" />
+              Backup Integrations
+            </h2>
+            {integrationsList.length > 0 && (
+              <span className="text-sm text-muted-foreground">
+                {integrationsList.length} {integrationsList.length === 1 ? 'integration' : 'integrations'}
+              </span>
+            )}
+          </div>
           <BackupIntegrationsTable data={integrations} />
-        </section>
+        </div>
       </div>
-    </div>
+    </main>
   )
 }
