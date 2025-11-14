@@ -55,6 +55,8 @@ You're early – but welcome to the shipyard! The blueprints are evolving, the v
 
 **This isn't just another tool.** It's infrastructure's WordPress moment.
 
+**⚠️ IMPORTANT: StackDock is currently in READ-ONLY mode. All functionality is view-only. No write operations (create, modify, delete, provision) are available or implemented.**
+
 Star the repo to watch the build! ⭐
 
 ---
@@ -69,6 +71,33 @@ Star the repo to watch the build! ⭐
 - DO NOT use with critical infrastructure
 
 **For early contributors only.** Star for updates on stable releases.
+
+---
+
+## 🔒 READ-ONLY MODE ⚠️
+
+**IMPORTANT: All current functionality is READ-ONLY.**
+
+**What this means:**
+- ✅ **You CAN**: View resources, sync data, browse dashboards, read information
+- ❌ **You CANNOT**: Create, modify, delete, or provision resources
+- ❌ **You CANNOT**: Make changes to infrastructure through StackDock
+- ❌ **You CANNOT**: Perform write operations on any provider resources
+
+**Current Status:**
+- All provider integrations are **read-only** (viewing/syncing only)
+- All resource tables display **read-only** data
+- All dashboards show **read-only** information
+- No provisioning, modification, or deletion capabilities exist
+
+**This is intentional.** StackDock is currently in **read-only observability mode** to validate the universal schema and translation layer before adding write capabilities.
+
+**When will write operations be available?**
+- After MVP validation is complete
+- After universal schema is fully validated across all provider types
+- Write operations will be clearly marked and documented when available
+
+**⚠️ DO NOT attempt to use StackDock for any write operations. They are not implemented and will not work.**
 
 ---
 
@@ -247,7 +276,9 @@ All documentation is organized in `docs/`:
 
 ## 🎯 MVP Roadmap (Read-Only Dashboard)
 
-**Goal**: Multi-provider read-only dashboard with validated universal schema
+**Goal**: Multi-provider **READ-ONLY** dashboard with validated universal schema
+
+**⚠️ CRITICAL: All progress is READ-ONLY. No write operations exist.**
 
 ### ✅ Phase 1: Foundation (Complete)
 - [x] Architecture documentation
@@ -405,12 +436,18 @@ Real-time status updates via Convex subscriptions
 - Insights board (data visualization)
 - See [`stand-downs/working/MISSION-STATUS.md`](./stand-downs/working/MISSION-STATUS.md) for current mission status
 
-**🚀 What You Can Do Now**:
-- Connect 11 providers with encrypted API keys ✅
-- Sync resources from all providers ✅
-- View unified dashboard with all resources ✅
-- See real-time updates across all providers ✅
-- Add more provider adapters (AWS, GCP, Azure, Sentry, etc.)
+**🚀 What You Can Do Now** (READ-ONLY):
+- Connect 11 providers with encrypted API keys ✅ (read-only)
+- Sync resources from all providers ✅ (read-only sync)
+- View unified dashboard with all resources ✅ (read-only viewing)
+- See real-time updates across all providers ✅ (read-only subscriptions)
+- Add more provider adapters (AWS, GCP, Azure, Sentry, etc.) (read-only adapters)
+
+**⚠️ What You CANNOT Do**:
+- ❌ Create, modify, or delete any resources
+- ❌ Provision infrastructure
+- ❌ Make changes to provider resources
+- ❌ Perform any write operations
 
 **📋 Next Milestone**: Solo Developer MVP
 - Projects & Monitoring providers (Linear + GitHub + Sentry)
@@ -419,15 +456,20 @@ Real-time status updates via Convex subscriptions
 
 ### For Developers Finding This Repo
 
-**You can**:
+**You can** (READ-ONLY):
 - Explore the architecture (well-documented)
 - Review code (all open source)
 - Understand the patterns (universal tables, dock adapters)
 - Set up locally (see Quick Start)
-- Connect 11 providers and sync resources ✅
-- View unified dashboard with all resources ✅
-- Contribute adapters for new providers (AWS, GCP, Azure, Sentry, etc.)
-- Build UI components
+- Connect 11 providers and sync resources ✅ (read-only)
+- View unified dashboard with all resources ✅ (read-only)
+- Contribute adapters for new providers (AWS, GCP, Azure, Sentry, etc.) (read-only adapters)
+- Build UI components (read-only display components)
+
+**⚠️ You CANNOT**:
+- Create, modify, or delete resources
+- Provision infrastructure
+- Perform write operations
 
 **You should**:
 - Read [`stand-downs/working/MISSION-STATUS.md`](./stand-downs/working/MISSION-STATUS.md) for current mission status
