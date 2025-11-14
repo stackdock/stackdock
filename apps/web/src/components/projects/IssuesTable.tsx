@@ -408,12 +408,11 @@ export function IssuesTable({ issues }: IssuesTableProps) {
       {/* Pagination */}
       <div className="flex items-center justify-between gap-8">
         <div className="flex items-center gap-3">
-          <Label htmlFor={id} className="max-sm:sr-only">Rows per page</Label>
           <Select
             value={table.getState().pagination.pageSize.toString()}
             onValueChange={(value) => table.setPageSize(Number(value))}
           >
-            <SelectTrigger id={id} className="w-fit whitespace-nowrap">
+            <SelectTrigger id={id} aria-label="Rows per page" className="w-fit whitespace-nowrap">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

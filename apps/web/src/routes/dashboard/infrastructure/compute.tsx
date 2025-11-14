@@ -50,13 +50,8 @@ function ComputePage() {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Server className="h-5 w-5" />
-              Servers
+              {serversList.length} {serversList.length === 1 ? 'Server' : 'Servers'}
             </h2>
-            {serversList.length > 0 && (
-              <span className="text-sm text-muted-foreground">
-                {serversList.length} {serversList.length === 1 ? 'server' : 'servers'}
-              </span>
-            )}
           </div>
           <ServersTable data={servers} />
         </div>
@@ -66,13 +61,8 @@ function ComputePage() {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Cloud className="h-5 w-5" />
-              Web Services
+              {webServicesList.length} {webServicesList.length === 1 ? 'Web Service' : 'Web Services'}
             </h2>
-            {webServicesList.length > 0 && (
-              <span className="text-sm text-muted-foreground">
-                {webServicesList.length} {webServicesList.length === 1 ? 'service' : 'services'}
-              </span>
-            )}
           </div>
           <WebServicesTable data={webServices} />
         </div>

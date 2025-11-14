@@ -46,13 +46,8 @@ function DataPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Database className="h-5 w-5" />
-            Databases
+            {databasesList.length} {databasesList.length === 1 ? 'Database' : 'Databases'}
           </h2>
-          {databasesList.length > 0 && (
-            <span className="text-sm text-muted-foreground">
-              {databasesList.length} {databasesList.length === 1 ? 'database' : 'databases'}
-            </span>
-          )}
         </div>
         <DatabasesTable data={databases} />
       </div>

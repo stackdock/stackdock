@@ -49,13 +49,8 @@ function ProjectsCodePage() {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Code className="h-5 w-5" />
-            Repositories
+            {githubProjects.length} Repositories
           </h2>
-          {githubProjects.length > 0 && (
-            <span className="text-sm text-muted-foreground">
-              {githubProjects.length} {githubProjects.length === 1 ? 'repository' : 'repositories'}
-            </span>
-          )}
         </div>
         <RepositoriesTable projects={githubProjects} />
       </div>

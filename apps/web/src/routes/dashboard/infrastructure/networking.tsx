@@ -11,6 +11,17 @@ export const Route = createFileRoute("/dashboard/infrastructure/networking")({
 function NetworkingPage() {
   const domains = useQuery(api["resources/queries"].listDomains)
   const domainsList = domains || []
+  
+  // Filter out canary and staging subdomains from count and table
+  const filteredDomainsList = domainsList.filter(domain => {
+    const domainName = domain.domainName.toLowerCase()
+    // Exclude domains that start with "canary." or "staging." or contain ".canary." or ".staging."
+    return !domainName.startsWith('canary.') && 
+           !domainName.startsWith('staging.') &&
+           !domainName.includes('.canary.') &&
+           !domainName.includes('.staging.')
+  })
+  const displayCount = filteredDomainsList.length
 
   if (domains === undefined) {
     return (
@@ -46,15 +57,10 @@ function NetworkingPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Globe className="h-5 w-5" />
-            Domains
+            {displayCount} {displayCount === 1 ? 'Domain' : 'Domains'}
           </h2>
-          {domainsList.length > 0 && (
-            <span className="text-sm text-muted-foreground">
-              {domainsList.length} {domainsList.length === 1 ? 'domain' : 'domains'}
-            </span>
-          )}
         </div>
-        <DomainsTable data={domains} />
+        <DomainsTable data={filteredDomainsList} />
       </div>
     </main>
   )
