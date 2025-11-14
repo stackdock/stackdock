@@ -105,8 +105,17 @@ const multiColumnFilterFn: FilterFn<Project> = (row, columnId, filterValue) => {
 const languageFilterFn: FilterFn<Project> = (row, columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   const repo = row.original.fullApiData?.repository as any
-  const language = repo?.language || "unknown"
+  const language = repo?.language || "N/A"
   return filterValue.includes(language)
+}
+
+// Host filter (for multi-provider support)
+const hostFilterFn: FilterFn<Project> = (row, columnId, filterValue: string[]) => {
+  if (!filterValue?.length) return true
+  // Check if it's a GitHub repository (has githubRepo field or fullApiData.repository)
+  const repo = row.original.fullApiData?.repository as any
+  const host = repo ? "github" : "unknown"
+  return filterValue.includes(host)
 }
 
 const columns: ColumnDef<Project>[] = [
@@ -140,55 +149,59 @@ const columns: ColumnDef<Project>[] = [
     size: 200,
     filterFn: multiColumnFilterFn,
     enableHiding: false,
+    enableSorting: true,
   },
   {
-    header: "Description",
-    accessorKey: "description",
+    id: "host",
+    header: "Host",
+    accessorFn: (row) => {
+      // Check if it's a GitHub repository (has githubRepo field or fullApiData.repository)
+      const repo = row.fullApiData?.repository as any
+      return repo ? "github" : "unknown"
+    },
     cell: ({ row }) => {
       const repo = row.original.fullApiData?.repository as any
+      const host = repo ? "github" : "unknown"
+      return <Badge variant="outline">{host === "github" ? "GitHub" : host}</Badge>
+    },
+    size: 100,
+    filterFn: hostFilterFn,
+    enableSorting: true,
+  },
+  {
+    id: "repoLink",
+    header: "Repo Link",
+    cell: ({ row }) => {
+      const repo = row.original.fullApiData?.repository as any
+      const repoUrl = repo?.html_url
+      
+      if (!repoUrl) {
+        return <span className="text-muted-foreground">—</span>
+      }
+      
       return (
-        <div className="text-muted-foreground max-w-md truncate">
-          {repo?.description || "—"}
-        </div>
+        <a
+          href={repoUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-muted-foreground hover:text-foreground transition-colors inline-flex items-center"
+          onClick={(e) => e.stopPropagation()}
+          title="Open repository on GitHub"
+        >
+          <ExternalLinkIcon className="h-4 w-4" />
+        </a>
       )
     },
-    size: 300,
-  },
-  {
-    header: "Language",
-    accessorKey: "language",
-    cell: ({ row }) => {
-      const repo = row.original.fullApiData?.repository as any
-      return repo?.language ? (
-        <Badge variant="outline">{repo.language}</Badge>
-      ) : (
-        <span className="text-muted-foreground">—</span>
-      )
-    },
-    size: 120,
-    filterFn: languageFilterFn,
-  },
-  {
-    header: "Branches",
-    accessorKey: "branches",
-    cell: ({ row }) => {
-      const branches = row.original.fullApiData?.branches || []
-      return <span>{branches.length}</span>
-    },
-    size: 100,
-  },
-  {
-    header: "Issues",
-    accessorKey: "issues",
-    cell: ({ row }) => {
-      const issues = row.original.fullApiData?.issues || []
-      return <span>{issues.length}</span>
-    },
-    size: 100,
+    size: 80,
+    enableSorting: false,
+    enableHiding: false,
   },
   {
     header: "Last Updated",
-    accessorKey: "updatedAt",
+    accessorFn: (row) => {
+      const repo = row.fullApiData?.repository as any
+      return repo?.updated_at ? new Date(repo.updated_at).getTime() : 0
+    },
     cell: ({ row }) => {
       const repo = row.original.fullApiData?.repository as any
       return repo?.updated_at ? (
@@ -200,33 +213,102 @@ const columns: ColumnDef<Project>[] = [
       )
     },
     size: 120,
+    enableSorting: true,
+  },
+  {
+    id: "lastCommit",
+    header: "Last Commit",
+    accessorFn: (row) => {
+      const commits = row.fullApiData?.commits || []
+      const lastCommit = commits[0] // Commits are already sorted by date (most recent first)
+      return lastCommit?.commit?.message || ""
+    },
+    cell: ({ row }) => {
+      const commits = row.original.fullApiData?.commits || []
+      const lastCommit = commits[0]
+      
+      if (!lastCommit) {
+        return <span className="text-muted-foreground">—</span>
+      }
+      
+      const commitMessage = lastCommit.commit?.message || ""
+      const firstLine = commitMessage.split("\n")[0]
+      const commitUrl = lastCommit.html_url
+      
+      return (
+        <div className="max-w-md truncate">
+          {commitUrl ? (
+            <a
+              href={commitUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+              onClick={(e) => e.stopPropagation()}
+              title={commitMessage}
+            >
+              {firstLine || "—"}
+            </a>
+          ) : (
+            <span className="text-muted-foreground" title={commitMessage}>
+              {firstLine || "—"}
+            </span>
+          )}
+        </div>
+      )
+    },
+    size: 300,
+    enableSorting: true,
+  },
+  {
+    id: "language",
+    header: "Language",
+    accessorFn: (row) => {
+      const repo = row.fullApiData?.repository as any
+      return repo?.language || "N/A"
+    },
+    cell: ({ row }) => {
+      const repo = row.original.fullApiData?.repository as any
+      return repo?.language ? (
+        <Badge variant="outline">{repo.language}</Badge>
+      ) : (
+        <Badge variant="outline" className="text-muted-foreground">N/A</Badge>
+      )
+    },
+    size: 120,
+    filterFn: languageFilterFn,
+    enableSorting: true,
+  },
+  {
+    header: "Branches",
+    accessorFn: (row) => {
+      const branches = row.fullApiData?.branches || []
+      return branches.length
+    },
+    cell: ({ row }) => {
+      const branches = row.original.fullApiData?.branches || []
+      return <span>{branches.length}</span>
+    },
+    size: 100,
+    enableSorting: true,
+  },
+  {
+    header: "Issues",
+    accessorFn: (row) => {
+      const issues = row.fullApiData?.issues || []
+      return issues.length
+    },
+    cell: ({ row }) => {
+      const issues = row.original.fullApiData?.issues || []
+      return <span>{issues.length}</span>
+    },
+    size: 100,
+    enableSorting: true,
   },
   {
     id: "details",
     header: "Details",
     cell: ({ row }) => <RepositoryDetailsCell row={row} />,
     size: 100,
-    enableHiding: false,
-  },
-  {
-    id: "actions",
-    header: () => <span className="sr-only">Actions</span>,
-    cell: ({ row }) => {
-      const repo = row.original.fullApiData?.repository as any
-      if (!repo?.html_url) return null
-      return (
-        <a
-          href={repo.html_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-primary hover:underline flex items-center gap-1 text-sm"
-          onClick={(e) => e.stopPropagation()}
-        >
-          Github <ExternalLinkIcon className="h-3 w-3" />
-        </a>
-      )
-    },
-    size: 80,
     enableHiding: false,
   },
 ]
@@ -391,7 +473,7 @@ export function RepositoriesTable({ projects }: RepositoriesTableProps) {
     pageSize: 10,
   })
   const inputRef = useRef<HTMLInputElement>(null)
-  const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }])
+  const [sorting, setSorting] = useState<SortingState>([{ id: "Last Updated", desc: true }])
 
   const table = useReactTable({
     data: projects,
@@ -413,7 +495,8 @@ export function RepositoriesTable({ projects }: RepositoriesTableProps) {
     const languageColumn = table.getColumn("language")
     if (!languageColumn) return []
     const values = Array.from(languageColumn.getFacetedUniqueValues().keys())
-    return values.filter(v => v && v !== "unknown").sort()
+    // Include "N/A" in the filter options, filter out empty strings
+    return values.filter(v => v && v !== "").sort()
   }, [table.getColumn("language")?.getFacetedUniqueValues()])
 
   const selectedLanguages = useMemo(() => {
@@ -424,6 +507,24 @@ export function RepositoriesTable({ projects }: RepositoriesTableProps) {
     const filterValue = selectedLanguages
     const newFilterValue = checked ? [...filterValue, value] : filterValue.filter(v => v !== value)
     table.getColumn("language")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
+  }
+
+  // Host filter values (for multi-provider support)
+  const uniqueHostValues = useMemo(() => {
+    const hostColumn = table.getColumn("host")
+    if (!hostColumn) return []
+    const values = Array.from(hostColumn.getFacetedUniqueValues().keys())
+    return values.filter(v => v && v !== "").sort()
+  }, [table.getColumn("host")?.getFacetedUniqueValues()])
+
+  const selectedHosts = useMemo(() => {
+    return (table.getColumn("host")?.getFilterValue() as string[]) ?? []
+  }, [table.getColumn("host")?.getFilterValue()])
+
+  const handleHostChange = (checked: boolean, value: string) => {
+    const filterValue = selectedHosts
+    const newFilterValue = checked ? [...filterValue, value] : filterValue.filter(v => v !== value)
+    table.getColumn("host")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
   }
 
   if (projects.length === 0) {
@@ -466,6 +567,43 @@ export function RepositoriesTable({ projects }: RepositoriesTableProps) {
             )}
           </div>
           <div className="flex gap-x-2">
+            {/* Host Filter (takes priority for multi-provider) */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="h-8 !border-dashed">
+                  <FilterIcon className="-ms-1 opacity-60" size={16} />
+                  Host
+                  {selectedHosts.length > 0 && (
+                    <span className="-me-1 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70">
+                      {selectedHosts.length}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto min-w-36 p-3" align="start">
+                <div className="space-y-3">
+                  <div className="text-xs font-medium text-muted-foreground">Hosts</div>
+                  {uniqueHostValues.length > 0 ? (
+                    <div className="space-y-2">
+                      {uniqueHostValues.map((value, i) => (
+                        <div key={value} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`${id}-host-${i}`}
+                            checked={selectedHosts.includes(value)}
+                            onCheckedChange={(checked: boolean) => handleHostChange(checked, value)}
+                          />
+                          <Label htmlFor={`${id}-host-${i}`} className="font-normal capitalize">
+                            {value === "github" ? "GitHub" : value}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No hosts available</p>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
             {/* Language Filter */}
             {uniqueLanguageValues.length > 0 && (
               <Popover>
@@ -482,8 +620,8 @@ export function RepositoriesTable({ projects }: RepositoriesTableProps) {
                 </PopoverTrigger>
                 <PopoverContent className="w-auto min-w-36 p-3" align="start">
                   <div className="space-y-3">
-                    <div className="text-xs font-medium text-muted-foreground">Filters</div>
-                    <div className="space-y-3">
+                    <div className="text-xs font-medium text-muted-foreground">Languages</div>
+                    <div className="space-y-2">
                       {uniqueLanguageValues.map((value, i) => (
                         <div key={value} className="flex items-center gap-2">
                           <Checkbox
