@@ -26,6 +26,7 @@ import { Route as DashboardSettingsThemeRouteImport } from './routes/dashboard/s
 import { Route as DashboardSettingsOrganizationRouteImport } from './routes/dashboard/settings/organization'
 import { Route as DashboardSettingsDocksRouteImport } from './routes/dashboard/settings/docks'
 import { Route as DashboardProvisionProviderRouteImport } from './routes/dashboard/provision/$provider'
+import { Route as DashboardProjectsCodeRouteImport } from './routes/dashboard/projects/code'
 import { Route as DashboardProjectsProjectIdRouteImport } from './routes/dashboard/projects/$projectId'
 import { Route as DashboardOperationsWorkflowsRouteImport } from './routes/dashboard/operations/workflows'
 import { Route as DashboardOperationsBackupsRouteImport } from './routes/dashboard/operations/backups'
@@ -126,6 +127,11 @@ const DashboardProvisionProviderRoute =
     path: '/provision/$provider',
     getParentRoute: () => DashboardRoute,
   } as any)
+const DashboardProjectsCodeRoute = DashboardProjectsCodeRouteImport.update({
+  id: '/code',
+  path: '/code',
+  getParentRoute: () => DashboardProjectsRoute,
+} as any)
 const DashboardProjectsProjectIdRoute =
   DashboardProjectsProjectIdRouteImport.update({
     id: '/$projectId',
@@ -217,6 +223,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/operations/backups': typeof DashboardOperationsBackupsRoute
   '/dashboard/operations/workflows': typeof DashboardOperationsWorkflowsRoute
   '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRouteWithChildren
+  '/dashboard/projects/code': typeof DashboardProjectsCodeRoute
   '/dashboard/provision/$provider': typeof DashboardProvisionProviderRouteWithChildren
   '/dashboard/settings/docks': typeof DashboardSettingsDocksRoute
   '/dashboard/settings/organization': typeof DashboardSettingsOrganizationRoute
@@ -247,6 +254,7 @@ export interface FileRoutesByTo {
   '/dashboard/operations/backups': typeof DashboardOperationsBackupsRoute
   '/dashboard/operations/workflows': typeof DashboardOperationsWorkflowsRoute
   '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRouteWithChildren
+  '/dashboard/projects/code': typeof DashboardProjectsCodeRoute
   '/dashboard/provision/$provider': typeof DashboardProvisionProviderRouteWithChildren
   '/dashboard/settings/docks': typeof DashboardSettingsDocksRoute
   '/dashboard/settings/organization': typeof DashboardSettingsOrganizationRoute
@@ -279,6 +287,7 @@ export interface FileRoutesById {
   '/dashboard/operations/backups': typeof DashboardOperationsBackupsRoute
   '/dashboard/operations/workflows': typeof DashboardOperationsWorkflowsRoute
   '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRouteWithChildren
+  '/dashboard/projects/code': typeof DashboardProjectsCodeRoute
   '/dashboard/provision/$provider': typeof DashboardProvisionProviderRouteWithChildren
   '/dashboard/settings/docks': typeof DashboardSettingsDocksRoute
   '/dashboard/settings/organization': typeof DashboardSettingsOrganizationRoute
@@ -312,6 +321,7 @@ export interface FileRouteTypes {
     | '/dashboard/operations/backups'
     | '/dashboard/operations/workflows'
     | '/dashboard/projects/$projectId'
+    | '/dashboard/projects/code'
     | '/dashboard/provision/$provider'
     | '/dashboard/settings/docks'
     | '/dashboard/settings/organization'
@@ -342,6 +352,7 @@ export interface FileRouteTypes {
     | '/dashboard/operations/backups'
     | '/dashboard/operations/workflows'
     | '/dashboard/projects/$projectId'
+    | '/dashboard/projects/code'
     | '/dashboard/provision/$provider'
     | '/dashboard/settings/docks'
     | '/dashboard/settings/organization'
@@ -373,6 +384,7 @@ export interface FileRouteTypes {
     | '/dashboard/operations/backups'
     | '/dashboard/operations/workflows'
     | '/dashboard/projects/$projectId'
+    | '/dashboard/projects/code'
     | '/dashboard/provision/$provider'
     | '/dashboard/settings/docks'
     | '/dashboard/settings/organization'
@@ -513,6 +525,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/provision/$provider'
       preLoaderRoute: typeof DashboardProvisionProviderRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/projects/code': {
+      id: '/dashboard/projects/code'
+      path: '/code'
+      fullPath: '/dashboard/projects/code'
+      preLoaderRoute: typeof DashboardProjectsCodeRouteImport
+      parentRoute: typeof DashboardProjectsRoute
     }
     '/dashboard/projects/$projectId': {
       id: '/dashboard/projects/$projectId'
@@ -673,10 +692,12 @@ const DashboardProjectsProjectIdRouteWithChildren =
 
 interface DashboardProjectsRouteChildren {
   DashboardProjectsProjectIdRoute: typeof DashboardProjectsProjectIdRouteWithChildren
+  DashboardProjectsCodeRoute: typeof DashboardProjectsCodeRoute
 }
 
 const DashboardProjectsRouteChildren: DashboardProjectsRouteChildren = {
   DashboardProjectsProjectIdRoute: DashboardProjectsProjectIdRouteWithChildren,
+  DashboardProjectsCodeRoute: DashboardProjectsCodeRoute,
 }
 
 const DashboardProjectsRouteWithChildren =

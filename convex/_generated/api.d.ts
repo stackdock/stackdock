@@ -22,6 +22,10 @@ import type * as docks_adapters_digitalocean_adapter from "../docks/adapters/dig
 import type * as docks_adapters_digitalocean_api from "../docks/adapters/digitalocean/api.js";
 import type * as docks_adapters_digitalocean_index from "../docks/adapters/digitalocean/index.js";
 import type * as docks_adapters_digitalocean_types from "../docks/adapters/digitalocean/types.js";
+import type * as docks_adapters_github_adapter from "../docks/adapters/github/adapter.js";
+import type * as docks_adapters_github_api from "../docks/adapters/github/api.js";
+import type * as docks_adapters_github_index from "../docks/adapters/github/index.js";
+import type * as docks_adapters_github_types from "../docks/adapters/github/types.js";
 import type * as docks_adapters_gridpane_adapter from "../docks/adapters/gridpane/adapter.js";
 import type * as docks_adapters_gridpane_api from "../docks/adapters/gridpane/api.js";
 import type * as docks_adapters_gridpane_index from "../docks/adapters/gridpane/index.js";
@@ -97,6 +101,10 @@ declare const fullApi: ApiFromModules<{
   "docks/adapters/digitalocean/api": typeof docks_adapters_digitalocean_api;
   "docks/adapters/digitalocean/index": typeof docks_adapters_digitalocean_index;
   "docks/adapters/digitalocean/types": typeof docks_adapters_digitalocean_types;
+  "docks/adapters/github/adapter": typeof docks_adapters_github_adapter;
+  "docks/adapters/github/api": typeof docks_adapters_github_api;
+  "docks/adapters/github/index": typeof docks_adapters_github_index;
+  "docks/adapters/github/types": typeof docks_adapters_github_types;
   "docks/adapters/gridpane/adapter": typeof docks_adapters_gridpane_adapter;
   "docks/adapters/gridpane/api": typeof docks_adapters_gridpane_api;
   "docks/adapters/gridpane/index": typeof docks_adapters_gridpane_index;

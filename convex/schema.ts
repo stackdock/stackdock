@@ -109,11 +109,13 @@ export default defineSchema({
     clientId: v.id("clients"),
     name: v.string(), // "Client A Website"
     linearId: v.optional(v.string()),
-    githubRepo: v.optional(v.string()),
+    githubRepo: v.optional(v.string()), // Format: "owner/repo-name"
+    fullApiData: v.optional(v.any()), // Stores GitHub repo data, branches, issues, etc.
   })
     .index("by_orgId", ["orgId"])
     .index("by_teamId", ["teamId"])
-    .index("by_clientId", ["clientId"]),
+    .index("by_clientId", ["clientId"])
+    .index("by_githubRepo", ["orgId", "githubRepo"]), // For efficient GitHub repo lookups
 
   // Master Fleet List: Servers (IaaS)
   servers: defineTable({

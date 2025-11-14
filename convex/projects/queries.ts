@@ -69,6 +69,40 @@ export const getProject = query({
 })
 
 /**
+ * Get project by GitHub repository
+ * 
+ * Finds a project by its GitHub repo identifier (format: "owner/repo-name")
+ */
+export const getByGitHubRepo = query({
+  args: {
+    githubRepo: v.string(), // Format: "owner/repo-name"
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx)
+    
+    // Get user's org from memberships
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .first()
+    
+    if (!membership) {
+      throw new ConvexError("Not authorized")
+    }
+    
+    // Find project by GitHub repo in user's org
+    const project = await ctx.db
+      .query("projects")
+      .withIndex("by_githubRepo", (q) =>
+        q.eq("orgId", membership.orgId).eq("githubRepo", args.githubRepo)
+      )
+      .first()
+    
+    return project || null
+  },
+})
+
+/**
  * Get all resources linked to a project
  */
 export const getProjectResources = query({

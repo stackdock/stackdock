@@ -260,6 +260,30 @@ export interface DockAdapter {
     preFetchedData?: any[]
   ): Promise<void>
 
+  /**
+   * Sync projects (repositories, code projects) to universal `projects` table
+   * 
+   * Called during dock sync. Should:
+   * 1. Use pre-fetched data if provided, otherwise fetch from provider API
+   * 2. Upsert into `projects` table
+   * 3. Map provider fields to universal schema
+   * 4. Store all provider-specific data in `fullApiData`
+   * 
+   * Note: Projects table structure differs from other universal tables:
+   * - No `dockId` field (projects are org-level, not dock-specific)
+   * - Projects identified by `githubRepo` field (not `providerResourceId`)
+   * - Links to teams/clients (business entities)
+   * 
+   * @param ctx - Convex mutation context (has database access)
+   * @param dock - The dock document (contains encrypted API key)
+   * @param preFetchedData - Optional: Pre-fetched data from action (if provided, skips fetch)
+   */
+  syncProjects?(
+    ctx: MutationCtx,
+    dock: Doc<"docks">,
+    preFetchedData?: any[]
+  ): Promise<void>
+
   // ============================================================================
   // OPTIONAL: Mutation Operations (Future Feature)
   // ============================================================================

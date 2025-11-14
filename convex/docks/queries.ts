@@ -4,9 +4,9 @@
  * Fetch docks (provider connections) for the current user's organization.
  */
 
-import { query } from "../_generated/server"
+import { query, internalQuery } from "../_generated/server"
 import { v } from "convex/values"
-import { getCurrentUser } from "../lib/rbac"
+import { getCurrentUser, checkPermission } from "../lib/rbac"
 import { listProvidersWithMetadata } from "./registry"
 import { ConvexError } from "convex/values"
 
@@ -159,5 +159,41 @@ export const getBackupIntegrations = query({
     const integrations = await query.collect()
 
     return integrations
+  },
+})
+
+/**
+ * Internal query: Get dock for action (with permission check)
+ * Used by actions to verify user has access to dock before decrypting API key
+ */
+export const getDockForAction = internalQuery({
+  args: {
+    dockId: v.id("docks"),
+  },
+  handler: async (ctx, args) => {
+    // Get dock
+    const dock = await ctx.db.get(args.dockId)
+    if (!dock) {
+      return null
+    }
+    
+    // Get current user (actions pass auth token)
+    const user = await getCurrentUser(ctx)
+    
+    // Check permission
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      dock.orgId,
+      "docks:read" // Read permission is sufficient for fetching commits
+    )
+    
+    return {
+      _id: dock._id,
+      orgId: dock.orgId,
+      provider: dock.provider,
+      encryptedApiKey: dock.encryptedApiKey,
+      hasPermission,
+    }
   },
 })

@@ -11,6 +11,7 @@ import {
   User,
   Palette,
   Plug,
+  Code,
 } from "lucide-react"
 import { type SidebarData } from "./types"
 import { useUser } from "@clerk/clerk-react"
@@ -71,11 +72,38 @@ export function useSidebarData(): SidebarData {
                 url: "/dashboard",
                 icon: LayoutDashboard,
               },
+            ],
+          },
+        ],
+      },
+      {
+        title: "",
+        items: [
+          {
+            title: "Projects",
+            icon: FolderKanban,
+            items: [
               {
-                title: "Projects",
-                url: "/dashboard/projects",
-                icon: FolderKanban,
+                title: "Code",
+                url: "/dashboard/projects/code",
+                icon: Code,
               },
+              // Future placeholders (commented out for now):
+              // {
+              //   title: "Calendar",
+              //   url: "/dashboard/projects/calendar",
+              //   icon: Calendar,
+              // },
+              // {
+              //   title: "Content",
+              //   url: "/dashboard/projects/content",
+              //   icon: FileText,
+              // },
+              // {
+              //   title: "Social",
+              //   url: "/dashboard/projects/social",
+              //   icon: Users,
+              // },
             ],
           },
         ],
@@ -189,11 +217,38 @@ export const sidebarData: SidebarData = {
               url: "/dashboard",
               icon: LayoutDashboard,
             },
+          ],
+        },
+      ],
+    },
+    {
+      title: "",
+      items: [
+        {
+          title: "Projects",
+          icon: FolderKanban,
+          items: [
             {
-              title: "Projects",
-              url: "/dashboard/projects",
-              icon: FolderKanban,
+              title: "Code",
+              url: "/dashboard/projects/code",
+              icon: Code,
             },
+            // Future placeholders (commented out for now):
+            // {
+            //   title: "Calendar",
+            //   url: "/dashboard/projects/calendar",
+            //   icon: Calendar,
+            // },
+            // {
+            //   title: "Content",
+            //   url: "/dashboard/projects/content",
+            //   icon: FileText,
+            // },
+            // {
+            //   title: "Social",
+            //   url: "/dashboard/projects/social",
+            //   icon: Users,
+            // },
           ],
         },
       ],

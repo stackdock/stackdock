@@ -118,12 +118,13 @@ Complete read-only infrastructure MVP - all billable accounts/resources visible 
 - ✅ DigitalOcean adapter (read-only) - easy API, single key auth
 - ✅ Linode adapter (read-only) - easy API, single key auth
 
-**Phase 3: Projects & Monitoring Providers** 🔄 **NEXT**
+**Phase 3: Projects & Monitoring Providers** 🔄 **IN PROGRESS**
 - 🔄 Linear adapter (read-only) - API key auth - **NEXT**
   - Projects, issues → `projects` table
-- GitHub adapter (read-only) - API key auth
-  - Repos, issues → `projects` table
-- Sentry adapter (read-only) - API key auth
+- ✅ GitHub adapter (read-only) - API key auth - **COMPLETE**
+  - Repos, branches, issues, commits → `projects` table
+  - Intelligent commit pagination (hybrid approach)
+- 🔄 Sentry adapter (read-only) - API key auth
   - Projects, alerts → monitoring/alerts structure
 
 **Phase 4: Complex Auth IaaS Providers** 📋 **AFTER Phase 3**
@@ -134,12 +135,12 @@ Complete read-only infrastructure MVP - all billable accounts/resources visible 
 #### ✅ Checkpoint Completion Criteria
 - ✅ All database providers syncing (Turso, Neon, Convex, PlanetScale)
 - ✅ Simple auth IaaS providers syncing (Vultr ✅, DigitalOcean ✅, Linode ✅)
-- 🔄 Projects & Monitoring providers syncing (Linear - NEXT, GitHub, Sentry)
+- 🔄 Projects & Monitoring providers syncing (GitHub ✅, Linear - NEXT, Sentry)
 - ⏳ Complex auth IaaS providers syncing (AWS, GCP, Azure - after Phase 3)
 - ⏳ Auth schema finalized (multi-field credentials pattern locked)
 - ✅ All database resources visible in universal tables
 - ✅ Simple auth IaaS resources visible in universal tables
-- 🔄 Projects & Monitoring data visible (in progress)
+- 🔄 Projects & Monitoring data visible (GitHub ✅, Linear + Sentry in progress)
 
 **Status**: 🔄 **IN PROGRESS** - Phase 3 next (Linear + GitHub + Sentry)  
 **Focus**: Solo developer workflow - single org owner, project-level organization  

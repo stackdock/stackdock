@@ -141,6 +141,7 @@ export const syncDock = mutation({
       if (adapter.syncWebServices) resourceTypes.push("webServices")
       if (adapter.syncDomains) resourceTypes.push("domains")
       if (adapter.syncDatabases) resourceTypes.push("databases")
+      if (adapter.syncProjects) resourceTypes.push("projects")
 
       // Call action to fetch resources (fetch allowed in actions)
       // Actions cannot return values to mutations, so the action will call an internal mutation
@@ -193,6 +194,7 @@ export const syncDockResourcesMutation = internalMutation({
       deployments: v.optional(v.array(v.any())),
       backupSchedules: v.optional(v.array(v.any())),
       backupIntegrations: v.optional(v.array(v.any())),
+      projects: v.optional(v.array(v.any())),
     }),
   },
   handler: async (ctx, args) => {
@@ -237,6 +239,10 @@ export const syncDockResourcesMutation = internalMutation({
 
     if (args.fetchedData.backupIntegrations && adapter.syncBackupIntegrations) {
       await adapter.syncBackupIntegrations(ctx, dock, args.fetchedData.backupIntegrations)
+    }
+
+    if (args.fetchedData.projects && adapter.syncProjects) {
+      await adapter.syncProjects(ctx, dock, args.fetchedData.projects)
     }
 
     // Mark sync as successful

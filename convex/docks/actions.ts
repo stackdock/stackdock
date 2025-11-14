@@ -5,7 +5,7 @@
  */
 
 import { v } from "convex/values"
-import { internalAction } from "../_generated/server"
+import { action, internalAction } from "../_generated/server"
 import { getAdapter } from "./registry"
 import { GridPaneAPI } from "./adapters/gridpane/api"
 import { VercelAPI } from "./adapters/vercel/api"
@@ -18,6 +18,7 @@ import { PlanetScaleAPI } from "./adapters/planetscale/api"
 import { VultrAPI } from "./adapters/vultr/api"
 import { DigitalOceanAPI } from "./adapters/digitalocean/api"
 import { LinodeAPI } from "./adapters/linode/api"
+import { GitHubAPI } from "./adapters/github/api"
 import { internal } from "../_generated/api"
 import type { Id } from "../_generated/dataModel"
 
@@ -96,6 +97,7 @@ export const syncDockResources = internalAction({
     let backupSchedules: any[] = []
     let backupIntegrations: any[] = []
     let deployments: any[] = []
+    let projects: any[] = [] // GitHub projects (repositories)
 
     try {
       // GridPane-specific: Use GridPaneAPI directly
@@ -506,13 +508,85 @@ export const syncDockResources = internalAction({
           console.log(`[Dock Action] Domains not supported for ${args.provider}`)
           domains = []
         }
+      } else if (args.provider === "github") {
+        // GitHub-specific: Use GitHubAPI directly
+        const api = new GitHubAPI(args.apiKey)
+
+        if (args.resourceTypes.includes("projects")) {
+          console.log(`[Dock Action] Fetching repositories for ${args.provider}`)
+          const repos = await api.listRepositories()
+
+          // Batch process repos (5 at a time) to respect rate limits
+          const batchSize = 5
+          const reposWithDetails = []
+          
+          for (let i = 0; i < repos.length; i += batchSize) {
+            const batch = repos.slice(i, i + batchSize)
+            
+            const batchResults = await Promise.all(
+              batch.map(async (repo) => {
+                const [owner, repoName] = repo.full_name.split("/")
+                
+                try {
+                  const [branches, issues, commits] = await Promise.all([
+                    api.listBranches(owner, repoName).catch((err) => {
+                      console.error(`Failed to fetch branches for ${repo.full_name}:`, err)
+                      return []
+                    }),
+                    api.listIssues(owner, repoName, { state: "all" }).catch((err) => {
+                      console.error(`Failed to fetch issues for ${repo.full_name}:`, err)
+                      return []
+                    }),
+                    api.listCommits(owner, repoName, { limit: 10 }).catch((err) => {
+                      console.error(`Failed to fetch commits for ${repo.full_name}:`, err)
+                      return []
+                    }),
+                  ])
+                  
+                  return {
+                    ...repo,
+                    branches,
+                    issues,
+                    commits,
+                  }
+                } catch (error) {
+                  console.error(`Failed to process ${repo.full_name}:`, error)
+                  return { ...repo, branches: [], issues: [], commits: [] }
+                }
+              })
+            )
+            
+            reposWithDetails.push(...batchResults)
+            
+            // Add delay between batches (not between individual repos)
+            if (i + batchSize < repos.length) {
+              await new Promise(resolve => setTimeout(resolve, 1000))
+            }
+          }
+
+          projects = reposWithDetails
+        }
+
+        // GitHub doesn't support other resource types
+        if (args.resourceTypes.includes("servers")) {
+          servers = []
+        }
+        if (args.resourceTypes.includes("webServices")) {
+          webServices = []
+        }
+        if (args.resourceTypes.includes("domains")) {
+          domains = []
+        }
+        if (args.resourceTypes.includes("databases")) {
+          databases = []
+        }
       } else {
         // For other providers, use adapter pattern
         // TODO: Implement adapter pattern for other providers
         throw new Error(`Provider ${args.provider} sync not yet implemented in action`)
       }
 
-      console.log(`[Dock Action] Sync complete: ${servers.length} servers, ${webServices.length} webServices, ${domains.length} domains, ${databases.length} databases, ${deployments.length} deployments, ${backupSchedules.length} backup schedules, ${backupIntegrations.length} backup integrations`)
+      console.log(`[Dock Action] Sync complete: ${servers.length} servers, ${webServices.length} webServices, ${domains.length} domains, ${databases.length} databases, ${deployments.length} deployments, ${backupSchedules.length} backup schedules, ${backupIntegrations.length} backup integrations, ${projects.length} projects`)
 
       // Call internal mutation to sync using adapter methods
       await ctx.runMutation(internal.docks.mutations.syncDockResourcesMutation, {
@@ -526,6 +600,7 @@ export const syncDockResources = internalAction({
           deployments: deployments.length > 0 ? deployments : undefined,
           backupSchedules: backupSchedules.length > 0 ? backupSchedules : undefined,
           backupIntegrations: backupIntegrations.length > 0 ? backupIntegrations : undefined,
+          projects: projects.length > 0 ? projects : undefined,
         },
       })
 
@@ -549,5 +624,63 @@ export const syncDockResources = internalAction({
       
       throw new Error(`Failed to sync dock resources: ${errorMessage}`)
     }
+  },
+})
+
+/**
+ * Fetch more commits for a GitHub repository on-demand (public action)
+ * Used for pagination - fetches commits incrementally to avoid document size limits
+ * 
+ * Flow:
+ * 1. Frontend calls this action with dockId, owner, repo, page
+ * 2. Action calls internal query to get dock and verify permissions
+ * 3. Action decrypts API key
+ * 4. Action fetches commits from GitHub API
+ * 5. Action returns commits array directly to frontend
+ */
+export const fetchMoreCommits = action({
+  args: {
+    dockId: v.id("docks"),
+    owner: v.string(),
+    repo: v.string(),
+    page: v.number(), // Page number (1-indexed, page 2 = commits 11-20, etc.)
+    perPage: v.optional(v.number()), // Commits per page (default: 10)
+  },
+  handler: async (ctx, args) => {
+    console.log(`[Dock Action] Fetching commits page ${args.page} for ${args.owner}/${args.repo}`)
+    
+    // Get dock and verify permissions via internal query
+    const dock = await ctx.runQuery(internal.docks.queries.getDockForAction, {
+      dockId: args.dockId,
+    })
+    
+    if (!dock) {
+      throw new Error("Dock not found")
+    }
+    
+    if (!dock.hasPermission) {
+      throw new Error("Permission denied: You don't have access to this dock")
+    }
+    
+    if (dock.provider !== "github") {
+      throw new Error("This action is only available for GitHub docks")
+    }
+    
+    // Decrypt API key (actions can use decryptApiKey, but without audit logging)
+    const { decryptApiKey } = await import("../lib/encryption")
+    const apiKey = await decryptApiKey(dock.encryptedApiKey)
+    
+    // Fetch commits
+    const perPage = args.perPage || 10
+    const api = new GitHubAPI(apiKey)
+    
+    // GitHub API uses per_page and page parameters
+    // Page 1 = commits 0-9, page 2 = commits 10-19, etc.
+    const commits = await api.listCommits(args.owner, args.repo, {
+      limit: perPage,
+      page: args.page,
+    })
+    
+    return commits
   },
 })

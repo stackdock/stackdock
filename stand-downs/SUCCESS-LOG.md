@@ -142,6 +142,34 @@
 
 ---
 
+### GitHub Integration - CHECKPOINT ✅
+**Date**: November 12, 2025  
+**Success**: GitHub repositories, branches, issues, and commits with intelligent pagination
+
+**What We Built**:
+- GitHub adapter for repositories, branches, issues, and commits
+- Projects restructure (Code sub-route under Projects)
+- Intelligent commit pagination (hybrid approach)
+- TanStack Table for repositories, branches, issues, commits
+- Shadcn Sheet for repository details
+
+**Key Achievement**:
+- **Commit Pagination**: Hybrid approach - 10 commits stored, "Load More" fetches on-demand
+- **Avoids Size Limits**: Additional commits not stored (prevents 1 MiB Convex limit)
+- **Fast Initial Load**: 10 commits already available from sync
+- **Scalable UI**: TanStack Table with search, filters, sorting, pagination
+- **Projects Structure**: Code page ready for future Calendar, Content, Social sections
+
+**Technical Details**:
+- Public action `fetchMoreCommits` for on-demand fetching
+- Component state management for loaded commits
+- "Load More" button with loading states
+- Permission checking via internal query
+
+**Status**: ✅ **Happy path working** - GitHub integration complete with pagination
+
+---
+
 ## 📊 Progress Metrics
 
 ### Providers Integrated
@@ -156,6 +184,7 @@
 - ✅ Vultr (servers/instances)
 - ✅ DigitalOcean (servers/droplets)
 - ✅ Linode (servers/linodes)
+- ✅ GitHub (repositories, branches, issues, commits with pagination)
 
 ### Universal Tables Populated
 - ✅ `servers` - Multi-provider (GridPane, Vultr, DigitalOcean, Linode)
@@ -165,6 +194,7 @@
 - ✅ `backupSchedules` - GridPane + Neon working
 - ✅ `backupIntegrations` - GridPane working
 - ✅ `deployments` - Convex working
+- ✅ `projects` - GitHub (repositories with branches, issues, commits)
 
 ### Security Features
 - ✅ API key encryption (AES-256-GCM)
