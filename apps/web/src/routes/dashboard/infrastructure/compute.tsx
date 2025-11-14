@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useQuery } from "convex/react"
 import { api } from "convex/_generated/api"
-import { Server, Cloud } from "lucide-react"
+import { Server, Cloud, Cpu } from "lucide-react"
 import { ServersTable } from "@/components/resources/servers-table"
 import { WebServicesTable } from "@/components/resources/web-services-table"
 
@@ -49,7 +49,7 @@ function ComputePage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Server className="h-5 w-5" />
+              <Cpu className="h-5 w-5" />
               {serversList.length} {serversList.length === 1 ? 'Server' : 'Servers'}
             </h2>
           </div>

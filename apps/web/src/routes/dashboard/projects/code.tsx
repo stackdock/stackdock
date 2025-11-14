@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useQuery } from "convex/react"
 import { api } from "convex/_generated/api"
-import { Code } from "lucide-react"
+import { CodeXml } from "lucide-react"
 import { RepositoriesTable } from "@/components/projects/RepositoriesTable"
 
 export const Route = createFileRoute("/dashboard/projects/code")({
@@ -48,7 +48,7 @@ function ProjectsCodePage() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Code className="h-5 w-5" />
+            <CodeXml className="h-5 w-5" />
             {githubProjects.length} Repositories
           </h2>
         </div>

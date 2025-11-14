@@ -31,7 +31,7 @@ import {
   ChevronRightIcon,
   ChevronUpIcon,
   CircleXIcon,
-  Code,
+  CodeXml,
   Columns3Icon,
   ExternalLinkIcon,
   FilterIcon,
@@ -383,7 +383,7 @@ function RepositoryDetailsCell({ row }: { row: any }) {
                 <div className="flex gap-4 text-sm text-muted-foreground flex-wrap">
                   {repo.language && (
                     <span className="flex items-center gap-1">
-                      <Code className="h-4 w-4" />
+                      <CodeXml className="h-4 w-4" />
                       {repo.language}
                     </span>
                   )}

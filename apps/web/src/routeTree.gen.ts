@@ -29,6 +29,7 @@ import { Route as DashboardProjectsCodeRouteImport } from './routes/dashboard/pr
 import { Route as DashboardProjectsProjectIdRouteImport } from './routes/dashboard/projects/$projectId'
 import { Route as DashboardOperationsWorkflowsRouteImport } from './routes/dashboard/operations/workflows'
 import { Route as DashboardOperationsBackupsRouteImport } from './routes/dashboard/operations/backups'
+import { Route as DashboardInfrastructureStorageRouteImport } from './routes/dashboard/infrastructure/storage'
 import { Route as DashboardInfrastructureNetworkingRouteImport } from './routes/dashboard/infrastructure/networking'
 import { Route as DashboardInfrastructureDataRouteImport } from './routes/dashboard/infrastructure/data'
 import { Route as DashboardInfrastructureComputeRouteImport } from './routes/dashboard/infrastructure/compute'
@@ -144,6 +145,12 @@ const DashboardOperationsBackupsRoute =
     path: '/backups',
     getParentRoute: () => DashboardOperationsRoute,
   } as any)
+const DashboardInfrastructureStorageRoute =
+  DashboardInfrastructureStorageRouteImport.update({
+    id: '/storage',
+    path: '/storage',
+    getParentRoute: () => DashboardInfrastructureRoute,
+  } as any)
 const DashboardInfrastructureNetworkingRoute =
   DashboardInfrastructureNetworkingRouteImport.update({
     id: '/networking',
@@ -213,6 +220,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/infrastructure/compute': typeof DashboardInfrastructureComputeRoute
   '/dashboard/infrastructure/data': typeof DashboardInfrastructureDataRoute
   '/dashboard/infrastructure/networking': typeof DashboardInfrastructureNetworkingRoute
+  '/dashboard/infrastructure/storage': typeof DashboardInfrastructureStorageRoute
   '/dashboard/operations/backups': typeof DashboardOperationsBackupsRoute
   '/dashboard/operations/workflows': typeof DashboardOperationsWorkflowsRoute
   '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRouteWithChildren
@@ -243,6 +251,7 @@ export interface FileRoutesByTo {
   '/dashboard/infrastructure/compute': typeof DashboardInfrastructureComputeRoute
   '/dashboard/infrastructure/data': typeof DashboardInfrastructureDataRoute
   '/dashboard/infrastructure/networking': typeof DashboardInfrastructureNetworkingRoute
+  '/dashboard/infrastructure/storage': typeof DashboardInfrastructureStorageRoute
   '/dashboard/operations/backups': typeof DashboardOperationsBackupsRoute
   '/dashboard/operations/workflows': typeof DashboardOperationsWorkflowsRoute
   '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRouteWithChildren
@@ -275,6 +284,7 @@ export interface FileRoutesById {
   '/dashboard/infrastructure/compute': typeof DashboardInfrastructureComputeRoute
   '/dashboard/infrastructure/data': typeof DashboardInfrastructureDataRoute
   '/dashboard/infrastructure/networking': typeof DashboardInfrastructureNetworkingRoute
+  '/dashboard/infrastructure/storage': typeof DashboardInfrastructureStorageRoute
   '/dashboard/operations/backups': typeof DashboardOperationsBackupsRoute
   '/dashboard/operations/workflows': typeof DashboardOperationsWorkflowsRoute
   '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRouteWithChildren
@@ -308,6 +318,7 @@ export interface FileRouteTypes {
     | '/dashboard/infrastructure/compute'
     | '/dashboard/infrastructure/data'
     | '/dashboard/infrastructure/networking'
+    | '/dashboard/infrastructure/storage'
     | '/dashboard/operations/backups'
     | '/dashboard/operations/workflows'
     | '/dashboard/projects/$projectId'
@@ -338,6 +349,7 @@ export interface FileRouteTypes {
     | '/dashboard/infrastructure/compute'
     | '/dashboard/infrastructure/data'
     | '/dashboard/infrastructure/networking'
+    | '/dashboard/infrastructure/storage'
     | '/dashboard/operations/backups'
     | '/dashboard/operations/workflows'
     | '/dashboard/projects/$projectId'
@@ -369,6 +381,7 @@ export interface FileRouteTypes {
     | '/dashboard/infrastructure/compute'
     | '/dashboard/infrastructure/data'
     | '/dashboard/infrastructure/networking'
+    | '/dashboard/infrastructure/storage'
     | '/dashboard/operations/backups'
     | '/dashboard/operations/workflows'
     | '/dashboard/projects/$projectId'
@@ -535,6 +548,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardOperationsBackupsRouteImport
       parentRoute: typeof DashboardOperationsRoute
     }
+    '/dashboard/infrastructure/storage': {
+      id: '/dashboard/infrastructure/storage'
+      path: '/storage'
+      fullPath: '/dashboard/infrastructure/storage'
+      preLoaderRoute: typeof DashboardInfrastructureStorageRouteImport
+      parentRoute: typeof DashboardInfrastructureRoute
+    }
     '/dashboard/infrastructure/networking': {
       id: '/dashboard/infrastructure/networking'
       path: '/networking'
@@ -619,6 +639,7 @@ interface DashboardInfrastructureRouteChildren {
   DashboardInfrastructureComputeRoute: typeof DashboardInfrastructureComputeRoute
   DashboardInfrastructureDataRoute: typeof DashboardInfrastructureDataRoute
   DashboardInfrastructureNetworkingRoute: typeof DashboardInfrastructureNetworkingRoute
+  DashboardInfrastructureStorageRoute: typeof DashboardInfrastructureStorageRoute
 }
 
 const DashboardInfrastructureRouteChildren: DashboardInfrastructureRouteChildren =
@@ -627,6 +648,7 @@ const DashboardInfrastructureRouteChildren: DashboardInfrastructureRouteChildren
     DashboardInfrastructureDataRoute: DashboardInfrastructureDataRoute,
     DashboardInfrastructureNetworkingRoute:
       DashboardInfrastructureNetworkingRoute,
+    DashboardInfrastructureStorageRoute: DashboardInfrastructureStorageRoute,
   }
 
 const DashboardInfrastructureRouteWithChildren =

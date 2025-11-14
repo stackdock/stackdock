@@ -1,9 +1,11 @@
 import {
   LayoutDashboard,
   FolderKanban,
+  Folder,
   Server,
   Database,
   HardDrive,
+  HardDriveDownload,
   Network,
   Workflow,
   Settings,
@@ -12,6 +14,11 @@ import {
   Palette,
   Plug,
   Code,
+  CodeXml,
+  Cpu,
+  Globe,
+  House,
+  Archive,
 } from "lucide-react"
 import { type SidebarData } from "./types"
 import { useUser } from "@clerk/clerk-react"
@@ -65,7 +72,7 @@ export function useSidebarData(): SidebarData {
         items: [
           {
             title: "Dashboard",
-            icon: LayoutDashboard,
+            icon: House,
             items: [
               {
                 title: "Insights",
@@ -81,12 +88,12 @@ export function useSidebarData(): SidebarData {
         items: [
           {
             title: "Projects",
-            icon: FolderKanban,
+            icon: Folder,
             items: [
               {
                 title: "Code",
                 url: "/dashboard/projects/code",
-                icon: Code,
+                icon: CodeXml,
               },
               // Future placeholders (commented out for now):
               // {
@@ -118,7 +125,7 @@ export function useSidebarData(): SidebarData {
               {
                 title: "Compute",
                 url: "/dashboard/infrastructure/compute",
-                icon: Server,
+                icon: Cpu,
               },
               {
                 title: "Data",
@@ -126,9 +133,14 @@ export function useSidebarData(): SidebarData {
                 icon: Database,
               },
               {
+                title: "Storage",
+                url: "/dashboard/infrastructure/storage",
+                icon: Archive,
+              },
+              {
                 title: "Networking",
                 url: "/dashboard/infrastructure/networking",
-                icon: Network,
+                icon: Globe,
               },
             ],
           },
@@ -144,7 +156,7 @@ export function useSidebarData(): SidebarData {
               {
                 title: "Backups",
                 url: "/dashboard/operations/backups",
-                icon: HardDrive,
+                icon: HardDriveDownload,
               },
               {
                 title: "Workflows",
