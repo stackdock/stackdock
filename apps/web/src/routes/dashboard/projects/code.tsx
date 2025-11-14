@@ -23,7 +23,7 @@ function ProjectsCodePage() {
             Code
           </h1>
           <p className="text-sm text-muted-foreground md:text-base">
-            Manage your GitHub repositories, branches, and issues.
+            View your repositories, branches, and issues and more.
           </p>
         </div>
         <div className="rounded-lg border border-border bg-card p-4 md:p-6">

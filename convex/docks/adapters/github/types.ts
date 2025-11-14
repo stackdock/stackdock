@@ -147,11 +147,12 @@ export interface GitHubIssue {
 }
 
 /**
- * Extended type for repositories with branches/issues/commits
+ * Extended type for repositories with branches/issues/commits/pullRequests
  * Used in adapter when receiving pre-fetched data from action
  */
 export type GitHubRepositoryWithDetails = GitHubRepository & {
   branches?: GitHubBranch[]
   issues?: GitHubIssue[]
   commits?: any[]
+  pullRequests?: any[]
 }

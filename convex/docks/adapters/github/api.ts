@@ -296,4 +296,52 @@ export class GitHubAPI {
     
     return commits || []
   }
+
+  /**
+   * List all pull requests for a repository
+   * Uses dedicated /pulls endpoint (not /issues)
+   * Handles pagination
+   * 
+   * @param owner - Repository owner (username or org)
+   * @param repo - Repository name
+   * @param options - Filter options
+   * @param options.state - Filter by state: "open", "closed", or "all" (default: "all")
+   * @returns Array of pull requests
+   */
+  async listPullRequests(
+    owner: string, 
+    repo: string, 
+    options?: { state?: "open" | "closed" | "all" }
+  ): Promise<any[]> {
+    const allPRs: any[] = []
+    const state = options?.state || "all"
+    let url = `/repos/${owner}/${repo}/pulls?state=${state}&per_page=100`
+    
+    while (url) {
+      const { data: prs, headers } = await this.requestWithHeaders<any[]>(url)
+      allPRs.push(...prs)
+      
+      // Parse Link header for next page
+      const linkHeader = headers.get("Link")
+      if (linkHeader) {
+        const nextMatch = linkHeader.match(/<([^>]+)>; rel="next"/)
+        if (nextMatch) {
+          const nextUrl = new URL(nextMatch[1])
+          url = nextUrl.pathname + nextUrl.search
+        } else {
+          url = ""
+        }
+      } else {
+        // Fallback: page-based pagination
+        if (prs.length === 100) {
+          const currentPage = parseInt(new URL(url, this.baseURL).searchParams.get("page") || "1")
+          url = `/repos/${owner}/${repo}/pulls?state=${state}&per_page=100&page=${currentPage + 1}`
+        } else {
+          url = ""
+        }
+      }
+    }
+    
+    return allPRs
+  }
 }

@@ -8,6 +8,8 @@
  * - GET /user/repos → syncProjects()
  * - GET /repos/{owner}/{repo}/branches → syncProjects() (via action)
  * - GET /repos/{owner}/{repo}/issues → syncProjects() (via action)
+ * - GET /repos/{owner}/{repo}/pulls → syncProjects() (via action)
+ * - GET /repos/{owner}/{repo}/commits → syncProjects() (via action)
  * 
  * @see https://docs.github.com/en/rest?apiVersion=2022-11-28
  * @see convex/docks/_types.ts for DockAdapter interface
@@ -120,10 +122,11 @@ export const githubAdapter: DockAdapter = {
     const clientId = await getOrCreateDefaultClient(ctx, dock.orgId)
 
     for (const repo of preFetchedData) {
-      // Type-safe access to branches/issues/commits
+      // Type-safe access to branches/issues/commits/pullRequests
       const branches = repo.branches || []
       const issues = repo.issues || []
       const commits = (repo as any).commits || []
+      const pullRequests = (repo as any).pullRequests || []
       
       // Find existing project by GitHub repo
       const existing = await ctx.db
@@ -144,6 +147,7 @@ export const githubAdapter: DockAdapter = {
           branches, // Type-safe
           issues, // Type-safe
           commits, // Commits array
+          pullRequests, // Pull requests array
         },
       }
 

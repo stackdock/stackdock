@@ -528,7 +528,7 @@ export const syncDockResources = internalAction({
                 const [owner, repoName] = repo.full_name.split("/")
                 
                 try {
-                  const [branches, issues, commits] = await Promise.all([
+                  const [branches, issues, commits, pullRequests] = await Promise.all([
                     api.listBranches(owner, repoName).catch((err) => {
                       console.error(`Failed to fetch branches for ${repo.full_name}:`, err)
                       return []
@@ -541,6 +541,10 @@ export const syncDockResources = internalAction({
                       console.error(`Failed to fetch commits for ${repo.full_name}:`, err)
                       return []
                     }),
+                    api.listPullRequests(owner, repoName, { state: "all" }).catch((err) => {
+                      console.error(`Failed to fetch pull requests for ${repo.full_name}:`, err)
+                      return []
+                    }),
                   ])
                   
                   return {
@@ -548,10 +552,11 @@ export const syncDockResources = internalAction({
                     branches,
                     issues,
                     commits,
+                    pullRequests,
                   }
                 } catch (error) {
                   console.error(`Failed to process ${repo.full_name}:`, error)
-                  return { ...repo, branches: [], issues: [], commits: [] }
+                  return { ...repo, branches: [], issues: [], commits: [], pullRequests: [] }
                 }
               })
             )

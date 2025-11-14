@@ -37,7 +37,10 @@ import {
   FilterIcon,
   GitBranch,
   GitCommit,
+  GitFork,
+  GitPullRequest,
   ListFilterIcon,
+  Star,
 } from "lucide-react"
 import type { Doc } from "convex/_generated/dataModel"
 import { useQuery } from "convex/react"
@@ -89,6 +92,7 @@ import {
 } from "@/components/ui/table"
 import { BranchesTable } from "./BranchesTable"
 import { IssuesTable } from "./IssuesTable"
+import { PullRequestsTable } from "./PullRequestsTable"
 import { CommitsTable } from "./CommitsTable"
 
 type Project = Doc<"projects">
@@ -305,6 +309,19 @@ const columns: ColumnDef<Project>[] = [
     enableSorting: true,
   },
   {
+    header: "Pull Requests",
+    accessorFn: (row) => {
+      const pullRequests = row.fullApiData?.pullRequests || []
+      return pullRequests.length
+    },
+    cell: ({ row }) => {
+      const pullRequests = row.original.fullApiData?.pullRequests || []
+      return <span>{pullRequests.length}</span>
+    },
+    size: 120,
+    enableSorting: true,
+  },
+  {
     id: "details",
     header: "Details",
     cell: ({ row }) => <RepositoryDetailsCell row={row} />,
@@ -318,6 +335,7 @@ function RepositoryDetailsCell({ row }: { row: any }) {
   const repo = row.original.fullApiData?.repository as any
   const branches = row.original.fullApiData?.branches || []
   const issues = row.original.fullApiData?.issues || []
+  const pullRequests = row.original.fullApiData?.pullRequests || []
   const commits = row.original.fullApiData?.commits || []
   
   // Find GitHub dock for fetching more commits
@@ -370,10 +388,16 @@ function RepositoryDetailsCell({ row }: { row: any }) {
                     </span>
                   )}
                   {repo.stargazers_count !== undefined && (
-                    <span>⭐ {repo.stargazers_count}</span>
+                    <span className="flex items-center gap-1">
+                      <Star className="h-4 w-4" />
+                      {repo.stargazers_count}
+                    </span>
                   )}
                   {repo.forks_count !== undefined && (
-                    <span>🍴 {repo.forks_count}</span>
+                    <span className="flex items-center gap-1">
+                      <GitFork className="h-4 w-4" />
+                      {repo.forks_count}
+                    </span>
                   )}
                   {repo.updated_at && (
                     <span>Updated {new Date(repo.updated_at).toLocaleDateString()}</span>
@@ -423,6 +447,22 @@ function RepositoryDetailsCell({ row }: { row: any }) {
               )}
             </div>
             <IssuesTable issues={issues} />
+          </div>
+          
+          {/* Pull Requests */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <GitPullRequest className="h-5 w-5" />
+                Pull Requests
+              </h3>
+              {pullRequests.length > 0 && (
+                <span className="text-sm text-muted-foreground">
+                  {pullRequests.length} {pullRequests.length === 1 ? 'pull request' : 'pull requests'}
+                </span>
+              )}
+            </div>
+            <PullRequestsTable pullRequests={pullRequests} />
           </div>
           
           {/* Commits */}
