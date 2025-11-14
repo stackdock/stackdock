@@ -16,7 +16,7 @@ import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
 import { decryptApiKey } from "../../../lib/encryption"
 import { DigitalOceanAPI } from "./api"
-import type { DigitalOceanDroplet } from "./types"
+import type { DigitalOceanDroplet, DigitalOceanVolume } from "./types"
 
 /**
  * Map DigitalOcean droplet status to universal status
@@ -133,6 +133,76 @@ export const digitaloceanAdapter: DockAdapter = {
         await ctx.db.patch(existing._id, serverData)
       } else {
         await ctx.db.insert("servers", serverData)
+      }
+    }
+  },
+
+  /**
+   * Sync DigitalOcean volumes to universal `blockVolumes` table
+   * 
+   * Flow:
+   * 1. If preFetchedData provided, use it (from action)
+   * 2. Otherwise, decrypt API key and fetch data
+   * 3. For each volume, upsert into `blockVolumes` table
+   * 4. Map DO fields to universal schema
+   * 5. Store all DO fields in fullApiData
+   */
+  async syncBlockVolumes(
+    ctx: MutationCtx,
+    dock: Doc<"docks">,
+    preFetchedData?: DigitalOceanVolume[]
+  ): Promise<void> {
+    let volumes: DigitalOceanVolume[]
+
+    if (preFetchedData) {
+      // Use pre-fetched data from action
+      volumes = preFetchedData
+    } else {
+      // Fetch data directly (fallback, shouldn't happen in normal flow)
+      const apiKey = await decryptApiKey(dock.encryptedApiKey, ctx, {
+        dockId: dock._id,
+        orgId: dock.orgId,
+      })
+
+      const api = new DigitalOceanAPI(apiKey)
+      volumes = await api.listVolumes()
+    }
+
+    // Sync each volume to universal table
+    for (const volume of volumes) {
+      const providerResourceId = volume.id
+
+      const existing = await ctx.db
+        .query("blockVolumes")
+        .withIndex("by_dock_resource", (q) =>
+          q.eq("dockId", dock._id).eq("providerResourceId", providerResourceId)
+        )
+        .first()
+
+      const volumeData = {
+        orgId: dock.orgId,
+        dockId: dock._id,
+        provider: "digitalocean",
+        providerResourceId,
+        name: volume.name,
+        sizeGb: volume.size_gigabytes,
+        region: volume.region.slug || volume.region.name,
+        status: "active", // DO volumes don't have explicit status
+        attachedToInstance: volume.droplet_ids.length > 0 ? volume.droplet_ids[0].toString() : undefined,
+        filesystemType: volume.filesystem_type || undefined,
+        fullApiData: {
+          // Store all DigitalOcean fields
+          volume: {
+            ...volume,
+          },
+        },
+        updatedAt: Date.now(),
+      }
+
+      if (existing) {
+        await ctx.db.patch(existing._id, volumeData)
+      } else {
+        await ctx.db.insert("blockVolumes", volumeData)
       }
     }
   },

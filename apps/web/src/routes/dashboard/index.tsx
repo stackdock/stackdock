@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useQuery } from "convex/react"
 import { api } from "convex/_generated/api"
-import { Cpu, Cloud, Database, Globe, CodeXml } from "lucide-react"
+import { Cpu, Cloud, Database, Globe, CodeXml, HardDrive, Archive } from "lucide-react"
 
 export const Route = createFileRoute("/dashboard/")({
   component: InsightsPage,
@@ -13,12 +13,16 @@ function InsightsPage() {
   const domains = useQuery(api["resources/queries"].listDomains)
   const databases = useQuery(api["resources/queries"].listDatabases)
   const projects = useQuery(api["projects/queries"].listProjects)
+  const blockVolumes = useQuery(api["resources/queries"].listBlockVolumes)
+  const buckets = useQuery(api["resources/queries"].listBuckets)
   
   const serversList = servers || []
   const webServicesList = webServices || []
   const domainsList = domains || []
   const databasesList = databases || []
   const projectsList = projects || []
+  const blockVolumesList = blockVolumes || []
+  const bucketsList = buckets || []
   
   // Filter out canary and staging subdomains from domains count
   const filteredDomainsList = domainsList.filter(domain => {
@@ -33,7 +37,7 @@ function InsightsPage() {
   // Filter GitHub projects for repositories count
   const githubProjects = projectsList.filter(p => p.githubRepo && p.fullApiData) || []
 
-  if (servers === undefined || webServices === undefined || domains === undefined || databases === undefined || projects === undefined) {
+  if (servers === undefined || webServices === undefined || domains === undefined || databases === undefined || projects === undefined || blockVolumes === undefined || buckets === undefined) {
     return (
       <main className="flex flex-1 flex-col gap-4 p-4 md:p-6 lg:p-8">
         <div className="space-y-0.5">
@@ -96,6 +100,30 @@ function InsightsPage() {
           </div>
           <p className="text-2xl font-bold text-foreground md:text-3xl">
             {databasesList.length}
+          </p>
+        </div>
+        
+        <div className="rounded-lg border border-border bg-card p-4 md:p-6">
+          <div className="flex items-center gap-2 mb-2">
+            <HardDrive className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-xs font-medium text-muted-foreground md:text-sm">
+              Block Volumes
+            </h3>
+          </div>
+          <p className="text-2xl font-bold text-foreground md:text-3xl">
+            {blockVolumesList.length}
+          </p>
+        </div>
+        
+        <div className="rounded-lg border border-border bg-card p-4 md:p-6">
+          <div className="flex items-center gap-2 mb-2">
+            <Archive className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-xs font-medium text-muted-foreground md:text-sm">
+              Buckets
+            </h3>
+          </div>
+          <p className="text-2xl font-bold text-foreground md:text-3xl">
+            {bucketsList.length}
           </p>
         </div>
         

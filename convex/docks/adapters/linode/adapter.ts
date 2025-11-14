@@ -16,7 +16,7 @@ import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
 import { decryptApiKey } from "../../../lib/encryption"
 import { LinodeAPI } from "./api"
-import type { LinodeInstance } from "./types"
+import type { LinodeInstance, LinodeBucket } from "./types"
 
 /**
  * Map Linode instance status to universal status
@@ -139,6 +139,79 @@ export const linodeAdapter: DockAdapter = {
         await ctx.db.patch(existing._id, serverData)
       } else {
         await ctx.db.insert("servers", serverData)
+      }
+    }
+  },
+
+  /**
+   * Sync Linode buckets to universal `buckets` table
+   * 
+   * Flow:
+   * 1. If preFetchedData provided, use it (from action)
+   * 2. Otherwise, decrypt API key and fetch data
+   * 3. For each bucket, upsert into `buckets` table
+   * 4. Map Linode fields to universal schema
+   * 5. Store all Linode fields in fullApiData
+   */
+  async syncBuckets(
+    ctx: MutationCtx,
+    dock: Doc<"docks">,
+    preFetchedData?: LinodeBucket[]
+  ): Promise<void> {
+    let buckets: LinodeBucket[]
+
+    if (preFetchedData) {
+      // Use pre-fetched data from action
+      buckets = preFetchedData
+    } else {
+      // Fetch data directly (fallback, shouldn't happen in normal flow)
+      const apiKey = await decryptApiKey(dock.encryptedApiKey, ctx, {
+        dockId: dock._id,
+        orgId: dock.orgId,
+      })
+
+      const api = new LinodeAPI(apiKey)
+      buckets = await api.listBuckets()
+    }
+
+    // Sync each bucket to universal table
+    for (const bucket of buckets) {
+      // Use bucket.label as providerResourceId (Linode uses label as unique identifier)
+      const providerResourceId = bucket.label
+
+      const existing = await ctx.db
+        .query("buckets")
+        .withIndex("by_dock_resource", (q) =>
+          q.eq("dockId", dock._id).eq("providerResourceId", providerResourceId)
+        )
+        .first()
+
+      const bucketData = {
+        orgId: dock.orgId,
+        dockId: dock._id,
+        provider: "linode",
+        providerResourceId,
+        name: bucket.label,
+        region: bucket.region,
+        cluster: bucket.cluster || undefined,
+        hostname: bucket.hostname || undefined,
+        s3Endpoint: bucket.s3_endpoint || undefined,
+        sizeBytes: bucket.size || undefined,
+        objectCount: bucket.objects || undefined,
+        status: "active", // Linode buckets don't have explicit status
+        fullApiData: {
+          // Store all Linode fields
+          bucket: {
+            ...bucket,
+          },
+        },
+        updatedAt: Date.now(),
+      }
+
+      if (existing) {
+        await ctx.db.patch(existing._id, bucketData)
+      } else {
+        await ctx.db.insert("buckets", bucketData)
       }
     }
   },

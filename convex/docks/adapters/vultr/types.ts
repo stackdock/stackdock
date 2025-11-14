@@ -65,3 +65,28 @@ export interface VultrAccount {
   email: string
   acls: string[]
 }
+
+/**
+ * Vultr Block (Block Storage)
+ * Maps to universal `blockVolumes` table
+ * 
+ * @see docks/vultr/getBlocks.json for actual API response
+ */
+export interface VultrBlock {
+  id: string // Block ID (UUID)
+  date_created: string // ISO 8601 timestamp
+  cost: number // Monthly cost
+  pending_charges: number // Pending charges
+  status: string // "active", etc.
+  size_gb: number // Size in GB
+  region: string // Region code (e.g., "lax")
+  attached_to_instance: string // Instance ID (empty string if not attached)
+  attached_to_instance_ip: string // Instance IP (empty string if not attached)
+  attached_to_instance_label: string // Instance label (empty string if not attached)
+  label: string // Block label/name
+  mount_id: string // Mount ID
+  block_type: string // Block type (e.g., "high_perf")
+  os_id: number // OS ID
+  snapshot_id: string // Snapshot ID (empty string if not set)
+  bootable: boolean // Bootable flag
+}

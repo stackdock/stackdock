@@ -1,6 +1,6 @@
 # Open Missions & Tasks
 
-**Last Updated**: November 12, 2025
+**Last Updated**: November 14, 2025
 
 Missions and tasks that are open but not actively being worked on.
 
@@ -44,6 +44,32 @@ Missions and tasks that are open but not actively being worked on.
 ---
 
 ## 📋 OPEN MISSIONS
+
+### Storage and Buckets Implementation
+**Status**: 📋 **PLANNED** - Ready for Implementation  
+**Priority**: High  
+**Dependencies**: None
+
+**Summary**: 
+- Implement storage resource tables for block volumes (Vultr blocks + DigitalOcean volumes) and object storage buckets (Linode buckets)
+- Follows universal table pattern established for servers, webServices, domains, databases
+- Requires both Convex backend agent and Frontend agent
+
+**Agents**:
+- **Convex Agent**: `stand-downs/active/storage-buckets-convex-agent-prompt.md`
+- **Frontend Agent**: `stand-downs/active/storage-buckets-frontend-agent-prompt.md`
+
+**Plan**: `docs/plans/STORAGE_AND_BUCKETS_IMPLEMENTATION.md`
+
+**Goal**: Display block volumes and buckets in Storage page under Infrastructure
+
+**Why Now**: 
+- Storage page scaffolded but empty
+- JSON response files available for all three providers
+- Pattern well-established (universal tables)
+- Straightforward implementation following existing patterns
+
+---
 
 ### Mission 7: Read-Only Infrastructure MVP
 **Status**: 🔄 **IN PROGRESS** - Phase 3 Next  

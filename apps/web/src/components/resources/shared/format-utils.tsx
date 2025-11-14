@@ -47,3 +47,14 @@ export function isExpiringSoon(expiresAt?: number): boolean {
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
   return days >= 0 && days <= 30
 }
+
+/**
+ * Format bytes to human-readable string (KB, MB, GB, TB)
+ */
+export function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 B"
+  const k = 1024
+  const sizes = ["B", "KB", "MB", "GB", "TB"]
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + " " + sizes[i]
+}

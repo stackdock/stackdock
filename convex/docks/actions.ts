@@ -98,6 +98,8 @@ export const syncDockResources = internalAction({
     let backupIntegrations: any[] = []
     let deployments: any[] = []
     let projects: any[] = [] // GitHub projects (repositories)
+    let blockVolumes: any[] = [] // Block storage volumes (Vultr blocks, DO volumes)
+    let buckets: any[] = [] // Object storage buckets (Linode buckets)
 
     try {
       // GridPane-specific: Use GridPaneAPI directly
@@ -449,7 +451,13 @@ export const syncDockResources = internalAction({
           servers = instances
         }
 
-        // Vultr doesn't support databases, webServices, or domains
+        if (args.resourceTypes.includes("blockVolumes")) {
+          console.log(`[Dock Action] Fetching blocks for ${args.provider}`)
+          const blocks = await api.listBlocks()
+          blockVolumes = blocks
+        }
+
+        // Vultr doesn't support databases, webServices, domains, or buckets
         if (args.resourceTypes.includes("databases")) {
           console.log(`[Dock Action] Databases not supported for ${args.provider}`)
           databases = []
@@ -461,6 +469,10 @@ export const syncDockResources = internalAction({
         if (args.resourceTypes.includes("domains")) {
           console.log(`[Dock Action] Domains not supported for ${args.provider}`)
           domains = []
+        }
+        if (args.resourceTypes.includes("buckets")) {
+          console.log(`[Dock Action] Buckets not supported for ${args.provider}`)
+          buckets = []
         }
       } else if (args.provider === "digitalocean") {
         // DigitalOcean-specific: Use DigitalOceanAPI directly
@@ -472,7 +484,13 @@ export const syncDockResources = internalAction({
           servers = droplets
         }
 
-        // DigitalOcean doesn't support databases, webServices, or domains
+        if (args.resourceTypes.includes("blockVolumes")) {
+          console.log(`[Dock Action] Fetching volumes for ${args.provider}`)
+          const volumes = await api.listVolumes()
+          blockVolumes = volumes
+        }
+
+        // DigitalOcean doesn't support databases, webServices, domains, or buckets
         if (args.resourceTypes.includes("databases")) {
           console.log(`[Dock Action] Databases not supported for ${args.provider}`)
           databases = []
@@ -484,6 +502,10 @@ export const syncDockResources = internalAction({
         if (args.resourceTypes.includes("domains")) {
           console.log(`[Dock Action] Domains not supported for ${args.provider}`)
           domains = []
+        }
+        if (args.resourceTypes.includes("buckets")) {
+          console.log(`[Dock Action] Buckets not supported for ${args.provider}`)
+          buckets = []
         }
       } else if (args.provider === "linode") {
         // Linode-specific: Use LinodeAPI directly
@@ -495,7 +517,13 @@ export const syncDockResources = internalAction({
           servers = linodes
         }
 
-        // Linode doesn't support databases, webServices, or domains
+        if (args.resourceTypes.includes("buckets")) {
+          console.log(`[Dock Action] Fetching buckets for ${args.provider}`)
+          const linodeBuckets = await api.listBuckets()
+          buckets = linodeBuckets
+        }
+
+        // Linode doesn't support databases, webServices, domains, or blockVolumes
         if (args.resourceTypes.includes("databases")) {
           console.log(`[Dock Action] Databases not supported for ${args.provider}`)
           databases = []
@@ -507,6 +535,10 @@ export const syncDockResources = internalAction({
         if (args.resourceTypes.includes("domains")) {
           console.log(`[Dock Action] Domains not supported for ${args.provider}`)
           domains = []
+        }
+        if (args.resourceTypes.includes("blockVolumes")) {
+          console.log(`[Dock Action] Block volumes not supported for ${args.provider}`)
+          blockVolumes = []
         }
       } else if (args.provider === "github") {
         // GitHub-specific: Use GitHubAPI directly
@@ -591,7 +623,7 @@ export const syncDockResources = internalAction({
         throw new Error(`Provider ${args.provider} sync not yet implemented in action`)
       }
 
-      console.log(`[Dock Action] Sync complete: ${servers.length} servers, ${webServices.length} webServices, ${domains.length} domains, ${databases.length} databases, ${deployments.length} deployments, ${backupSchedules.length} backup schedules, ${backupIntegrations.length} backup integrations, ${projects.length} projects`)
+      console.log(`[Dock Action] Sync complete: ${servers.length} servers, ${webServices.length} webServices, ${domains.length} domains, ${databases.length} databases, ${deployments.length} deployments, ${backupSchedules.length} backup schedules, ${backupIntegrations.length} backup integrations, ${projects.length} projects, ${blockVolumes.length} block volumes, ${buckets.length} buckets`)
 
       // Call internal mutation to sync using adapter methods
       await ctx.runMutation(internal.docks.mutations.syncDockResourcesMutation, {
@@ -606,6 +638,8 @@ export const syncDockResources = internalAction({
           backupSchedules: backupSchedules.length > 0 ? backupSchedules : undefined,
           backupIntegrations: backupIntegrations.length > 0 ? backupIntegrations : undefined,
           projects: projects.length > 0 ? projects : undefined,
+          blockVolumes: blockVolumes.length > 0 ? blockVolumes : undefined,
+          buckets: buckets.length > 0 ? buckets : undefined,
         },
       })
 

@@ -1,7 +1,7 @@
 /**
  * Resource Queries
  * 
- * Fetch servers, webServices, and domains from universal tables.
+ * Fetch servers, webServices, domains, databases, blockVolumes, and buckets from universal tables.
  * All queries filter by user's organization for RBAC.
  */
 
@@ -113,6 +113,60 @@ export const listDatabases = query({
       .collect()
     
     return databases
+  },
+})
+
+/**
+ * List all block volumes for the current user's organization
+ */
+export const listBlockVolumes = query({
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx)
+    
+    // Get user's org from memberships
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .first()
+    
+    if (!membership) {
+      return []
+    }
+    
+    // Fetch all block volumes for this org
+    const volumes = await ctx.db
+      .query("blockVolumes")
+      .withIndex("by_orgId", (q) => q.eq("orgId", membership.orgId))
+      .collect()
+    
+    return volumes
+  },
+})
+
+/**
+ * List all buckets for the current user's organization
+ */
+export const listBuckets = query({
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx)
+    
+    // Get user's org from memberships
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .first()
+    
+    if (!membership) {
+      return []
+    }
+    
+    // Fetch all buckets for this org
+    const buckets = await ctx.db
+      .query("buckets")
+      .withIndex("by_orgId", (q) => q.eq("orgId", membership.orgId))
+      .collect()
+    
+    return buckets
   },
 })
 

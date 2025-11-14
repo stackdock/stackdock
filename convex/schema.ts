@@ -218,6 +218,65 @@ export default defineSchema({
     .index("by_provisioning_source", ["provisioningSource", "orgId"])
     .index("by_sst_resource", ["sstStackName", "sstResourceId"]),
 
+  // Master Fleet List: Block Volumes (Block Storage)
+  blockVolumes: defineTable({
+    orgId: v.id("organizations"),
+    dockId: v.id("docks"),
+    provider: v.string(), // "vultr", "digitalocean"
+    providerResourceId: v.string(), // Vultr block ID or DO volume ID
+    name: v.string(), // Vultr label or DO name
+    sizeGb: v.number(), // Size in GB
+    region: v.string(), // Provider region code
+    status: v.string(), // "active", "attached", "detached", etc.
+    attachedToInstance: v.optional(v.string()), // Instance/server ID it's attached to
+    attachedToInstanceLabel: v.optional(v.string()), // Instance/server name
+    mountId: v.optional(v.string()), // Vultr mount_id
+    blockType: v.optional(v.string()), // Vultr block_type (e.g., "high_perf")
+    filesystemType: v.optional(v.string()), // DO filesystem_type (e.g., "ext4")
+    fullApiData: v.any(),
+    updatedAt: v.optional(v.number()), // Track modification time
+    // Provisioning metadata
+    provisioningSource: v.optional(v.union(v.literal("sst"), v.literal("api"), v.literal("manual"))),
+    sstResourceId: v.optional(v.string()),
+    sstStackName: v.optional(v.string()),
+    provisioningState: v.optional(v.union(v.literal("provisioning"), v.literal("provisioned"), v.literal("failed"), v.literal("deprovisioning"))),
+    provisionedAt: v.optional(v.number()),
+  })
+    .index("by_orgId", ["orgId"])
+    .index("by_dockId", ["dockId"])
+    .index("by_dock_resource", ["dockId", "providerResourceId"]) // Prevent duplicate syncs
+    .index("by_provisioning_source", ["provisioningSource", "orgId"])
+    .index("by_sst_resource", ["sstStackName", "sstResourceId"]),
+
+  // Master Fleet List: Buckets (Object Storage)
+  buckets: defineTable({
+    orgId: v.id("organizations"),
+    dockId: v.id("docks"),
+    provider: v.string(), // "linode", "digitalocean", "aws", etc.
+    providerResourceId: v.string(), // Bucket identifier (Linode label, DO name, etc.)
+    name: v.string(), // Bucket name
+    region: v.string(), // Provider region code
+    cluster: v.optional(v.string()), // Linode cluster (e.g., "us-sea-1")
+    hostname: v.optional(v.string()), // Bucket hostname
+    s3Endpoint: v.optional(v.string()), // S3-compatible endpoint
+    sizeBytes: v.optional(v.number()), // Total size in bytes
+    objectCount: v.optional(v.number()), // Number of objects
+    status: v.string(), // "active", etc.
+    fullApiData: v.any(),
+    updatedAt: v.optional(v.number()), // Track modification time
+    // Provisioning metadata
+    provisioningSource: v.optional(v.union(v.literal("sst"), v.literal("api"), v.literal("manual"))),
+    sstResourceId: v.optional(v.string()),
+    sstStackName: v.optional(v.string()),
+    provisioningState: v.optional(v.union(v.literal("provisioning"), v.literal("provisioned"), v.literal("failed"), v.literal("deprovisioning"))),
+    provisionedAt: v.optional(v.number()),
+  })
+    .index("by_orgId", ["orgId"])
+    .index("by_dockId", ["dockId"])
+    .index("by_dock_resource", ["dockId", "providerResourceId"]) // Prevent duplicate syncs
+    .index("by_provisioning_source", ["provisioningSource", "orgId"])
+    .index("by_sst_resource", ["sstStackName", "sstResourceId"]),
+
   // Master Fleet List: Deployments
   deployments: defineTable({
     orgId: v.id("organizations"),
@@ -292,7 +351,9 @@ export default defineSchema({
       v.literal("servers"),
       v.literal("domains"),
       v.literal("webServices"),
-      v.literal("databases") // Added this one too
+      v.literal("databases"),
+      v.literal("blockVolumes"),
+      v.literal("buckets")
     ),
     // This is the correct polymorphic link
     resourceId: v.string(), // The `_id` of the document in its table

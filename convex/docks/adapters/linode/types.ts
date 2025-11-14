@@ -86,3 +86,21 @@ export interface LinodeAccount {
   capabilities: string[]
   euuid: string
 }
+
+/**
+ * Linode Bucket (Object Storage)
+ * Maps to universal `buckets` table
+ * 
+ * @see docks/linode/getBuckets.json for actual API response
+ */
+export interface LinodeBucket {
+  hostname: string // Bucket hostname (e.g., "sdtest.us-sea-1.linodeobjects.com")
+  label: string // Bucket label/name
+  created: string // ISO 8601 timestamp
+  region: string // Region code (e.g., "us-sea")
+  cluster: string // Cluster name (e.g., "us-sea-1")
+  size: number // Total size in bytes
+  objects: number // Number of objects
+  endpoint_type: string // Endpoint type (e.g., "E1")
+  s3_endpoint: string // S3-compatible endpoint (e.g., "us-sea-1.linodeobjects.com")
+}

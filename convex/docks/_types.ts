@@ -284,6 +284,44 @@ export interface DockAdapter {
     preFetchedData?: any[]
   ): Promise<void>
 
+  /**
+   * Sync block volumes to universal `blockVolumes` table
+   * 
+   * Called during dock sync. Should:
+   * 1. Use pre-fetched data if provided, otherwise fetch from provider API
+   * 2. Upsert into `blockVolumes` table
+   * 3. Map provider fields to universal schema
+   * 4. Store all provider-specific data in `fullApiData`
+   * 
+   * @param ctx - Convex mutation context (has database access)
+   * @param dock - The dock document (contains encrypted API key)
+   * @param preFetchedData - Optional: Pre-fetched data from action (if provided, skips fetch)
+   */
+  syncBlockVolumes?(
+    ctx: MutationCtx,
+    dock: Doc<"docks">,
+    preFetchedData?: any[]
+  ): Promise<void>
+
+  /**
+   * Sync buckets (object storage) to universal `buckets` table
+   * 
+   * Called during dock sync. Should:
+   * 1. Use pre-fetched data if provided, otherwise fetch from provider API
+   * 2. Upsert into `buckets` table
+   * 3. Map provider fields to universal schema
+   * 4. Store all provider-specific data in `fullApiData`
+   * 
+   * @param ctx - Convex mutation context (has database access)
+   * @param dock - The dock document (contains encrypted API key)
+   * @param preFetchedData - Optional: Pre-fetched data from action (if provided, skips fetch)
+   */
+  syncBuckets?(
+    ctx: MutationCtx,
+    dock: Doc<"docks">,
+    preFetchedData?: any[]
+  ): Promise<void>
+
   // ============================================================================
   // OPTIONAL: Mutation Operations (Future Feature)
   // ============================================================================

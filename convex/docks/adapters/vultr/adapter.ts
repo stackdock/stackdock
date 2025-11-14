@@ -16,7 +16,7 @@ import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
 import { decryptApiKey } from "../../../lib/encryption"
 import { VultrAPI } from "./api"
-import type { VultrInstance } from "./types"
+import type { VultrInstance, VultrBlock } from "./types"
 
 /**
  * Map Vultr instance status to universal status
@@ -124,6 +124,78 @@ export const vultrAdapter: DockAdapter = {
         await ctx.db.patch(existing._id, serverData)
       } else {
         await ctx.db.insert("servers", serverData)
+      }
+    }
+  },
+
+  /**
+   * Sync Vultr blocks to universal `blockVolumes` table
+   * 
+   * Flow:
+   * 1. If preFetchedData provided, use it (from action)
+   * 2. Otherwise, decrypt API key and fetch data
+   * 3. For each block, upsert into `blockVolumes` table
+   * 4. Map Vultr fields to universal schema
+   * 5. Store all Vultr fields in fullApiData
+   */
+  async syncBlockVolumes(
+    ctx: MutationCtx,
+    dock: Doc<"docks">,
+    preFetchedData?: VultrBlock[]
+  ): Promise<void> {
+    let blocks: VultrBlock[]
+
+    if (preFetchedData) {
+      // Use pre-fetched data from action
+      blocks = preFetchedData
+    } else {
+      // Fetch data directly (fallback, shouldn't happen in normal flow)
+      const apiKey = await decryptApiKey(dock.encryptedApiKey, ctx, {
+        dockId: dock._id,
+        orgId: dock.orgId,
+      })
+
+      const api = new VultrAPI(apiKey)
+      blocks = await api.listBlocks()
+    }
+
+    // Sync each block to universal table
+    for (const block of blocks) {
+      const providerResourceId = block.id
+
+      const existing = await ctx.db
+        .query("blockVolumes")
+        .withIndex("by_dock_resource", (q) =>
+          q.eq("dockId", dock._id).eq("providerResourceId", providerResourceId)
+        )
+        .first()
+
+      const volumeData = {
+        orgId: dock.orgId,
+        dockId: dock._id,
+        provider: "vultr",
+        providerResourceId,
+        name: block.label || block.id,
+        sizeGb: block.size_gb,
+        region: block.region,
+        status: block.status || "active",
+        attachedToInstance: block.attached_to_instance || undefined,
+        attachedToInstanceLabel: block.attached_to_instance_label || undefined,
+        mountId: block.mount_id || undefined,
+        blockType: block.block_type || undefined,
+        fullApiData: {
+          // Store all Vultr fields
+          block: {
+            ...block,
+          },
+        },
+        updatedAt: Date.now(),
+      }
+
+      if (existing) {
+        await ctx.db.patch(existing._id, volumeData)
+      } else {
+        await ctx.db.insert("blockVolumes", volumeData)
       }
     }
   },

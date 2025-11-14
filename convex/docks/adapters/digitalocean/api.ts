@@ -7,7 +7,7 @@
  * @see docks/digitalocean/api-routes.md
  */
 
-import type { DigitalOceanDroplet, DigitalOceanAccount } from "./types"
+import type { DigitalOceanDroplet, DigitalOceanAccount, DigitalOceanVolume } from "./types"
 
 export class DigitalOceanAPI {
   private baseUrl: string
@@ -109,6 +109,24 @@ export class DigitalOceanAPI {
     }>("/droplets")
     // Response format: { droplets: [...], links: {}, meta: { total: number } }
     return response.droplets || []
+  }
+
+  /**
+   * List all volumes (block storage)
+   * Returns array of volumes
+   * 
+   * @see docks/digitalocean/getVolumes.json for actual API response
+   */
+  async listVolumes(): Promise<DigitalOceanVolume[]> {
+    const response = await this.request<{
+      volumes: DigitalOceanVolume[]
+      links: Record<string, any>
+      meta: {
+        total: number
+      }
+    }>("/volumes")
+    // Response format: { volumes: [...], links: {}, meta: { total: number } }
+    return response.volumes || []
   }
 
   /**

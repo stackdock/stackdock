@@ -7,7 +7,7 @@
  * @see docks/vultr/api-routes.md
  */
 
-import type { VultrInstance, VultrAccount } from "./types"
+import type { VultrInstance, VultrAccount, VultrBlock } from "./types"
 
 export class VultrAPI {
   private baseUrl: string
@@ -112,6 +112,27 @@ export class VultrAPI {
     }>("/instances")
     // Response format: { instances: [...], meta: {...} }
     return response.instances || []
+  }
+
+  /**
+   * List all blocks (block storage volumes)
+   * Returns array of blocks
+   * 
+   * @see docks/vultr/getBlocks.json for actual API response
+   */
+  async listBlocks(): Promise<VultrBlock[]> {
+    const response = await this.request<{
+      blocks: VultrBlock[]
+      meta: {
+        total: number
+        links: {
+          next: string
+          prev: string
+        }
+      }
+    }>("/blocks")
+    // Response format: { blocks: [...], meta: {...} }
+    return response.blocks || []
   }
 
   /**

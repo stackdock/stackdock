@@ -7,7 +7,7 @@
  * @see docks/linode/api-routes.md
  */
 
-import type { LinodeInstance, LinodeAccount } from "./types"
+import type { LinodeInstance, LinodeAccount, LinodeBucket } from "./types"
 
 export class LinodeAPI {
   private baseUrl: string
@@ -107,6 +107,23 @@ export class LinodeAPI {
       results: number
     }>("/linode/instances")
     // Response format: { data: [...], page: number, pages: number, results: number }
+    return response.data || []
+  }
+
+  /**
+   * List all buckets (object storage)
+   * Returns array of buckets
+   * 
+   * @see docks/linode/getBuckets.json for actual API response
+   */
+  async listBuckets(): Promise<LinodeBucket[]> {
+    const response = await this.request<{
+      data: LinodeBucket[]
+      page: number
+      pages: number
+      results: number
+    }>("/object-storage/buckets")
+    // Response format: { data: [...], page: 1, pages: 1, results: 1 }
     return response.data || []
   }
 

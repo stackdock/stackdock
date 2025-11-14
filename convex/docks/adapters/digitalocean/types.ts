@@ -113,3 +113,28 @@ export interface DigitalOceanAccount {
     status_message: string
   }
 }
+
+/**
+ * DigitalOcean Volume (Block Storage)
+ * Maps to universal `blockVolumes` table
+ * 
+ * @see docks/digitalocean/getVolumes.json for actual API response
+ */
+export interface DigitalOceanVolume {
+  id: string // Volume ID (UUID)
+  name: string // Volume name
+  created_at: string // ISO 8601 timestamp
+  description: string // Volume description
+  droplet_ids: number[] // Array of droplet IDs this volume is attached to
+  region: {
+    name: string // Region name (e.g., "Atlanta 1")
+    slug: string // Region slug (e.g., "atl1")
+    available: boolean
+    features: string[]
+    sizes: string[]
+  }
+  size_gigabytes: number // Size in GB
+  filesystem_type: string // Filesystem type (e.g., "ext4")
+  filesystem_label: string // Filesystem label
+  tags: string[] | null // Tags array
+}
