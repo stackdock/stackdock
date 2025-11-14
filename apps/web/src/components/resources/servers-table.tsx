@@ -32,6 +32,7 @@ import {
   ChevronUpIcon,
   CircleAlertIcon,
   CircleXIcon,
+  Copy,
   Columns3Icon,
   EllipsisIcon,
   FilterIcon,
@@ -90,6 +91,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { toast } from "sonner"
 import { ProviderBadge } from "./shared/provider-badge"
 import { StatusBadge } from "./shared/status-badge"
 import { formatDate } from "./shared/format-utils"
@@ -154,11 +156,7 @@ const columns: ColumnDef<Server>[] = [
   {
     header: "IP Address",
     accessorKey: "primaryIpAddress",
-    cell: ({ row }) => (
-      <span className="font-mono text-xs">
-        {row.getValue("primaryIpAddress") || "N/A"}
-      </span>
-    ),
+    cell: ({ row }) => <IPAddressCell ipAddress={row.getValue("primaryIpAddress")} />,
     size: 140,
   },
   {
@@ -559,6 +557,36 @@ export function ServersTable({ data = [], onDelete }: ServersTableProps) {
         </Pagination>
       </div>
     </div>
+  )
+}
+
+function IPAddressCell({ ipAddress }: { ipAddress: string | null | undefined }) {
+  if (!ipAddress) {
+    return <span className="text-muted-foreground">N/A</span>
+  }
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      await navigator.clipboard.writeText(ipAddress)
+      toast.success("IP Address copied to clipboard")
+    } catch (err) {
+      console.error("Failed to copy IP address:", err)
+      toast.error("Failed to copy IP address")
+    }
+  }
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="flex items-center gap-1.5 font-mono text-xs hover:text-foreground transition-colors group"
+      title="Click to copy"
+    >
+      <span>{ipAddress}</span>
+      <Copy 
+        className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors"
+      />
+    </button>
   )
 }
 

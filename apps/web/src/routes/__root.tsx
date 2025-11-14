@@ -5,6 +5,7 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 import Header from '../components/Header'
 import { ConvexClerkProvider } from '../lib/convex-clerk'
 import { ThemeProvider } from '../components/dashboard/ThemeProvider'
+import { Toaster } from '@/components/ui/sonner'
 
 import appCss from '../styles.css?url'
 
@@ -85,6 +86,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           disableTransitionOnChange
         >
           <ConvexClerkProvider>{content}</ConvexClerkProvider>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

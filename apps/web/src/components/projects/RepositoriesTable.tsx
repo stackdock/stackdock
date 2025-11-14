@@ -411,7 +411,7 @@ function RepositoryDetailsCell({ row }: { row: any }) {
                   rel="noopener noreferrer"
                   className="text-primary hover:underline flex items-center gap-1 text-sm"
                 >
-                  View on GitHub <ExternalLinkIcon className="h-4 w-4" />
+                  View Repo <ExternalLinkIcon className="h-5 w-5" />
                 </a>
               )}
             </div>
