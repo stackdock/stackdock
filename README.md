@@ -193,7 +193,7 @@ You should see:
 
 ## ✅ Current Status
 
-**Last Updated**: November 14, 2025
+**Last Updated**: November 15, 2025
 
 ### Core Platform ✅
 - ✅ **TanStack Start** - Fully configured with file-based routing
@@ -205,13 +205,14 @@ You should see:
 - ✅ **Audit Logging** - Comprehensive audit trail infrastructure
 - ✅ **Navigation** - Clean collapsible navigation structure
 
-### Provider Integration ✅ (12 Providers)
+### Provider Integration ✅ (13 Providers)
 
-**PaaS/Web Services** (4 providers):
+**PaaS/Web Services** (5 providers):
 - ✅ GridPane (servers, web services, domains, backups)
 - ✅ Vercel (web services)
 - ✅ Netlify (web services)
 - ✅ Cloudflare (zones, pages, workers, DNS)
+- ✅ Coolify (servers, web services, databases) - **Read-only**
 
 **Database Providers** (4 providers):
 - ✅ Turso (databases)
@@ -226,10 +227,10 @@ You should see:
 - ✅ Hetzner (servers)
 
 ### Universal Tables ✅
-- ✅ `servers` - 5 providers (GridPane, Vultr, DigitalOcean, Linode, Hetzner)
-- ✅ `webServices` - 4 providers (GridPane, Vercel, Netlify, Cloudflare)
+- ✅ `servers` - 6 providers (GridPane, Vultr, DigitalOcean, Linode, Hetzner, Coolify)
+- ✅ `webServices` - 5 providers (GridPane, Vercel, Netlify, Cloudflare, Coolify)
 - ✅ `domains` - 2 providers (GridPane, Cloudflare)
-- ✅ `databases` - 4 providers (Turso, Neon, Convex, PlanetScale)
+- ✅ `databases` - 5 providers (Turso, Neon, Convex, PlanetScale, Coolify)
 - ✅ `backupSchedules` - 2 providers (GridPane, Neon)
 - ✅ `deployments` - 1 provider (Convex)
 - ✅ `projects` - 1 provider (GitHub - repositories, branches, issues, commits)
@@ -300,7 +301,7 @@ All documentation is organized in `docs/`:
 
 ### ✅ Phase 2: Translation Layer Validation (Mission 5 & 7 - Complete)
 
-**Status**: ✅ **COMPLETE** - Universal schema validated across 11 providers
+**Status**: ✅ **COMPLETE** - Universal schema validated across 13 providers
 
 **PaaS Providers** (Web Services) ✅:
 - [x] Vercel dock adapter ✅
@@ -351,7 +352,7 @@ All documentation is organized in `docs/`:
 - [ ] Aggregated dashboards
 - [ ] Cross-provider analytics
 
-**Current Progress**: Core platform complete. Universal schema validated across 12 providers. UI foundation polished. **Current**: Adding Linear/GitHub/Sentry (Projects & Monitoring). **Next**: Complex auth IaaS (AWS/GCP/Azure), then Insights board.
+**Current Progress**: Core platform complete. Universal schema validated across 13 providers. UI foundation polished. **Current**: Adding Linear/GitHub/Sentry (Projects & Monitoring). **Next**: Complex auth IaaS (AWS/GCP/Azure), then Insights board.
 
 ---
 
@@ -397,7 +398,7 @@ vercelDeployments: { ... }
 ```
 User → Enters API key/token → System validates → Encrypts → Stores in docks table
 ```
-*12 providers supported: GridPane, Vercel, Netlify, Cloudflare, Turso, Neon, Convex, PlanetScale, Vultr, DigitalOcean, Linode, Hetzner*
+*13 providers supported: GridPane, Vercel, Netlify, Cloudflare, Turso, Neon, Convex, PlanetScale, Vultr, DigitalOcean, Linode, Hetzner, Coolify*
 
 **2. Sync Resources** ✅:
 ```
@@ -425,7 +426,7 @@ Real-time status updates via Convex subscriptions
 
 **✅ What's Working**:
 - Core platform (auth, RBAC, encryption, audit)
-- 11 providers integrated and syncing
+- 13 providers integrated and syncing
 - Universal schema validated across multiple provider types
 - Resource tables displaying real-time data from all providers
 - UI foundation fully functional (TanStack Table components)
@@ -439,7 +440,7 @@ Real-time status updates via Convex subscriptions
 - See [`stand-downs/working/MISSION-STATUS.md`](./stand-downs/working/MISSION-STATUS.md) for current mission status
 
 **🚀 What You Can Do Now** (READ-ONLY):
-- Connect 11 providers with encrypted API keys ✅ (read-only)
+- Connect 13 providers with encrypted API keys ✅ (read-only)
 - Sync resources from all providers ✅ (read-only sync)
 - View unified dashboard with all resources ✅ (read-only viewing)
 - See real-time updates across all providers ✅ (read-only subscriptions)
@@ -463,7 +464,7 @@ Real-time status updates via Convex subscriptions
 - Review code (all open source)
 - Understand the patterns (universal tables, dock adapters)
 - Set up locally (see Quick Start)
-- Connect 11 providers and sync resources ✅ (read-only)
+- Connect 13 providers and sync resources ✅ (read-only)
 - View unified dashboard with all resources ✅ (read-only)
 - Contribute adapters for new providers (AWS, GCP, Azure, Sentry, etc.) (read-only adapters)
 - Build UI components (read-only display components)
@@ -485,7 +486,7 @@ Real-time status updates via Convex subscriptions
 ### Planned Docks (Adapters)
 
 **PaaS/Server Management**:
-GridPane, Kinsta, Rocket.net, RunCloud, Coolify, Cloudways, Vercel, Netlify, Render, Fly.io, Railway, Laravel Forge, Ploi, InstaWP
+✅ GridPane, ✅ Vercel, ✅ Netlify, ✅ Coolify (read-only: servers, services, databases), Kinsta, Rocket.net, RunCloud, Cloudways, Render, Fly.io, Railway, Laravel Forge, Ploi, InstaWP
 
 **IaaS**:
 ✅ Vultr, ✅ DigitalOcean, ✅ Linode, ✅ Hetzner (simple auth complete)
