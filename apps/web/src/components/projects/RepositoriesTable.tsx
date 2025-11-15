@@ -94,6 +94,7 @@ import { BranchesTable } from "./BranchesTable"
 import { IssuesTable } from "./IssuesTable"
 import { PullRequestsTable } from "./PullRequestsTable"
 import { CommitsTable } from "./CommitsTable"
+import { TableSkeleton } from "@/components/resources/shared/table-skeleton"
 
 type Project = Doc<"projects">
 
@@ -501,7 +502,7 @@ function RepositoryDetailsCell({ row }: { row: any }) {
 }
 
 interface RepositoriesTableProps {
-  projects: Project[]
+  projects: Project[] | undefined
 }
 
 export function RepositoriesTable({ projects }: RepositoriesTableProps) {
@@ -516,7 +517,7 @@ export function RepositoriesTable({ projects }: RepositoriesTableProps) {
   const [sorting, setSorting] = useState<SortingState>([{ id: "Last Updated", desc: true }])
 
   const table = useReactTable({
-    data: projects,
+    data: projects || [],
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -567,10 +568,10 @@ export function RepositoriesTable({ projects }: RepositoriesTableProps) {
     table.getColumn("host")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
   }
 
-  if (projects.length === 0) {
+  if (projects === undefined) {
     return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground text-sm">No GitHub repositories found.</p>
+      <div className="space-y-4">
+        <TableSkeleton columnCount={10} showCheckbox={true} />
       </div>
     )
   }

@@ -22,7 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ProviderBadge } from "@/components/resources/shared/provider-badge"
-import { Skeleton } from "@/components/ui/skeleton"
+import { TableSkeleton } from "@/components/resources/shared/table-skeleton"
 import {
   Pagination,
   PaginationContent,
@@ -44,7 +44,7 @@ interface BackupIntegrationsTableProps {
 }
 
 export function BackupIntegrationsTable({
-  data = [],
+  data,
 }: BackupIntegrationsTableProps) {
   const columns: ColumnDef<BackupIntegration>[] = useMemo(
     () => [
@@ -110,58 +110,9 @@ export function BackupIntegrationsTable({
   })
 
   if (data === undefined) {
-    // Show skeleton loader to prevent layout shift
     return (
       <div className="space-y-4">
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={`skeleton-${i}`}>
-                  <TableCell>
-                    <Skeleton className="h-5 w-20" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-32" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-16" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-12" />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-    )
-  }
-
-  if (data.length === 0) {
-    return (
-      <div className="rounded-lg border border-border bg-card p-6">
-        <p className="text-muted-foreground">No backup integrations found.</p>
+        <TableSkeleton columnCount={5} showCheckbox={false} />
       </div>
     )
   }

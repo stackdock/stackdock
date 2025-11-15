@@ -72,7 +72,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { ProviderBadge } from "@/components/resources/shared/provider-badge"
-import { Skeleton } from "@/components/ui/skeleton"
+import { TableSkeleton } from "@/components/resources/shared/table-skeleton"
 
 interface BackupSchedule {
   siteId: number
@@ -234,7 +234,7 @@ interface BackupSchedulesTableProps {
   data: BackupSchedule[] | undefined
 }
 
-export function BackupSchedulesTable({ data = [] }: BackupSchedulesTableProps) {
+export function BackupSchedulesTable({ data }: BackupSchedulesTableProps) {
   const id = useId()
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
@@ -327,64 +327,7 @@ export function BackupSchedulesTable({ data = [] }: BackupSchedulesTableProps) {
   if (data === undefined) {
     return (
       <div className="space-y-4">
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={`skeleton-${i}`}>
-                  <TableCell>
-                    <Skeleton className="h-5 w-20" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-32" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-16" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-16" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-20" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-16" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-16" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-20" />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-    )
-  }
-
-  if (data.length === 0) {
-    return (
-      <div className="rounded-lg border border-border bg-card p-6">
-        <p className="text-muted-foreground">No backup schedules found.</p>
+        <TableSkeleton columnCount={7} showCheckbox={true} />
       </div>
     )
   }
