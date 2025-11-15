@@ -100,6 +100,7 @@ import {
 import { ProviderBadge } from "./shared/provider-badge"
 import { StatusBadge } from "./shared/status-badge"
 import { formatDate, formatExpiryDate, isExpiringSoon } from "./shared/format-utils"
+import { TableSkeleton } from "./shared/table-skeleton"
 
 type Domain = Doc<"domains">
 
@@ -274,7 +275,7 @@ interface DomainsTableProps {
   onDelete?: (ids: string[]) => void
 }
 
-export function DomainsTable({ data = [], onDelete }: DomainsTableProps) {
+export function DomainsTable({ data, onDelete }: DomainsTableProps) {
   const id = useId()
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
@@ -286,7 +287,7 @@ export function DomainsTable({ data = [], onDelete }: DomainsTableProps) {
   const [sorting, setSorting] = useState<SortingState>([{ id: "domainName", desc: false }])
 
   const table = useReactTable({
-    data,
+    data: data || [],
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -349,7 +350,11 @@ export function DomainsTable({ data = [], onDelete }: DomainsTableProps) {
   }
 
   if (data === undefined) {
-    return <div className="flex items-center justify-center h-64">Loading...</div>
+    return (
+      <div className="space-y-4">
+        <TableSkeleton columnCount={6} showCheckbox={true} />
+      </div>
+    )
   }
 
   return (

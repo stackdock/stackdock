@@ -93,6 +93,7 @@ import { ProviderBadge } from "./shared/provider-badge"
 import { StatusBadge } from "./shared/status-badge"
 import { EnvironmentBadge } from "./shared/environment-badge"
 import { formatDate } from "./shared/format-utils"
+import { TableSkeleton } from "./shared/table-skeleton"
 
 type WebService = Doc<"webServices">
 
@@ -229,7 +230,7 @@ interface WebServicesTableProps {
   onDelete?: (ids: string[]) => void
 }
 
-export function WebServicesTable({ data = [], onDelete }: WebServicesTableProps) {
+export function WebServicesTable({ data, onDelete }: WebServicesTableProps) {
   const id = useId()
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
@@ -241,7 +242,7 @@ export function WebServicesTable({ data = [], onDelete }: WebServicesTableProps)
   const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }])
 
   const table = useReactTable({
-    data,
+    data: data || [],
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -313,7 +314,11 @@ export function WebServicesTable({ data = [], onDelete }: WebServicesTableProps)
   }
 
   if (data === undefined) {
-    return <div className="flex items-center justify-center h-64">Loading...</div>
+    return (
+      <div className="space-y-4">
+        <TableSkeleton columnCount={7} showCheckbox={true} />
+      </div>
+    )
   }
 
   return (

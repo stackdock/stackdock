@@ -81,6 +81,7 @@ import {
 import { toast } from "sonner"
 import { ProviderBadge } from "./shared/provider-badge"
 import { StatusBadge } from "./shared/status-badge"
+import { TableSkeleton } from "./shared/table-skeleton"
 
 type BlockVolume = Doc<"blockVolumes">
 
@@ -189,7 +190,7 @@ interface BlockVolumesTableProps {
   data: BlockVolume[] | undefined
 }
 
-export function BlockVolumesTable({ data = [] }: BlockVolumesTableProps) {
+export function BlockVolumesTable({ data }: BlockVolumesTableProps) {
   const id = useId()
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
@@ -201,7 +202,7 @@ export function BlockVolumesTable({ data = [] }: BlockVolumesTableProps) {
   const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }])
 
   const table = useReactTable({
-    data,
+    data: data || [],
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -265,7 +266,11 @@ export function BlockVolumesTable({ data = [] }: BlockVolumesTableProps) {
   }
 
   if (data === undefined) {
-    return <div className="flex items-center justify-center h-64">Loading...</div>
+    return (
+      <div className="space-y-4">
+        <TableSkeleton columnCount={7} showCheckbox={true} />
+      </div>
+    )
   }
 
   return (

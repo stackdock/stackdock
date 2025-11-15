@@ -80,6 +80,7 @@ import { toast } from "sonner"
 import { ProviderBadge } from "./shared/provider-badge"
 import { StatusBadge } from "./shared/status-badge"
 import { formatBytes } from "./shared/format-utils"
+import { TableSkeleton } from "./shared/table-skeleton"
 
 type Bucket = Doc<"buckets">
 
@@ -200,7 +201,7 @@ interface BucketsTableProps {
   data: Bucket[] | undefined
 }
 
-export function BucketsTable({ data = [] }: BucketsTableProps) {
+export function BucketsTable({ data }: BucketsTableProps) {
   const id = useId()
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
@@ -212,7 +213,7 @@ export function BucketsTable({ data = [] }: BucketsTableProps) {
   const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }])
 
   const table = useReactTable({
-    data,
+    data: data || [],
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -260,7 +261,11 @@ export function BucketsTable({ data = [] }: BucketsTableProps) {
   }
 
   if (data === undefined) {
-    return <div className="flex items-center justify-center h-64">Loading...</div>
+    return (
+      <div className="space-y-4">
+        <TableSkeleton columnCount={8} showCheckbox={true} />
+      </div>
+    )
   }
 
   return (

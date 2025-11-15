@@ -136,6 +136,30 @@ Missions and tasks that are open but not actively being worked on.
 
 ---
 
+## 🔄 WORKING / PLANNED
+
+### Continuous Sync with Rate Limit Tracking
+**Status**: 📋 **PLANNED** - Ready for Implementation  
+**Priority**: High (MVP blocker)  
+**Location**: `stand-downs/working/continuous-sync-rate-limit-plan.md`
+
+**Summary**: 
+- Transform StackDock from cache to real-time database
+- Continuous background syncing (every 15-30 seconds) for LIST endpoints
+- Rate limit header capture and tracking (MVP - can be removed post-production)
+- Simple change detection to prevent unnecessary updates
+- Configurable sync intervals per dock
+- Event-driven updates for mutations (when implemented)
+
+**Why Now**: 
+- Currently requires manual sync - UI doesn't update automatically
+- Need to understand API rate limits before production
+- MVP needs real-time feel without manual intervention
+
+**Goal**: UI updates automatically every 15-30 seconds, respecting rate limits
+
+---
+
 ## 📚 REFERENCE DOCUMENTS
 
 These documents are available for reference but don't represent active work:

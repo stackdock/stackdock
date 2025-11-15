@@ -95,6 +95,7 @@ import { toast } from "sonner"
 import { ProviderBadge } from "./shared/provider-badge"
 import { StatusBadge } from "./shared/status-badge"
 import { formatDate } from "./shared/format-utils"
+import { TableSkeleton } from "./shared/table-skeleton"
 
 type Server = Doc<"servers">
 
@@ -192,7 +193,7 @@ interface ServersTableProps {
   onDelete?: (ids: string[]) => void
 }
 
-export function ServersTable({ data = [], onDelete }: ServersTableProps) {
+export function ServersTable({ data, onDelete }: ServersTableProps) {
   const id = useId()
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
@@ -204,7 +205,7 @@ export function ServersTable({ data = [], onDelete }: ServersTableProps) {
   const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }])
 
   const table = useReactTable({
-    data,
+    data: data || [],
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -259,7 +260,11 @@ export function ServersTable({ data = [], onDelete }: ServersTableProps) {
   }
 
   if (data === undefined) {
-    return <div className="flex items-center justify-center h-64">Loading...</div>
+    return (
+      <div className="space-y-4">
+        <TableSkeleton columnCount={7} showCheckbox={true} />
+      </div>
+    )
   }
 
   return (
