@@ -130,7 +130,7 @@ Star the repo to watch the build! ⭐
 ### Core Architecture
 
 **Universal Tables** (Provider-Agnostic):
-- `servers`: GridPane, Vultr, DigitalOcean, Linode → ONE table (AWS/GCP/Azure next)
+- `servers`: GridPane, Vultr, DigitalOcean, Linode, Hetzner → ONE table (AWS/GCP/Azure next)
 - `webServices`: GridPane, Vercel, Netlify, Cloudflare → ONE table
 - `domains`: GridPane, Cloudflare → ONE table
 - `databases`: Turso, Neon, Convex, PlanetScale → ONE table
@@ -193,7 +193,7 @@ You should see:
 
 ## ✅ Current Status
 
-**Last Updated**: November 12, 2025
+**Last Updated**: November 14, 2025
 
 ### Core Platform ✅
 - ✅ **TanStack Start** - Fully configured with file-based routing
@@ -205,7 +205,7 @@ You should see:
 - ✅ **Audit Logging** - Comprehensive audit trail infrastructure
 - ✅ **Navigation** - Clean collapsible navigation structure
 
-### Provider Integration ✅ (11 Providers)
+### Provider Integration ✅ (12 Providers)
 
 **PaaS/Web Services** (4 providers):
 - ✅ GridPane (servers, web services, domains, backups)
@@ -219,13 +219,14 @@ You should see:
 - ✅ Convex (databases, projects, deployments)
 - ✅ PlanetScale (databases)
 
-**IaaS Providers** (3 providers):
+**IaaS Providers** (4 providers):
 - ✅ Vultr (servers/instances)
 - ✅ DigitalOcean (servers/droplets)
 - ✅ Linode (servers/linodes)
+- ✅ Hetzner (servers)
 
 ### Universal Tables ✅
-- ✅ `servers` - 4 providers (GridPane, Vultr, DigitalOcean, Linode)
+- ✅ `servers` - 5 providers (GridPane, Vultr, DigitalOcean, Linode, Hetzner)
 - ✅ `webServices` - 4 providers (GridPane, Vercel, Netlify, Cloudflare)
 - ✅ `domains` - 2 providers (GridPane, Cloudflare)
 - ✅ `databases` - 4 providers (Turso, Neon, Convex, PlanetScale)
@@ -316,6 +317,7 @@ All documentation is organized in `docs/`:
 - [x] Vultr adapter ✅
 - [x] DigitalOcean adapter ✅
 - [x] Linode adapter ✅
+- [x] Hetzner adapter ✅
 
 **Translation Layer**: ✅ Validated and refined across multiple provider types
 
@@ -349,7 +351,7 @@ All documentation is organized in `docs/`:
 - [ ] Aggregated dashboards
 - [ ] Cross-provider analytics
 
-**Current Progress**: Core platform complete. Universal schema validated across 11 providers. UI foundation polished. **Current**: Adding Linear/GitHub/Sentry (Projects & Monitoring). **Next**: Complex auth IaaS (AWS/GCP/Azure), then Insights board.
+**Current Progress**: Core platform complete. Universal schema validated across 12 providers. UI foundation polished. **Current**: Adding Linear/GitHub/Sentry (Projects & Monitoring). **Next**: Complex auth IaaS (AWS/GCP/Azure), then Insights board.
 
 ---
 
@@ -395,7 +397,7 @@ vercelDeployments: { ... }
 ```
 User → Enters API key/token → System validates → Encrypts → Stores in docks table
 ```
-*11 providers supported: GridPane, Vercel, Netlify, Cloudflare, Turso, Neon, Convex, PlanetScale, Vultr, DigitalOcean, Linode*
+*12 providers supported: GridPane, Vercel, Netlify, Cloudflare, Turso, Neon, Convex, PlanetScale, Vultr, DigitalOcean, Linode, Hetzner*
 
 **2. Sync Resources** ✅:
 ```
@@ -486,7 +488,7 @@ Real-time status updates via Convex subscriptions
 GridPane, Kinsta, Rocket.net, RunCloud, Coolify, Cloudways, Vercel, Netlify, Render, Fly.io, Railway, Laravel Forge, Ploi, InstaWP
 
 **IaaS**:
-✅ Vultr, ✅ DigitalOcean, ✅ Linode (simple auth complete)
+✅ Vultr, ✅ DigitalOcean, ✅ Linode, ✅ Hetzner (simple auth complete)
 AWS, GCP, Azure (multi-field auth - next)
 
 **DNS/Domains**:

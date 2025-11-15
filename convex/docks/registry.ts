@@ -22,6 +22,7 @@ import { vultrAdapter } from "./adapters/vultr"
 import { digitaloceanAdapter } from "./adapters/digitalocean"
 import { linodeAdapter } from "./adapters/linode"
 import { githubAdapter } from "./adapters/github"
+import { hetznerAdapter } from "./adapters/hetzner"
 
 /**
  * Registry of all dock adapters
@@ -42,6 +43,7 @@ const adapterRegistry: Record<string, DockAdapter> = {
   digitalocean: digitaloceanAdapter,
   linode: linodeAdapter,
   github: githubAdapter,
+  hetzner: hetznerAdapter,
   // Add more adapters here:
   // aws: awsAdapter,
 }
@@ -89,6 +91,7 @@ const providerMetadata: Record<string, { displayName: string }> = {
   digitalocean: { displayName: "DigitalOcean" },
   linode: { displayName: "Linode" },
   github: { displayName: "GitHub" },
+  hetzner: { displayName: "Hetzner" },
   // Add more as adapters are added:
   // aws: { displayName: "AWS" },
 }

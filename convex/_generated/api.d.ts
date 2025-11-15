@@ -30,6 +30,10 @@ import type * as docks_adapters_gridpane_adapter from "../docks/adapters/gridpan
 import type * as docks_adapters_gridpane_api from "../docks/adapters/gridpane/api.js";
 import type * as docks_adapters_gridpane_index from "../docks/adapters/gridpane/index.js";
 import type * as docks_adapters_gridpane_types from "../docks/adapters/gridpane/types.js";
+import type * as docks_adapters_hetzner_adapter from "../docks/adapters/hetzner/adapter.js";
+import type * as docks_adapters_hetzner_api from "../docks/adapters/hetzner/api.js";
+import type * as docks_adapters_hetzner_index from "../docks/adapters/hetzner/index.js";
+import type * as docks_adapters_hetzner_types from "../docks/adapters/hetzner/types.js";
 import type * as docks_adapters_linode_adapter from "../docks/adapters/linode/adapter.js";
 import type * as docks_adapters_linode_api from "../docks/adapters/linode/api.js";
 import type * as docks_adapters_linode_index from "../docks/adapters/linode/index.js";
@@ -109,6 +113,10 @@ declare const fullApi: ApiFromModules<{
   "docks/adapters/gridpane/api": typeof docks_adapters_gridpane_api;
   "docks/adapters/gridpane/index": typeof docks_adapters_gridpane_index;
   "docks/adapters/gridpane/types": typeof docks_adapters_gridpane_types;
+  "docks/adapters/hetzner/adapter": typeof docks_adapters_hetzner_adapter;
+  "docks/adapters/hetzner/api": typeof docks_adapters_hetzner_api;
+  "docks/adapters/hetzner/index": typeof docks_adapters_hetzner_index;
+  "docks/adapters/hetzner/types": typeof docks_adapters_hetzner_types;
   "docks/adapters/linode/adapter": typeof docks_adapters_linode_adapter;
   "docks/adapters/linode/api": typeof docks_adapters_linode_api;
   "docks/adapters/linode/index": typeof docks_adapters_linode_index;

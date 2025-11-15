@@ -19,6 +19,7 @@ import { VultrAPI } from "./adapters/vultr/api"
 import { DigitalOceanAPI } from "./adapters/digitalocean/api"
 import { LinodeAPI } from "./adapters/linode/api"
 import { GitHubAPI } from "./adapters/github/api"
+import { HetznerAPI } from "./adapters/hetzner/api"
 import { internal } from "../_generated/api"
 import type { Id } from "../_generated/dataModel"
 
@@ -616,6 +617,37 @@ export const syncDockResources = internalAction({
         }
         if (args.resourceTypes.includes("databases")) {
           databases = []
+        }
+      } else if (args.provider === "hetzner") {
+        // Hetzner-specific: Use HetznerAPI directly
+        const api = new HetznerAPI(args.apiKey)
+
+        if (args.resourceTypes.includes("servers")) {
+          console.log(`[Dock Action] Fetching servers for ${args.provider}`)
+          const hetznerServers = await api.listServers()
+          servers = hetznerServers
+        }
+
+        // Hetzner doesn't support databases, webServices, domains, blockVolumes, or buckets
+        if (args.resourceTypes.includes("databases")) {
+          console.log(`[Dock Action] Databases not supported for ${args.provider}`)
+          databases = []
+        }
+        if (args.resourceTypes.includes("webServices")) {
+          console.log(`[Dock Action] Web services not supported for ${args.provider}`)
+          webServices = []
+        }
+        if (args.resourceTypes.includes("domains")) {
+          console.log(`[Dock Action] Domains not supported for ${args.provider}`)
+          domains = []
+        }
+        if (args.resourceTypes.includes("blockVolumes")) {
+          console.log(`[Dock Action] Block volumes not supported for ${args.provider}`)
+          blockVolumes = []
+        }
+        if (args.resourceTypes.includes("buckets")) {
+          console.log(`[Dock Action] Buckets not supported for ${args.provider}`)
+          buckets = []
         }
       } else {
         // For other providers, use adapter pattern
