@@ -45,5 +45,11 @@
   },
   "dependencies": {
     "@radix-ui/react-select": "^2.2.6"
+  },
+  "overrides": {
+    "js-yaml": "^4.1.1",
+    "xmlbuilder2": {
+      "js-yaml": "^4.1.1"
+    }
   }
 }
