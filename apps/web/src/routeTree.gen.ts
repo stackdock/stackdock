@@ -23,6 +23,7 @@ import { Route as DashboardProvisionIndexRouteImport } from './routes/dashboard/
 import { Route as DashboardSettingsUserRouteImport } from './routes/dashboard/settings/user'
 import { Route as DashboardSettingsThemeRouteImport } from './routes/dashboard/settings/theme'
 import { Route as DashboardSettingsOrganizationRouteImport } from './routes/dashboard/settings/organization'
+import { Route as DashboardSettingsActivityRouteImport } from './routes/dashboard/settings/activity'
 import { Route as DashboardProvisionProviderRouteImport } from './routes/dashboard/provision/$provider'
 import { Route as DashboardProjectsViewRouteImport } from './routes/dashboard/projects/view'
 import { Route as DashboardProjectsNewRouteImport } from './routes/dashboard/projects/new'
@@ -31,6 +32,9 @@ import { Route as DashboardProjectsProjectSlugRouteImport } from './routes/dashb
 import { Route as DashboardProjectsProjectIdRouteImport } from './routes/dashboard/projects/$projectId'
 import { Route as DashboardOperationsWorkflowsRouteImport } from './routes/dashboard/operations/workflows'
 import { Route as DashboardOperationsBackupsRouteImport } from './routes/dashboard/operations/backups'
+import { Route as DashboardMonitoringUptimeRouteImport } from './routes/dashboard/monitoring/uptime'
+import { Route as DashboardMonitoringLogsRouteImport } from './routes/dashboard/monitoring/logs'
+import { Route as DashboardMonitoringIssuesRouteImport } from './routes/dashboard/monitoring/issues'
 import { Route as DashboardMonitoringErrorsRouteImport } from './routes/dashboard/monitoring/errors'
 import { Route as DashboardMonitoringAlertsRouteImport } from './routes/dashboard/monitoring/alerts'
 import { Route as DashboardMonitoringActivityRouteImport } from './routes/dashboard/monitoring/activity'
@@ -124,6 +128,12 @@ const DashboardSettingsOrganizationRoute =
     path: '/organization',
     getParentRoute: () => DashboardSettingsRoute,
   } as any)
+const DashboardSettingsActivityRoute =
+  DashboardSettingsActivityRouteImport.update({
+    id: '/activity',
+    path: '/activity',
+    getParentRoute: () => DashboardSettingsRoute,
+  } as any)
 const DashboardProvisionProviderRoute =
   DashboardProvisionProviderRouteImport.update({
     id: '/provision/$provider',
@@ -168,6 +178,23 @@ const DashboardOperationsBackupsRoute =
     id: '/backups',
     path: '/backups',
     getParentRoute: () => DashboardOperationsRoute,
+  } as any)
+const DashboardMonitoringUptimeRoute =
+  DashboardMonitoringUptimeRouteImport.update({
+    id: '/monitoring/uptime',
+    path: '/monitoring/uptime',
+    getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardMonitoringLogsRoute = DashboardMonitoringLogsRouteImport.update({
+  id: '/monitoring/logs',
+  path: '/monitoring/logs',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardMonitoringIssuesRoute =
+  DashboardMonitoringIssuesRouteImport.update({
+    id: '/monitoring/issues',
+    path: '/monitoring/issues',
+    getParentRoute: () => DashboardRoute,
   } as any)
 const DashboardMonitoringErrorsRoute =
   DashboardMonitoringErrorsRouteImport.update({
@@ -314,6 +341,9 @@ export interface FileRoutesByFullPath {
   '/dashboard/monitoring/activity': typeof DashboardMonitoringActivityRoute
   '/dashboard/monitoring/alerts': typeof DashboardMonitoringAlertsRoute
   '/dashboard/monitoring/errors': typeof DashboardMonitoringErrorsRoute
+  '/dashboard/monitoring/issues': typeof DashboardMonitoringIssuesRoute
+  '/dashboard/monitoring/logs': typeof DashboardMonitoringLogsRoute
+  '/dashboard/monitoring/uptime': typeof DashboardMonitoringUptimeRoute
   '/dashboard/operations/backups': typeof DashboardOperationsBackupsRoute
   '/dashboard/operations/workflows': typeof DashboardOperationsWorkflowsRoute
   '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRouteWithChildren
@@ -322,6 +352,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/projects/new': typeof DashboardProjectsNewRoute
   '/dashboard/projects/view': typeof DashboardProjectsViewRoute
   '/dashboard/provision/$provider': typeof DashboardProvisionProviderRouteWithChildren
+  '/dashboard/settings/activity': typeof DashboardSettingsActivityRoute
   '/dashboard/settings/organization': typeof DashboardSettingsOrganizationRoute
   '/dashboard/settings/theme': typeof DashboardSettingsThemeRoute
   '/dashboard/settings/user': typeof DashboardSettingsUserRoute
@@ -358,6 +389,9 @@ export interface FileRoutesByTo {
   '/dashboard/monitoring/activity': typeof DashboardMonitoringActivityRoute
   '/dashboard/monitoring/alerts': typeof DashboardMonitoringAlertsRoute
   '/dashboard/monitoring/errors': typeof DashboardMonitoringErrorsRoute
+  '/dashboard/monitoring/issues': typeof DashboardMonitoringIssuesRoute
+  '/dashboard/monitoring/logs': typeof DashboardMonitoringLogsRoute
+  '/dashboard/monitoring/uptime': typeof DashboardMonitoringUptimeRoute
   '/dashboard/operations/backups': typeof DashboardOperationsBackupsRoute
   '/dashboard/operations/workflows': typeof DashboardOperationsWorkflowsRoute
   '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRouteWithChildren
@@ -365,6 +399,7 @@ export interface FileRoutesByTo {
   '/dashboard/projects/new': typeof DashboardProjectsNewRoute
   '/dashboard/projects/view': typeof DashboardProjectsViewRoute
   '/dashboard/provision/$provider': typeof DashboardProvisionProviderRouteWithChildren
+  '/dashboard/settings/activity': typeof DashboardSettingsActivityRoute
   '/dashboard/settings/organization': typeof DashboardSettingsOrganizationRoute
   '/dashboard/settings/theme': typeof DashboardSettingsThemeRoute
   '/dashboard/settings/user': typeof DashboardSettingsUserRoute
@@ -403,6 +438,9 @@ export interface FileRoutesById {
   '/dashboard/monitoring/activity': typeof DashboardMonitoringActivityRoute
   '/dashboard/monitoring/alerts': typeof DashboardMonitoringAlertsRoute
   '/dashboard/monitoring/errors': typeof DashboardMonitoringErrorsRoute
+  '/dashboard/monitoring/issues': typeof DashboardMonitoringIssuesRoute
+  '/dashboard/monitoring/logs': typeof DashboardMonitoringLogsRoute
+  '/dashboard/monitoring/uptime': typeof DashboardMonitoringUptimeRoute
   '/dashboard/operations/backups': typeof DashboardOperationsBackupsRoute
   '/dashboard/operations/workflows': typeof DashboardOperationsWorkflowsRoute
   '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRouteWithChildren
@@ -411,6 +449,7 @@ export interface FileRoutesById {
   '/dashboard/projects/new': typeof DashboardProjectsNewRoute
   '/dashboard/projects/view': typeof DashboardProjectsViewRoute
   '/dashboard/provision/$provider': typeof DashboardProvisionProviderRouteWithChildren
+  '/dashboard/settings/activity': typeof DashboardSettingsActivityRoute
   '/dashboard/settings/organization': typeof DashboardSettingsOrganizationRoute
   '/dashboard/settings/theme': typeof DashboardSettingsThemeRoute
   '/dashboard/settings/user': typeof DashboardSettingsUserRoute
@@ -450,6 +489,9 @@ export interface FileRouteTypes {
     | '/dashboard/monitoring/activity'
     | '/dashboard/monitoring/alerts'
     | '/dashboard/monitoring/errors'
+    | '/dashboard/monitoring/issues'
+    | '/dashboard/monitoring/logs'
+    | '/dashboard/monitoring/uptime'
     | '/dashboard/operations/backups'
     | '/dashboard/operations/workflows'
     | '/dashboard/projects/$projectId'
@@ -458,6 +500,7 @@ export interface FileRouteTypes {
     | '/dashboard/projects/new'
     | '/dashboard/projects/view'
     | '/dashboard/provision/$provider'
+    | '/dashboard/settings/activity'
     | '/dashboard/settings/organization'
     | '/dashboard/settings/theme'
     | '/dashboard/settings/user'
@@ -494,6 +537,9 @@ export interface FileRouteTypes {
     | '/dashboard/monitoring/activity'
     | '/dashboard/monitoring/alerts'
     | '/dashboard/monitoring/errors'
+    | '/dashboard/monitoring/issues'
+    | '/dashboard/monitoring/logs'
+    | '/dashboard/monitoring/uptime'
     | '/dashboard/operations/backups'
     | '/dashboard/operations/workflows'
     | '/dashboard/projects/$projectId'
@@ -501,6 +547,7 @@ export interface FileRouteTypes {
     | '/dashboard/projects/new'
     | '/dashboard/projects/view'
     | '/dashboard/provision/$provider'
+    | '/dashboard/settings/activity'
     | '/dashboard/settings/organization'
     | '/dashboard/settings/theme'
     | '/dashboard/settings/user'
@@ -538,6 +585,9 @@ export interface FileRouteTypes {
     | '/dashboard/monitoring/activity'
     | '/dashboard/monitoring/alerts'
     | '/dashboard/monitoring/errors'
+    | '/dashboard/monitoring/issues'
+    | '/dashboard/monitoring/logs'
+    | '/dashboard/monitoring/uptime'
     | '/dashboard/operations/backups'
     | '/dashboard/operations/workflows'
     | '/dashboard/projects/$projectId'
@@ -546,6 +596,7 @@ export interface FileRouteTypes {
     | '/dashboard/projects/new'
     | '/dashboard/projects/view'
     | '/dashboard/provision/$provider'
+    | '/dashboard/settings/activity'
     | '/dashboard/settings/organization'
     | '/dashboard/settings/theme'
     | '/dashboard/settings/user'
@@ -670,6 +721,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardSettingsOrganizationRouteImport
       parentRoute: typeof DashboardSettingsRoute
     }
+    '/dashboard/settings/activity': {
+      id: '/dashboard/settings/activity'
+      path: '/activity'
+      fullPath: '/dashboard/settings/activity'
+      preLoaderRoute: typeof DashboardSettingsActivityRouteImport
+      parentRoute: typeof DashboardSettingsRoute
+    }
     '/dashboard/provision/$provider': {
       id: '/dashboard/provision/$provider'
       path: '/provision/$provider'
@@ -725,6 +783,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/operations/backups'
       preLoaderRoute: typeof DashboardOperationsBackupsRouteImport
       parentRoute: typeof DashboardOperationsRoute
+    }
+    '/dashboard/monitoring/uptime': {
+      id: '/dashboard/monitoring/uptime'
+      path: '/monitoring/uptime'
+      fullPath: '/dashboard/monitoring/uptime'
+      preLoaderRoute: typeof DashboardMonitoringUptimeRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/monitoring/logs': {
+      id: '/dashboard/monitoring/logs'
+      path: '/monitoring/logs'
+      fullPath: '/dashboard/monitoring/logs'
+      preLoaderRoute: typeof DashboardMonitoringLogsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/monitoring/issues': {
+      id: '/dashboard/monitoring/issues'
+      path: '/monitoring/issues'
+      fullPath: '/dashboard/monitoring/issues'
+      preLoaderRoute: typeof DashboardMonitoringIssuesRouteImport
+      parentRoute: typeof DashboardRoute
     }
     '/dashboard/monitoring/errors': {
       id: '/dashboard/monitoring/errors'
@@ -925,12 +1004,14 @@ const DashboardOperationsRouteWithChildren =
   DashboardOperationsRoute._addFileChildren(DashboardOperationsRouteChildren)
 
 interface DashboardSettingsRouteChildren {
+  DashboardSettingsActivityRoute: typeof DashboardSettingsActivityRoute
   DashboardSettingsOrganizationRoute: typeof DashboardSettingsOrganizationRoute
   DashboardSettingsThemeRoute: typeof DashboardSettingsThemeRoute
   DashboardSettingsUserRoute: typeof DashboardSettingsUserRoute
 }
 
 const DashboardSettingsRouteChildren: DashboardSettingsRouteChildren = {
+  DashboardSettingsActivityRoute: DashboardSettingsActivityRoute,
   DashboardSettingsOrganizationRoute: DashboardSettingsOrganizationRoute,
   DashboardSettingsThemeRoute: DashboardSettingsThemeRoute,
   DashboardSettingsUserRoute: DashboardSettingsUserRoute,
@@ -1030,6 +1111,9 @@ interface DashboardRouteChildren {
   DashboardMonitoringActivityRoute: typeof DashboardMonitoringActivityRoute
   DashboardMonitoringAlertsRoute: typeof DashboardMonitoringAlertsRoute
   DashboardMonitoringErrorsRoute: typeof DashboardMonitoringErrorsRoute
+  DashboardMonitoringIssuesRoute: typeof DashboardMonitoringIssuesRoute
+  DashboardMonitoringLogsRoute: typeof DashboardMonitoringLogsRoute
+  DashboardMonitoringUptimeRoute: typeof DashboardMonitoringUptimeRoute
   DashboardProjectsProjectIdRoute: typeof DashboardProjectsProjectIdRouteWithChildren
   DashboardProjectsProjectSlugRoute: typeof DashboardProjectsProjectSlugRouteWithChildren
   DashboardProjectsCodeRoute: typeof DashboardProjectsCodeRoute
@@ -1050,6 +1134,9 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardMonitoringActivityRoute: DashboardMonitoringActivityRoute,
   DashboardMonitoringAlertsRoute: DashboardMonitoringAlertsRoute,
   DashboardMonitoringErrorsRoute: DashboardMonitoringErrorsRoute,
+  DashboardMonitoringIssuesRoute: DashboardMonitoringIssuesRoute,
+  DashboardMonitoringLogsRoute: DashboardMonitoringLogsRoute,
+  DashboardMonitoringUptimeRoute: DashboardMonitoringUptimeRoute,
   DashboardProjectsProjectIdRoute: DashboardProjectsProjectIdRouteWithChildren,
   DashboardProjectsProjectSlugRoute:
     DashboardProjectsProjectSlugRouteWithChildren,

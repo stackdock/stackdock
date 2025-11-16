@@ -3,7 +3,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useQuery } from "convex/react"
 import { api } from "convex/_generated/api"
-import { FolderKanban, Plus, BookOpen } from "lucide-react"
+import { Inbox, Plus, BookOpen } from "lucide-react"
 import { ProjectsTable } from "@/components/projects/projects-table"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -70,7 +70,7 @@ function ProjectsViewPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold flex items-center gap-2">
-              <FolderKanban className="h-5 w-5" />
+              <Inbox className="h-5 w-5" />
               {projectsList.length} {projectsList.length === 1 ? 'Project' : 'Projects'}
             </h2>
           </div>

@@ -1,13 +1,12 @@
 /**
- * Projects Table Component
+ * Issues Table Component
  * 
- * TanStack Table implementation for displaying projects
+ * TanStack Table implementation for displaying error issues from all providers
  */
 
 "use client"
 
 import { useId, useMemo, useRef, useState } from "react"
-import { useNavigate } from "@tanstack/react-router"
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -19,7 +18,6 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   PaginationState,
-  Row,
   SortingState,
   useReactTable,
   VisibilityState,
@@ -39,8 +37,6 @@ import {
   TrashIcon,
 } from "lucide-react"
 import type { Doc } from "convex/_generated/dataModel"
-import { useQuery } from "convex/react"
-import { api } from "convex/_generated/api"
 import { cn } from "@/lib/utils"
 import {
   AlertDialog,
@@ -92,64 +88,70 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { TableSkeleton } from "@/components/resources/shared/table-skeleton"
+import { ProviderBadge } from "@/components/resources/shared/provider-badge"
+import { StatusBadge } from "@/components/resources/shared/status-badge"
 import { formatDate } from "@/components/resources/shared/format-utils"
 import { Badge } from "@/components/ui/badge"
+import { ExternalLink } from "lucide-react"
 
-function RowActions({ project }: { project: Project }) {
-  const navigate = useNavigate()
-  
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-8 w-8 p-0">
-          <span className="sr-only">Open menu</span>
-          <EllipsisIcon className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-        <DropdownMenuItem
-          onClick={() => {
-            navigate({ to: "/dashboard/projects/$projectSlug", params: { projectSlug: project.slug } })
-          }}
-        >
-          View Details
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem className="text-destructive">
-          Delete Project
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
+type Issue = Doc<"issues">
 
-type Project = Doc<"projects">
-
-// Multi-column filter for name
-const multiColumnFilterFn: FilterFn<Project> = (row, columnId, filterValue) => {
-  const searchableContent = `${row.original.name} ${row.original.linearId || ""} ${row.original.githubRepo || ""}`.toLowerCase()
+// Multi-column filter for title and project
+const multiColumnFilterFn: FilterFn<Issue> = (row, columnId, filterValue) => {
+  const searchableContent = `${row.original.title} ${row.original.project || ""}`.toLowerCase()
   const searchTerm = (filterValue ?? "").toLowerCase()
   return searchableContent.includes(searchTerm)
 }
 
-// Team filter
-const teamFilterFn: FilterFn<Project> = (row, columnId, filterValue: string[]) => {
+// Status filter
+const statusFilterFn: FilterFn<Issue> = (row, columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
-  return filterValue.includes(row.original.teamId)
+  return filterValue.includes(row.original.status)
 }
 
-// Client filter
-const clientFilterFn: FilterFn<Project> = (row, columnId, filterValue: string[]) => {
+// Severity filter
+const severityFilterFn: FilterFn<Issue> = (row, columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
-  const clientId = row.original.clientId
-  if (!clientId) {
-    return filterValue.includes("none")
+  return filterValue.includes(row.original.severity)
+}
+
+// Provider filter
+const providerFilterFn: FilterFn<Issue> = (row, columnId, filterValue: string[]) => {
+  if (!filterValue?.length) return true
+  return filterValue.includes(row.original.provider)
+}
+
+// Severity badge mapping
+function getSeverityBadgeVariant(severity: string): "default" | "secondary" | "destructive" | "outline" {
+  switch (severity.toLowerCase()) {
+    case "critical":
+      return "destructive"
+    case "high":
+      return "destructive"
+    case "medium":
+      return "default"
+    case "low":
+      return "secondary"
+    default:
+      return "outline"
   }
-  return filterValue.includes(clientId)
 }
 
-const columns: ColumnDef<Project>[] = [
+// Status badge mapping
+function getStatusBadgeVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
+  switch (status.toLowerCase()) {
+    case "open":
+      return "destructive"
+    case "resolved":
+      return "default"
+    case "ignored":
+      return "secondary"
+    default:
+      return "outline"
+  }
+}
+
+const columns: ColumnDef<Issue>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -171,104 +173,132 @@ const columns: ColumnDef<Project>[] = [
     enableHiding: false,
   },
   {
-    header: "Name",
-    accessorKey: "name",
+    header: "Title",
+    accessorKey: "title",
     cell: ({ row }) => {
-      const project = row.original
+      const issue = row.original
       return (
         <div className="font-medium">
-          <a
-            href={`/dashboard/projects/${project.slug}`}
-            className="text-left hover:underline"
-          >
-            {row.getValue("name")}
-          </a>
+          {issue.title}
         </div>
       )
     },
-    size: 200,
+    size: 300,
     filterFn: multiColumnFilterFn,
     enableColumnFilter: false,
     enableHiding: false,
   },
   {
-    id: "team",
-    header: "Team",
-    accessorKey: "teamId",
+    header: "Status",
+    accessorKey: "status",
     cell: ({ row }) => {
-      // TODO: Fetch team name from teamId
-      return <span className="text-muted-foreground">Team</span>
-    },
-    size: 150,
-    filterFn: teamFilterFn,
-    enableColumnFilter: false,
-  },
-  {
-    id: "client",
-    header: "Client",
-    accessorKey: "clientId",
-    cell: ({ row }) => {
-      const clientId = row.getValue("clientId") as string | undefined
-      if (!clientId) {
-        return <Badge variant="outline">None</Badge>
-      }
-      // TODO: Fetch client name from clientId
-      return <span className="text-muted-foreground">Client</span>
-    },
-    size: 150,
-    filterFn: clientFilterFn,
-    enableColumnFilter: false,
-  },
-  {
-    header: "Linear ID",
-    accessorKey: "linearId",
-    cell: ({ row }) => {
-      const linearId = row.getValue("linearId") as string | undefined
-      return linearId ? <Badge variant="secondary">{linearId}</Badge> : <span className="text-muted-foreground">—</span>
-    },
-    size: 120,
-  },
-  {
-    header: "GitHub Repo",
-    accessorKey: "githubRepo",
-    cell: ({ row }) => {
-      const githubRepo = row.getValue("githubRepo") as string | undefined
-      if (!githubRepo) {
-        return <span className="text-muted-foreground">—</span>
-      }
+      const status = row.getValue("status") as string
       return (
-        <a
-          href={`https://github.com/${githubRepo}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-primary hover:underline"
-        >
-          {githubRepo}
-        </a>
+        <StatusBadge status={status} variant={getStatusBadgeVariant(status)} />
       )
     },
-    size: 200,
+    size: 120,
+    filterFn: statusFilterFn,
+    enableColumnFilter: false,
+  },
+  {
+    header: "Severity",
+    accessorKey: "severity",
+    cell: ({ row }) => {
+      const severity = row.getValue("severity") as string
+      return (
+        <Badge variant={getSeverityBadgeVariant(severity)}>
+          {severity}
+        </Badge>
+      )
+    },
+    size: 120,
+    filterFn: severityFilterFn,
+    enableColumnFilter: false,
+  },
+  {
+    header: "Project",
+    accessorKey: "project",
+    cell: ({ row }) => {
+      const project = row.getValue("project") as string | undefined
+      return project ? <Badge variant="outline">{project}</Badge> : <span className="text-muted-foreground">—</span>
+    },
+    size: 150,
+  },
+  {
+    header: "Count",
+    accessorKey: "count",
+    cell: ({ row }) => {
+      const count = row.getValue("count") as number | undefined
+      return count !== undefined ? <span className="text-sm">{count.toLocaleString()}</span> : <span className="text-muted-foreground">—</span>
+    },
+    size: 100,
+  },
+  {
+    header: "Last Seen",
+    accessorKey: "lastSeen",
+    cell: ({ row }) => {
+      const timestamp = row.getValue("lastSeen") as number | undefined
+      return timestamp ? formatDate(timestamp) : <span className="text-muted-foreground">—</span>
+    },
+    size: 150,
+  },
+  {
+    header: "Provider",
+    accessorKey: "provider",
+    cell: ({ row }) => {
+      const provider = row.getValue("provider") as string
+      return <ProviderBadge provider={provider} />
+    },
+    size: 120,
+    filterFn: providerFilterFn,
+    enableColumnFilter: false,
   },
   {
     id: "actions",
     header: () => <span className="sr-only">Actions</span>,
     cell: ({ row }) => {
-      const project = row.original
-      return <RowActions project={project} />
+      const issue = row.original
+      const permalink = issue.fullApiData?.issue?.permalink
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">Open menu</span>
+              <EllipsisIcon className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            {permalink && (
+              <DropdownMenuItem
+                onClick={() => {
+                  window.open(permalink, "_blank", "noopener,noreferrer")
+                }}
+              >
+                View Issue
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="text-destructive">
+              Delete Issue
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
     },
     size: 60,
     enableHiding: false,
   },
 ]
 
-interface ProjectsTableProps {
-  data: Project[] | undefined
-  onDelete?: (projectIds: string[]) => void
+interface IssuesTableProps {
+  data: Issue[] | undefined
+  onDelete?: (issueIds: string[]) => void
 }
 
-export function ProjectsTable({ data, onDelete }: ProjectsTableProps) {
+export function IssuesTable({ data, onDelete }: IssuesTableProps) {
   const id = useId()
-  const navigate = useNavigate()
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [pagination, setPagination] = useState<PaginationState>({
@@ -276,20 +306,7 @@ export function ProjectsTable({ data, onDelete }: ProjectsTableProps) {
     pageSize: 10,
   })
   const inputRef = useRef<HTMLInputElement>(null)
-  const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }])
-
-  // Get orgId from first project (all projects have same orgId)
-  const orgId = data && data.length > 0 ? data[0].orgId : undefined
-  
-  // Fetch teams and clients for filters
-  const teams = useQuery(
-    api["teams/queries"].listTeams,
-    orgId ? { orgId } : "skip"
-  )
-  const clients = useQuery(
-    api["clients/queries"].listClients,
-    orgId ? { orgId } : "skip"
-  )
+  const [sorting, setSorting] = useState<SortingState>([{ id: "lastSeen", desc: true }])
 
   const table = useReactTable({
     data: data || [],
@@ -308,39 +325,52 @@ export function ProjectsTable({ data, onDelete }: ProjectsTableProps) {
     state: { sorting, pagination, columnFilters, columnVisibility },
   })
 
-  const uniqueTeamValues = useMemo(() => {
-    const teamColumn = table.getColumn("team")
-    if (!teamColumn) return []
-    return Array.from(teamColumn.getFacetedUniqueValues().keys()).filter(Boolean).sort()
-  }, [table.getColumn("team")?.getFacetedUniqueValues()])
+  const uniqueStatusValues = useMemo(() => {
+    const statusColumn = table.getColumn("status")
+    if (!statusColumn) return []
+    return Array.from(statusColumn.getFacetedUniqueValues().keys()).sort()
+  }, [table.getColumn("status")?.getFacetedUniqueValues()])
 
-  const uniqueClientValues = useMemo(() => {
-    const clientColumn = table.getColumn("client")
-    if (!clientColumn) return []
-    const values = Array.from(clientColumn.getFacetedUniqueValues().keys())
-    // Include "none" for projects without clients
-    const hasNone = data?.some(p => !p.clientId)
-    return hasNone ? [...values, "none"].sort() : values.sort()
-  }, [table.getColumn("client")?.getFacetedUniqueValues(), data])
+  const uniqueSeverityValues = useMemo(() => {
+    const severityColumn = table.getColumn("severity")
+    if (!severityColumn) return []
+    return Array.from(severityColumn.getFacetedUniqueValues().keys()).sort()
+  }, [table.getColumn("severity")?.getFacetedUniqueValues()])
 
-  const selectedTeams = useMemo(() => {
-    return (table.getColumn("team")?.getFilterValue() as string[]) ?? []
-  }, [table.getColumn("team")?.getFilterValue()])
+  const uniqueProviderValues = useMemo(() => {
+    const providerColumn = table.getColumn("provider")
+    if (!providerColumn) return []
+    return Array.from(providerColumn.getFacetedUniqueValues().keys()).sort()
+  }, [table.getColumn("provider")?.getFacetedUniqueValues()])
 
-  const selectedClients = useMemo(() => {
-    return (table.getColumn("client")?.getFilterValue() as string[]) ?? []
-  }, [table.getColumn("client")?.getFilterValue()])
+  const selectedStatuses = useMemo(() => {
+    return (table.getColumn("status")?.getFilterValue() as string[]) ?? []
+  }, [table.getColumn("status")?.getFilterValue()])
 
-  const handleTeamChange = (checked: boolean, value: string) => {
-    const filterValue = selectedTeams
+  const selectedSeverities = useMemo(() => {
+    return (table.getColumn("severity")?.getFilterValue() as string[]) ?? []
+  }, [table.getColumn("severity")?.getFilterValue()])
+
+  const selectedProviders = useMemo(() => {
+    return (table.getColumn("provider")?.getFilterValue() as string[]) ?? []
+  }, [table.getColumn("provider")?.getFilterValue()])
+
+  const handleStatusChange = (checked: boolean, value: string) => {
+    const filterValue = selectedStatuses
     const newFilterValue = checked ? [...filterValue, value] : filterValue.filter(v => v !== value)
-    table.getColumn("team")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
+    table.getColumn("status")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
   }
 
-  const handleClientChange = (checked: boolean, value: string) => {
-    const filterValue = selectedClients
+  const handleSeverityChange = (checked: boolean, value: string) => {
+    const filterValue = selectedSeverities
     const newFilterValue = checked ? [...filterValue, value] : filterValue.filter(v => v !== value)
-    table.getColumn("client")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
+    table.getColumn("severity")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
+  }
+
+  const handleProviderChange = (checked: boolean, value: string) => {
+    const filterValue = selectedProviders
+    const newFilterValue = checked ? [...filterValue, value] : filterValue.filter(v => v !== value)
+    table.getColumn("provider")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
   }
 
   const handleDeleteRows = () => {
@@ -353,7 +383,7 @@ export function ProjectsTable({ data, onDelete }: ProjectsTableProps) {
   if (data === undefined) {
     return (
       <div className="space-y-4">
-        <TableSkeleton columnCount={7} showCheckbox={true} />
+        <TableSkeleton columnCount={9} showCheckbox={true} />
       </div>
     )
   }
@@ -368,20 +398,20 @@ export function ProjectsTable({ data, onDelete }: ProjectsTableProps) {
             <Input
               id={`${id}-input`}
               ref={inputRef}
-              className={cn("h-8 w-[150px] lg:w-[250px] ps-9", Boolean(table.getColumn("name")?.getFilterValue()) && "pe-9")}
-              value={(table.getColumn("name")?.getFilterValue() ?? "") as string}
-              onChange={(e) => table.getColumn("name")?.setFilterValue(e.target.value)}
-              placeholder="Filter projects..."
+              className={cn("h-8 w-[150px] lg:w-[250px] ps-9", Boolean(table.getColumn("title")?.getFilterValue()) && "pe-9")}
+              value={(table.getColumn("title")?.getFilterValue() ?? "") as string}
+              onChange={(e) => table.getColumn("title")?.setFilterValue(e.target.value)}
+              placeholder="Filter issues..."
               type="text"
             />
             <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 text-muted-foreground/80">
               <ListFilterIcon size={16} />
             </div>
-            {Boolean(table.getColumn("name")?.getFilterValue()) && (
+            {Boolean(table.getColumn("title")?.getFilterValue()) && (
               <button
                 className="absolute inset-y-0 end-0 flex h-full w-9 items-center justify-center rounded-e-md text-muted-foreground/80 hover:text-foreground"
                 onClick={() => {
-                  table.getColumn("name")?.setFilterValue("")
+                  table.getColumn("title")?.setFilterValue("")
                   inputRef.current?.focus()
                 }}
               >
@@ -390,88 +420,105 @@ export function ProjectsTable({ data, onDelete }: ProjectsTableProps) {
             )}
           </div>
           <div className="flex gap-x-2">
-            {/* Team Filter */}
-            {teams && teams.length > 0 && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="h-8 !border-dashed">
-                    <FilterIcon className="-ms-1 opacity-60" size={16} />
-                    Team
-                    {selectedTeams.length > 0 && (
-                      <span className="-me-1 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70">
-                        {selectedTeams.length}
-                      </span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto min-w-36 p-3" align="start">
+            {/* Status Filter */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="h-8 !border-dashed">
+                  <FilterIcon className="-ms-1 opacity-60" size={16} />
+                  Status
+                  {selectedStatuses.length > 0 && (
+                    <span className="-me-1 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70">
+                      {selectedStatuses.length}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto min-w-36 p-3" align="start">
+                <div className="space-y-3">
+                  <div className="text-xs font-medium text-muted-foreground">Filters</div>
                   <div className="space-y-3">
-                    <div className="text-xs font-medium text-muted-foreground">Filters</div>
-                    <div className="space-y-3">
-                      {teams.map((team) => (
-                        <div key={team._id} className="flex items-center gap-2">
-                          <Checkbox
-                            id={`${id}-team-${team._id}`}
-                            checked={selectedTeams.includes(team._id)}
-                            onCheckedChange={(checked: boolean) => handleTeamChange(checked, team._id)}
-                          />
-                          <Label htmlFor={`${id}-team-${team._id}`} className="font-normal">
-                            {team.name}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
+                    {uniqueStatusValues.map((value, i) => (
+                      <div key={value} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`${id}-status-${i}`}
+                          checked={selectedStatuses.includes(value)}
+                          onCheckedChange={(checked: boolean) => handleStatusChange(checked, value)}
+                        />
+                        <Label htmlFor={`${id}-status-${i}`} className="font-normal">
+                          {value}
+                        </Label>
+                      </div>
+                    ))}
                   </div>
-                </PopoverContent>
-              </Popover>
-            )}
-            {/* Client Filter */}
-            {(clients && clients.length > 0) || (data && data.some(p => !p.clientId)) ? (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="h-8 !border-dashed">
-                    <FilterIcon className="-ms-1 opacity-60" size={16} />
-                    Client
-                    {selectedClients.length > 0 && (
-                      <span className="-me-1 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70">
-                        {selectedClients.length}
-                      </span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto min-w-36 p-3" align="start">
+                </div>
+              </PopoverContent>
+            </Popover>
+            {/* Severity Filter */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="h-8 !border-dashed">
+                  <FilterIcon className="-ms-1 opacity-60" size={16} />
+                  Severity
+                  {selectedSeverities.length > 0 && (
+                    <span className="-me-1 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70">
+                      {selectedSeverities.length}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto min-w-36 p-3" align="start">
+                <div className="space-y-3">
+                  <div className="text-xs font-medium text-muted-foreground">Filters</div>
                   <div className="space-y-3">
-                    <div className="text-xs font-medium text-muted-foreground">Filters</div>
-                    <div className="space-y-3">
-                      {clients?.map((client) => (
-                        <div key={client._id} className="flex items-center gap-2">
-                          <Checkbox
-                            id={`${id}-client-${client._id}`}
-                            checked={selectedClients.includes(client._id)}
-                            onCheckedChange={(checked: boolean) => handleClientChange(checked, client._id)}
-                          />
-                          <Label htmlFor={`${id}-client-${client._id}`} className="font-normal">
-                            {client.name}
-                          </Label>
-                        </div>
-                      ))}
-                      {data && data.some(p => !p.clientId) && (
-                        <div className="flex items-center gap-2">
-                          <Checkbox
-                            id={`${id}-client-none`}
-                            checked={selectedClients.includes("none")}
-                            onCheckedChange={(checked: boolean) => handleClientChange(checked, "none")}
-                          />
-                          <Label htmlFor={`${id}-client-none`} className="font-normal">
-                            None
-                          </Label>
-                        </div>
-                      )}
-                    </div>
+                    {uniqueSeverityValues.map((value, i) => (
+                      <div key={value} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`${id}-severity-${i}`}
+                          checked={selectedSeverities.includes(value)}
+                          onCheckedChange={(checked: boolean) => handleSeverityChange(checked, value)}
+                        />
+                        <Label htmlFor={`${id}-severity-${i}`} className="font-normal">
+                          {value}
+                        </Label>
+                      </div>
+                    ))}
                   </div>
-                </PopoverContent>
-              </Popover>
-            ) : null}
+                </div>
+              </PopoverContent>
+            </Popover>
+            {/* Provider Filter */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="h-8 !border-dashed">
+                  <FilterIcon className="-ms-1 opacity-60" size={16} />
+                  Provider
+                  {selectedProviders.length > 0 && (
+                    <span className="-me-1 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70">
+                      {selectedProviders.length}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto min-w-36 p-3" align="start">
+                <div className="space-y-3">
+                  <div className="text-xs font-medium text-muted-foreground">Filters</div>
+                  <div className="space-y-3">
+                    {uniqueProviderValues.map((value, i) => (
+                      <div key={value} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`${id}-provider-${i}`}
+                          checked={selectedProviders.includes(value)}
+                          onCheckedChange={(checked: boolean) => handleProviderChange(checked, value)}
+                        />
+                        <Label htmlFor={`${id}-provider-${i}`} className="font-normal">
+                          {value}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
         {/* Column Visibility */}
@@ -513,7 +560,7 @@ export function ProjectsTable({ data, onDelete }: ProjectsTableProps) {
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently delete {table.getSelectedRowModel().rows.length} selected project{table.getSelectedRowModel().rows.length === 1 ? "" : "s"}.
+                  This will permanently delete {table.getSelectedRowModel().rows.length} selected issue{table.getSelectedRowModel().rows.length === 1 ? "" : "s"}.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -580,7 +627,7 @@ export function ProjectsTable({ data, onDelete }: ProjectsTableProps) {
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No projects found.
+                  No issues found.
                 </TableCell>
               </TableRow>
             )}

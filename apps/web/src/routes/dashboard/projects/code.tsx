@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import { useEffect } from "react"
 import { useQuery } from "convex/react"
 import { api } from "convex/_generated/api"
 import { CodeXml } from "lucide-react"
@@ -9,13 +10,27 @@ export const Route = createFileRoute("/dashboard/projects/code")({
 })
 
 function ProjectsCodePage() {
-  // Query projects with GitHub repos
-  const projects = useQuery(api["projects/queries"].listProjects)
+  // Query GitHub repositories from universal repositories table
+  const repositories = useQuery(api["docks/queries"].listGitHubRepositories)
   
-  // Filter projects that have GitHub repos (only when data is loaded)
-  const githubProjects = projects === undefined 
-    ? undefined 
-    : projects.filter(p => p.githubRepo && p.fullApiData)
+  // Debug logging
+  useEffect(() => {
+    if (repositories !== undefined) {
+      console.log(`[Code Page] DEBUG: Received ${repositories.length} repositories`)
+      if (repositories.length > 0) {
+        console.log(`[Code Page] DEBUG: Sample repository:`, {
+          id: repositories[0]._id,
+          name: repositories[0].name,
+          fullName: repositories[0].fullName,
+          provider: repositories[0].provider,
+          hasFullApiData: !!repositories[0].fullApiData,
+          hasRepository: !!repositories[0].fullApiData?.repository,
+        })
+      } else {
+        console.warn(`[Code Page] DEBUG: No repositories found. Check Convex logs for query details.`)
+      }
+    }
+  }, [repositories])
   
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 md:p-6 lg:p-8">
@@ -35,10 +50,13 @@ function ProjectsCodePage() {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <CodeXml className="h-5 w-5" />
-            {githubProjects?.length ?? 0} Repositories
+            {repositories === undefined 
+              ? "Loading..." 
+              : `${repositories.length} ${repositories.length === 1 ? 'Repository' : 'Repositories'}`
+            }
           </h2>
         </div>
-        <RepositoriesTable projects={githubProjects} />
+        <RepositoriesTable projects={repositories} />
       </div>
     </main>
   )

@@ -24,6 +24,8 @@ import { linodeAdapter } from "./adapters/linode"
 import { githubAdapter } from "./adapters/github"
 import { hetznerAdapter } from "./adapters/hetzner"
 import { coolifyAdapter } from "./adapters/coolify"
+import { betterStackAdapter } from "./adapters/betterstack"
+import { sentryAdapter } from "./adapters/sentry"
 
 /**
  * Registry of all dock adapters
@@ -46,6 +48,8 @@ const adapterRegistry: Record<string, DockAdapter> = {
   github: githubAdapter,
   hetzner: hetznerAdapter,
   coolify: coolifyAdapter,
+  "better-stack": betterStackAdapter,
+  sentry: sentryAdapter,
   // Add more adapters here:
   // aws: awsAdapter,
 }
@@ -95,6 +99,8 @@ const providerMetadata: Record<string, { displayName: string }> = {
   github: { displayName: "GitHub" },
   hetzner: { displayName: "Hetzner" },
   coolify: { displayName: "Coolify" },
+  "better-stack": { displayName: "Better Stack" },
+  sentry: { displayName: "Sentry" },
   // Add more as adapters are added:
   // aws: { displayName: "AWS" },
 }

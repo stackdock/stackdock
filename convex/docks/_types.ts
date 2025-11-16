@@ -261,24 +261,19 @@ export interface DockAdapter {
   ): Promise<void>
 
   /**
-   * Sync projects (repositories, code projects) to universal `projects` table
+   * Sync repositories (code repositories) to universal `repositories` table
    * 
    * Called during dock sync. Should:
    * 1. Use pre-fetched data if provided, otherwise fetch from provider API
-   * 2. Upsert into `projects` table
+   * 2. Upsert into `repositories` table
    * 3. Map provider fields to universal schema
    * 4. Store all provider-specific data in `fullApiData`
-   * 
-   * Note: Projects table structure differs from other universal tables:
-   * - No `dockId` field (projects are org-level, not dock-specific)
-   * - Projects identified by `githubRepo` field (not `providerResourceId`)
-   * - Links to teams/clients (business entities)
    * 
    * @param ctx - Convex mutation context (has database access)
    * @param dock - The dock document (contains encrypted API key)
    * @param preFetchedData - Optional: Pre-fetched data from action (if provided, skips fetch)
    */
-  syncProjects?(
+  syncRepositories?(
     ctx: MutationCtx,
     dock: Doc<"docks">,
     preFetchedData?: any[]
@@ -317,6 +312,44 @@ export interface DockAdapter {
    * @param preFetchedData - Optional: Pre-fetched data from action (if provided, skips fetch)
    */
   syncBuckets?(
+    ctx: MutationCtx,
+    dock: Doc<"docks">,
+    preFetchedData?: any[]
+  ): Promise<void>
+
+  /**
+   * Sync monitors (uptime monitoring) to universal `monitors` table
+   * 
+   * Called during dock sync. Should:
+   * 1. Use pre-fetched data if provided, otherwise fetch from provider API
+   * 2. Upsert into `monitors` table
+   * 3. Map provider fields to universal schema
+   * 4. Store all provider-specific data in `fullApiData`
+   * 
+   * @param ctx - Convex mutation context (has database access)
+   * @param dock - The dock document (contains encrypted API key)
+   * @param preFetchedData - Optional: Pre-fetched data from action (if provided, skips fetch)
+   */
+  syncMonitors?(
+    ctx: MutationCtx,
+    dock: Doc<"docks">,
+    preFetchedData?: any[]
+  ): Promise<void>
+
+  /**
+   * Sync issues (errors/exceptions) to universal `issues` table
+   * 
+   * Called during dock sync. Should:
+   * 1. Use pre-fetched data if provided, otherwise fetch from provider API
+   * 2. Upsert into `issues` table
+   * 3. Map provider fields to universal schema
+   * 4. Store all provider-specific data in `fullApiData`
+   * 
+   * @param ctx - Convex mutation context (has database access)
+   * @param dock - The dock document (contains encrypted API key)
+   * @param preFetchedData - Optional: Pre-fetched data from action (if provided, skips fetch)
+   */
+  syncIssues?(
     ctx: MutationCtx,
     dock: Doc<"docks">,
     preFetchedData?: any[]

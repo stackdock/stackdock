@@ -21,6 +21,9 @@ import { LinodeAPI } from "./adapters/linode/api"
 import { GitHubAPI } from "./adapters/github/api"
 import { HetznerAPI } from "./adapters/hetzner/api"
 import { CoolifyAPI } from "./adapters/coolify/api"
+import { BetterStackAPI } from "./adapters/betterstack/api"
+import { SentryAPI } from "./adapters/sentry/api"
+import { decryptApiKey } from "../lib/encryption"
 import { internal } from "../_generated/api"
 import type { Id } from "../_generated/dataModel"
 
@@ -100,9 +103,11 @@ export const syncDockResources = internalAction({
     let backupSchedules: any[] = []
     let backupIntegrations: any[] = []
     let deployments: any[] = []
-    let projects: any[] = [] // GitHub projects (repositories)
+    let repositories: any[] = [] // GitHub repositories (code)
     let blockVolumes: any[] = [] // Block storage volumes (Vultr blocks, DO volumes)
     let buckets: any[] = [] // Object storage buckets (Linode buckets)
+    let monitors: any[] = [] // Uptime monitors (Better Stack, etc.)
+    let issues: any[] = [] // Error issues (Sentry, etc.)
 
     try {
       // GridPane-specific: Use GridPaneAPI directly
@@ -548,10 +553,34 @@ export const syncDockResources = internalAction({
         // GitHub-specific: Use GitHubAPI directly
         const api = new GitHubAPI(args.apiKey)
 
-        // Projects sync disabled for MVP - projects must be created manually
-        if (args.resourceTypes.includes("projects")) {
-          console.log(`[Dock Action] Projects sync disabled for MVP - projects must be created manually`)
-          projects = []
+        // GitHub repository sync: Fetch repos with details to populate fullApiData
+        if (args.resourceTypes.includes("repositories")) {
+          console.log(`[Dock Action] Fetching GitHub repositories with details...`)
+          const repos = await api.listRepositories()
+          
+          // Fetch details for each repository (branches, issues, commits, pullRequests)
+          const reposWithDetails = await Promise.all(
+            repos.map(async (repo) => {
+              const [owner, repoName] = repo.full_name.split("/")
+              const [branches, issues, commits, pullRequests] = await Promise.all([
+                api.listBranches(owner, repoName).catch(() => []),
+                api.listIssues(owner, repoName).catch(() => []),
+                api.listCommits(owner, repoName, { limit: 10, page: 1 }).catch(() => []),
+                api.listPullRequests(owner, repoName).catch(() => []),
+              ])
+              
+              return {
+                ...repo,
+                branches,
+                issues,
+                commits,
+                pullRequests,
+              }
+            })
+          )
+          
+          repositories = reposWithDetails
+          console.log(`[Dock Action] Fetched ${repositories.length} GitHub repositories with details`)
         }
 
         // GitHub doesn't support other resource types
@@ -643,9 +672,63 @@ export const syncDockResources = internalAction({
           console.log(`[Dock Action] Buckets not supported for ${args.provider}`)
           buckets = []
         }
-        if (args.resourceTypes.includes("projects")) {
-          console.log(`[Dock Action] Projects not supported for ${args.provider}`)
-          projects = []
+      } else if (args.provider === "better-stack") {
+        // Better Stack-specific: Use BetterStackAPI directly
+        const api = new BetterStackAPI(args.apiKey)
+
+        if (args.resourceTypes.includes("monitors")) {
+          console.log(`[Dock Action] Fetching monitors for ${args.provider}`)
+          monitors = await api.listMonitors()
+        }
+
+        // Better Stack only supports monitors
+        if (args.resourceTypes.includes("servers")) {
+          console.log(`[Dock Action] Servers not supported for ${args.provider}`)
+          servers = []
+        }
+        if (args.resourceTypes.includes("webServices")) {
+          console.log(`[Dock Action] Web services not supported for ${args.provider}`)
+          webServices = []
+        }
+        if (args.resourceTypes.includes("domains")) {
+          console.log(`[Dock Action] Domains not supported for ${args.provider}`)
+          domains = []
+        }
+        if (args.resourceTypes.includes("databases")) {
+          console.log(`[Dock Action] Databases not supported for ${args.provider}`)
+          databases = []
+        }
+      } else if (args.provider === "sentry") {
+        // Sentry-specific: Use SentryAPI directly
+        const api = new SentryAPI(args.apiKey)
+
+        if (args.resourceTypes.includes("issues")) {
+          console.log(`[Dock Action] Fetching issues for ${args.provider}`)
+          const projectsWithIssues = await api.listAllIssues()
+          // Flatten to array of { project, issues } objects
+          issues = projectsWithIssues
+        }
+
+        // Sentry only supports issues
+        if (args.resourceTypes.includes("servers")) {
+          console.log(`[Dock Action] Servers not supported for ${args.provider}`)
+          servers = []
+        }
+        if (args.resourceTypes.includes("webServices")) {
+          console.log(`[Dock Action] Web services not supported for ${args.provider}`)
+          webServices = []
+        }
+        if (args.resourceTypes.includes("domains")) {
+          console.log(`[Dock Action] Domains not supported for ${args.provider}`)
+          domains = []
+        }
+        if (args.resourceTypes.includes("databases")) {
+          console.log(`[Dock Action] Databases not supported for ${args.provider}`)
+          databases = []
+        }
+        if (args.resourceTypes.includes("monitors")) {
+          console.log(`[Dock Action] Monitors not supported for ${args.provider}`)
+          monitors = []
         }
       } else {
         // For other providers, use adapter pattern
@@ -653,7 +736,7 @@ export const syncDockResources = internalAction({
         throw new Error(`Provider ${args.provider} sync not yet implemented in action`)
       }
 
-      console.log(`[Dock Action] Sync complete: ${servers.length} servers, ${webServices.length} webServices, ${domains.length} domains, ${databases.length} databases, ${deployments.length} deployments, ${backupSchedules.length} backup schedules, ${backupIntegrations.length} backup integrations, ${blockVolumes.length} block volumes, ${buckets.length} buckets`)
+      console.log(`[Dock Action] Sync complete: ${servers.length} servers, ${webServices.length} webServices, ${domains.length} domains, ${databases.length} databases, ${deployments.length} deployments, ${backupSchedules.length} backup schedules, ${backupIntegrations.length} backup integrations, ${blockVolumes.length} block volumes, ${buckets.length} buckets, ${monitors.length} monitors, ${issues.length} issues`)
 
       // Note: Rate limit headers are captured by individual API clients
       // They will be updated via updateRateLimitInfo mutation when we update API clients
@@ -670,9 +753,11 @@ export const syncDockResources = internalAction({
         deployments: args.resourceTypes.includes("deployments") ? deployments : undefined,
         backupSchedules: backupSchedules.length > 0 ? backupSchedules : undefined,
         backupIntegrations: backupIntegrations.length > 0 ? backupIntegrations : undefined,
-        projects: undefined, // Projects sync disabled for MVP - projects must be created manually
+        repositories: args.resourceTypes.includes("repositories") ? repositories : undefined,
         blockVolumes: args.resourceTypes.includes("blockVolumes") ? blockVolumes : undefined,
         buckets: args.resourceTypes.includes("buckets") ? buckets : undefined,
+        monitors: args.resourceTypes.includes("monitors") ? monitors : undefined,
+        issues: args.resourceTypes.includes("issues") ? issues : undefined,
       }
       
       console.log(`[Dock Action] 📤 Calling syncDockResourcesMutation with:`)
@@ -760,7 +845,6 @@ export const fetchMoreCommits = action({
     }
     
     // Decrypt API key (actions can use decryptApiKey, but without audit logging)
-    const { decryptApiKey } = await import("../lib/encryption")
     const apiKey = await decryptApiKey(dock.encryptedApiKey)
     
     // Fetch commits

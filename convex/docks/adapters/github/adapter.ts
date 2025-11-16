@@ -17,65 +17,9 @@
 
 import type { DockAdapter } from "../../_types"
 import type { MutationCtx } from "../../../_generated/server"
-import type { Doc, Id } from "../../../_generated/dataModel"
-import { generateSlug } from "../../../lib/slug"
-import { decryptApiKey } from "../../../lib/encryption"
+import type { Doc } from "../../../_generated/dataModel"
 import { GitHubAPI } from "./api"
 import type { GitHubRepositoryWithDetails } from "./types"
-
-/**
- * Get or create default team for GitHub sync
- * 
- * Projects table requires teamId, but GitHub repos don't map to teams.
- * This helper ensures we have a team to use.
- */
-async function getOrCreateDefaultTeam(
-  ctx: MutationCtx, 
-  orgId: Id<"organizations">
-): Promise<Id<"teams">> {
-  // Try to find existing team first
-  const existingTeam = await ctx.db
-    .query("teams")
-    .withIndex("by_orgId", (q) => q.eq("orgId", orgId))
-    .first()
-  
-  if (existingTeam) {
-    return existingTeam._id
-  }
-  
-  // Create default team with clear naming
-  return await ctx.db.insert("teams", {
-    orgId,
-    name: "GitHub Sync - Default Team",
-  })
-}
-
-/**
- * Get or create default client for GitHub sync
- * 
- * Projects table requires clientId, but GitHub repos don't map to clients.
- * This helper ensures we have a client to use.
- */
-async function getOrCreateDefaultClient(
-  ctx: MutationCtx, 
-  orgId: Id<"organizations">
-): Promise<Id<"clients">> {
-  // Try to find existing client first
-  const existingClient = await ctx.db
-    .query("clients")
-    .withIndex("by_orgId", (q) => q.eq("orgId", orgId))
-    .first()
-  
-  if (existingClient) {
-    return existingClient._id
-  }
-  
-  // Create default client with clear naming
-  return await ctx.db.insert("clients", {
-    orgId,
-    name: "GitHub Sync - Default Client",
-  })
-}
 
 export const githubAdapter: DockAdapter = {
   provider: "github",
@@ -94,47 +38,23 @@ export const githubAdapter: DockAdapter = {
   },
 
   /**
-   * Sync GitHub repositories to universal `projects` table
+   * Sync GitHub repositories to `repositories` table
    * 
    * Flow:
-   * 1. If preFetchedData provided, use it (from action - includes branches/issues)
-   * 2. Otherwise, decrypt API key and fetch data (fallback, shouldn't happen)
-   * 3. For each repository, upsert into `projects` table
-   * 4. Store all GitHub fields in fullApiData
-   * 
-   * Note: Projects table structure differs from other universal tables:
-   * - No `dockId` field (projects are org-level, not dock-specific)
-   * - Projects identified by `githubRepo` field (not `providerResourceId`)
-   * - Links to teams/clients (business entities)
+   * 1. If preFetchedData provided, use it (from action - includes branches/issues/commits/pullRequests)
+   * 2. For each repository, upsert into repositories table
+   * 3. Store all repository data in fullApiData
    */
-  async syncProjects(
+  async syncRepositories(
     ctx: MutationCtx,
     dock: Doc<"docks">,
     preFetchedData?: GitHubRepositoryWithDetails[]
   ): Promise<void> {
-    // preFetchedData should already include branches/issues from action
+    // preFetchedData should already include branches/issues/commits/pullRequests from action
     if (!preFetchedData || preFetchedData.length === 0) {
       console.log("[GitHub] No repositories to sync")
-      // Still need to check for orphaned repos (repos deleted on GitHub)
-      // If API returns empty, all existing repos for this org should be deleted
-      const existingProjects = await ctx.db
-        .query("projects")
-        .withIndex("by_orgId", (q) => q.eq("orgId", dock.orgId))
-        .collect()
-      
-      // Delete all projects that have githubRepo (they're from GitHub sync)
-      for (const project of existingProjects) {
-        if (project.githubRepo) {
-          console.log(`[GitHub] Deleting orphaned project: ${project.githubRepo}`)
-          await ctx.db.delete(project._id)
-        }
-      }
       return
     }
-
-    // Get team/client IDs once
-    const teamId = await getOrCreateDefaultTeam(ctx, dock.orgId)
-    const clientId = await getOrCreateDefaultClient(ctx, dock.orgId)
 
     // Track which repos we've synced (for orphan detection)
     const syncedRepoFullNames = new Set<string>()
@@ -149,42 +69,26 @@ export const githubAdapter: DockAdapter = {
       // Track this repo as synced
       syncedRepoFullNames.add(repo.full_name)
       
-      // Find existing project by GitHub repo
+      // Find existing repository by providerResourceId (full_name)
       const existing = await ctx.db
-        .query("projects")
-        .withIndex("by_githubRepo", (q) => 
-          q.eq("orgId", dock.orgId).eq("githubRepo", repo.full_name)
+        .query("repositories")
+        .withIndex("by_dock_resource", (q) => 
+          q.eq("dockId", dock._id).eq("providerResourceId", repo.full_name)
         )
         .first()
 
-      // Generate slug from repo name
-      const slug = generateSlug(repo.name)
-      
-      // Check if slug already exists in this org (handle duplicates)
-      let finalSlug = slug
-      let counter = 1
-      while (true) {
-        const slugExists = await ctx.db
-          .query("projects")
-          .withIndex("by_slug", (q) => q.eq("orgId", dock.orgId).eq("slug", finalSlug))
-          .first()
-        
-        // If no existing project with this slug, or it's the current project, use it
-        if (!slugExists || (existing && slugExists._id === existing._id)) {
-          break
-        }
-        
-        finalSlug = `${slug}-${counter}`
-        counter++
-      }
-
-      const projectData = {
+      const repositoryData = {
         orgId: dock.orgId,
-        teamId,
-        clientId,
+        dockId: dock._id,
+        provider: "github",
+        providerResourceId: repo.full_name,
         name: repo.name,
-        slug: finalSlug,
-        githubRepo: repo.full_name,
+        fullName: repo.full_name,
+        description: repo.description || undefined,
+        language: repo.language || undefined,
+        private: repo.private || false,
+        url: repo.html_url || undefined,
+        defaultBranch: repo.default_branch || undefined,
         fullApiData: {
           repository: repo, // Complete repository object
           branches, // Type-safe
@@ -192,28 +96,37 @@ export const githubAdapter: DockAdapter = {
           commits, // Commits array
           pullRequests, // Pull requests array
         },
+        updatedAt: Date.now(),
       }
 
       if (existing) {
-        await ctx.db.patch(existing._id, projectData)
+        // Update existing repository
+        await ctx.db.patch(existing._id, repositoryData)
+        console.log(`[GitHub] Updated repository ${repo.full_name}`)
       } else {
-        await ctx.db.insert("projects", projectData)
+        // Create new repository
+        await ctx.db.insert("repositories", repositoryData)
+        console.log(`[GitHub] Created repository ${repo.full_name}`)
       }
     }
 
-    // Delete orphaned projects (repos that exist in DB but not in API response)
-    // Only delete projects that have githubRepo (they're from GitHub sync)
-    const existingProjects = await ctx.db
-      .query("projects")
-      .withIndex("by_orgId", (q) => q.eq("orgId", dock.orgId))
+    // Delete orphaned repositories (exist in DB but not in API response)
+    // Only delete discovered resources (provisioningSource === undefined)
+    const existingRepos = await ctx.db
+      .query("repositories")
+      .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
       .collect()
 
-    for (const project of existingProjects) {
-      // Only delete GitHub-synced projects (have githubRepo field)
-      if (project.githubRepo && !syncedRepoFullNames.has(project.githubRepo)) {
-        console.log(`[GitHub] Deleting orphaned project: ${project.githubRepo} (deleted on GitHub)`)
-        await ctx.db.delete(project._id)
+    for (const existingRepo of existingRepos) {
+      if (!syncedRepoFullNames.has(existingRepo.providerResourceId)) {
+        // Only delete if not provisioned via SST (discovered resources)
+        if (!existingRepo.fullApiData?.provisioningSource) {
+          await ctx.db.delete(existingRepo._id)
+          console.log(`[GitHub] Deleted orphaned repository ${existingRepo.providerResourceId}`)
+        }
       }
     }
+
+    console.log(`[GitHub] Sync complete. Synced ${syncedRepoFullNames.size} repositories.`)
   },
 }

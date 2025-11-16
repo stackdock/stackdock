@@ -1,5 +1,5 @@
 import { SettingsSidebarNav } from "./SettingsSidebarNav"
-import { Building2, User, Palette } from "lucide-react"
+import { Building2, User, Palette, Activity } from "lucide-react"
 
 interface Props {
   children: React.ReactNode
@@ -10,6 +10,11 @@ const sidebarNavItems = [
     title: "Organization",
     icon: <Building2 />,
     href: "/dashboard/settings/organization",
+  },
+  {
+    title: "Activity",
+    icon: <Activity />,
+    href: "/dashboard/settings/activity",
   },
   {
     title: "User",

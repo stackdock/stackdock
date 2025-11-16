@@ -10,6 +10,7 @@ import { getCurrentUser, checkPermission } from "../lib/rbac"
 import { encryptApiKey, decryptApiKey } from "../lib/encryption"
 import { auditLog } from "../lib/audit"
 import { getAdapter, listProviders } from "./registry"
+import { getRecommendedSyncInterval, validateSyncInterval } from "./syncIntervals"
 import { ConvexError } from "convex/values"
 import { internal } from "../_generated/api"
 import type { Id } from "../_generated/dataModel"
@@ -63,7 +64,6 @@ export const createDock = mutation({
     const encryptedApiKey = await encryptApiKey(args.apiKey)
 
     // Set provider-aware syncConfig
-    const { getRecommendedSyncInterval } = await import("./syncIntervals")
     const syncConfig = {
       enabled: true,
       intervalSeconds: getRecommendedSyncInterval(args.provider),
@@ -153,10 +153,12 @@ export const syncDock = mutation({
       if (adapter.syncWebServices) resourceTypes.push("webServices")
       if (adapter.syncDomains) resourceTypes.push("domains")
       if (adapter.syncDatabases) resourceTypes.push("databases")
-      // Projects sync disabled for MVP - projects must be created manually
-      // if (adapter.syncProjects) resourceTypes.push("projects")
+      // GitHub repository sync: Syncs to repositories table (NOT projects table)
+      if (adapter.syncRepositories) resourceTypes.push("repositories")
       if (adapter.syncBlockVolumes) resourceTypes.push("blockVolumes")
       if (adapter.syncBuckets) resourceTypes.push("buckets")
+      if (adapter.syncMonitors) resourceTypes.push("monitors")
+      if (adapter.syncIssues) resourceTypes.push("issues")
 
       // Call action to fetch resources (fetch allowed in actions)
       // Actions cannot return values to mutations, so the action will call an internal mutation
@@ -209,9 +211,11 @@ export const syncDockResourcesMutation = internalMutation({
       deployments: v.optional(v.array(v.any())),
       backupSchedules: v.optional(v.array(v.any())),
       backupIntegrations: v.optional(v.array(v.any())),
-      projects: v.optional(v.array(v.any())),
+      repositories: v.optional(v.array(v.any())),
       blockVolumes: v.optional(v.array(v.any())),
       buckets: v.optional(v.array(v.any())),
+      monitors: v.optional(v.array(v.any())),
+      issues: v.optional(v.array(v.any())),
     }),
   },
   handler: async (ctx, args) => {
@@ -259,10 +263,10 @@ export const syncDockResourcesMutation = internalMutation({
       await adapter.syncBackupIntegrations(ctx, dock, args.fetchedData.backupIntegrations)
     }
 
-    // Projects sync disabled for MVP - projects must be created manually
-    // if (args.fetchedData.projects !== undefined && adapter.syncProjects) {
-    //   await adapter.syncProjects(ctx, dock, args.fetchedData.projects)
-    // }
+    // GitHub repository sync: Syncs to repositories table (NOT projects table)
+    if (args.fetchedData.repositories !== undefined && adapter.syncRepositories) {
+      await adapter.syncRepositories(ctx, dock, args.fetchedData.repositories)
+    }
 
     if (args.fetchedData.blockVolumes !== undefined && adapter.syncBlockVolumes) {
       await adapter.syncBlockVolumes(ctx, dock, args.fetchedData.blockVolumes)
@@ -282,6 +286,14 @@ export const syncDockResourcesMutation = internalMutation({
       if (!adapter.syncBuckets) {
         console.log(`[Sync Mutation] ⚠️  WARNING: adapter.syncBuckets is missing for provider ${args.provider}`)
       }
+    }
+
+    if (args.fetchedData.monitors !== undefined && adapter.syncMonitors) {
+      await adapter.syncMonitors(ctx, dock, args.fetchedData.monitors)
+    }
+
+    if (args.fetchedData.issues !== undefined && adapter.syncIssues) {
+      await adapter.syncIssues(ctx, dock, args.fetchedData.issues)
     }
 
     // Mark sync as successful
@@ -655,7 +667,6 @@ export const updateSyncInterval = mutation({
     }
     
     // Validate interval against provider minimums
-    const { validateSyncInterval } = await import("./syncIntervals")
     const validation = validateSyncInterval(dock.provider, args.intervalSeconds)
     if (!validation.valid) {
       throw new ConvexError(validation.error || "Invalid sync interval")
@@ -686,7 +697,6 @@ export const updateSyncInterval = mutation({
  */
 export const updateDocksWithProviderIntervals = internalMutation({
   handler: async (ctx) => {
-    const { getRecommendedSyncInterval } = await import("./syncIntervals")
     const docks = await ctx.db.query("docks").collect()
     let updated = 0
     

@@ -25,6 +25,9 @@ import {
   AlertCircle,
   Link2,
   Plus,
+  FileText,
+  RadioTower,
+  Inbox,
 } from "lucide-react"
 import { type SidebarData } from "./types"
 import { useUser } from "@clerk/clerk-react"
@@ -99,7 +102,7 @@ export function useSidebarData(): SidebarData {
               {
                 title: "View",
                 url: "/dashboard/projects/view",
-                icon: FolderKanban,
+                icon: Inbox,
               },
               {
                 title: "Code",
@@ -165,27 +168,27 @@ export function useSidebarData(): SidebarData {
       {
         title: "",
         items: [
-          {
-            title: "Monitoring",
-            icon: BarChart3,
-            items: [
-              {
-                title: "Activity",
-                url: "/dashboard/monitoring/activity",
-                icon: Activity,
-              },
-              {
-                title: "Alerts",
-                url: "/dashboard/monitoring/alerts",
-                icon: Bell,
-              },
-              {
-                title: "Errors",
-                url: "/dashboard/monitoring/errors",
-                icon: AlertCircle,
-              },
-            ],
-          },
+            {
+              title: "Monitoring",
+              icon: BarChart3,
+              items: [
+                {
+                  title: "Uptime",
+                  url: "/dashboard/monitoring/uptime",
+                  icon: RadioTower,
+                },
+                {
+                  title: "Alerts",
+                  url: "/dashboard/monitoring/alerts",
+                  icon: Bell,
+                },
+                {
+                  title: "Logs",
+                  url: "/dashboard/monitoring/logs",
+                  icon: FileText,
+                },
+              ],
+            },
         ],
       },
       {
@@ -220,6 +223,11 @@ export function useSidebarData(): SidebarData {
                 title: "Organization",
                 url: "/dashboard/settings/organization",
                 icon: Building2,
+              },
+              {
+                title: "Activity",
+                url: "/dashboard/settings/activity",
+                icon: Activity,
               },
               {
                 title: "User",
@@ -280,7 +288,7 @@ export const sidebarData: SidebarData = {
             {
               title: "View",
               url: "/dashboard/projects/view",
-              icon: FolderKanban,
+              icon: Inbox,
             },
             {
               title: "Code",
@@ -346,9 +354,9 @@ export const sidebarData: SidebarData = {
           icon: BarChart3,
           items: [
             {
-              title: "Activity",
-              url: "/dashboard/monitoring/activity",
-              icon: Activity,
+              title: "Uptime",
+              url: "/dashboard/monitoring/uptime",
+              icon: RadioTower,
             },
             {
               title: "Alerts",
@@ -356,9 +364,9 @@ export const sidebarData: SidebarData = {
               icon: Bell,
             },
             {
-              title: "Errors",
-              url: "/dashboard/monitoring/errors",
-              icon: AlertCircle,
+              title: "Logs",
+              url: "/dashboard/monitoring/logs",
+              icon: FileText,
             },
           ],
         },
@@ -396,6 +404,11 @@ export const sidebarData: SidebarData = {
               title: "Organization",
               url: "/dashboard/settings/organization",
               icon: Building2,
+            },
+            {
+              title: "Activity",
+              url: "/dashboard/settings/activity",
+              icon: Activity,
             },
             {
               title: "User",

@@ -331,6 +331,74 @@ export default defineSchema({
     .index("by_provisioning_source", ["provisioningSource", "orgId"])
     .index("by_sst_resource", ["sstStackName", "sstResourceId"]),
 
+  // Master Fleet List: Monitors (Uptime Monitoring)
+  monitors: defineTable({
+    orgId: v.id("organizations"),
+    dockId: v.id("docks"),
+    provider: v.string(), // "better-stack", "pingdom", "statuscake", etc.
+    providerResourceId: v.string(), // Monitor ID from provider
+    name: v.string(), // Monitor name (pronounceable_name or URL)
+    url: v.optional(v.string()), // URL being monitored
+    monitorType: v.optional(v.string()), // "status", "ping", "keyword", etc.
+    status: v.string(), // "up", "down", "paused", etc.
+    lastCheckedAt: v.optional(v.number()), // Last check timestamp
+    checkFrequency: v.optional(v.number()), // Check frequency in seconds
+    monitorGroupId: v.optional(v.string()), // Group ID from provider
+    monitorGroupName: v.optional(v.string()), // Group name for display
+    fullApiData: v.any(), // All provider-specific data
+    updatedAt: v.optional(v.number()), // Track modification time
+  })
+    .index("by_orgId", ["orgId"])
+    .index("by_dockId", ["dockId"])
+    .index("by_dock_resource", ["dockId", "providerResourceId"]) // Prevent duplicate syncs
+    .index("by_status", ["orgId", "status"]), // For filtering by status
+
+  // Master Fleet List: Issues (Errors/Exceptions)
+  issues: defineTable({
+    orgId: v.id("organizations"),
+    dockId: v.id("docks"),
+    provider: v.string(), // "sentry", "rollbar", "bugsnag", etc.
+    providerResourceId: v.string(), // Issue ID from provider
+    title: v.string(), // Issue title/name
+    status: v.string(), // "open", "resolved", "ignored", etc.
+    severity: v.string(), // "low", "medium", "high", "critical"
+    project: v.string(), // Project name
+    projectSlug: v.optional(v.string()), // Project slug
+    organizationSlug: v.optional(v.string()), // Organization slug
+    count: v.optional(v.number()), // Number of occurrences
+    userCount: v.optional(v.number()), // Number of affected users
+    firstSeen: v.optional(v.number()), // First seen timestamp
+    lastSeen: v.optional(v.number()), // Last seen timestamp
+    fullApiData: v.any(), // All provider-specific data
+    updatedAt: v.optional(v.number()), // Track modification time
+  })
+    .index("by_orgId", ["orgId"])
+    .index("by_dockId", ["dockId"])
+    .index("by_dock_resource", ["dockId", "providerResourceId"]) // Prevent duplicate syncs
+    .index("by_status", ["orgId", "status"]) // For filtering by status
+    .index("by_severity", ["orgId", "severity"]), // For filtering by severity
+
+  // Master Fleet List: Repositories (Code)
+  repositories: defineTable({
+    orgId: v.id("organizations"),
+    dockId: v.id("docks"),
+    provider: v.string(), // "github", "gitlab", "bitbucket", etc.
+    providerResourceId: v.string(), // Repository full name (e.g., "owner/repo-name")
+    name: v.string(), // Repository name
+    fullName: v.string(), // Full repository name (e.g., "owner/repo-name")
+    description: v.optional(v.string()), // Repository description
+    language: v.optional(v.string()), // Primary language
+    private: v.boolean(), // Is private repository
+    url: v.optional(v.string()), // Repository URL
+    defaultBranch: v.optional(v.string()), // Default branch name
+    fullApiData: v.any(), // All provider-specific data (branches, issues, commits, pullRequests, etc.)
+    updatedAt: v.optional(v.number()), // Track modification time
+  })
+    .index("by_orgId", ["orgId"])
+    .index("by_dockId", ["dockId"])
+    .index("by_dock_resource", ["dockId", "providerResourceId"]) // Prevent duplicate syncs
+    .index("by_provider", ["orgId", "provider"]), // For filtering by provider
+
   // Master Fleet List: Deployments
   deployments: defineTable({
     orgId: v.id("organizations"),

@@ -1,13 +1,12 @@
 /**
- * Projects Table Component
+ * Uptime Monitors Table Component
  * 
- * TanStack Table implementation for displaying projects
+ * TanStack Table implementation for displaying uptime monitors from all providers
  */
 
 "use client"
 
 import { useId, useMemo, useRef, useState } from "react"
-import { useNavigate } from "@tanstack/react-router"
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -39,8 +38,6 @@ import {
   TrashIcon,
 } from "lucide-react"
 import type { Doc } from "convex/_generated/dataModel"
-import { useQuery } from "convex/react"
-import { api } from "convex/_generated/api"
 import { cn } from "@/lib/utils"
 import {
   AlertDialog,
@@ -92,64 +89,48 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { TableSkeleton } from "@/components/resources/shared/table-skeleton"
+import { ProviderBadge } from "@/components/resources/shared/provider-badge"
+import { StatusBadge } from "@/components/resources/shared/status-badge"
 import { formatDate } from "@/components/resources/shared/format-utils"
 import { Badge } from "@/components/ui/badge"
+import { ExternalLink } from "lucide-react"
 
-function RowActions({ project }: { project: Project }) {
-  const navigate = useNavigate()
-  
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-8 w-8 p-0">
-          <span className="sr-only">Open menu</span>
-          <EllipsisIcon className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-        <DropdownMenuItem
-          onClick={() => {
-            navigate({ to: "/dashboard/projects/$projectSlug", params: { projectSlug: project.slug } })
-          }}
-        >
-          View Details
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem className="text-destructive">
-          Delete Project
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
+type Monitor = Doc<"monitors">
 
-type Project = Doc<"projects">
-
-// Multi-column filter for name
-const multiColumnFilterFn: FilterFn<Project> = (row, columnId, filterValue) => {
-  const searchableContent = `${row.original.name} ${row.original.linearId || ""} ${row.original.githubRepo || ""}`.toLowerCase()
+// Multi-column filter for name and URL
+const multiColumnFilterFn: FilterFn<Monitor> = (row, columnId, filterValue) => {
+  const searchableContent = `${row.original.name} ${row.original.url || ""} ${row.original.monitorGroupName || ""}`.toLowerCase()
   const searchTerm = (filterValue ?? "").toLowerCase()
   return searchableContent.includes(searchTerm)
 }
 
-// Team filter
-const teamFilterFn: FilterFn<Project> = (row, columnId, filterValue: string[]) => {
+// Status filter
+const statusFilterFn: FilterFn<Monitor> = (row, columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
-  return filterValue.includes(row.original.teamId)
+  return filterValue.includes(row.original.status)
 }
 
-// Client filter
-const clientFilterFn: FilterFn<Project> = (row, columnId, filterValue: string[]) => {
+// Provider filter
+const providerFilterFn: FilterFn<Monitor> = (row, columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
-  const clientId = row.original.clientId
-  if (!clientId) {
-    return filterValue.includes("none")
+  return filterValue.includes(row.original.provider)
+}
+
+// Status badge mapping
+function getStatusBadgeVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
+  switch (status.toLowerCase()) {
+    case "up":
+      return "default"
+    case "down":
+      return "destructive"
+    case "paused":
+      return "secondary"
+    default:
+      return "outline"
   }
-  return filterValue.includes(clientId)
 }
 
-const columns: ColumnDef<Project>[] = [
+const columns: ColumnDef<Monitor>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -174,15 +155,10 @@ const columns: ColumnDef<Project>[] = [
     header: "Name",
     accessorKey: "name",
     cell: ({ row }) => {
-      const project = row.original
+      const monitor = row.original
       return (
         <div className="font-medium">
-          <a
-            href={`/dashboard/projects/${project.slug}`}
-            className="text-left hover:underline"
-          >
-            {row.getValue("name")}
-          </a>
+          {monitor.name}
         </div>
       )
     },
@@ -192,83 +168,122 @@ const columns: ColumnDef<Project>[] = [
     enableHiding: false,
   },
   {
-    id: "team",
-    header: "Team",
-    accessorKey: "teamId",
+    header: "URL",
+    accessorKey: "url",
     cell: ({ row }) => {
-      // TODO: Fetch team name from teamId
-      return <span className="text-muted-foreground">Team</span>
-    },
-    size: 150,
-    filterFn: teamFilterFn,
-    enableColumnFilter: false,
-  },
-  {
-    id: "client",
-    header: "Client",
-    accessorKey: "clientId",
-    cell: ({ row }) => {
-      const clientId = row.getValue("clientId") as string | undefined
-      if (!clientId) {
-        return <Badge variant="outline">None</Badge>
-      }
-      // TODO: Fetch client name from clientId
-      return <span className="text-muted-foreground">Client</span>
-    },
-    size: 150,
-    filterFn: clientFilterFn,
-    enableColumnFilter: false,
-  },
-  {
-    header: "Linear ID",
-    accessorKey: "linearId",
-    cell: ({ row }) => {
-      const linearId = row.getValue("linearId") as string | undefined
-      return linearId ? <Badge variant="secondary">{linearId}</Badge> : <span className="text-muted-foreground">—</span>
-    },
-    size: 120,
-  },
-  {
-    header: "GitHub Repo",
-    accessorKey: "githubRepo",
-    cell: ({ row }) => {
-      const githubRepo = row.getValue("githubRepo") as string | undefined
-      if (!githubRepo) {
+      const url = row.getValue("url") as string | undefined
+      if (!url) {
         return <span className="text-muted-foreground">—</span>
       }
       return (
         <a
-          href={`https://github.com/${githubRepo}`}
+          href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-primary hover:underline"
+          className="text-primary hover:underline flex items-center gap-1"
         >
-          {githubRepo}
+          {url}
+          <ExternalLink className="h-3 w-3" />
         </a>
       )
     },
-    size: 200,
+    size: 250,
+  },
+  {
+    header: "Status",
+    accessorKey: "status",
+    cell: ({ row }) => {
+      const status = row.getValue("status") as string
+      return (
+        <StatusBadge status={status} variant={getStatusBadgeVariant(status)} />
+      )
+    },
+    size: 120,
+    filterFn: statusFilterFn,
+    enableColumnFilter: false,
+  },
+  {
+    header: "Type",
+    accessorKey: "monitorType",
+    cell: ({ row }) => {
+      const type = row.getValue("monitorType") as string | undefined
+      return type ? <Badge variant="outline">{type}</Badge> : <span className="text-muted-foreground">—</span>
+    },
+    size: 120,
+  },
+  {
+    header: "Group",
+    accessorKey: "monitorGroupName",
+    cell: ({ row }) => {
+      const groupName = row.getValue("monitorGroupName") as string | undefined
+      return groupName ? <Badge variant="secondary">{groupName}</Badge> : <span className="text-muted-foreground">—</span>
+    },
+    size: 150,
+  },
+  {
+    header: "Last Checked",
+    accessorKey: "lastCheckedAt",
+    cell: ({ row }) => {
+      const timestamp = row.getValue("lastCheckedAt") as number | undefined
+      return timestamp ? formatDate(timestamp) : <span className="text-muted-foreground">—</span>
+    },
+    size: 150,
+  },
+  {
+    header: "Provider",
+    accessorKey: "provider",
+    cell: ({ row }) => {
+      const provider = row.getValue("provider") as string
+      return <ProviderBadge provider={provider} />
+    },
+    size: 120,
+    filterFn: providerFilterFn,
+    enableColumnFilter: false,
   },
   {
     id: "actions",
     header: () => <span className="sr-only">Actions</span>,
     cell: ({ row }) => {
-      const project = row.original
-      return <RowActions project={project} />
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">Open menu</span>
+              <EllipsisIcon className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuItem
+              onClick={() => {
+                const url = row.original.url
+                if (url) {
+                  window.open(url, "_blank", "noopener,noreferrer")
+                }
+              }}
+            >
+              View Monitor
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="text-destructive">
+              Delete Monitor
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
     },
     size: 60,
     enableHiding: false,
   },
 ]
 
-interface ProjectsTableProps {
-  data: Project[] | undefined
-  onDelete?: (projectIds: string[]) => void
+interface UptimeTableProps {
+  data: Monitor[] | undefined
+  onDelete?: (monitorIds: string[]) => void
 }
 
-export function ProjectsTable({ data, onDelete }: ProjectsTableProps) {
+export function UptimeTable({ data, onDelete }: UptimeTableProps) {
   const id = useId()
-  const navigate = useNavigate()
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [pagination, setPagination] = useState<PaginationState>({
@@ -277,19 +292,6 @@ export function ProjectsTable({ data, onDelete }: ProjectsTableProps) {
   })
   const inputRef = useRef<HTMLInputElement>(null)
   const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }])
-
-  // Get orgId from first project (all projects have same orgId)
-  const orgId = data && data.length > 0 ? data[0].orgId : undefined
-  
-  // Fetch teams and clients for filters
-  const teams = useQuery(
-    api["teams/queries"].listTeams,
-    orgId ? { orgId } : "skip"
-  )
-  const clients = useQuery(
-    api["clients/queries"].listClients,
-    orgId ? { orgId } : "skip"
-  )
 
   const table = useReactTable({
     data: data || [],
@@ -308,39 +310,36 @@ export function ProjectsTable({ data, onDelete }: ProjectsTableProps) {
     state: { sorting, pagination, columnFilters, columnVisibility },
   })
 
-  const uniqueTeamValues = useMemo(() => {
-    const teamColumn = table.getColumn("team")
-    if (!teamColumn) return []
-    return Array.from(teamColumn.getFacetedUniqueValues().keys()).filter(Boolean).sort()
-  }, [table.getColumn("team")?.getFacetedUniqueValues()])
+  const uniqueStatusValues = useMemo(() => {
+    const statusColumn = table.getColumn("status")
+    if (!statusColumn) return []
+    return Array.from(statusColumn.getFacetedUniqueValues().keys()).sort()
+  }, [table.getColumn("status")?.getFacetedUniqueValues()])
 
-  const uniqueClientValues = useMemo(() => {
-    const clientColumn = table.getColumn("client")
-    if (!clientColumn) return []
-    const values = Array.from(clientColumn.getFacetedUniqueValues().keys())
-    // Include "none" for projects without clients
-    const hasNone = data?.some(p => !p.clientId)
-    return hasNone ? [...values, "none"].sort() : values.sort()
-  }, [table.getColumn("client")?.getFacetedUniqueValues(), data])
+  const uniqueProviderValues = useMemo(() => {
+    const providerColumn = table.getColumn("provider")
+    if (!providerColumn) return []
+    return Array.from(providerColumn.getFacetedUniqueValues().keys()).sort()
+  }, [table.getColumn("provider")?.getFacetedUniqueValues()])
 
-  const selectedTeams = useMemo(() => {
-    return (table.getColumn("team")?.getFilterValue() as string[]) ?? []
-  }, [table.getColumn("team")?.getFilterValue()])
+  const selectedStatuses = useMemo(() => {
+    return (table.getColumn("status")?.getFilterValue() as string[]) ?? []
+  }, [table.getColumn("status")?.getFilterValue()])
 
-  const selectedClients = useMemo(() => {
-    return (table.getColumn("client")?.getFilterValue() as string[]) ?? []
-  }, [table.getColumn("client")?.getFilterValue()])
+  const selectedProviders = useMemo(() => {
+    return (table.getColumn("provider")?.getFilterValue() as string[]) ?? []
+  }, [table.getColumn("provider")?.getFilterValue()])
 
-  const handleTeamChange = (checked: boolean, value: string) => {
-    const filterValue = selectedTeams
+  const handleStatusChange = (checked: boolean, value: string) => {
+    const filterValue = selectedStatuses
     const newFilterValue = checked ? [...filterValue, value] : filterValue.filter(v => v !== value)
-    table.getColumn("team")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
+    table.getColumn("status")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
   }
 
-  const handleClientChange = (checked: boolean, value: string) => {
-    const filterValue = selectedClients
+  const handleProviderChange = (checked: boolean, value: string) => {
+    const filterValue = selectedProviders
     const newFilterValue = checked ? [...filterValue, value] : filterValue.filter(v => v !== value)
-    table.getColumn("client")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
+    table.getColumn("provider")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
   }
 
   const handleDeleteRows = () => {
@@ -353,7 +352,7 @@ export function ProjectsTable({ data, onDelete }: ProjectsTableProps) {
   if (data === undefined) {
     return (
       <div className="space-y-4">
-        <TableSkeleton columnCount={7} showCheckbox={true} />
+        <TableSkeleton columnCount={9} showCheckbox={true} />
       </div>
     )
   }
@@ -371,7 +370,7 @@ export function ProjectsTable({ data, onDelete }: ProjectsTableProps) {
               className={cn("h-8 w-[150px] lg:w-[250px] ps-9", Boolean(table.getColumn("name")?.getFilterValue()) && "pe-9")}
               value={(table.getColumn("name")?.getFilterValue() ?? "") as string}
               onChange={(e) => table.getColumn("name")?.setFilterValue(e.target.value)}
-              placeholder="Filter projects..."
+              placeholder="Filter monitors..."
               type="text"
             />
             <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 text-muted-foreground/80">
@@ -390,88 +389,72 @@ export function ProjectsTable({ data, onDelete }: ProjectsTableProps) {
             )}
           </div>
           <div className="flex gap-x-2">
-            {/* Team Filter */}
-            {teams && teams.length > 0 && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="h-8 !border-dashed">
-                    <FilterIcon className="-ms-1 opacity-60" size={16} />
-                    Team
-                    {selectedTeams.length > 0 && (
-                      <span className="-me-1 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70">
-                        {selectedTeams.length}
-                      </span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto min-w-36 p-3" align="start">
+            {/* Status Filter */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="h-8 !border-dashed">
+                  <FilterIcon className="-ms-1 opacity-60" size={16} />
+                  Status
+                  {selectedStatuses.length > 0 && (
+                    <span className="-me-1 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70">
+                      {selectedStatuses.length}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto min-w-36 p-3" align="start">
+                <div className="space-y-3">
+                  <div className="text-xs font-medium text-muted-foreground">Filters</div>
                   <div className="space-y-3">
-                    <div className="text-xs font-medium text-muted-foreground">Filters</div>
-                    <div className="space-y-3">
-                      {teams.map((team) => (
-                        <div key={team._id} className="flex items-center gap-2">
-                          <Checkbox
-                            id={`${id}-team-${team._id}`}
-                            checked={selectedTeams.includes(team._id)}
-                            onCheckedChange={(checked: boolean) => handleTeamChange(checked, team._id)}
-                          />
-                          <Label htmlFor={`${id}-team-${team._id}`} className="font-normal">
-                            {team.name}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
+                    {uniqueStatusValues.map((value, i) => (
+                      <div key={value} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`${id}-status-${i}`}
+                          checked={selectedStatuses.includes(value)}
+                          onCheckedChange={(checked: boolean) => handleStatusChange(checked, value)}
+                        />
+                        <Label htmlFor={`${id}-status-${i}`} className="font-normal">
+                          {value}
+                        </Label>
+                      </div>
+                    ))}
                   </div>
-                </PopoverContent>
-              </Popover>
-            )}
-            {/* Client Filter */}
-            {(clients && clients.length > 0) || (data && data.some(p => !p.clientId)) ? (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="h-8 !border-dashed">
-                    <FilterIcon className="-ms-1 opacity-60" size={16} />
-                    Client
-                    {selectedClients.length > 0 && (
-                      <span className="-me-1 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70">
-                        {selectedClients.length}
-                      </span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto min-w-36 p-3" align="start">
+                </div>
+              </PopoverContent>
+            </Popover>
+            {/* Provider Filter */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="h-8 !border-dashed">
+                  <FilterIcon className="-ms-1 opacity-60" size={16} />
+                  Provider
+                  {selectedProviders.length > 0 && (
+                    <span className="-me-1 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70">
+                      {selectedProviders.length}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto min-w-36 p-3" align="start">
+                <div className="space-y-3">
+                  <div className="text-xs font-medium text-muted-foreground">Filters</div>
                   <div className="space-y-3">
-                    <div className="text-xs font-medium text-muted-foreground">Filters</div>
-                    <div className="space-y-3">
-                      {clients?.map((client) => (
-                        <div key={client._id} className="flex items-center gap-2">
-                          <Checkbox
-                            id={`${id}-client-${client._id}`}
-                            checked={selectedClients.includes(client._id)}
-                            onCheckedChange={(checked: boolean) => handleClientChange(checked, client._id)}
-                          />
-                          <Label htmlFor={`${id}-client-${client._id}`} className="font-normal">
-                            {client.name}
-                          </Label>
-                        </div>
-                      ))}
-                      {data && data.some(p => !p.clientId) && (
-                        <div className="flex items-center gap-2">
-                          <Checkbox
-                            id={`${id}-client-none`}
-                            checked={selectedClients.includes("none")}
-                            onCheckedChange={(checked: boolean) => handleClientChange(checked, "none")}
-                          />
-                          <Label htmlFor={`${id}-client-none`} className="font-normal">
-                            None
-                          </Label>
-                        </div>
-                      )}
-                    </div>
+                    {uniqueProviderValues.map((value, i) => (
+                      <div key={value} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`${id}-provider-${i}`}
+                          checked={selectedProviders.includes(value)}
+                          onCheckedChange={(checked: boolean) => handleProviderChange(checked, value)}
+                        />
+                        <Label htmlFor={`${id}-provider-${i}`} className="font-normal">
+                          {value}
+                        </Label>
+                      </div>
+                    ))}
                   </div>
-                </PopoverContent>
-              </Popover>
-            ) : null}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
         {/* Column Visibility */}
@@ -513,7 +496,7 @@ export function ProjectsTable({ data, onDelete }: ProjectsTableProps) {
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently delete {table.getSelectedRowModel().rows.length} selected project{table.getSelectedRowModel().rows.length === 1 ? "" : "s"}.
+                  This will permanently delete {table.getSelectedRowModel().rows.length} selected monitor{table.getSelectedRowModel().rows.length === 1 ? "" : "s"}.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -580,7 +563,7 @@ export function ProjectsTable({ data, onDelete }: ProjectsTableProps) {
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No projects found.
+                  No monitors found.
                 </TableCell>
               </TableRow>
             )}

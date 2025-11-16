@@ -6,7 +6,7 @@
 
 "use client"
 
-import { useId, useMemo, useRef, useState } from "react"
+import { useId, useEffect, useMemo, useRef, useState } from "react"
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -96,34 +96,30 @@ import { PullRequestsTable } from "./PullRequestsTable"
 import { CommitsTable } from "./CommitsTable"
 import { TableSkeleton } from "@/components/resources/shared/table-skeleton"
 
-type Project = Doc<"projects">
+type Repository = Doc<"repositories">
 
 // Multi-column filter for name + description
-const multiColumnFilterFn: FilterFn<Project> = (row, columnId, filterValue) => {
-  const repo = row.original.fullApiData?.repository as any
-  const searchableContent = `${repo?.full_name || row.original.name} ${repo?.description || ""}`.toLowerCase()
+const multiColumnFilterFn: FilterFn<Repository> = (row, columnId, filterValue) => {
+  const searchableContent = `${row.original.fullName || row.original.name} ${row.original.description || ""}`.toLowerCase()
   const searchTerm = (filterValue ?? "").toLowerCase()
   return searchableContent.includes(searchTerm)
 }
 
 // Language filter
-const languageFilterFn: FilterFn<Project> = (row, columnId, filterValue: string[]) => {
+const languageFilterFn: FilterFn<Repository> = (row, columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
-  const repo = row.original.fullApiData?.repository as any
-  const language = repo?.language || "N/A"
+  const language = row.original.language || "N/A"
   return filterValue.includes(language)
 }
 
 // Host filter (for multi-provider support)
-const hostFilterFn: FilterFn<Project> = (row, columnId, filterValue: string[]) => {
+const hostFilterFn: FilterFn<Repository> = (row, columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
-  // Check if it's a GitHub repository (has githubRepo field or fullApiData.repository)
-  const repo = row.original.fullApiData?.repository as any
-  const host = repo ? "github" : "unknown"
+  const host = row.original.provider || "unknown"
   return filterValue.includes(host)
 }
 
-const columns: ColumnDef<Project>[] = [
+const columns: ColumnDef<Repository>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -148,11 +144,11 @@ const columns: ColumnDef<Project>[] = [
     header: "Repository",
     accessorKey: "name",
     cell: ({ row }) => {
-      const repo = row.original.fullApiData?.repository as any
-      return <div className="font-medium">{repo?.full_name || row.original.name}</div>
+      return <div className="font-medium">{row.original.fullName || row.original.name}</div>
     },
     size: 200,
     filterFn: multiColumnFilterFn,
+    enableColumnFilter: false,
     enableHiding: false,
     enableSorting: true,
   },
@@ -160,25 +156,22 @@ const columns: ColumnDef<Project>[] = [
     id: "host",
     header: "Host",
     accessorFn: (row) => {
-      // Check if it's a GitHub repository (has githubRepo field or fullApiData.repository)
-      const repo = row.fullApiData?.repository as any
-      return repo ? "github" : "unknown"
+      return row.provider || "unknown"
     },
     cell: ({ row }) => {
-      const repo = row.original.fullApiData?.repository as any
-      const host = repo ? "github" : "unknown"
+      const host = row.original.provider || "unknown"
       return <Badge variant="outline">{host === "github" ? "GitHub" : host}</Badge>
     },
     size: 100,
     filterFn: hostFilterFn,
+    enableColumnFilter: false,
     enableSorting: true,
   },
   {
     id: "repoLink",
     header: "Repo Link",
     cell: ({ row }) => {
-      const repo = row.original.fullApiData?.repository as any
-      const repoUrl = repo?.html_url
+      const repoUrl = row.original.url
       
       if (!repoUrl) {
         return <span className="text-muted-foreground">—</span>
@@ -191,7 +184,7 @@ const columns: ColumnDef<Project>[] = [
           rel="noopener noreferrer"
           className="text-muted-foreground hover:text-foreground transition-colors inline-flex items-center"
           onClick={(e) => e.stopPropagation()}
-          title="Open repository on GitHub"
+          title="Open repository"
         >
           <ExternalLinkIcon className="h-4 w-4" />
         </a>
@@ -204,14 +197,12 @@ const columns: ColumnDef<Project>[] = [
   {
     header: "Last Updated",
     accessorFn: (row) => {
-      const repo = row.fullApiData?.repository as any
-      return repo?.updated_at ? new Date(repo.updated_at).getTime() : 0
+      return row.updatedAt || 0
     },
     cell: ({ row }) => {
-      const repo = row.original.fullApiData?.repository as any
-      return repo?.updated_at ? (
+      return row.original.updatedAt ? (
         <span className="text-sm text-muted-foreground">
-          {new Date(repo.updated_at).toLocaleDateString()}
+          {new Date(row.original.updatedAt).toLocaleDateString()}
         </span>
       ) : (
         <span className="text-muted-foreground">—</span>
@@ -268,19 +259,18 @@ const columns: ColumnDef<Project>[] = [
     id: "language",
     header: "Language",
     accessorFn: (row) => {
-      const repo = row.fullApiData?.repository as any
-      return repo?.language || "N/A"
+      return row.language || "N/A"
     },
     cell: ({ row }) => {
-      const repo = row.original.fullApiData?.repository as any
-      return repo?.language ? (
-        <Badge variant="outline">{repo.language}</Badge>
+      return row.original.language ? (
+        <Badge variant="outline">{row.original.language}</Badge>
       ) : (
         <Badge variant="outline" className="text-muted-foreground">N/A</Badge>
       )
     },
     size: 120,
     filterFn: languageFilterFn,
+    enableColumnFilter: false,
     enableSorting: true,
   },
   {
@@ -331,33 +321,23 @@ const columns: ColumnDef<Project>[] = [
   },
 ]
 
-function RepositoryDetailsCell({ row }: { row: any }) {
+function RepositoryDetailsCell({ row }: { row: Row<Repository> }) {
   const [open, setOpen] = useState(false)
-  const repo = row.original.fullApiData?.repository as any
-  const branches = row.original.fullApiData?.branches || []
-  const issues = row.original.fullApiData?.issues || []
-  const pullRequests = row.original.fullApiData?.pullRequests || []
-  const commits = row.original.fullApiData?.commits || []
+  const repository = row.original
+  const branches = repository.fullApiData?.branches || []
+  const issues = repository.fullApiData?.issues || []
+  const pullRequests = repository.fullApiData?.pullRequests || []
+  const commits = repository.fullApiData?.commits || []
+  
+  // Get repository data from fullApiData if available, otherwise use direct fields
+  const repoData = repository.fullApiData?.repository || repository
   
   // Find GitHub dock for fetching more commits
   const docks = useQuery(api["docks/queries"].listDocks)
   const githubDock = docks?.find(d => d.provider === "github")
   
-  // Debug: Log commits to console
-  if (open && commits.length === 0 && repo) {
-    console.log("[RepositoriesTable] No commits found for repo:", repo.full_name)
-    console.log("[RepositoriesTable] fullApiData structure:", {
-      hasRepository: !!row.original.fullApiData?.repository,
-      hasBranches: !!row.original.fullApiData?.branches,
-      hasIssues: !!row.original.fullApiData?.issues,
-      hasCommits: !!row.original.fullApiData?.commits,
-      commitsValue: row.original.fullApiData?.commits,
-    })
-  }
-  
-  if (!repo) {
-    return <span className="text-muted-foreground text-xs">—</span>
-  }
+  // Extract owner from fullName (format: "owner/repo-name")
+  const [owner, repoName] = repository.fullName?.split("/") || ["", repository.name]
   
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -368,9 +348,9 @@ function RepositoryDetailsCell({ row }: { row: any }) {
       </SheetTrigger>
       <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>{repo.full_name || row.original.name}</SheetTitle>
+          <SheetTitle>{repository.fullName || repository.name}</SheetTitle>
           <SheetDescription>
-            {repo.description || "GitHub repository details"}
+            {repository.description || "Repository details"}
           </SheetDescription>
         </SheetHeader>
         <div className="mt-6 space-y-6">
@@ -378,36 +358,36 @@ function RepositoryDetailsCell({ row }: { row: any }) {
           <div className="rounded-lg border bg-card p-4 space-y-3">
             <div className="flex items-start justify-between">
               <div className="space-y-2">
-                {repo.description && (
-                  <p className="text-sm text-muted-foreground">{repo.description}</p>
+                {repository.description && (
+                  <p className="text-sm text-muted-foreground">{repository.description}</p>
                 )}
                 <div className="flex gap-4 text-sm text-muted-foreground flex-wrap">
-                  {repo.language && (
+                  {repository.language && (
                     <span className="flex items-center gap-1">
                       <CodeXml className="h-4 w-4" />
-                      {repo.language}
+                      {repository.language}
                     </span>
                   )}
-                  {repo.stargazers_count !== undefined && (
+                  {repoData?.stargazers_count !== undefined && (
                     <span className="flex items-center gap-1">
                       <Star className="h-4 w-4" />
-                      {repo.stargazers_count}
+                      {repoData.stargazers_count}
                     </span>
                   )}
-                  {repo.forks_count !== undefined && (
+                  {repoData?.forks_count !== undefined && (
                     <span className="flex items-center gap-1">
                       <GitFork className="h-4 w-4" />
-                      {repo.forks_count}
+                      {repoData.forks_count}
                     </span>
                   )}
-                  {repo.updated_at && (
-                    <span>Updated {new Date(repo.updated_at).toLocaleDateString()}</span>
+                  {repository.updatedAt && (
+                    <span>Updated {new Date(repository.updatedAt).toLocaleDateString()}</span>
                   )}
                 </div>
               </div>
-              {repo.html_url && (
+              {repository.url && (
                 <a
-                  href={repo.html_url}
+                  href={repository.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary hover:underline flex items-center gap-1 text-sm"
@@ -479,19 +459,19 @@ function RepositoryDetailsCell({ row }: { row: any }) {
                 </span>
               )}
             </div>
-            {githubDock && repo ? (
+            {githubDock ? (
               <CommitsTable 
                 commits={commits} 
                 dockId={githubDock._id}
-                owner={repo.owner?.login || repo.full_name.split("/")[0]}
-                repo={repo.name}
+                owner={owner}
+                repo={repoName}
               />
             ) : (
               <CommitsTable 
                 commits={commits} 
                 dockId={""}
-                owner={repo?.owner?.login || repo?.full_name?.split("/")[0] || ""}
-                repo={repo?.name || ""}
+                owner={owner}
+                repo={repoName}
               />
             )}
           </div>
@@ -502,22 +482,99 @@ function RepositoryDetailsCell({ row }: { row: any }) {
 }
 
 interface RepositoriesTableProps {
-  projects: Project[] | undefined
+  projects: Repository[] | undefined
 }
 
 export function RepositoriesTable({ projects }: RepositoriesTableProps) {
   const id = useId()
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+  
+  // Debug logging
+  useEffect(() => {
+    console.log(`[RepositoriesTable] DEBUG: Received ${projects?.length ?? 0} repositories`)
+    if (projects && projects.length > 0) {
+      console.log(`[RepositoriesTable] DEBUG: Sample repository:`, {
+        id: projects[0]._id,
+        name: projects[0].name,
+        fullName: projects[0].fullName,
+        provider: projects[0].provider,
+        hasFullApiData: !!projects[0].fullApiData,
+      })
+    }
+  }, [projects])
+  
+  // Get valid column IDs to filter out any stale/invalid column visibility state
+  // Compute this once since columns is a constant
+  const validColumnIds = useMemo(() => {
+    return columns.map(col => col.id || (typeof col.accessorKey === 'string' ? col.accessorKey : undefined)).filter(Boolean) as string[]
+  }, [])
+  
+  // Initialize column visibility state, filtering out any invalid column IDs (like clientId)
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
+    // Compute valid IDs for initial state
+    const validIds = columns.map(col => col.id || (typeof col.accessorKey === 'string' ? col.accessorKey : undefined)).filter(Boolean) as string[]
+    
+    // If there's any saved state, filter it to only include valid columns
+    const saved = localStorage.getItem('repositories-table-column-visibility')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        const filtered: VisibilityState = {}
+        for (const [key, value] of Object.entries(parsed)) {
+          if (validIds.includes(key)) {
+            filtered[key] = value as boolean
+          }
+        }
+        return filtered
+      } catch {
+        return {}
+      }
+    }
+    return {}
+  })
+  
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   })
   const inputRef = useRef<HTMLInputElement>(null)
-  const [sorting, setSorting] = useState<SortingState>([{ id: "Last Updated", desc: true }])
+  // Default sort by repository name (ascending) - using accessorKey "name" which is the column key
+  const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }])
+
+  // Filter column visibility to only include valid columns
+  const filteredColumnVisibility = useMemo(() => {
+    const filtered: VisibilityState = {}
+    for (const [key, value] of Object.entries(columnVisibility)) {
+      if (validColumnIds.includes(key)) {
+        filtered[key] = value
+      }
+    }
+    return filtered
+  }, [columnVisibility, validColumnIds])
+
+  // Clear any invalid column IDs from state on mount (safety check)
+  useEffect(() => {
+    const hasInvalidColumns = Object.keys(columnVisibility).some(key => !validColumnIds.includes(key))
+    if (hasInvalidColumns) {
+      const cleaned: VisibilityState = {}
+      for (const [key, value] of Object.entries(columnVisibility)) {
+        if (validColumnIds.includes(key)) {
+          cleaned[key] = value
+        }
+      }
+      setColumnVisibility(cleaned)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Only run on mount to clean up any stale column visibility state
+
+  const tableData = useMemo(() => {
+    const data = projects || []
+    console.log(`[RepositoriesTable] DEBUG: Table data prepared: ${data.length} repositories`)
+    return data
+  }, [projects])
 
   const table = useReactTable({
-    data: projects || [],
+    data: tableData,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -526,46 +583,92 @@ export function RepositoriesTable({ projects }: RepositoriesTableProps) {
     getPaginationRowModel: getPaginationRowModel(),
     onPaginationChange: setPagination,
     onColumnFiltersChange: setColumnFilters,
-    onColumnVisibilityChange: setColumnVisibility,
+    onColumnVisibilityChange: (updater) => {
+      setColumnVisibility((prev) => {
+        const next = typeof updater === 'function' ? updater(prev) : updater
+        // Filter out any invalid column IDs before setting state
+        const filtered: VisibilityState = {}
+        for (const [key, value] of Object.entries(next)) {
+          if (validColumnIds.includes(key)) {
+            filtered[key] = value
+          }
+        }
+        return filtered
+      })
+    },
     getFilteredRowModel: getFilteredRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
-    state: { sorting, pagination, columnFilters, columnVisibility },
+    enableColumnFilters: false,
+    state: { sorting, pagination, columnFilters, columnVisibility: filteredColumnVisibility },
   })
+
+  // Debug logging for table rows
+  useEffect(() => {
+    const rows = table.getRowModel().rows
+    console.log(`[RepositoriesTable] DEBUG: Table rows: ${rows.length} rows rendered`)
+    if (rows.length === 0 && tableData.length > 0) {
+      console.warn(`[RepositoriesTable] DEBUG: Data exists (${tableData.length}) but no rows rendered. Check filters/sorting.`)
+    }
+  }, [table, tableData])
 
   const uniqueLanguageValues = useMemo(() => {
     const languageColumn = table.getColumn("language")
     if (!languageColumn) return []
-    const values = Array.from(languageColumn.getFacetedUniqueValues().keys())
-    // Include "N/A" in the filter options, filter out empty strings
-    return values.filter(v => v && v !== "").sort()
+    try {
+      const values = Array.from(languageColumn.getFacetedUniqueValues().keys())
+      // Include "N/A" in the filter options, filter out empty strings
+      return values.filter(v => v && v !== "").sort()
+    } catch {
+      return []
+    }
   }, [table.getColumn("language")?.getFacetedUniqueValues()])
 
   const selectedLanguages = useMemo(() => {
-    return (table.getColumn("language")?.getFilterValue() as string[]) ?? []
+    try {
+      return (table.getColumn("language")?.getFilterValue() as string[]) ?? []
+    } catch {
+      return []
+    }
   }, [table.getColumn("language")?.getFilterValue()])
 
   const handleLanguageChange = (checked: boolean, value: string) => {
-    const filterValue = selectedLanguages
-    const newFilterValue = checked ? [...filterValue, value] : filterValue.filter(v => v !== value)
-    table.getColumn("language")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
+    try {
+      const filterValue = selectedLanguages
+      const newFilterValue = checked ? [...filterValue, value] : filterValue.filter(v => v !== value)
+      table.getColumn("language")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
+    } catch {
+      // Column doesn't exist, ignore
+    }
   }
 
   // Host filter values (for multi-provider support)
   const uniqueHostValues = useMemo(() => {
     const hostColumn = table.getColumn("host")
     if (!hostColumn) return []
-    const values = Array.from(hostColumn.getFacetedUniqueValues().keys())
-    return values.filter(v => v && v !== "").sort()
+    try {
+      const values = Array.from(hostColumn.getFacetedUniqueValues().keys())
+      return values.filter(v => v && v !== "").sort()
+    } catch {
+      return []
+    }
   }, [table.getColumn("host")?.getFacetedUniqueValues()])
 
   const selectedHosts = useMemo(() => {
-    return (table.getColumn("host")?.getFilterValue() as string[]) ?? []
+    try {
+      return (table.getColumn("host")?.getFilterValue() as string[]) ?? []
+    } catch {
+      return []
+    }
   }, [table.getColumn("host")?.getFilterValue()])
 
   const handleHostChange = (checked: boolean, value: string) => {
-    const filterValue = selectedHosts
-    const newFilterValue = checked ? [...filterValue, value] : filterValue.filter(v => v !== value)
-    table.getColumn("host")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
+    try {
+      const filterValue = selectedHosts
+      const newFilterValue = checked ? [...filterValue, value] : filterValue.filter(v => v !== value)
+      table.getColumn("host")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
+    } catch {
+      // Column doesn't exist, ignore
+    }
   }
 
   if (projects === undefined) {
@@ -692,17 +795,38 @@ export function RepositoriesTable({ projects }: RepositoriesTableProps) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <div className="font-medium px-2 py-1.5 text-xs">Toggle columns</div>
-            {table.getAllColumns().filter((column) => column.getCanHide()).map((column) => (
-              <DropdownMenuCheckboxItem
-                key={column.id}
-                className="capitalize"
-                checked={column.getIsVisible()}
-                onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                onSelect={(e) => e.preventDefault()}
-              >
-                {column.id}
-              </DropdownMenuCheckboxItem>
-            ))}
+            {table.getAllColumns()
+              .filter((column) => {
+                try {
+                  return column.getCanHide() && column.id && validColumnIds.includes(column.id)
+                } catch {
+                  return false
+                }
+              })
+              .map((column) => {
+                try {
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={column.id}
+                      className="capitalize"
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(value) => {
+                        try {
+                          column.toggleVisibility(!!value)
+                        } catch (err) {
+                          console.warn(`[RepositoriesTable] Failed to toggle column ${column.id}:`, err)
+                        }
+                      }}
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      {column.id}
+                    </DropdownMenuCheckboxItem>
+                  )
+                } catch (err) {
+                  console.warn(`[RepositoriesTable] Failed to render column ${column.id}:`, err)
+                  return null
+                }
+              })}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
