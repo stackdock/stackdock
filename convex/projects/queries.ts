@@ -91,6 +91,53 @@ export const getProject = query({
 })
 
 /**
+ * Get a single project by slug
+ */
+export const getProjectBySlug = query({
+  args: {
+    slug: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx)
+    
+    // Get user's org from memberships
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .first()
+    
+    if (!membership) {
+      throw new ConvexError("Not authorized")
+    }
+    
+    // Check projects:read permission
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      membership.orgId,
+      "projects:read"
+    )
+    if (!hasPermission) {
+      throw new ConvexError("Permission denied: projects:read required")
+    }
+    
+    // Find project by slug in user's org
+    const project = await ctx.db
+      .query("projects")
+      .withIndex("by_slug", (q) =>
+        q.eq("orgId", membership.orgId).eq("slug", args.slug)
+      )
+      .first()
+    
+    if (!project) {
+      return null
+    }
+    
+    return project
+  },
+})
+
+/**
  * Get project by GitHub repository
  * 
  * Finds a project by its GitHub repo identifier (format: "owner/repo-name")

@@ -97,26 +97,15 @@ export function useSidebarData(): SidebarData {
             icon: Folder,
             items: [
               {
+                title: "View",
+                url: "/dashboard/projects/view",
+                icon: FolderKanban,
+              },
+              {
                 title: "Code",
                 url: "/dashboard/projects/code",
                 icon: CodeXml,
               },
-              // Future placeholders (commented out for now):
-              // {
-              //   title: "Calendar",
-              //   url: "/dashboard/projects/calendar",
-              //   icon: Calendar,
-              // },
-              // {
-              //   title: "Content",
-              //   url: "/dashboard/projects/content",
-              //   icon: FileText,
-              // },
-              // {
-              //   title: "Social",
-              //   url: "/dashboard/projects/social",
-              //   icon: Users,
-              // },
             ],
           },
         ],
@@ -289,26 +278,15 @@ export const sidebarData: SidebarData = {
           icon: FolderKanban,
           items: [
             {
+              title: "View",
+              url: "/dashboard/projects/view",
+              icon: FolderKanban,
+            },
+            {
               title: "Code",
               url: "/dashboard/projects/code",
               icon: Code,
             },
-            // Future placeholders (commented out for now):
-            // {
-            //   title: "Calendar",
-            //   url: "/dashboard/projects/calendar",
-            //   icon: Calendar,
-            // },
-            // {
-            //   title: "Content",
-            //   url: "/dashboard/projects/content",
-            //   icon: FileText,
-            // },
-            // {
-            //   title: "Social",
-            //   url: "/dashboard/projects/social",
-            //   icon: Users,
-            // },
           ],
         },
       ],

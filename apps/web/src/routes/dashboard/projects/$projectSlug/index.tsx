@@ -24,7 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-export const Route = createFileRoute("/dashboard/projects/projectId/")({
+export const Route = createFileRoute("/dashboard/projects/$projectSlug/")({
   component: ProjectDetailPage,
 })
 

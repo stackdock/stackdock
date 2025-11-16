@@ -7,7 +7,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useMutation, useQuery } from "convex/react"
+import { useMutation, useQuery, useConvex } from "convex/react"
+import { useNavigate } from "@tanstack/react-router"
 import { api } from "convex/_generated/api"
 import type { Id } from "convex/_generated/dataModel"
 import {
@@ -42,6 +43,8 @@ export function EditProjectDialog({
   open,
   onOpenChange,
 }: EditProjectDialogProps) {
+  const navigate = useNavigate()
+  const convex = useConvex()
   const project = useQuery(api["projects/queries"].getProject, { projectId })
   const teams = useQuery(
     api["teams/queries"].listTeams,
@@ -84,10 +87,7 @@ export function EditProjectDialog({
       toast.error("Team is required")
       return
     }
-    if (!clientId) {
-      toast.error("Client is required")
-      return
-    }
+    // Client is optional - removed validation
 
     setIsSubmitting(true)
 
@@ -96,10 +96,17 @@ export function EditProjectDialog({
         projectId,
         name: name.trim(),
         teamId: teamId as Id<"teams">,
-        clientId: clientId as Id<"clients">,
+        clientId: clientId && clientId !== "none" ? (clientId as Id<"clients">) : undefined,
         linearId: linearId.trim() || undefined,
         githubRepo: githubRepo.trim() || undefined,
       })
+
+      // Fetch updated project to get new slug if name changed
+      const updatedProject = await convex.query(api["projects/queries"].getProject, { projectId })
+      if (updatedProject && name.trim() !== project?.name) {
+        // Navigate to new slug if name changed
+        navigate({ to: "/dashboard/projects/$projectSlug", params: { projectSlug: updatedProject.slug } })
+      }
 
       toast.success("Project updated successfully")
       onOpenChange(false)
@@ -152,12 +159,13 @@ export function EditProjectDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="edit-client">Client</Label>
-            <Select value={clientId} onValueChange={setClientId} disabled={!clients}>
+            <Label htmlFor="edit-client">Client (Optional)</Label>
+            <Select value={clientId || undefined} onValueChange={(value) => setClientId(value === "none" ? "" : value)} disabled={!clients}>
               <SelectTrigger id="edit-client">
-                <SelectValue placeholder={clients ? "Select client" : "Loading clients..."} />
+                <SelectValue placeholder={clients ? "Select client (optional)" : "Loading clients..."} />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="none">None</SelectItem>
                 {clients?.map((client) => (
                   <SelectItem key={client._id} value={client._id}>
                     {client.name}

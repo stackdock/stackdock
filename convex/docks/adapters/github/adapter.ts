@@ -18,6 +18,7 @@
 import type { DockAdapter } from "../../_types"
 import type { MutationCtx } from "../../../_generated/server"
 import type { Doc, Id } from "../../../_generated/dataModel"
+import { generateSlug } from "../../../lib/slug"
 import { decryptApiKey } from "../../../lib/encryption"
 import { GitHubAPI } from "./api"
 import type { GitHubRepositoryWithDetails } from "./types"
@@ -156,11 +157,33 @@ export const githubAdapter: DockAdapter = {
         )
         .first()
 
+      // Generate slug from repo name
+      const slug = generateSlug(repo.name)
+      
+      // Check if slug already exists in this org (handle duplicates)
+      let finalSlug = slug
+      let counter = 1
+      while (true) {
+        const slugExists = await ctx.db
+          .query("projects")
+          .withIndex("by_slug", (q) => q.eq("orgId", dock.orgId).eq("slug", finalSlug))
+          .first()
+        
+        // If no existing project with this slug, or it's the current project, use it
+        if (!slugExists || (existing && slugExists._id === existing._id)) {
+          break
+        }
+        
+        finalSlug = `${slug}-${counter}`
+        counter++
+      }
+
       const projectData = {
         orgId: dock.orgId,
         teamId,
         clientId,
         name: repo.name,
+        slug: finalSlug,
         githubRepo: repo.full_name,
         fullApiData: {
           repository: repo, // Complete repository object

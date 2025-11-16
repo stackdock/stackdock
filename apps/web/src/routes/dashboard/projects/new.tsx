@@ -2,7 +2,7 @@
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
-import { useMutation, useQuery } from "convex/react"
+import { useMutation, useQuery, useConvex } from "convex/react"
 import { api } from "convex/_generated/api"
 import type { Id } from "convex/_generated/dataModel"
 import { Button } from "@/components/ui/button"
@@ -25,6 +25,7 @@ export const Route = createFileRoute("/dashboard/projects/new")({
 
 function NewProjectPage() {
   const navigate = useNavigate()
+  const convex = useConvex()
   const currentOrgId = useQuery(api.organizations.getCurrentOrgId)
   const teams = useQuery(
     api["teams/queries"].listTeams,
@@ -64,10 +65,7 @@ function NewProjectPage() {
       return
     }
 
-    if (!clientId) {
-      setError("Client is required")
-      return
-    }
+    // Client is now optional - removed validation
 
     setIsSubmitting(true)
 
@@ -76,13 +74,19 @@ function NewProjectPage() {
         orgId: currentOrgId,
         name: name.trim(),
         teamId: teamId as Id<"teams">,
-        clientId: clientId as Id<"clients">,
+        clientId: clientId && clientId !== "none" ? (clientId as Id<"clients">) : undefined, // Optional
         linearId: linearId.trim() || undefined,
         githubRepo: githubRepo.trim() || undefined,
       })
 
       toast.success("Project created successfully")
-      navigate({ to: "/dashboard/projects/$projectId", params: { projectId } })
+      // Fetch project to get slug for navigation
+      const createdProject = await convex.query(api["projects/queries"].getProject, { projectId })
+      if (createdProject) {
+        navigate({ to: "/dashboard/projects/$projectSlug", params: { projectSlug: createdProject.slug } })
+      } else {
+        navigate({ to: "/dashboard/projects/view" })
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to create project"
       setError(errorMessage)
@@ -164,12 +168,13 @@ function NewProjectPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="client">Client *</Label>
-                <Select value={clientId} onValueChange={setClientId} disabled={!clients}>
+                <Label htmlFor="client">Client (Optional)</Label>
+                <Select value={clientId || undefined} onValueChange={(value) => setClientId(value === "none" ? "" : value)} disabled={!clients}>
                   <SelectTrigger id="client">
-                    <SelectValue placeholder={clients ? "Select client" : "Loading clients..."} />
+                    <SelectValue placeholder={clients ? "Select client (optional)" : "Loading clients..."} />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
                     {clients?.map((client) => (
                       <SelectItem key={client._id} value={client._id}>
                         {client.name}
@@ -179,7 +184,7 @@ function NewProjectPage() {
                 </Select>
                 {clients && clients.length === 0 && (
                   <p className="text-xs text-muted-foreground">
-                    No clients found. Create a client first.
+                    No clients found. You can create a project without a client.
                   </p>
                 )}
               </div>

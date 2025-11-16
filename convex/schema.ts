@@ -158,8 +158,9 @@ export default defineSchema({
   projects: defineTable({
     orgId: v.id("organizations"),
     teamId: v.id("teams"),
-    clientId: v.id("clients"),
+    clientId: v.optional(v.id("clients")), // Made optional
     name: v.string(), // "Client A Website"
+    slug: v.string(), // URL-friendly version of name (lowercase, hyphenated)
     linearId: v.optional(v.string()),
     githubRepo: v.optional(v.string()), // Format: "owner/repo-name"
     fullApiData: v.optional(v.any()), // Stores GitHub repo data, branches, issues, etc.
@@ -167,7 +168,8 @@ export default defineSchema({
     .index("by_orgId", ["orgId"])
     .index("by_teamId", ["teamId"])
     .index("by_clientId", ["clientId"])
-    .index("by_githubRepo", ["orgId", "githubRepo"]), // For efficient GitHub repo lookups
+    .index("by_githubRepo", ["orgId", "githubRepo"]) // For efficient GitHub repo lookups
+    .index("by_slug", ["orgId", "slug"]), // For URL lookups
 
   // Master Fleet List: Servers (IaaS)
   servers: defineTable({

@@ -19,7 +19,7 @@ interface BaseNavItem {
 export type NavItem =
   | (BaseNavItem & {
       items: NavItem[]
-      url?: never
+      url?: string // Allow url even when items exist
     })
   | (BaseNavItem & {
       url: string

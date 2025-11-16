@@ -3,7 +3,7 @@ import { useParams } from "@tanstack/react-router"
 import { useQuery } from "convex/react"
 import { api } from "convex/_generated/api"
 
-export const Route = createFileRoute("/dashboard/projects/$projectId")({
+export const Route = createFileRoute("/dashboard/projects/$projectSlug")({
   component: ProjectLayout,
 })
 

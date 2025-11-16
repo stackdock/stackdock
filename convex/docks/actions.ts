@@ -548,64 +548,10 @@ export const syncDockResources = internalAction({
         // GitHub-specific: Use GitHubAPI directly
         const api = new GitHubAPI(args.apiKey)
 
+        // Projects sync disabled for MVP - projects must be created manually
         if (args.resourceTypes.includes("projects")) {
-          console.log(`[Dock Action] Fetching repositories for ${args.provider}`)
-          const repos = await api.listRepositories()
-
-          // Batch process repos (5 at a time) to respect rate limits
-          const batchSize = 5
-          const reposWithDetails = []
-          
-          for (let i = 0; i < repos.length; i += batchSize) {
-            const batch = repos.slice(i, i + batchSize)
-            
-            const batchResults = await Promise.all(
-              batch.map(async (repo) => {
-                const [owner, repoName] = repo.full_name.split("/")
-                
-                try {
-                  const [branches, issues, commits, pullRequests] = await Promise.all([
-                    api.listBranches(owner, repoName).catch((err) => {
-                      console.error(`Failed to fetch branches for ${repo.full_name}:`, err)
-                      return []
-                    }),
-                    api.listIssues(owner, repoName, { state: "all" }).catch((err) => {
-                      console.error(`Failed to fetch issues for ${repo.full_name}:`, err)
-                      return []
-                    }),
-                    api.listCommits(owner, repoName, { limit: 10 }).catch((err) => {
-                      console.error(`Failed to fetch commits for ${repo.full_name}:`, err)
-                      return []
-                    }),
-                    api.listPullRequests(owner, repoName, { state: "all" }).catch((err) => {
-                      console.error(`Failed to fetch pull requests for ${repo.full_name}:`, err)
-                      return []
-                    }),
-                  ])
-                  
-                  return {
-                    ...repo,
-                    branches,
-                    issues,
-                    commits,
-                    pullRequests,
-                  }
-                } catch (error) {
-                  console.error(`Failed to process ${repo.full_name}:`, error)
-                  return { ...repo, branches: [], issues: [], commits: [], pullRequests: [] }
-                }
-              })
-            )
-            
-            reposWithDetails.push(...batchResults)
-            
-            // Add delay between batches (not between individual repos)
-            if (i + batchSize < repos.length) {
-              await new Promise(resolve => setTimeout(resolve, 1000))
-            }
-          }
-
-          projects = reposWithDetails
+          console.log(`[Dock Action] Projects sync disabled for MVP - projects must be created manually`)
+          projects = []
         }
 
         // GitHub doesn't support other resource types
@@ -707,7 +653,7 @@ export const syncDockResources = internalAction({
         throw new Error(`Provider ${args.provider} sync not yet implemented in action`)
       }
 
-      console.log(`[Dock Action] Sync complete: ${servers.length} servers, ${webServices.length} webServices, ${domains.length} domains, ${databases.length} databases, ${deployments.length} deployments, ${backupSchedules.length} backup schedules, ${backupIntegrations.length} backup integrations, ${projects.length} projects, ${blockVolumes.length} block volumes, ${buckets.length} buckets`)
+      console.log(`[Dock Action] Sync complete: ${servers.length} servers, ${webServices.length} webServices, ${domains.length} domains, ${databases.length} databases, ${deployments.length} deployments, ${backupSchedules.length} backup schedules, ${backupIntegrations.length} backup integrations, ${blockVolumes.length} block volumes, ${buckets.length} buckets`)
 
       // Note: Rate limit headers are captured by individual API clients
       // They will be updated via updateRateLimitInfo mutation when we update API clients
@@ -724,7 +670,7 @@ export const syncDockResources = internalAction({
         deployments: args.resourceTypes.includes("deployments") ? deployments : undefined,
         backupSchedules: backupSchedules.length > 0 ? backupSchedules : undefined,
         backupIntegrations: backupIntegrations.length > 0 ? backupIntegrations : undefined,
-        projects: args.resourceTypes.includes("projects") ? projects : undefined,
+        projects: undefined, // Projects sync disabled for MVP - projects must be created manually
         blockVolumes: args.resourceTypes.includes("blockVolumes") ? blockVolumes : undefined,
         buckets: args.resourceTypes.includes("buckets") ? buckets : undefined,
       }

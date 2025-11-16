@@ -5,9 +5,10 @@
  */
 
 import { v } from "convex/values"
-import { mutation } from "../_generated/server"
+import { mutation, internalMutation } from "../_generated/server"
 import { getCurrentUser, checkPermission } from "../lib/rbac"
 import { ConvexError } from "convex/values"
+import { generateSlug } from "../lib/slug"
 
 /**
  * Create a new project
@@ -18,7 +19,7 @@ export const createProject = mutation({
   args: {
     orgId: v.id("organizations"),
     teamId: v.id("teams"),
-    clientId: v.id("clients"),
+    clientId: v.optional(v.id("clients")), // Made optional
     name: v.string(),
     linearId: v.optional(v.string()),
     githubRepo: v.optional(v.string()),
@@ -39,12 +40,33 @@ export const createProject = mutation({
       )
     }
 
+    // Generate slug from name
+    const slug = generateSlug(args.name)
+    
+    // Check if slug already exists in this org (handle duplicates)
+    let finalSlug = slug
+    let counter = 1
+    while (true) {
+      const existing = await ctx.db
+        .query("projects")
+        .withIndex("by_slug", (q) => q.eq("orgId", args.orgId).eq("slug", finalSlug))
+        .first()
+      
+      if (!existing) {
+        break
+      }
+      
+      finalSlug = `${slug}-${counter}`
+      counter++
+    }
+
     // Create project
     const projectId = await ctx.db.insert("projects", {
       orgId: args.orgId,
       teamId: args.teamId,
-      clientId: args.clientId,
+      clientId: args.clientId, // Can be undefined
       name: args.name,
+      slug: finalSlug,
       linearId: args.linearId,
       githubRepo: args.githubRepo,
     })
@@ -199,7 +221,28 @@ export const updateProject = mutation({
 
     // Build update object (only include provided fields)
     const updates: any = {}
-    if (args.name !== undefined) updates.name = args.name
+    if (args.name !== undefined) {
+      updates.name = args.name
+      // Regenerate slug when name changes
+      const newSlug = generateSlug(args.name)
+      // Check if slug already exists (excluding current project)
+      let finalSlug = newSlug
+      let counter = 1
+      while (true) {
+        const existing = await ctx.db
+          .query("projects")
+          .withIndex("by_slug", (q) => q.eq("orgId", project.orgId).eq("slug", finalSlug))
+          .first()
+        
+        if (!existing || existing._id === args.projectId) {
+          break
+        }
+        
+        finalSlug = `${newSlug}-${counter}`
+        counter++
+      }
+      updates.slug = finalSlug
+    }
     if (args.teamId !== undefined) updates.teamId = args.teamId
     if (args.clientId !== undefined) updates.clientId = args.clientId
     if (args.linearId !== undefined) updates.linearId = args.linearId
@@ -265,5 +308,78 @@ export const unlinkResource = mutation({
     }
 
     return { success: true }
+  },
+})
+
+/**
+ * Wipe all projects from the database
+ * 
+ * TEMPORARY: Used to clear automatically created projects from GitHub sync.
+ * Internal mutation only.
+ */
+export const wipeAllProjects = internalMutation({
+  handler: async (ctx) => {
+    const projects = await ctx.db.query("projects").collect()
+    
+    console.log(`[Wipe Projects] Found ${projects.length} projects to delete`)
+    
+    for (const project of projects) {
+      await ctx.db.delete(project._id)
+      console.log(`[Wipe Projects] Deleted project: ${project.name} (${project._id})`)
+    }
+    
+    console.log(`[Wipe Projects] ✅ Deleted ${projects.length} projects`)
+    return { deleted: projects.length }
+  },
+})
+
+/**
+ * Migration: Add slugs to existing projects that don't have them
+ * 
+ * Internal mutation only. Run once to migrate existing projects.
+ * Migration completed - all projects now have slugs.
+ */
+export const addSlugsToExistingProjects = internalMutation({
+  handler: async (ctx) => {
+    const projects = await ctx.db.query("projects").collect()
+    
+    let updated = 0
+    let skipped = 0
+    
+    for (const project of projects) {
+      // Skip if already has slug
+      if ((project as any).slug) {
+        skipped++
+        continue
+      }
+      
+      // Generate slug from name
+      const slug = generateSlug(project.name)
+      
+      // Check if slug already exists in this org (handle duplicates)
+      let finalSlug = slug
+      let counter = 1
+      while (true) {
+        const existing = await ctx.db
+          .query("projects")
+          .withIndex("by_slug", (q) => q.eq("orgId", project.orgId).eq("slug", finalSlug))
+          .first()
+        
+        if (!existing || existing._id === project._id) {
+          break
+        }
+        
+        finalSlug = `${slug}-${counter}`
+        counter++
+      }
+      
+      // Update project with slug
+      await ctx.db.patch(project._id, { slug: finalSlug })
+      updated++
+      console.log(`[Migration] Added slug "${finalSlug}" to project "${project.name}"`)
+    }
+    
+    console.log(`[Migration] ✅ Updated ${updated} projects, skipped ${skipped} (already had slugs)`)
+    return { updated, skipped }
   },
 })

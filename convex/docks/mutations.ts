@@ -153,7 +153,8 @@ export const syncDock = mutation({
       if (adapter.syncWebServices) resourceTypes.push("webServices")
       if (adapter.syncDomains) resourceTypes.push("domains")
       if (adapter.syncDatabases) resourceTypes.push("databases")
-      if (adapter.syncProjects) resourceTypes.push("projects")
+      // Projects sync disabled for MVP - projects must be created manually
+      // if (adapter.syncProjects) resourceTypes.push("projects")
       if (adapter.syncBlockVolumes) resourceTypes.push("blockVolumes")
       if (adapter.syncBuckets) resourceTypes.push("buckets")
 
@@ -258,9 +259,10 @@ export const syncDockResourcesMutation = internalMutation({
       await adapter.syncBackupIntegrations(ctx, dock, args.fetchedData.backupIntegrations)
     }
 
-    if (args.fetchedData.projects !== undefined && adapter.syncProjects) {
-      await adapter.syncProjects(ctx, dock, args.fetchedData.projects)
-    }
+    // Projects sync disabled for MVP - projects must be created manually
+    // if (args.fetchedData.projects !== undefined && adapter.syncProjects) {
+    //   await adapter.syncProjects(ctx, dock, args.fetchedData.projects)
+    // }
 
     if (args.fetchedData.blockVolumes !== undefined && adapter.syncBlockVolumes) {
       await adapter.syncBlockVolumes(ctx, dock, args.fetchedData.blockVolumes)

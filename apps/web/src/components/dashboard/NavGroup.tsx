@@ -58,12 +58,23 @@ export function NavGroup({ title, items }: NavGroup) {
             >
               <SidebarMenuItem>
                 <CollapsibleTrigger asChild>
-                  <SidebarMenuButton tooltip={item.title}>
-                    {item.icon && <item.icon />}
-                    <span>{item.title}</span>
-                    {item.badge && <NavBadge>{item.badge}</NavBadge>}
-                    <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                  </SidebarMenuButton>
+                  {item.url ? (
+                    <SidebarMenuButton asChild tooltip={item.title}>
+                      <Link to={item.url} onClick={() => setOpenMobile(false)}>
+                        {item.icon && <item.icon />}
+                        <span>{item.title}</span>
+                        {item.badge && <NavBadge>{item.badge}</NavBadge>}
+                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                      </Link>
+                    </SidebarMenuButton>
+                  ) : (
+                    <SidebarMenuButton tooltip={item.title}>
+                      {item.icon && <item.icon />}
+                      <span>{item.title}</span>
+                      {item.badge && <NavBadge>{item.badge}</NavBadge>}
+                      <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                    </SidebarMenuButton>
+                  )}
                 </CollapsibleTrigger>
                 <CollapsibleContent className="CollapsibleContent">
                   <SidebarMenuSub>

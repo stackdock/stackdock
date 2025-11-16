@@ -76,6 +76,7 @@ import type * as docks_types from "../docks/types.js";
 import type * as lib_audit from "../lib/audit.js";
 import type * as lib_encryption from "../lib/encryption.js";
 import type * as lib_rbac from "../lib/rbac.js";
+import type * as lib_slug from "../lib/slug.js";
 import type * as organizations from "../organizations.js";
 import type * as projects_mutations from "../projects/mutations.js";
 import type * as projects_queries from "../projects/queries.js";
@@ -168,6 +169,7 @@ declare const fullApi: ApiFromModules<{
   "lib/audit": typeof lib_audit;
   "lib/encryption": typeof lib_encryption;
   "lib/rbac": typeof lib_rbac;
+  "lib/slug": typeof lib_slug;
   organizations: typeof organizations;
   "projects/mutations": typeof projects_mutations;
   "projects/queries": typeof projects_queries;
