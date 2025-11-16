@@ -71,10 +71,14 @@ export const convexAdapter: DockAdapter = {
       projects = await api.listProjects(tokenDetails.teamId)
     }
 
+    // Track synced resource IDs for orphan detection
+    const syncedResourceIds = new Set<string>()
+
     // Sync each project to universal databases table
     for (const project of projects) {
       // Convert project.id (number) to string for providerResourceId
       const providerResourceId = String(project.id)
+      syncedResourceIds.add(providerResourceId)
 
       const existing = await ctx.db
         .query("databases")
@@ -107,6 +111,23 @@ export const convexAdapter: DockAdapter = {
         await ctx.db.patch(existing._id, databaseData)
       } else {
         await ctx.db.insert("databases", databaseData)
+      }
+    }
+
+    // Delete orphaned resources (exist in DB but not in API response)
+    // Only delete discovered resources (provisioningSource === undefined)
+    const existingDatabases = await ctx.db
+      .query("databases")
+      .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
+      .collect()
+
+    for (const existing of existingDatabases) {
+      if (
+        !syncedResourceIds.has(existing.providerResourceId) &&
+        existing.provisioningSource === undefined
+      ) {
+        console.log(`[Convex] Deleting orphaned database: ${existing.name} (${existing.providerResourceId})`)
+        await ctx.db.delete(existing._id)
       }
     }
   },
@@ -152,10 +173,14 @@ export const convexAdapter: DockAdapter = {
       }
     }
 
+    // Track synced resource IDs for orphan detection
+    const syncedResourceIds = new Set<string>()
+
     // Sync each deployment to universal deployments table
     for (const deployment of deployments) {
       // Use deployment.name as providerResourceId
       const providerResourceId = deployment.name
+      syncedResourceIds.add(providerResourceId)
 
       const existing = await ctx.db
         .query("deployments")
@@ -189,6 +214,20 @@ export const convexAdapter: DockAdapter = {
         await ctx.db.patch(existing._id, deploymentData)
       } else {
         await ctx.db.insert("deployments", deploymentData)
+      }
+    }
+
+    // Delete orphaned resources (exist in DB but not in API response)
+    // Deployments are always discovered resources (no provisioningSource field)
+    const existingDeployments = await ctx.db
+      .query("deployments")
+      .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
+      .collect()
+
+    for (const existing of existingDeployments) {
+      if (!syncedResourceIds.has(existing.providerResourceId)) {
+        console.log(`[Convex] Deleting orphaned deployment: ${existing.name} (${existing.providerResourceId})`)
+        await ctx.db.delete(existing._id)
       }
     }
   },

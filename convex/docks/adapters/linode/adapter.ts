@@ -104,10 +104,14 @@ export const linodeAdapter: DockAdapter = {
       linodes = await api.listLinodes()
     }
 
+    // Track synced resource IDs for orphan detection
+    const syncedResourceIds = new Set<string>()
+
     // Sync each linode to universal table
     for (const linode of linodes) {
       // Convert linode.id (number) to string for providerResourceId
       const providerResourceId = linode.id.toString()
+      syncedResourceIds.add(providerResourceId)
 
       const existing = await ctx.db
         .query("servers")
@@ -141,6 +145,23 @@ export const linodeAdapter: DockAdapter = {
         await ctx.db.insert("servers", serverData)
       }
     }
+
+    // Delete orphaned resources (exist in DB but not in API response)
+    // Only delete discovered resources (provisioningSource === undefined)
+    const existingServers = await ctx.db
+      .query("servers")
+      .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
+      .collect()
+
+    for (const existing of existingServers) {
+      if (
+        !syncedResourceIds.has(existing.providerResourceId) &&
+        existing.provisioningSource === undefined
+      ) {
+        console.log(`[Linode] Deleting orphaned server: ${existing.name} (${existing.providerResourceId})`)
+        await ctx.db.delete(existing._id)
+      }
+    }
   },
 
   /**
@@ -163,6 +184,7 @@ export const linodeAdapter: DockAdapter = {
     if (preFetchedData) {
       // Use pre-fetched data from action
       buckets = preFetchedData
+      console.log(`[Linode] syncBuckets called with ${buckets.length} buckets from action`)
     } else {
       // Fetch data directly (fallback, shouldn't happen in normal flow)
       const apiKey = await decryptApiKey(dock.encryptedApiKey, ctx, {
@@ -172,12 +194,17 @@ export const linodeAdapter: DockAdapter = {
 
       const api = new LinodeAPI(apiKey)
       buckets = await api.listBuckets()
+      console.log(`[Linode] syncBuckets fetched ${buckets.length} buckets directly`)
     }
+
+    // Track synced resource IDs for orphan detection
+    const syncedResourceIds = new Set<string>()
 
     // Sync each bucket to universal table
     for (const bucket of buckets) {
       // Use bucket.label as providerResourceId (Linode uses label as unique identifier)
       const providerResourceId = bucket.label
+      syncedResourceIds.add(providerResourceId)
 
       const existing = await ctx.db
         .query("buckets")
@@ -214,5 +241,35 @@ export const linodeAdapter: DockAdapter = {
         await ctx.db.insert("buckets", bucketData)
       }
     }
+
+    // Delete orphaned resources (exist in DB but not in API response)
+    // Only delete discovered resources (provisioningSource === undefined)
+    const existingBuckets = await ctx.db
+      .query("buckets")
+      .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
+      .collect()
+
+    console.log(`[Linode] Found ${existingBuckets.length} existing buckets in DB for dock ${dock._id}`)
+    console.log(`[Linode] Synced resource IDs: ${Array.from(syncedResourceIds).join(", ") || "(none)"}`)
+
+    for (const existing of existingBuckets) {
+      const isOrphaned = !syncedResourceIds.has(existing.providerResourceId)
+      const isDiscovered = existing.provisioningSource === undefined
+      
+      console.log(`[Linode] Checking bucket: ${existing.name} (${existing.providerResourceId})`)
+      console.log(`[Linode]   - Is orphaned: ${isOrphaned}`)
+      console.log(`[Linode]   - Is discovered: ${isDiscovered}`)
+      console.log(`[Linode]   - provisioningSource: ${existing.provisioningSource || "undefined"}`)
+      
+      if (isOrphaned && isDiscovered) {
+        console.log(`[Linode] ✅ DELETING orphaned bucket: ${existing.name} (${existing.providerResourceId})`)
+        await ctx.db.delete(existing._id)
+        console.log(`[Linode] ✅ Deleted bucket ${existing._id}`)
+      } else {
+        console.log(`[Linode] ⏭️  Skipping bucket ${existing.name} - orphaned: ${isOrphaned}, discovered: ${isDiscovered}`)
+      }
+    }
+    
+    console.log(`[Linode] syncBuckets completed. Final count: ${existingBuckets.length} buckets in DB`)
   },
 }

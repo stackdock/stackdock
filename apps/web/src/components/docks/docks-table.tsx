@@ -36,6 +36,7 @@ import {
   FilterIcon,
   ListFilterIcon,
   RefreshCw,
+  Settings,
   TrashIcon,
 } from "lucide-react"
 import type { Doc } from "convex/_generated/dataModel"
@@ -98,6 +99,7 @@ import { getProviderCategory, CATEGORIES, type DockCategory } from "@/lib/dock-c
 import { useMutation } from "convex/react"
 import { api } from "convex/_generated/api"
 import { Loader2 } from "lucide-react"
+import { DockSettingsDialog } from "./dock-settings-dialog"
 
 type Dock = Doc<"docks"> & {
   category: DockCategory
@@ -158,6 +160,7 @@ function RowActions({ row }: { row: Row<Dock> }) {
   const deleteDock = useMutation(api["docks/mutations"].deleteDock)
   const [isSyncing, setIsSyncing] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const handleSync = async () => {
     setIsSyncing(true)
@@ -185,32 +188,49 @@ function RowActions({ row }: { row: Row<Dock> }) {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-8 w-8 p-0"
-        onClick={handleSync}
-        disabled={isSyncing || dock.syncInProgress}
-        title="Sync"
-      >
-        {isSyncing || dock.syncInProgress ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <RefreshCw className="h-4 w-4" />
-        )}
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-        onClick={handleDelete}
-        disabled={isDeleting}
-        title="Delete"
-      >
-        <TrashIcon className="h-4 w-4" />
-      </Button>
-    </div>
+    <>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={() => setSettingsOpen(true)}
+          title="Settings"
+        >
+          <Settings className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={handleSync}
+          disabled={isSyncing || dock.syncInProgress}
+          title="Sync"
+        >
+          {isSyncing || dock.syncInProgress ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4" />
+          )}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+          onClick={handleDelete}
+          disabled={isDeleting}
+          title="Delete"
+        >
+          <TrashIcon className="h-4 w-4" />
+        </Button>
+      </div>
+      
+      <DockSettingsDialog
+        dockId={dock._id}
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+      />
+    </>
   )
 }
 
@@ -272,6 +292,25 @@ const columns: ColumnDef<Dock>[] = [
       return lastSyncAt ? formatDate(lastSyncAt) : "Never"
     },
     size: 150,
+  },
+  {
+    id: "syncInterval",
+    header: "Sync Interval",
+    accessorKey: "syncConfig",
+    cell: ({ row }) => {
+      const syncConfig = row.getValue("syncConfig") as { intervalSeconds?: number } | undefined
+      const interval = syncConfig?.intervalSeconds || 120
+      const minutes = Math.round(interval / 60)
+      return (
+        <div className="flex items-center gap-2">
+          <span>{minutes}m</span>
+          <span className="text-xs text-muted-foreground">
+            ({interval}s)
+          </span>
+        </div>
+      )
+    },
+    size: 120,
   },
   {
     id: "actions",

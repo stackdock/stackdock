@@ -6,7 +6,7 @@
 
 import { v } from "convex/values"
 import { query } from "../_generated/server"
-import { getCurrentUser } from "../lib/rbac"
+import { getCurrentUser, checkPermission } from "../lib/rbac"
 import { ConvexError } from "convex/values"
 
 /**
@@ -24,6 +24,17 @@ export const listProjects = query({
     
     if (!membership) {
       return []
+    }
+    
+    // Check projects:read permission
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      membership.orgId,
+      "projects:read"
+    )
+    if (!hasPermission) {
+      throw new ConvexError("Permission denied: projects:read required")
     }
     
     // Fetch all projects for this org
@@ -64,6 +75,17 @@ export const getProject = query({
       throw new ConvexError("Not authorized to view this project")
     }
     
+    // Check projects:read permission
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      project.orgId,
+      "projects:read"
+    )
+    if (!hasPermission) {
+      throw new ConvexError("Permission denied: projects:read required")
+    }
+    
     return project
   },
 })
@@ -88,6 +110,17 @@ export const getByGitHubRepo = query({
     
     if (!membership) {
       throw new ConvexError("Not authorized")
+    }
+    
+    // Check projects:read permission
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      membership.orgId,
+      "projects:read"
+    )
+    if (!hasPermission) {
+      throw new ConvexError("Permission denied: projects:read required")
     }
     
     // Find project by GitHub repo in user's org
@@ -128,6 +161,17 @@ export const getProjectResources = query({
     
     if (!membership) {
       throw new ConvexError("Not authorized to view this project")
+    }
+    
+    // Check projects:read permission
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      project.orgId,
+      "projects:read"
+    )
+    if (!hasPermission) {
+      throw new ConvexError("Permission denied: projects:read required")
     }
     
     // Get linked resources

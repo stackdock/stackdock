@@ -114,6 +114,20 @@ export const githubAdapter: DockAdapter = {
     // preFetchedData should already include branches/issues from action
     if (!preFetchedData || preFetchedData.length === 0) {
       console.log("[GitHub] No repositories to sync")
+      // Still need to check for orphaned repos (repos deleted on GitHub)
+      // If API returns empty, all existing repos for this org should be deleted
+      const existingProjects = await ctx.db
+        .query("projects")
+        .withIndex("by_orgId", (q) => q.eq("orgId", dock.orgId))
+        .collect()
+      
+      // Delete all projects that have githubRepo (they're from GitHub sync)
+      for (const project of existingProjects) {
+        if (project.githubRepo) {
+          console.log(`[GitHub] Deleting orphaned project: ${project.githubRepo}`)
+          await ctx.db.delete(project._id)
+        }
+      }
       return
     }
 
@@ -121,12 +135,18 @@ export const githubAdapter: DockAdapter = {
     const teamId = await getOrCreateDefaultTeam(ctx, dock.orgId)
     const clientId = await getOrCreateDefaultClient(ctx, dock.orgId)
 
+    // Track which repos we've synced (for orphan detection)
+    const syncedRepoFullNames = new Set<string>()
+
     for (const repo of preFetchedData) {
       // Type-safe access to branches/issues/commits/pullRequests
       const branches = repo.branches || []
       const issues = repo.issues || []
       const commits = (repo as any).commits || []
       const pullRequests = (repo as any).pullRequests || []
+      
+      // Track this repo as synced
+      syncedRepoFullNames.add(repo.full_name)
       
       // Find existing project by GitHub repo
       const existing = await ctx.db
@@ -155,6 +175,21 @@ export const githubAdapter: DockAdapter = {
         await ctx.db.patch(existing._id, projectData)
       } else {
         await ctx.db.insert("projects", projectData)
+      }
+    }
+
+    // Delete orphaned projects (repos that exist in DB but not in API response)
+    // Only delete projects that have githubRepo (they're from GitHub sync)
+    const existingProjects = await ctx.db
+      .query("projects")
+      .withIndex("by_orgId", (q) => q.eq("orgId", dock.orgId))
+      .collect()
+
+    for (const project of existingProjects) {
+      // Only delete GitHub-synced projects (have githubRepo field)
+      if (project.githubRepo && !syncedRepoFullNames.has(project.githubRepo)) {
+        console.log(`[GitHub] Deleting orphaned project: ${project.githubRepo} (deleted on GitHub)`)
+        await ctx.db.delete(project._id)
       }
     }
   },

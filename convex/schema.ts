@@ -47,6 +47,7 @@ export default defineSchema({
       operations: v.union(v.literal("full"), v.literal("read"), v.literal("none")),
       settings: v.union(v.literal("full"), v.literal("read"), v.literal("none")),
       provisioning: v.optional(v.union(v.literal("full"), v.literal("read"), v.literal("none"))),
+      monitoring: v.optional(v.union(v.literal("full"), v.literal("read"), v.literal("none"))),
     }),
   }).index("by_orgId", ["orgId"]),
 
@@ -89,6 +90,35 @@ export default defineSchema({
     lastSyncError: v.optional(v.string()), // Error message for failed syncs
     syncInProgress: v.optional(v.boolean()), // Prevent concurrent syncs
     updatedAt: v.optional(v.number()), // Track modification time
+    // Rate limit tracking (MVP - can be removed post-production)
+    rateLimitInfo: v.optional(v.object({
+      // Last seen rate limit headers (for debugging/annotation)
+      lastHeaders: v.optional(v.any()), // Raw headers object
+      lastSeenAt: v.optional(v.number()), // Timestamp
+      // Extracted rate limit values
+      limit: v.optional(v.number()), // X-RateLimit-Limit
+      remaining: v.optional(v.number()), // X-RateLimit-Remaining
+      reset: v.optional(v.number()), // X-RateLimit-Reset (timestamp)
+      retryAfter: v.optional(v.number()), // Retry-After (seconds)
+      // Provider-specific headers (annotated for removal)
+      providerSpecific: v.optional(v.any()), // Store all rate limit headers
+      // Rate limit violations
+      violations: v.optional(v.array(v.object({
+        timestamp: v.number(),
+        statusCode: v.number(), // 429
+        endpoint: v.string(),
+        retryAfter: v.optional(v.number()),
+        headers: v.any(),
+      }))),
+    })),
+    // Sync configuration
+    syncConfig: v.optional(v.object({
+      enabled: v.boolean(), // Enable/disable auto-sync (default: true)
+      intervalSeconds: v.number(), // Sync interval (default: 60 seconds, minimum: 60)
+      lastSyncAttempt: v.optional(v.number()), // Last sync attempt timestamp
+      consecutiveFailures: v.optional(v.number()), // Track failures for backoff
+      backoffUntil: v.optional(v.number()), // Don't sync until this timestamp
+    })),
   }).index("by_orgId", ["orgId"]),
 
   dockPermissions: defineTable({
@@ -100,6 +130,28 @@ export default defineSchema({
     .index("by_dockId", ["dockId"])
     .index("by_teamId", ["teamId"])
     .index("by_clientId", ["clientId"]),
+
+  // Rate limit logs (optional, for detailed tracking - MVP annotation)
+  rateLimitLogs: defineTable({
+    dockId: v.id("docks"),
+    orgId: v.id("organizations"),
+    provider: v.string(),
+    endpoint: v.string(), // API endpoint called
+    method: v.string(), // GET, POST, etc.
+    timestamp: v.number(),
+    headers: v.any(), // All rate limit headers captured
+    extracted: v.object({
+      limit: v.optional(v.number()),
+      remaining: v.optional(v.number()),
+      reset: v.optional(v.number()),
+      retryAfter: v.optional(v.number()),
+    }),
+    // MVP annotation: Mark for removal post-production
+    _mvpTracking: v.literal(true), // Explicit marker for cleanup
+  })
+    .index("by_dockId", ["dockId"])
+    .index("by_provider", ["provider"])
+    .index("by_timestamp", ["timestamp"]),
 
   // == LAYER 5: PROJECTS & RESOURCES ==
 

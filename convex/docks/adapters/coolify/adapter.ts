@@ -95,9 +95,13 @@ export const coolifyAdapter: DockAdapter = {
       servers = await api.listServers()
     }
 
+    // Track synced resource IDs for orphan detection
+    const syncedResourceIds = new Set<string>()
+
     // Sync each server to universal table
     for (const server of servers) {
       const providerResourceId = server.uuid
+      syncedResourceIds.add(providerResourceId)
 
       const existing = await ctx.db
         .query("servers")
@@ -129,6 +133,23 @@ export const coolifyAdapter: DockAdapter = {
         await ctx.db.patch(existing._id, serverData)
       } else {
         await ctx.db.insert("servers", serverData)
+      }
+    }
+
+    // Delete orphaned resources (exist in DB but not in API response)
+    // Only delete discovered resources (provisioningSource === undefined)
+    const existingServers = await ctx.db
+      .query("servers")
+      .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
+      .collect()
+
+    for (const existing of existingServers) {
+      if (
+        !syncedResourceIds.has(existing.providerResourceId) &&
+        existing.provisioningSource === undefined
+      ) {
+        console.log(`[Coolify] Deleting orphaned server: ${existing.name} (${existing.providerResourceId})`)
+        await ctx.db.delete(existing._id)
       }
     }
   },
@@ -165,9 +186,13 @@ export const coolifyAdapter: DockAdapter = {
       services = await api.listServices()
     }
 
+    // Track synced resource IDs for orphan detection
+    const syncedResourceIds = new Set<string>()
+
     // Sync each service to universal table
     for (const service of services) {
       const providerResourceId = service.uuid
+      syncedResourceIds.add(providerResourceId)
 
       const existing = await ctx.db
         .query("webServices")
@@ -208,6 +233,23 @@ export const coolifyAdapter: DockAdapter = {
         await ctx.db.patch(existing._id, webServiceData)
       } else {
         await ctx.db.insert("webServices", webServiceData)
+      }
+    }
+
+    // Delete orphaned resources (exist in DB but not in API response)
+    // Only delete discovered resources (provisioningSource === undefined)
+    const existingWebServices = await ctx.db
+      .query("webServices")
+      .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
+      .collect()
+
+    for (const existing of existingWebServices) {
+      if (
+        !syncedResourceIds.has(existing.providerResourceId) &&
+        existing.provisioningSource === undefined
+      ) {
+        console.log(`[Coolify] Deleting orphaned web service: ${existing.name} (${existing.providerResourceId})`)
+        await ctx.db.delete(existing._id)
       }
     }
   },
@@ -257,9 +299,13 @@ export const coolifyAdapter: DockAdapter = {
       )
     }
 
+    // Track synced resource IDs for orphan detection
+    const syncedResourceIds = new Set<string>()
+
     // Sync each database to universal table
     for (const db of databases) {
       const providerResourceId = db.uuid
+      syncedResourceIds.add(providerResourceId)
 
       const existing = await ctx.db
         .query("databases")
@@ -301,6 +347,23 @@ export const coolifyAdapter: DockAdapter = {
         await ctx.db.patch(existing._id, databaseData)
       } else {
         await ctx.db.insert("databases", databaseData)
+      }
+    }
+
+    // Delete orphaned resources (exist in DB but not in API response)
+    // Only delete discovered resources (provisioningSource === undefined)
+    const existingDatabases = await ctx.db
+      .query("databases")
+      .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
+      .collect()
+
+    for (const existing of existingDatabases) {
+      if (
+        !syncedResourceIds.has(existing.providerResourceId) &&
+        existing.provisioningSource === undefined
+      ) {
+        console.log(`[Coolify] Deleting orphaned database: ${existing.name} (${existing.providerResourceId})`)
+        await ctx.db.delete(existing._id)
       }
     }
   },

@@ -28,6 +28,8 @@ export const create = mutation({
         docks: "full",
         operations: "full",
         settings: "full",
+        provisioning: "full",
+        monitoring: "full",
       },
     })
     

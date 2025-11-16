@@ -63,8 +63,8 @@ ENCRYPTION_MASTER_KEY*
 .env*.local
 
 # Provider API response dumps (local development only, may contain sensitive data)
-# Ignore all JSON files in docks/ directories
-docks/**/*.json
+# Ignore entire docks/ folder (local development only)
+docks/
 # But allow important JSON config files
 !package.json
 !package-lock.json

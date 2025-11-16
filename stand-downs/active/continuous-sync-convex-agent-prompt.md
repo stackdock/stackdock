@@ -1,4 +1,5 @@
-# Continuous Sync with Rate Limit Tracking - Convex Agent Prompt
+# 
+
 
 **Date**: November 15, 2025  
 **Status**: Ready for Implementation  

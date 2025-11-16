@@ -158,13 +158,19 @@ export const cloudflareAdapter: DockAdapter = {
       })
     }
 
+    // Track synced resource IDs for orphan detection
+    const syncedResourceIds = new Set<string>()
+
     // Sync each zone to domains table
     // DNS records are already fetched in the action and attached to zone objects
     for (const zone of zones) {
+      const providerResourceId = zone.id
+      syncedResourceIds.add(providerResourceId)
+
       const existing = await ctx.db
         .query("domains")
         .withIndex("by_dock_resource", (q) =>
-          q.eq("dockId", dock._id).eq("providerResourceId", zone.id)
+          q.eq("dockId", dock._id).eq("providerResourceId", providerResourceId)
         )
         .first()
 
@@ -176,7 +182,7 @@ export const cloudflareAdapter: DockAdapter = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "cloudflare",
-        providerResourceId: zone.id,
+        providerResourceId,
         domainName: zone.name,
         status: mapCloudflareZoneStatus(zone.status),
         expiresAt: undefined, // DNS zones don't expire (domain registrations do)
@@ -191,6 +197,23 @@ export const cloudflareAdapter: DockAdapter = {
         await ctx.db.patch(existing._id, domainData)
       } else {
         await ctx.db.insert("domains", domainData)
+      }
+    }
+
+    // Delete orphaned resources (exist in DB but not in API response)
+    // Only delete discovered resources (provisioningSource === undefined)
+    const existingDomains = await ctx.db
+      .query("domains")
+      .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
+      .collect()
+
+    for (const existing of existingDomains) {
+      if (
+        !syncedResourceIds.has(existing.providerResourceId) &&
+        existing.provisioningSource === undefined
+      ) {
+        console.log(`[Cloudflare] Deleting orphaned domain: ${existing.domainName} (${existing.providerResourceId})`)
+        await ctx.db.delete(existing._id)
       }
     }
   },
@@ -270,11 +293,17 @@ async function syncPages(
   dock: Doc<"docks">,
   pages: CloudflarePage[]
 ): Promise<void> {
+  // Track synced resource IDs for orphan detection
+  const syncedResourceIds = new Set<string>()
+
   for (const page of pages) {
+    const providerResourceId = page.id
+    syncedResourceIds.add(providerResourceId)
+
     const existing = await ctx.db
       .query("webServices")
       .withIndex("by_dock_resource", (q) =>
-        q.eq("dockId", dock._id).eq("providerResourceId", page.id)
+        q.eq("dockId", dock._id).eq("providerResourceId", providerResourceId)
       )
       .first()
 
@@ -282,7 +311,7 @@ async function syncPages(
       orgId: dock.orgId,
       dockId: dock._id,
       provider: "cloudflare",
-      providerResourceId: page.id,
+      providerResourceId,
       name: page.name,
       productionUrl: getPagesProductionUrl(page),
       environment: page.production_branch || "production",
@@ -301,6 +330,26 @@ async function syncPages(
       await ctx.db.insert("webServices", webServiceData)
     }
   }
+
+  // Delete orphaned Pages (exist in DB but not in API response)
+  // Only delete discovered resources (provisioningSource === undefined)
+  const existingWebServices = await ctx.db
+    .query("webServices")
+    .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
+    .collect()
+
+  for (const existing of existingWebServices) {
+    // Only delete Cloudflare Pages (check fullApiData.type === "pages")
+    if (
+      existing.provider === "cloudflare" &&
+      existing.fullApiData?.type === "pages" &&
+      !syncedResourceIds.has(existing.providerResourceId) &&
+      existing.provisioningSource === undefined
+    ) {
+      console.log(`[Cloudflare] Deleting orphaned Page: ${existing.name} (${existing.providerResourceId})`)
+      await ctx.db.delete(existing._id)
+    }
+  }
 }
 
 /**
@@ -311,6 +360,9 @@ async function syncWorkers(
   dock: Doc<"docks">,
   workers: CloudflareWorker[]
 ): Promise<void> {
+  // Track synced resource IDs for orphan detection
+  const syncedResourceIds = new Set<string>()
+
   for (const worker of workers) {
     // Cloudflare Workers API structure (based on actual API response analysis):
     // The API response has inconsistent structure:
@@ -337,6 +389,8 @@ async function syncWorkers(
       })
       continue
     }
+
+    syncedResourceIds.add(workerId)
 
     const existing = await ctx.db
       .query("webServices")
@@ -370,6 +424,26 @@ async function syncWorkers(
       await ctx.db.patch(existing._id, webServiceData)
     } else {
       await ctx.db.insert("webServices", webServiceData)
+    }
+  }
+
+  // Delete orphaned Workers (exist in DB but not in API response)
+  // Only delete discovered resources (provisioningSource === undefined)
+  const existingWebServices = await ctx.db
+    .query("webServices")
+    .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
+    .collect()
+
+  for (const existing of existingWebServices) {
+    // Only delete Cloudflare Workers (check fullApiData.type === "workers")
+    if (
+      existing.provider === "cloudflare" &&
+      existing.fullApiData?.type === "workers" &&
+      !syncedResourceIds.has(existing.providerResourceId) &&
+      existing.provisioningSource === undefined
+    ) {
+      console.log(`[Cloudflare] Deleting orphaned Worker: ${existing.name} (${existing.providerResourceId})`)
+      await ctx.db.delete(existing._id)
     }
   }
 }

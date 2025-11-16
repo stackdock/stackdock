@@ -153,7 +153,13 @@ export const netlifyAdapter: DockAdapter = {
       sites = await api.getSites()
     }
 
+    // Track synced resource IDs for orphan detection
+    const syncedResourceIds = new Set<string>()
+
     for (const site of sites) {
+      // Track this site as synced
+      syncedResourceIds.add(site.id)
+
       // Check if site already exists
       const existing = await ctx.db
         .query("webServices")
@@ -184,6 +190,23 @@ export const netlifyAdapter: DockAdapter = {
       } else {
         // Insert new web service
         await ctx.db.insert("webServices", universalWebService)
+      }
+    }
+
+    // Delete orphaned resources (exist in DB but not in API response)
+    // Only delete discovered resources (provisioningSource === undefined)
+    const existingWebServices = await ctx.db
+      .query("webServices")
+      .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
+      .collect()
+
+    for (const existing of existingWebServices) {
+      if (
+        !syncedResourceIds.has(existing.providerResourceId) &&
+        existing.provisioningSource === undefined
+      ) {
+        console.log(`[Netlify] Deleting orphaned web service: ${existing.name} (${existing.providerResourceId})`)
+        await ctx.db.delete(existing._id)
       }
     }
   },

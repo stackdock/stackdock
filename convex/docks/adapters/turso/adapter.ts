@@ -91,12 +91,18 @@ export const tursoAdapter: DockAdapter = {
       databases = await api.listDatabases(orgSlug)
     }
 
+    // Track synced resource IDs for orphan detection
+    const syncedResourceIds = new Set<string>()
+
     // Sync each database to universal table
     for (const db of databases) {
+      const providerResourceId = db.DbId
+      syncedResourceIds.add(providerResourceId)
+
       const existing = await ctx.db
         .query("databases")
         .withIndex("by_dock_resource", (q) =>
-          q.eq("dockId", dock._id).eq("providerResourceId", db.DbId)
+          q.eq("dockId", dock._id).eq("providerResourceId", providerResourceId)
         )
         .first()
 
@@ -104,7 +110,7 @@ export const tursoAdapter: DockAdapter = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "turso",
-        providerResourceId: db.DbId,
+        providerResourceId,
         name: db.Name,
         engine: "turso", // Turso uses SQLite
         version: db.version,
@@ -125,6 +131,23 @@ export const tursoAdapter: DockAdapter = {
         await ctx.db.patch(existing._id, databaseData)
       } else {
         await ctx.db.insert("databases", databaseData)
+      }
+    }
+
+    // Delete orphaned resources (exist in DB but not in API response)
+    // Only delete discovered resources (provisioningSource === undefined)
+    const existingDatabases = await ctx.db
+      .query("databases")
+      .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
+      .collect()
+
+    for (const existing of existingDatabases) {
+      if (
+        !syncedResourceIds.has(existing.providerResourceId) &&
+        existing.provisioningSource === undefined
+      ) {
+        console.log(`[Turso] Deleting orphaned database: ${existing.name} (${existing.providerResourceId})`)
+        await ctx.db.delete(existing._id)
       }
     }
   },

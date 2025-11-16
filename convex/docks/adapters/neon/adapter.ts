@@ -117,6 +117,9 @@ export const neonAdapter: DockAdapter = {
       }
     }
 
+    // Track synced resource IDs for orphan detection
+    const syncedResourceIds = new Set<string>()
+
     // Sync each database to universal table
     for (const { project, branch, database } of databases) {
       // Use database.id or create composite ID: project-branch-database
@@ -124,6 +127,7 @@ export const neonAdapter: DockAdapter = {
       const providerResourceId = database.id 
         ? String(database.id) 
         : `${project.id}-${branch.id}-${database.name}`
+      syncedResourceIds.add(providerResourceId)
 
       const existing = await ctx.db
         .query("databases")
@@ -174,6 +178,23 @@ export const neonAdapter: DockAdapter = {
         await ctx.db.patch(existing._id, databaseData)
       } else {
         await ctx.db.insert("databases", databaseData)
+      }
+    }
+
+    // Delete orphaned resources (exist in DB but not in API response)
+    // Only delete discovered resources (provisioningSource === undefined)
+    const existingDatabases = await ctx.db
+      .query("databases")
+      .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
+      .collect()
+
+    for (const existing of existingDatabases) {
+      if (
+        !syncedResourceIds.has(existing.providerResourceId) &&
+        existing.provisioningSource === undefined
+      ) {
+        console.log(`[Neon] Deleting orphaned database: ${existing.name} (${existing.providerResourceId})`)
+        await ctx.db.delete(existing._id)
       }
     }
   },

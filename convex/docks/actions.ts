@@ -81,6 +81,7 @@ export const syncDockResources = internalAction({
     provider: v.string(),
     apiKey: v.string(), // Decrypted API key (passed from mutation)
     resourceTypes: v.array(v.string()), // ["servers", "webServices", "domains", "databases"]
+    isAutoSync: v.optional(v.boolean()), // Flag for auto-sync vs manual
   },
   handler: async (ctx, args) => {
     console.log(`[Dock Action] Syncing resources for dock ${args.dockId}, provider: ${args.provider}`)
@@ -523,6 +524,7 @@ export const syncDockResources = internalAction({
           console.log(`[Dock Action] Fetching buckets for ${args.provider}`)
           const linodeBuckets = await api.listBuckets()
           buckets = linodeBuckets
+          console.log(`[Dock Action] Linode API returned ${buckets.length} buckets`)
         }
 
         // Linode doesn't support databases, webServices, domains, or blockVolumes
@@ -707,22 +709,45 @@ export const syncDockResources = internalAction({
 
       console.log(`[Dock Action] Sync complete: ${servers.length} servers, ${webServices.length} webServices, ${domains.length} domains, ${databases.length} databases, ${deployments.length} deployments, ${backupSchedules.length} backup schedules, ${backupIntegrations.length} backup integrations, ${projects.length} projects, ${blockVolumes.length} block volumes, ${buckets.length} buckets`)
 
+      // Note: Rate limit headers are captured by individual API clients
+      // They will be updated via updateRateLimitInfo mutation when we update API clients
+      // For MVP, we'll add rate limit header capture incrementally
+
       // Call internal mutation to sync using adapter methods
+      // CRITICAL: Always pass arrays (even empty ones) so deletion logic can run
+      // If we pass undefined, the adapter method won't be called and orphaned resources won't be deleted
+      const fetchedData = {
+        servers: args.resourceTypes.includes("servers") ? servers : undefined,
+        webServices: args.resourceTypes.includes("webServices") ? webServices : undefined,
+        domains: args.resourceTypes.includes("domains") ? domains : undefined,
+        databases: args.resourceTypes.includes("databases") ? databases : undefined,
+        deployments: args.resourceTypes.includes("deployments") ? deployments : undefined,
+        backupSchedules: backupSchedules.length > 0 ? backupSchedules : undefined,
+        backupIntegrations: backupIntegrations.length > 0 ? backupIntegrations : undefined,
+        projects: args.resourceTypes.includes("projects") ? projects : undefined,
+        blockVolumes: args.resourceTypes.includes("blockVolumes") ? blockVolumes : undefined,
+        buckets: args.resourceTypes.includes("buckets") ? buckets : undefined,
+      }
+      
+      console.log(`[Dock Action] 📤 Calling syncDockResourcesMutation with:`)
+      console.log(`[Dock Action]   - dockId: ${args.dockId}`)
+      console.log(`[Dock Action]   - provider: ${args.provider}`)
+      console.log(`[Dock Action]   - resourceTypes: [${args.resourceTypes.join(", ")}]`)
+      console.log(`[Dock Action]   - buckets: ${fetchedData.buckets === undefined ? "undefined ❌" : `array(${fetchedData.buckets.length}) ✅`}`)
+      console.log(`[Dock Action]   - buckets in resourceTypes: ${args.resourceTypes.includes("buckets") ? "✅ YES" : "❌ NO"}`)
+      console.log(`[Dock Action]   - isAutoSync: ${args.isAutoSync ? "✅ YES" : "❌ NO"}`)
+      
+      // Log all resource types being passed
+      Object.entries(fetchedData).forEach(([key, value]) => {
+        if (value !== undefined) {
+          console.log(`[Dock Action]   - ${key}: array(${Array.isArray(value) ? value.length : "?"})`)
+        }
+      })
+      
       await ctx.runMutation(internal.docks.mutations.syncDockResourcesMutation, {
         dockId: args.dockId,
         provider: args.provider,
-        fetchedData: {
-          servers: servers.length > 0 ? servers : undefined,
-          webServices: webServices.length > 0 ? webServices : undefined,
-          domains: domains.length > 0 ? domains : undefined,
-          databases: databases.length > 0 ? databases : undefined,
-          deployments: deployments.length > 0 ? deployments : undefined,
-          backupSchedules: backupSchedules.length > 0 ? backupSchedules : undefined,
-          backupIntegrations: backupIntegrations.length > 0 ? backupIntegrations : undefined,
-          projects: projects.length > 0 ? projects : undefined,
-          blockVolumes: blockVolumes.length > 0 ? blockVolumes : undefined,
-          buckets: buckets.length > 0 ? buckets : undefined,
-        },
+        fetchedData,
       })
 
       return { success: true }
@@ -733,9 +758,10 @@ export const syncDockResources = internalAction({
       
       // Mark sync as failed via internal mutation
       try {
-        await ctx.runMutation(internal.docks.mutations.updateSyncStatus as any, {
+        await ctx.runMutation(internal.docks.mutations.updateSyncStatus, {
           dockId: args.dockId,
           status: "error",
+          syncInProgress: false,
           error: errorMessage,
         })
       } catch (statusError) {

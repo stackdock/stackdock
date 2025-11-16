@@ -88,9 +88,13 @@ export const hetznerAdapter: DockAdapter = {
       servers = await api.listServers()
     }
 
+    // Track synced resource IDs for orphan detection
+    const syncedResourceIds = new Set<string>()
+
     // Sync each server to universal table
     for (const server of servers) {
       const providerResourceId = server.id.toString()
+      syncedResourceIds.add(providerResourceId)
 
       const existing = await ctx.db
         .query("servers")
@@ -127,6 +131,23 @@ export const hetznerAdapter: DockAdapter = {
         await ctx.db.patch(existing._id, serverData)
       } else {
         await ctx.db.insert("servers", serverData)
+      }
+    }
+
+    // Delete orphaned resources (exist in DB but not in API response)
+    // Only delete discovered resources (provisioningSource === undefined)
+    const existingServers = await ctx.db
+      .query("servers")
+      .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
+      .collect()
+
+    for (const existing of existingServers) {
+      if (
+        !syncedResourceIds.has(existing.providerResourceId) &&
+        existing.provisioningSource === undefined
+      ) {
+        console.log(`[Hetzner] Deleting orphaned server: ${existing.name} (${existing.providerResourceId})`)
+        await ctx.db.delete(existing._id)
       }
     }
   },

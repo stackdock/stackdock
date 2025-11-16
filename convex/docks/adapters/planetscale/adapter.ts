@@ -106,10 +106,14 @@ export const planetscaleAdapter: DockAdapter = {
       }
     }
 
+    // Track synced resource IDs for orphan detection
+    const syncedResourceIds = new Set<string>()
+
     // Sync each database to universal table
     for (const { organization, database: db } of databases) {
       // Use database.name or database.id as providerResourceId
       const providerResourceId = db.name || db.id
+      syncedResourceIds.add(providerResourceId)
 
       const existing = await ctx.db
         .query("databases")
@@ -160,6 +164,22 @@ export const planetscaleAdapter: DockAdapter = {
         await ctx.db.insert("databases", databaseData)
       }
     }
+
+    // Delete orphaned resources (exist in DB but not in API response)
+    // Only delete discovered resources (provisioningSource === undefined)
+    const existingDatabases = await ctx.db
+      .query("databases")
+      .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
+      .collect()
+
+    for (const existing of existingDatabases) {
+      if (
+        !syncedResourceIds.has(existing.providerResourceId) &&
+        existing.provisioningSource === undefined
+      ) {
+        console.log(`[PlanetScale] Deleting orphaned database: ${existing.name} (${existing.providerResourceId})`)
+        await ctx.db.delete(existing._id)
+      }
+    }
   },
 }
-

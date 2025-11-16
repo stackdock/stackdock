@@ -5,8 +5,10 @@
  * All queries filter by user's organization for RBAC.
  */
 
-import { query } from "../_generated/server"
-import { getCurrentUser } from "../lib/rbac"
+import { query, internalQuery } from "../_generated/server"
+import { v } from "convex/values"
+import { getCurrentUser, checkPermission } from "../lib/rbac"
+import { ConvexError } from "convex/values"
 
 /**
  * List all servers for the current user's organization
@@ -23,6 +25,17 @@ export const listServers = query({
     
     if (!membership) {
       return []
+    }
+    
+    // Check resources:read permission
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      membership.orgId,
+      "resources:read"
+    )
+    if (!hasPermission) {
+      throw new ConvexError("Permission denied: resources:read required")
     }
     
     // Fetch all servers for this org
@@ -52,6 +65,17 @@ export const listWebServices = query({
       return []
     }
     
+    // Check resources:read permission
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      membership.orgId,
+      "resources:read"
+    )
+    if (!hasPermission) {
+      throw new ConvexError("Permission denied: resources:read required")
+    }
+    
     // Fetch all web services for this org
     const webServices = await ctx.db
       .query("webServices")
@@ -77,6 +101,17 @@ export const listDomains = query({
     
     if (!membership) {
       return []
+    }
+    
+    // Check resources:read permission
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      membership.orgId,
+      "resources:read"
+    )
+    if (!hasPermission) {
+      throw new ConvexError("Permission denied: resources:read required")
     }
     
     // Fetch all domains for this org
@@ -106,6 +141,17 @@ export const listDatabases = query({
       return []
     }
     
+    // Check resources:read permission
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      membership.orgId,
+      "resources:read"
+    )
+    if (!hasPermission) {
+      throw new ConvexError("Permission denied: resources:read required")
+    }
+    
     // Fetch all databases for this org
     const databases = await ctx.db
       .query("databases")
@@ -133,6 +179,17 @@ export const listBlockVolumes = query({
       return []
     }
     
+    // Check resources:read permission
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      membership.orgId,
+      "resources:read"
+    )
+    if (!hasPermission) {
+      throw new ConvexError("Permission denied: resources:read required")
+    }
+    
     // Fetch all block volumes for this org
     const volumes = await ctx.db
       .query("blockVolumes")
@@ -145,6 +202,9 @@ export const listBlockVolumes = query({
 
 /**
  * List all buckets for the current user's organization
+ * 
+ * CRITICAL: This query is reactive - Convex useQuery() automatically updates when data changes.
+ * No caching issues - Convex handles reactivity automatically via WebSocket subscriptions.
  */
 export const listBuckets = query({
   handler: async (ctx) => {
@@ -160,13 +220,50 @@ export const listBuckets = query({
       return []
     }
     
+    // Check resources:read permission
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      membership.orgId,
+      "resources:read"
+    )
+    if (!hasPermission) {
+      throw new ConvexError("Permission denied: resources:read required")
+    }
+    
     // Fetch all buckets for this org
+    // This query is automatically reactive - Convex will push updates when buckets are deleted
     const buckets = await ctx.db
       .query("buckets")
       .withIndex("by_orgId", (q) => q.eq("orgId", membership.orgId))
       .collect()
     
     return buckets
+  },
+})
+
+/**
+ * Internal query: Debug buckets for a specific dock
+ * Can be called from CLI: npx convex run resources/queries:debugBuckets --args '{"dockId":"..."}'
+ */
+export const debugBuckets = internalQuery({
+  args: {
+    dockId: v.id("docks"),
+  },
+  handler: async (ctx, args) => {
+    const buckets = await ctx.db
+      .query("buckets")
+      .withIndex("by_dockId", (q) => q.eq("dockId", args.dockId))
+      .collect()
+    
+    return buckets.map(b => ({
+      _id: b._id,
+      name: b.name,
+      providerResourceId: b.providerResourceId,
+      provider: b.provider,
+      provisioningSource: b.provisioningSource,
+      updatedAt: b.updatedAt,
+    }))
   },
 })
 
@@ -185,6 +282,17 @@ export const getCounts = query({
     
     if (!membership) {
       return { servers: 0, webServices: 0, domains: 0 }
+    }
+    
+    // Check resources:read permission
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      membership.orgId,
+      "resources:read"
+    )
+    if (!hasPermission) {
+      throw new ConvexError("Permission denied: resources:read required")
     }
     
     // Count servers

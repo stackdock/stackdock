@@ -90,9 +90,13 @@ export const vultrAdapter: DockAdapter = {
       instances = await api.listInstances()
     }
 
+    // Track synced resource IDs for orphan detection
+    const syncedResourceIds = new Set<string>()
+
     // Sync each instance to universal table
     for (const instance of instances) {
       const providerResourceId = instance.id
+      syncedResourceIds.add(providerResourceId)
 
       const existing = await ctx.db
         .query("servers")
@@ -124,6 +128,23 @@ export const vultrAdapter: DockAdapter = {
         await ctx.db.patch(existing._id, serverData)
       } else {
         await ctx.db.insert("servers", serverData)
+      }
+    }
+
+    // Delete orphaned resources (exist in DB but not in API response)
+    // Only delete discovered resources (provisioningSource === undefined)
+    const existingServers = await ctx.db
+      .query("servers")
+      .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
+      .collect()
+
+    for (const existing of existingServers) {
+      if (
+        !syncedResourceIds.has(existing.providerResourceId) &&
+        existing.provisioningSource === undefined
+      ) {
+        console.log(`[Vultr] Deleting orphaned server: ${existing.name} (${existing.providerResourceId})`)
+        await ctx.db.delete(existing._id)
       }
     }
   },
@@ -159,9 +180,13 @@ export const vultrAdapter: DockAdapter = {
       blocks = await api.listBlocks()
     }
 
+    // Track synced resource IDs for orphan detection
+    const syncedResourceIds = new Set<string>()
+
     // Sync each block to universal table
     for (const block of blocks) {
       const providerResourceId = block.id
+      syncedResourceIds.add(providerResourceId)
 
       const existing = await ctx.db
         .query("blockVolumes")
@@ -196,6 +221,23 @@ export const vultrAdapter: DockAdapter = {
         await ctx.db.patch(existing._id, volumeData)
       } else {
         await ctx.db.insert("blockVolumes", volumeData)
+      }
+    }
+
+    // Delete orphaned resources (exist in DB but not in API response)
+    // Only delete discovered resources (provisioningSource === undefined)
+    const existingVolumes = await ctx.db
+      .query("blockVolumes")
+      .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
+      .collect()
+
+    for (const existing of existingVolumes) {
+      if (
+        !syncedResourceIds.has(existing.providerResourceId) &&
+        existing.provisioningSource === undefined
+      ) {
+        console.log(`[Vultr] Deleting orphaned block volume: ${existing.name} (${existing.providerResourceId})`)
+        await ctx.db.delete(existing._id)
       }
     }
   },

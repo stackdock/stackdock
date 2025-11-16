@@ -114,14 +114,20 @@ export const gridpaneAdapter: DockAdapter = {
       servers = await api.getServers()
     }
 
+    // Track synced resource IDs for orphan detection
+    const syncedResourceIds = new Set<string>()
+
     for (const server of servers) {
+      const providerResourceId = server.id.toString()
+      syncedResourceIds.add(providerResourceId)
+
       // Check if server already exists
       const existing = await ctx.db
         .query("servers")
         .withIndex("by_dock_resource", (q) =>
           q
             .eq("dockId", dock._id)
-            .eq("providerResourceId", server.id.toString())
+            .eq("providerResourceId", providerResourceId)
         )
         .first()
 
@@ -129,7 +135,7 @@ export const gridpaneAdapter: DockAdapter = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "gridpane",
-        providerResourceId: server.id.toString(),
+        providerResourceId,
         name: server.label,
         primaryIpAddress: server.ip || undefined,
         region: server.region || undefined,
@@ -144,6 +150,23 @@ export const gridpaneAdapter: DockAdapter = {
       } else {
         // Insert new server
         await ctx.db.insert("servers", universalServer)
+      }
+    }
+
+    // Delete orphaned resources (exist in DB but not in API response)
+    // Only delete discovered resources (provisioningSource === undefined)
+    const existingServers = await ctx.db
+      .query("servers")
+      .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
+      .collect()
+
+    for (const existing of existingServers) {
+      if (
+        !syncedResourceIds.has(existing.providerResourceId) &&
+        existing.provisioningSource === undefined
+      ) {
+        console.log(`[GridPane] Deleting orphaned server: ${existing.name} (${existing.providerResourceId})`)
+        await ctx.db.delete(existing._id)
       }
     }
   },
@@ -172,14 +195,20 @@ export const gridpaneAdapter: DockAdapter = {
       sites = await api.getSites()
     }
 
+    // Track synced resource IDs for orphan detection
+    const syncedResourceIds = new Set<string>()
+
     for (const site of sites) {
+      const providerResourceId = site.id.toString()
+      syncedResourceIds.add(providerResourceId)
+
       // Check if site already exists
       const existing = await ctx.db
         .query("webServices")
         .withIndex("by_dock_resource", (q) =>
           q
             .eq("dockId", dock._id)
-            .eq("providerResourceId", site.id.toString())
+            .eq("providerResourceId", providerResourceId)
         )
         .first()
 
@@ -197,7 +226,7 @@ export const gridpaneAdapter: DockAdapter = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "gridpane",
-        providerResourceId: site.id.toString(),
+        providerResourceId,
         name: site.url,
         productionUrl: site.url.startsWith("http") ? site.url : `https://${site.url}`,
         environment,
@@ -212,6 +241,23 @@ export const gridpaneAdapter: DockAdapter = {
       } else {
         // Insert new web service
         await ctx.db.insert("webServices", universalWebService)
+      }
+    }
+
+    // Delete orphaned resources (exist in DB but not in API response)
+    // Only delete discovered resources (provisioningSource === undefined)
+    const existingWebServices = await ctx.db
+      .query("webServices")
+      .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
+      .collect()
+
+    for (const existing of existingWebServices) {
+      if (
+        !syncedResourceIds.has(existing.providerResourceId) &&
+        existing.provisioningSource === undefined
+      ) {
+        console.log(`[GridPane] Deleting orphaned web service: ${existing.name} (${existing.providerResourceId})`)
+        await ctx.db.delete(existing._id)
       }
     }
   },
@@ -240,14 +286,20 @@ export const gridpaneAdapter: DockAdapter = {
       domains = await api.getDomains()
     }
 
+    // Track synced resource IDs for orphan detection
+    const syncedResourceIds = new Set<string>()
+
     for (const domain of domains) {
+      const providerResourceId = domain.id.toString()
+      syncedResourceIds.add(providerResourceId)
+
       // Check if domain already exists
       const existing = await ctx.db
         .query("domains")
         .withIndex("by_dock_resource", (q) =>
           q
             .eq("dockId", dock._id)
-            .eq("providerResourceId", domain.id.toString())
+            .eq("providerResourceId", providerResourceId)
         )
         .first()
 
@@ -260,7 +312,7 @@ export const gridpaneAdapter: DockAdapter = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "gridpane",
-        providerResourceId: domain.id.toString(),
+        providerResourceId,
         domainName: domain.url,
         expiresAt,
         status: mapDomainStatus(domain),
@@ -274,6 +326,23 @@ export const gridpaneAdapter: DockAdapter = {
       } else {
         // Insert new domain
         await ctx.db.insert("domains", universalDomain)
+      }
+    }
+
+    // Delete orphaned resources (exist in DB but not in API response)
+    // Only delete discovered resources (provisioningSource === undefined)
+    const existingDomains = await ctx.db
+      .query("domains")
+      .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
+      .collect()
+
+    for (const existing of existingDomains) {
+      if (
+        !syncedResourceIds.has(existing.providerResourceId) &&
+        existing.provisioningSource === undefined
+      ) {
+        console.log(`[GridPane] Deleting orphaned domain: ${existing.domainName} (${existing.providerResourceId})`)
+        await ctx.db.delete(existing._id)
       }
     }
   },

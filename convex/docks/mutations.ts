@@ -62,6 +62,14 @@ export const createDock = mutation({
     // Encrypt API key
     const encryptedApiKey = await encryptApiKey(args.apiKey)
 
+    // Set provider-aware syncConfig
+    const { getRecommendedSyncInterval } = await import("./syncIntervals")
+    const syncConfig = {
+      enabled: true,
+      intervalSeconds: getRecommendedSyncInterval(args.provider),
+      consecutiveFailures: 0,
+    }
+
     // Create dock record
     const dockId = await ctx.db.insert("docks", {
       orgId: args.orgId,
@@ -70,8 +78,12 @@ export const createDock = mutation({
       encryptedApiKey,
       lastSyncStatus: "pending",
       syncInProgress: false,
+      syncConfig,
       updatedAt: Date.now(),
     })
+
+    // Initialize auto-sync if not already running
+    await ctx.scheduler.runAfter(0, internal.docks.scheduled.initializeAutoSync)
 
     return dockId
   },
@@ -216,55 +228,95 @@ export const syncDockResourcesMutation = internalMutation({
 
     // Use adapter methods to sync each resource type
     // Adapter methods handle transformation and insertion
+    // CRITICAL: Check for undefined (not falsy) - empty arrays [] must still call adapter for deletion logic
     
-    if (args.fetchedData.servers && adapter.syncServers) {
+    if (args.fetchedData.servers !== undefined && adapter.syncServers) {
       await adapter.syncServers(ctx, dock, args.fetchedData.servers)
     }
 
-    if (args.fetchedData.webServices && adapter.syncWebServices) {
+    if (args.fetchedData.webServices !== undefined && adapter.syncWebServices) {
       await adapter.syncWebServices(ctx, dock, args.fetchedData.webServices)
     }
 
-    if (args.fetchedData.domains && adapter.syncDomains) {
+    if (args.fetchedData.domains !== undefined && adapter.syncDomains) {
       await adapter.syncDomains(ctx, dock, args.fetchedData.domains)
     }
 
-    if (args.fetchedData.databases && adapter.syncDatabases) {
+    if (args.fetchedData.databases !== undefined && adapter.syncDatabases) {
       await adapter.syncDatabases(ctx, dock, args.fetchedData.databases)
     }
 
-    if (args.fetchedData.deployments && adapter.syncDeployments) {
+    if (args.fetchedData.deployments !== undefined && adapter.syncDeployments) {
       await adapter.syncDeployments(ctx, dock, args.fetchedData.deployments)
     }
 
-    if (args.fetchedData.backupSchedules && adapter.syncBackupSchedules) {
+    if (args.fetchedData.backupSchedules !== undefined && adapter.syncBackupSchedules) {
       await adapter.syncBackupSchedules(ctx, dock, args.fetchedData.backupSchedules)
     }
 
-    if (args.fetchedData.backupIntegrations && adapter.syncBackupIntegrations) {
+    if (args.fetchedData.backupIntegrations !== undefined && adapter.syncBackupIntegrations) {
       await adapter.syncBackupIntegrations(ctx, dock, args.fetchedData.backupIntegrations)
     }
 
-    if (args.fetchedData.projects && adapter.syncProjects) {
+    if (args.fetchedData.projects !== undefined && adapter.syncProjects) {
       await adapter.syncProjects(ctx, dock, args.fetchedData.projects)
     }
 
-    if (args.fetchedData.blockVolumes && adapter.syncBlockVolumes) {
+    if (args.fetchedData.blockVolumes !== undefined && adapter.syncBlockVolumes) {
       await adapter.syncBlockVolumes(ctx, dock, args.fetchedData.blockVolumes)
     }
 
-    if (args.fetchedData.buckets && adapter.syncBuckets) {
+    if (args.fetchedData.buckets !== undefined && adapter.syncBuckets) {
+      console.log(`[Sync Mutation] ✅ Calling syncBuckets with ${args.fetchedData.buckets.length} buckets for dock ${dock._id}`)
       await adapter.syncBuckets(ctx, dock, args.fetchedData.buckets)
+      console.log(`[Sync Mutation] ✅ syncBuckets completed for dock ${dock._id}`)
+    } else {
+      const bucketsStatus = args.fetchedData.buckets === undefined ? "undefined (not passed)" : `defined (${args.fetchedData.buckets.length} items)`
+      const adapterStatus = adapter.syncBuckets ? "exists" : "missing"
+      console.log(`[Sync Mutation] ⏭️  NOT calling syncBuckets - buckets: ${bucketsStatus}, adapter.syncBuckets: ${adapterStatus}`)
+      if (args.fetchedData.buckets === undefined) {
+        console.log(`[Sync Mutation] ⚠️  WARNING: buckets is undefined - deletion logic will NOT run!`)
+      }
+      if (!adapter.syncBuckets) {
+        console.log(`[Sync Mutation] ⚠️  WARNING: adapter.syncBuckets is missing for provider ${args.provider}`)
+      }
     }
 
     // Mark sync as successful
-    await ctx.db.patch(args.dockId, {
-      syncInProgress: false,
-      lastSyncStatus: "success",
-      lastSyncAt: Date.now(),
-      lastSyncError: undefined,
-      updatedAt: Date.now(),
-    })
+    // Update syncConfig.lastSyncAttempt so auto-sync eligibility check works
+    // CRITICAL: Always update lastSyncAttempt even if some adapters fail
+    // Wrap in try/catch to ensure we always update syncConfig
+    try {
+      const syncConfig = dock.syncConfig || {
+        enabled: true,
+        intervalSeconds: 60,
+        consecutiveFailures: 0,
+      }
+      syncConfig.lastSyncAttempt = Date.now()
+      syncConfig.consecutiveFailures = 0
+      syncConfig.backoffUntil = undefined
+
+      await ctx.db.patch(args.dockId, {
+        syncInProgress: false,
+        lastSyncStatus: "success",
+        lastSyncAt: Date.now(),
+        lastSyncError: undefined,
+        syncConfig,
+        updatedAt: Date.now(),
+      })
+
+      console.log(`[Sync Mutation] ✅ Sync completed successfully, lastSyncAttempt updated to ${new Date(syncConfig.lastSyncAttempt).toISOString()}`)
+    } catch (error) {
+      console.error(`[Sync Mutation] ❌ Error updating sync status:`, error)
+      // Still try to update basic status even if syncConfig update fails
+      await ctx.db.patch(args.dockId, {
+        syncInProgress: false,
+        lastSyncStatus: "error",
+        lastSyncError: error instanceof Error ? error.message : "Failed to update sync status",
+        updatedAt: Date.now(),
+      })
+      throw error
+    }
 
     return { success: true }
   },
@@ -274,23 +326,393 @@ export const syncDockResourcesMutation = internalMutation({
 /**
  * Internal mutation: Update sync status
  * 
- * Called by syncDockResources action to update sync status on success/failure.
+ * Called by syncDockResources action and auto-sync to update sync status.
  */
 export const updateSyncStatus = internalMutation({
   args: {
     dockId: v.id("docks"),
-    status: v.union(v.literal("success"), v.literal("error")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("syncing"),
+      v.literal("success"),
+      v.literal("error")
+    ),
+    syncInProgress: v.optional(v.boolean()),
+    lastSyncAt: v.optional(v.number()),
     error: v.optional(v.string()),
+    backoffUntil: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.dockId, {
-      syncInProgress: false,
+    const dock = await ctx.db.get(args.dockId)
+    if (!dock) return
+
+    const updates: any = {
       lastSyncStatus: args.status,
-      lastSyncAt: Date.now(),
-      lastSyncError: args.error,
+      updatedAt: Date.now(),
+    }
+
+    if (args.syncInProgress !== undefined) {
+      updates.syncInProgress = args.syncInProgress
+    }
+
+    if (args.lastSyncAt !== undefined) {
+      updates.lastSyncAt = args.lastSyncAt
+    }
+
+    if (args.error !== undefined) {
+      updates.lastSyncError = args.error
+    }
+
+    // Update syncConfig
+    const syncConfig = dock.syncConfig || {
+      enabled: true,
+      intervalSeconds: 60,
+      consecutiveFailures: 0,
+    }
+
+    if (args.status === "success") {
+      syncConfig.lastSyncAttempt = Date.now()
+      syncConfig.consecutiveFailures = 0
+      syncConfig.backoffUntil = undefined
+    } else if (args.status === "error") {
+      syncConfig.lastSyncAttempt = Date.now()
+      syncConfig.consecutiveFailures = (syncConfig.consecutiveFailures || 0) + 1
+
+      // Exponential backoff: 2^failures minutes (max 60 minutes)
+      if (syncConfig.consecutiveFailures > 0) {
+        const backoffMinutes = Math.min(
+          Math.pow(2, syncConfig.consecutiveFailures),
+          60
+        )
+        syncConfig.backoffUntil = Date.now() + (backoffMinutes * 60 * 1000)
+      }
+    }
+
+    if (args.backoffUntil !== undefined) {
+      syncConfig.backoffUntil = args.backoffUntil
+    }
+
+    updates.syncConfig = syncConfig
+
+    await ctx.db.patch(args.dockId, updates)
+  },
+})
+
+/**
+ * Internal mutation: Update rate limit info for a dock
+ * 
+ * Logs rate limit headers for analysis and future optimization.
+ */
+export const updateRateLimitInfo = internalMutation({
+  args: {
+    dockId: v.id("docks"),
+    rateLimitHeaders: v.any(), // RateLimitHeaders object
+    endpoint: v.optional(v.string()),
+    method: v.optional(v.string()),
+    timestamp: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const dock = await ctx.db.get(args.dockId)
+    if (!dock) return
+    
+    const now = args.timestamp || Date.now()
+    const headers = args.rateLimitHeaders || {}
+    
+    // Log rate limit info for analysis
+    console.log(`[Rate Limit] ${dock.provider} (${dock.name}):`)
+    console.log(`[Rate Limit]   Endpoint: ${args.endpoint || "unknown"}`)
+    console.log(`[Rate Limit]   Method: ${args.method || "GET"}`)
+    console.log(`[Rate Limit]   Limit: ${headers.limit || "unknown"}`)
+    console.log(`[Rate Limit]   Remaining: ${headers.remaining || "unknown"}`)
+    console.log(`[Rate Limit]   Reset: ${headers.reset ? new Date(parseInt(headers.reset, 10) * 1000).toISOString() : "unknown"}`)
+    console.log(`[Rate Limit]   Retry-After: ${headers.retryAfter || "none"}`)
+
+    // Extract numeric values
+    const limit = headers.limit
+      ? parseInt(headers.limit, 10)
+      : undefined
+    const remaining = headers.remaining
+      ? parseInt(headers.remaining, 10)
+      : undefined
+    const reset = headers.reset
+      ? parseInt(headers.reset, 10) * 1000 // Convert to ms
+      : undefined
+    const retryAfter = headers.retryAfter
+      ? parseInt(headers.retryAfter, 10)
+      : undefined
+
+    // Update dock rate limit info
+    const rateLimitInfo = {
+      lastHeaders: headers,
+      lastSeenAt: now,
+      limit,
+      remaining,
+      reset,
+      retryAfter,
+      providerSpecific: headers.providerSpecific || {},
+    }
+
+    await ctx.db.patch(args.dockId, {
+      rateLimitInfo,
+      updatedAt: now,
+    })
+
+    // Optional: Log to rateLimitLogs table (can be disabled post-MVP)
+    if (args.endpoint && args.method) {
+      await ctx.db.insert("rateLimitLogs", {
+        dockId: args.dockId,
+        orgId: dock.orgId,
+        provider: dock.provider,
+        endpoint: args.endpoint,
+        method: args.method,
+        timestamp: Date.now(),
+        headers: args.rateLimitHeaders.raw || {},
+        extracted: {
+          limit,
+          remaining,
+          reset,
+          retryAfter,
+        },
+        _mvpTracking: true, // Explicit marker for cleanup
+      })
+    }
+  },
+})
+
+/**
+ * Decrypt API key for sync (internal use only)
+ */
+export const decryptApiKeyForSync = internalMutation({
+  args: {
+    dockId: v.id("docks"),
+  },
+  handler: async (ctx, args) => {
+    const dock = await ctx.db.get(args.dockId)
+    if (!dock) {
+      throw new ConvexError("Dock not found")
+    }
+
+    return await decryptApiKey(dock.encryptedApiKey, ctx, {
+      dockId: dock._id,
+      orgId: dock.orgId,
+    })
+  },
+})
+
+/**
+ * Manually initialize auto-sync (for testing/debugging)
+ * 
+ * This can be called from the Convex dashboard or UI to start the sync loop.
+ */
+export const initializeAutoSyncManually = mutation({
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx)
+    
+    // Get user's org
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .first()
+    
+    if (!membership) {
+      throw new ConvexError("User has no organization")
+    }
+
+    // Check if sync is already initialized
+    const docks = await ctx.db
+      .query("docks")
+      .withIndex("by_orgId", (q) => q.eq("orgId", membership.orgId))
+      .collect()
+
+    const hasRecentSync = docks.some((dock) => {
+      const syncConfig = dock.syncConfig
+      if (!syncConfig?.enabled) return false
+      if (!syncConfig.lastSyncAttempt) return false
+      const timeSinceLastSync = Date.now() - syncConfig.lastSyncAttempt
+      return timeSinceLastSync < 2 * 60 * 1000 // 2 minutes
+    })
+
+    if (hasRecentSync) {
+      console.log(`[Auto-Sync] Sync already initialized (recent sync activity detected)`)
+      return { message: "Sync already initialized", initialized: false }
+    }
+
+    // Schedule first sync immediately
+    await ctx.scheduler.runAfter(0, internal.docks.scheduled.autoSyncAllDocks)
+
+    console.log(`[Auto-Sync] Manually initialized continuous sync`)
+    return { message: "Sync initialized", initialized: true }
+  },
+})
+
+/**
+ * Internal mutation: Initialize auto-sync (no auth required, for CLI debugging)
+ * 
+ * This can be called from CLI: npx convex run docks/mutations:initializeAutoSyncInternal
+ */
+export const initializeAutoSyncInternal = internalMutation({
+  handler: async (ctx) => {
+    console.log(`[Auto-Sync] initializeAutoSyncInternal called (CLI/debug)`)
+
+    // Get all docks
+    const docks = await ctx.db.query("docks").collect()
+    console.log(`[Auto-Sync] Found ${docks.length} total docks`)
+
+    // Check if any dock has recent sync activity
+    const hasRecentSync = docks.some((dock) => {
+      const syncConfig = dock.syncConfig
+      if (!syncConfig?.enabled) return false
+      if (!syncConfig.lastSyncAttempt) return false
+      const timeSinceLastSync = Date.now() - syncConfig.lastSyncAttempt
+      return timeSinceLastSync < 2 * 60 * 1000 // 2 minutes
+    })
+
+    if (hasRecentSync) {
+      console.log(`[Auto-Sync] Sync already initialized (recent sync activity detected)`)
+      return { message: "Sync already initialized", initialized: false, docksCount: docks.length }
+    }
+
+    // Schedule first sync immediately
+    console.log(`[Auto-Sync] Scheduling first sync immediately...`)
+    await ctx.scheduler.runAfter(0, internal.docks.scheduled.autoSyncAllDocks)
+
+    console.log(`[Auto-Sync] ✅ Initialized continuous sync - first sync scheduled`)
+    return { message: "Sync initialized", initialized: true, docksCount: docks.length }
+  },
+})
+
+/**
+ * Internal mutation: Enable sync on all docks (for fixing existing docks)
+ * 
+ * This adds syncConfig to docks that don't have it, or enables sync if disabled.
+ * Can be called from CLI: npx convex run docks/mutations:enableSyncOnAllDocks
+ */
+export const enableSyncOnAllDocks = internalMutation({
+  handler: async (ctx) => {
+    const docks = await ctx.db.query("docks").collect()
+    let updated = 0
+    let alreadyEnabled = 0
+
+    for (const dock of docks) {
+      const syncConfig = dock.syncConfig || {
+        enabled: true,
+        intervalSeconds: 60,
+        consecutiveFailures: 0,
+      }
+
+      // If sync is disabled or config is missing, enable it
+      if (!syncConfig.enabled || !dock.syncConfig) {
+        await ctx.db.patch(dock._id, {
+          syncConfig: {
+            enabled: true,
+            intervalSeconds: 60,
+            consecutiveFailures: syncConfig.consecutiveFailures || 0,
+            lastSyncAttempt: syncConfig.lastSyncAttempt,
+            backoffUntil: syncConfig.backoffUntil,
+          },
+          updatedAt: Date.now(),
+        })
+        updated++
+      } else {
+        alreadyEnabled++
+      }
+    }
+
+    console.log(`[Auto-Sync] Updated ${updated} dock(s) to enable sync, ${alreadyEnabled} already enabled`)
+    return { updated, alreadyEnabled, total: docks.length }
+  },
+})
+
+/**
+ * Update sync interval for a dock
+ * 
+ * Enforces provider-specific minimum intervals.
+ */
+export const updateSyncInterval = mutation({
+  args: {
+    dockId: v.id("docks"),
+    intervalSeconds: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx)
+    
+    const dock = await ctx.db.get(args.dockId)
+    if (!dock) {
+      throw new ConvexError("Dock not found")
+    }
+    
+    // Verify permission
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      dock.orgId,
+      "docks:full"
+    )
+    if (!hasPermission) {
+      throw new ConvexError("Permission denied: Only organization owners can update dock settings")
+    }
+    
+    // Validate interval against provider minimums
+    const { validateSyncInterval } = await import("./syncIntervals")
+    const validation = validateSyncInterval(dock.provider, args.intervalSeconds)
+    if (!validation.valid) {
+      throw new ConvexError(validation.error || "Invalid sync interval")
+    }
+    
+    // Update sync config
+    const syncConfig = dock.syncConfig || {
+      enabled: true,
+      intervalSeconds: 120,
+      consecutiveFailures: 0,
+    }
+    
+    syncConfig.intervalSeconds = args.intervalSeconds
+    
+    await ctx.db.patch(args.dockId, {
+      syncConfig,
       updatedAt: Date.now(),
     })
-    return { success: true }
+    
+    return { success: true, warning: validation.error }
+  },
+})
+
+/**
+ * Internal mutation: Update existing docks with provider-aware sync intervals
+ * 
+ * Can be called from CLI: npx convex run docks/mutations:updateDocksWithProviderIntervals
+ */
+export const updateDocksWithProviderIntervals = internalMutation({
+  handler: async (ctx) => {
+    const { getRecommendedSyncInterval } = await import("./syncIntervals")
+    const docks = await ctx.db.query("docks").collect()
+    let updated = 0
+    
+    for (const dock of docks) {
+      const recommended = getRecommendedSyncInterval(dock.provider)
+      const current = dock.syncConfig?.intervalSeconds || 60
+      
+      // Only update if current interval is less than recommended
+      if (current < recommended) {
+        const syncConfig = dock.syncConfig || {
+          enabled: true,
+          intervalSeconds: 60,
+          consecutiveFailures: 0,
+        }
+        
+        syncConfig.intervalSeconds = recommended
+        
+        await ctx.db.patch(dock._id, {
+          syncConfig,
+          updatedAt: Date.now(),
+        })
+        
+        updated++
+        console.log(`[Migration] Updated ${dock.name} (${dock.provider}): ${current}s -> ${recommended}s`)
+      }
+    }
+    
+    return { updated, total: docks.length }
   },
 })
 

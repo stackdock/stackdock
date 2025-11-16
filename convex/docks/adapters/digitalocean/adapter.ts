@@ -98,10 +98,14 @@ export const digitaloceanAdapter: DockAdapter = {
       droplets = await api.listDroplets()
     }
 
+    // Track synced resource IDs for orphan detection
+    const syncedResourceIds = new Set<string>()
+
     // Sync each droplet to universal table
     for (const droplet of droplets) {
       // Convert droplet.id (number) to string for providerResourceId
       const providerResourceId = droplet.id.toString()
+      syncedResourceIds.add(providerResourceId)
 
       const existing = await ctx.db
         .query("servers")
@@ -133,6 +137,24 @@ export const digitaloceanAdapter: DockAdapter = {
         await ctx.db.patch(existing._id, serverData)
       } else {
         await ctx.db.insert("servers", serverData)
+      }
+    }
+
+    // Delete orphaned resources (exist in DB but not in API response)
+    // Only delete discovered resources (provisioningSource === undefined)
+    // Never delete provisioned resources (provisioningSource === "sst" | "api" | "manual")
+    const existingServers = await ctx.db
+      .query("servers")
+      .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
+      .collect()
+
+    for (const existing of existingServers) {
+      if (
+        !syncedResourceIds.has(existing.providerResourceId) &&
+        existing.provisioningSource === undefined // Only delete discovered resources
+      ) {
+        console.log(`[DigitalOcean] Deleting orphaned server: ${existing.name} (${existing.providerResourceId})`)
+        await ctx.db.delete(existing._id)
       }
     }
   },
@@ -168,9 +190,13 @@ export const digitaloceanAdapter: DockAdapter = {
       volumes = await api.listVolumes()
     }
 
+    // Track synced resource IDs for orphan detection
+    const syncedResourceIds = new Set<string>()
+
     // Sync each volume to universal table
     for (const volume of volumes) {
       const providerResourceId = volume.id
+      syncedResourceIds.add(providerResourceId)
 
       const existing = await ctx.db
         .query("blockVolumes")
@@ -203,6 +229,23 @@ export const digitaloceanAdapter: DockAdapter = {
         await ctx.db.patch(existing._id, volumeData)
       } else {
         await ctx.db.insert("blockVolumes", volumeData)
+      }
+    }
+
+    // Delete orphaned resources (exist in DB but not in API response)
+    // Only delete discovered resources (provisioningSource === undefined)
+    const existingVolumes = await ctx.db
+      .query("blockVolumes")
+      .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
+      .collect()
+
+    for (const existing of existingVolumes) {
+      if (
+        !syncedResourceIds.has(existing.providerResourceId) &&
+        existing.provisioningSource === undefined
+      ) {
+        console.log(`[DigitalOcean] Deleting orphaned block volume: ${existing.name} (${existing.providerResourceId})`)
+        await ctx.db.delete(existing._id)
       }
     }
   },
