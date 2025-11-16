@@ -2,7 +2,7 @@
 
 ## Dependency Vulnerabilities
 
-### js-yaml Vulnerability (GHSA-mh29-5h37-fv8m)
+### #1: js-yaml Vulnerability (GHSA-mh29-5h37-fv8m)
 
 **Status**: ✅ Mitigated via npm overrides
 
@@ -32,5 +32,4 @@
 }
 ```
 
-**Last Updated**: November 14, 2025
-
+**Last Updated**: November 15, 2025

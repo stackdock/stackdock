@@ -2,7 +2,7 @@
 
 <div align="center">
   <h1>StackDock</h1>
-  <p><strong>Open Source Multi-Cloud Management Platform</strong></p>
+  <p><strong>Open Source Developer Multi-Cloud Management Platform</strong></p>
   <p>Manage websites, apps, databases, servers, and APM tools across multiple providers from a unified interface.</p>
   <p>
     <a href="https://www.typescriptlang.org/">
@@ -33,10 +33,10 @@ npx shadcn add button
 **StackDock does the same for infrastructure.**
 
 ```bash
-npx stackdock add gridpane
-# → Copies infrastructure adapter into YOUR codebase
+npx stackdock add cloudflare
+# → Copies StackDock's latest dock code into YOUR codebase
 # → You own the dock adapter
-# → Customize, fork, publish your own
+# → Customize, publish your own adapters/registrys
 ```
 
 ### Why This Matters
@@ -44,7 +44,7 @@ npx stackdock add gridpane
 - **WordPress democratized content management**
 - **StackDock democratizes infrastructure management**
 - **True FOSS**: You own the code (docks, UI, everything)
-- **Composable**: Build your perfect control plane
+- **Composable**: Build your OWN infinitely customizable infra helm
 - **Extensible**: If it has an API, it can be a dock
 
 ---
@@ -53,11 +53,11 @@ npx stackdock add gridpane
 
 You're early – but welcome to the shipyard! The blueprints are evolving, the vision is locked in, and we're building in public.
 
-**This isn't just another tool.** It's infrastructure's WordPress moment.
+**This isn't just another tool.** It's infrastructure's Democracy moment.
 
-**⚠️ IMPORTANT: StackDock is currently in READ-ONLY mode. All functionality is view-only. No write operations (create, modify, delete, provision) are available or implemented.**
+**IMPORTANT: StackDock is currently in READ-ONLY mode. All functionality is view-only. No write operations (create, modify, delete, provision) are available or implemented.**
 
-Star the repo to watch the build! ⭐
+Star the repo to watch the build! 
 
 ---
 
@@ -94,7 +94,7 @@ Star the repo to watch the build! ⭐
 
 **When will write operations be available?**
 - After MVP validation is complete
-- After universal schema is fully validated across all provider types
+- After universal schema is fully validated across all planned provider types
 - Write operations will be clearly marked and documented when available
 
 **⚠️ DO NOT attempt to use StackDock for any write operations. They are not implemented and will not work.**
@@ -107,9 +107,9 @@ Star the repo to watch the build! ⭐
 
 1. **Docks Registry**: Infrastructure adapters (copy/paste/own)
    - Location: `packages/docks/`
-   - GridPane, Vercel, AWS, DigitalOcean, Cloudflare, etc.
-   - Community-built and official adapters
-   - Translates provider APIs to universal schema
+   - Coolify, Vercel, Netlify, DigitalOcean, Cloudflare, GridPane etc.
+   - StackDock Open Source built and official adapters "docks"
+   - Translates provider APIs to StackDock's universal schema
    - See: [packages/docks/README.md](./packages/docks/README.md)
 
 2. **UI Registry**: Dashboard components (shadcn/ui model)
@@ -120,7 +120,7 @@ Star the repo to watch the build! ⭐
    - See: [packages/ui/README.md](./packages/ui/README.md)
 
 3. **The Platform**: Orchestration layer
-   - Universal data model (`convex/schema.ts`)
+   - Universal data model and schema (`convex/schema.ts`)
    - RBAC enforcement (unlimited users)
    - Encryption & security (AES-256-GCM)
    - Audit logging
@@ -130,10 +130,10 @@ Star the repo to watch the build! ⭐
 ### Core Architecture
 
 **Universal Tables** (Provider-Agnostic):
-- `servers`: GridPane, Vultr, DigitalOcean, Linode, Hetzner → ONE table (AWS/GCP/Azure next)
-- `webServices`: GridPane, Vercel, Netlify, Cloudflare → ONE table
-- `domains`: GridPane, Cloudflare → ONE table
-- `databases`: Turso, Neon, Convex, PlanetScale → ONE table
+- `servers`: Coolify, Vultr, DigitalOcean, Linode, Hetzner, GridPane → ONE table (Laravel Forge, Ploi etc. next)
+- `webServices`: Coolify, Vercel, Netlify, Cloudflare → ONE table (Railway, Render, Laravel Forge, Ploi etc. next)
+- `domains`: Cloudflare, GridPane, DNS Records → ONE table (DNSimple, DNS Made Easy, NameCheap, Laravel Forge, Ploi, Name.com etc. next)
+- `databases`: Turso, Neon, Convex, PlanetScale → ONE table (Supabase, Xata, Pocketbase, )
 
 **Dock Adapters** (Translators):
 - GridPane API → Universal `webServices` table
@@ -141,6 +141,8 @@ Star the repo to watch the build! ⭐
 - Provider-specific data in `fullApiData` field
 - Runtime adapters: `convex/docks/adapters/` (execution)
 - Registry adapters: `packages/docks/` (copy/paste/own)
+
+**AWS GCP Azure and Oracle are the "Big Four" - Obviously they will be on the road map and integrated. Just the least priority. This is a feature! Not a bug**
 
 **See [ARCHITECTURE.md](./docs/architecture/ARCHITECTURE.md) for complete details.**
 
@@ -226,6 +228,9 @@ You should see:
 - ✅ Linode (servers/linodes)
 - ✅ Hetzner (servers)
 
+**Project Providers** (1 provider):
+- ✅ GitHub (repos/branches/commits/issues/)
+
 ### Universal Tables ✅
 - ✅ `servers` - 6 providers (GridPane, Vultr, DigitalOcean, Linode, Hetzner, Coolify)
 - ✅ `webServices` - 5 providers (GridPane, Vercel, Netlify, Cloudflare, Coolify)
@@ -236,8 +241,8 @@ You should see:
 - ✅ `projects` - 1 provider (GitHub - repositories, branches, issues, commits)
 
 ### Next Phase 🎯
-- 🔄 Projects & Monitoring providers (Linear + Sentry) - **NEXT** (GitHub ✅ complete)
-- 📋 Complex auth IaaS providers (AWS/GCP/Azure) - After Projects & Monitoring
+- 🔄 Projects & Monitoring providers (Linear + Sentry) - **NEXT** ( complete)
+- 📋 Complex auth IaaS providers (AWS/GCP/Azure) - Instances w/ read-only IAM roles
 - 📋 Insights board (data visualization)
 
 ---
@@ -285,40 +290,37 @@ All documentation is organized in `docs/`:
 ### ✅ Phase 1: Foundation (Complete)
 - [x] Architecture documentation
 - [x] TanStack Start app setup
-- [x] Convex integration ⭐
-- [x] Clerk authentication ⭐
-- [x] User auto-sync to Convex ⭐
-- [x] RBAC implementation ⭐
-- [x] Encryption system ⭐
-- [x] Audit logging infrastructure ⭐
-- [x] Provisioning infrastructure (SST core, mutations, queries, UI) ⭐
-- [x] GridPane dock adapter (Partial MVP) - **AUTHENTICATION WORKING** ✅
-  - Servers & Web Services syncing successfully
-  - Sufficient for read-only MVP observability mode
-  - Full API coverage deferred until after schema validation
-- [x] Resource tables (Servers, Web Services, Domains, Databases) - **DATA DISPLAYING** ✅
-- [x] UI foundation (TanStack Table components) - **POLISHED & READY** ✅
+- [x] Convex integration 
+- [x] Clerk authentication 
+- [x] User auto-sync to Convex 
+- [x] RBAC implementation 
+- [x] Encryption system 
+- [x] Audit logging infrastructure 
+- [x] Provisioning infrastructure (SST core, mutations, queries, UI) 
+- [x] GridPane dock adapter (Read Only MVP)
+- [x] Resource tables (Servers, Web Services, Domains, Databases)
+- [x] UI foundation (TanStack Table components)
 
 ### ✅ Phase 2: Translation Layer Validation (Mission 5 & 7 - Complete)
 
 **Status**: ✅ **COMPLETE** - Universal schema validated across 13 providers
 
 **PaaS Providers** (Web Services) ✅:
-- [x] Vercel dock adapter ✅
-- [x] Netlify dock adapter ✅
-- [x] Cloudflare adapter ✅ (zones, pages, workers, DNS)
+- [x] Vercel dock adapter 
+- [x] Netlify dock adapter 
+- [x] Cloudflare adapter (zones, pages, workers, DNS)
 
 **Database Providers** ✅:
-- [x] Turso adapter ✅
-- [x] Neon adapter ✅
-- [x] Convex adapter ✅
-- [x] PlanetScale adapter ✅
+- [x] Turso adapter 
+- [x] Neon adapter 
+- [x] Convex adapter 
+- [x] PlanetScale adapter 
 
 **IaaS Providers** (Simple Auth) ✅:
-- [x] Vultr adapter ✅
-- [x] DigitalOcean adapter ✅
-- [x] Linode adapter ✅
-- [x] Hetzner adapter ✅
+- [x] Vultr adapter 
+- [x] DigitalOcean adapter 
+- [x] Linode adapter 
+- [x] Hetzner adapter 
 
 **Translation Layer**: ✅ Validated and refined across multiple provider types
 
@@ -352,7 +354,7 @@ All documentation is organized in `docs/`:
 - [ ] Aggregated dashboards
 - [ ] Cross-provider analytics
 
-**Current Progress**: Core platform complete. Universal schema validated across 13 providers. UI foundation polished. **Current**: Adding Linear/GitHub/Sentry (Projects & Monitoring). **Next**: Complex auth IaaS (AWS/GCP/Azure), then Insights board.
+**Current Progress**: Core read only platform complete. Universal schema validated across 13 providers. UI foundation polished. **Current**: Adding Linear/GitHub/Sentry (Projects & Monitoring). **Next**: Complex auth IaaS (AWS/GCP/Azure), then Insights board.
 
 ---
 
@@ -493,7 +495,7 @@ Real-time status updates via Convex subscriptions
 AWS, GCP, Azure (multi-field auth - next)
 
 **DNS/Domains**:
-Cloudflare, Route53, Namecheap
+Cloudflare, DNSimple, DNS Made Easy, Name.com, Namecheap
 
 **APM/Monitoring**:
 Posthog, New Relic, Sentry, Datadog

@@ -20,6 +20,7 @@ import { DigitalOceanAPI } from "./adapters/digitalocean/api"
 import { LinodeAPI } from "./adapters/linode/api"
 import { GitHubAPI } from "./adapters/github/api"
 import { HetznerAPI } from "./adapters/hetzner/api"
+import { CoolifyAPI } from "./adapters/coolify/api"
 import { internal } from "../_generated/api"
 import type { Id } from "../_generated/dataModel"
 
@@ -648,6 +649,55 @@ export const syncDockResources = internalAction({
         if (args.resourceTypes.includes("buckets")) {
           console.log(`[Dock Action] Buckets not supported for ${args.provider}`)
           buckets = []
+        }
+      } else if (args.provider === "coolify") {
+        // Coolify-specific: Use CoolifyAPI directly
+        const api = new CoolifyAPI(args.apiKey)
+
+        if (args.resourceTypes.includes("servers")) {
+          console.log(`[Dock Action] Fetching servers for ${args.provider}`)
+          servers = await api.listServers()
+        }
+
+        // Always fetch services if webServices OR databases are requested
+        // (databases are nested in services)
+        if (args.resourceTypes.includes("webServices") || args.resourceTypes.includes("databases")) {
+          console.log(`[Dock Action] Fetching services for ${args.provider}`)
+          const services = await api.listServices()
+
+          if (args.resourceTypes.includes("webServices")) {
+            webServices = services
+          }
+
+          // Extract databases from services if requested
+          if (args.resourceTypes.includes("databases")) {
+            // Flatten databases from all services
+            databases = services.flatMap(service =>
+              service.databases.map(db => ({
+                ...db,
+                service_uuid: service.uuid,
+                service_name: service.name,
+              }))
+            )
+          }
+        }
+
+        // Coolify doesn't have separate domains endpoint
+        if (args.resourceTypes.includes("domains")) {
+          console.log(`[Dock Action] Domains not supported for ${args.provider}`)
+          domains = []
+        }
+        if (args.resourceTypes.includes("blockVolumes")) {
+          console.log(`[Dock Action] Block volumes not supported for ${args.provider}`)
+          blockVolumes = []
+        }
+        if (args.resourceTypes.includes("buckets")) {
+          console.log(`[Dock Action] Buckets not supported for ${args.provider}`)
+          buckets = []
+        }
+        if (args.resourceTypes.includes("projects")) {
+          console.log(`[Dock Action] Projects not supported for ${args.provider}`)
+          projects = []
         }
       } else {
         // For other providers, use adapter pattern
