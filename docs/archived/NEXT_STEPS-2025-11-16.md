@@ -1,5 +1,17 @@
 # StackDock Next Steps
 
+**Last Updated**: November 16, 2025  
+**Archived**: November 16, 2025  
+**Reason**: Consolidated into STATUS.md
+
+---
+
+**NOTE**: This file has been archived. See `STATUS.md` in root directory for current next steps.
+
+---
+
+# StackDock Next Steps
+
 **Last Updated**: November 16, 2025
 
 ## 🎯 Immediate Priorities
@@ -245,4 +257,3 @@
 ---
 
 **Next Session Focus**: Complete Projects UI, then Linear integration, then Sentry (tomorrow).
-

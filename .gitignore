@@ -73,10 +73,7 @@ docks/
 !turbo.json
 
 # Admin Scaffold Reference (Next.js -> TanStack Start Migration)
-# This folder contains a Next.js admin scaffold purchased for reference.
-# We're reverse engineering it to adapt its components and patterns to TanStack Start.
-# DO NOT COMMIT - This is a reference implementation only.
-docs/shadcn-admin-1.0.0/
+docs/local/*
 
 # Prevent nested git repos in monorepo workspaces
 # StackDock uses a single root git repository

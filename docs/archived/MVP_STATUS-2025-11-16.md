@@ -1,5 +1,17 @@
 # StackDock MVP Status
 
+**Last Updated**: November 16, 2025  
+**Archived**: November 16, 2025  
+**Reason**: Consolidated into STATUS.md
+
+---
+
+**NOTE**: This file has been archived. See `STATUS.md` in root directory for current status.
+
+---
+
+# StackDock MVP Status
+
 **Last Updated**: November 16, 2025
 
 ## 🎯 MVP Completion Checklist
