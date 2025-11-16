@@ -1,14 +1,16 @@
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useQuery } from "convex/react"
 import { api } from "convex/_generated/api"
-import { CodeXml } from "lucide-react"
+import { CodeXml, Plus } from "lucide-react"
 import { RepositoriesTable } from "@/components/projects/RepositoriesTable"
+import { Button } from "@/components/ui/button"
 
 export const Route = createFileRoute("/dashboard/projects/code")({
   component: ProjectsCodePage,
 })
 
 function ProjectsCodePage() {
+  const navigate = useNavigate()
   // Query projects with GitHub repos
   const projects = useQuery(api["projects/queries"].listProjects)
   
@@ -20,12 +22,20 @@ function ProjectsCodePage() {
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 md:p-6 lg:p-8">
       <div className="space-y-0.5">
-        <h1 className="text-xl font-bold tracking-tight md:text-2xl lg:text-3xl">
-          Code
-        </h1>
-        <p className="text-sm text-muted-foreground md:text-base">
-          View your repositories
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight md:text-2xl lg:text-3xl">
+              Code
+            </h1>
+            <p className="text-sm text-muted-foreground md:text-base">
+              View your repositories
+            </p>
+          </div>
+          <Button onClick={() => navigate({ to: "/dashboard/projects/new" })}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Project
+          </Button>
+        </div>
       </div>
       
       {/* Repositories Table */}

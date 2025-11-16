@@ -162,6 +162,57 @@ export const linkResource = mutation({
 })
 
 /**
+ * Update an existing project
+ * 
+ * Requires "projects:full" permission.
+ */
+export const updateProject = mutation({
+  args: {
+    projectId: v.id("projects"),
+    name: v.optional(v.string()),
+    teamId: v.optional(v.id("teams")),
+    clientId: v.optional(v.id("clients")),
+    linearId: v.optional(v.string()),
+    githubRepo: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx)
+
+    // Get project to verify org
+    const project = await ctx.db.get(args.projectId)
+    if (!project) {
+      throw new ConvexError("Project not found")
+    }
+
+    // Verify user belongs to org and has projects:full permission
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      project.orgId,
+      "projects:full"
+    )
+    if (!hasPermission) {
+      throw new ConvexError(
+        "Permission denied: Only organization owners can update projects"
+      )
+    }
+
+    // Build update object (only include provided fields)
+    const updates: any = {}
+    if (args.name !== undefined) updates.name = args.name
+    if (args.teamId !== undefined) updates.teamId = args.teamId
+    if (args.clientId !== undefined) updates.clientId = args.clientId
+    if (args.linearId !== undefined) updates.linearId = args.linearId
+    if (args.githubRepo !== undefined) updates.githubRepo = args.githubRepo
+
+    // Update project
+    await ctx.db.patch(args.projectId, updates)
+
+    return { success: true }
+  },
+})
+
+/**
  * Unlink a resource from a project
  */
 export const unlinkResource = mutation({

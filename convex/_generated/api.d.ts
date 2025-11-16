@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as clients_queries from "../clients/queries.js";
 import type * as docks__types from "../docks/_types.js";
 import type * as docks_actions from "../docks/actions.js";
 import type * as docks_adapters_cloudflare_adapter from "../docks/adapters/cloudflare/adapter.js";
@@ -80,6 +81,7 @@ import type * as projects_mutations from "../projects/mutations.js";
 import type * as projects_queries from "../projects/queries.js";
 import type * as provisioning_queries from "../provisioning/queries.js";
 import type * as resources_queries from "../resources/queries.js";
+import type * as teams_queries from "../teams/queries.js";
 import type * as test from "../test.js";
 import type * as users from "../users.js";
 
@@ -98,6 +100,7 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  "clients/queries": typeof clients_queries;
   "docks/_types": typeof docks__types;
   "docks/actions": typeof docks_actions;
   "docks/adapters/cloudflare/adapter": typeof docks_adapters_cloudflare_adapter;
@@ -170,6 +173,7 @@ declare const fullApi: ApiFromModules<{
   "projects/queries": typeof projects_queries;
   "provisioning/queries": typeof provisioning_queries;
   "resources/queries": typeof resources_queries;
+  "teams/queries": typeof teams_queries;
   test: typeof test;
   users: typeof users;
 }>;

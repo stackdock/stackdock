@@ -10,7 +10,8 @@
 4. [Enforcement Architecture](#enforcement-architecture)
 5. [Common Scenarios](#common-scenarios)
 6. [API Reference](#api-reference)
-7. [Testing RBAC](#testing-rbac)
+7. [Opt-In Permission Behavior](#opt-in-permission-behavior)
+8. [Testing RBAC](#testing-rbac)
 
 ---
 
@@ -139,9 +140,14 @@ roles: defineTable({
     docks: v.union(v.literal("full"), v.literal("read"), v.literal("none")),
     operations: v.union(v.literal("full"), v.literal("read"), v.literal("none")),
     settings: v.union(v.literal("full"), v.literal("read"), v.literal("none")),
+    // Optional permissions (added over time, opt-in for existing roles)
+    provisioning: v.optional(v.union(v.literal("full"), v.literal("read"), v.literal("none"))),
+    monitoring: v.optional(v.union(v.literal("full"), v.literal("read"), v.literal("none"))),
   }),
 }).index("by_orgId", ["orgId"])
 ```
+
+**Note**: Optional permissions (`provisioning`, `monitoring`) are opt-in. Existing roles without these fields will be denied access to related features until explicitly updated. See [Opt-In Permission Behavior](#opt-in-permission-behavior) below.
 
 **Permission sets** that can be assigned to users.
 
@@ -577,6 +583,13 @@ export async function checkPermission(
   const [resource, level] = permission.split(":") as [string, "read" | "full"]
   const rolePermission = role.permissions[resource]
   
+  // Handle undefined permissions (e.g., "provisioning" may be undefined for old roles)
+  if (rolePermission === undefined) {
+    // Default behavior: if permission doesn't exist, deny access
+    // This ensures new permissions (like "provisioning", "monitoring") are opt-in
+    return false
+  }
+  
   if (rolePermission === "none") return false
   if (rolePermission === "full") return true
   if (rolePermission === "read" && level === "read") return true
@@ -584,6 +597,48 @@ export async function checkPermission(
   return false
 }
 ```
+
+**Important: Opt-In Permission Behavior**
+
+When a permission field is `undefined` (not set in the role), `checkPermission` returns `false` (denies access). This is **intentional** and ensures backward compatibility:
+
+- **New permissions** (like `provisioning`, `monitoring`) are added as optional fields
+- **Existing roles** without these permissions will be denied access to new features
+- **Users must explicitly update roles** to grant new permissions
+- **New organizations** automatically get all permissions in the default Admin role
+
+**Example**:
+```typescript
+// Old role (created before "monitoring" permission existed)
+const oldRole = {
+  permissions: {
+    projects: "full",
+    resources: "full",
+    // monitoring is undefined
+  }
+}
+
+// This will return false (denied)
+checkPermission(ctx, userId, orgId, "monitoring:read") // false
+
+// User must update role to include monitoring
+const updatedRole = {
+  permissions: {
+    projects: "full",
+    resources: "full",
+    monitoring: "full", // Explicitly added
+  }
+}
+
+// Now returns true (granted)
+checkPermission(ctx, userId, orgId, "monitoring:read") // true
+```
+
+**Migration Path**:
+1. New permission added to schema as optional
+2. Existing roles continue to work (denied new features)
+3. Admins can update roles to grant new permissions
+4. New organizations get full permissions by default
 
 ### withRBAC
 
@@ -620,6 +675,96 @@ export function useRBAC() {
   }
 }
 ```
+
+---
+
+## Opt-In Permission Behavior
+
+### How Undefined Permissions Work
+
+When a permission field is `undefined` in a role (not set), `checkPermission` returns `false` (denies access). This ensures **backward compatibility** when new permissions are added to the system.
+
+### Why This Design?
+
+1. **Backward Compatibility**: Existing roles continue to work without modification
+2. **Security**: New features are denied by default (principle of least privilege)
+3. **Explicit Opt-In**: Admins must consciously grant new permissions
+4. **Migration Path**: Clear upgrade path for existing organizations
+
+### Example: Adding "monitoring" Permission
+
+**Before** (old role):
+```typescript
+{
+  permissions: {
+    projects: "full",
+    resources: "full",
+    // monitoring doesn't exist
+  }
+}
+
+// User tries to access monitoring feature
+checkPermission(ctx, userId, orgId, "monitoring:read") // false (denied)
+```
+
+**After** (updated role):
+```typescript
+{
+  permissions: {
+    projects: "full",
+    resources: "full",
+    monitoring: "full", // Explicitly added
+  }
+}
+
+// User tries to access monitoring feature
+checkPermission(ctx, userId, orgId, "monitoring:read") // true (granted)
+```
+
+### Migration Strategy
+
+When adding a new optional permission:
+
+1. **Add to Schema**: Add as `v.optional(...)` in `roles` table
+2. **Update Default Roles**: New organizations get the permission in Admin role
+3. **Document Behavior**: Explain opt-in behavior to users
+4. **Provide Migration Script**: Optional script to update existing roles
+
+**Example Migration Script**:
+```typescript
+// convex/migrations/addMonitoringPermission.ts
+export const addMonitoringToAdminRoles = internalMutation({
+  handler: async (ctx) => {
+    const adminRoles = await ctx.db
+      .query("roles")
+      .filter(q => q.eq(q.field("name"), "Admin"))
+      .collect()
+    
+    for (const role of adminRoles) {
+      if (role.permissions.monitoring === undefined) {
+        await ctx.db.patch(role._id, {
+          permissions: {
+            ...role.permissions,
+            monitoring: "full",
+          },
+        })
+      }
+    }
+  },
+})
+```
+
+### Current Optional Permissions
+
+- `provisioning`: Infrastructure provisioning features (optional)
+- `monitoring`: Monitoring and alerting features (optional)
+
+### Best Practices
+
+1. **Always check for undefined**: Use `rolePermission === undefined` check
+2. **Document new permissions**: Update this doc when adding permissions
+3. **Provide migration path**: Give admins a way to update roles
+4. **Default to deny**: Undefined = denied (secure by default)
 
 ---
 
@@ -689,6 +834,8 @@ describe('Project Creation', () => {
 4. **Test permission boundaries** (unit + integration tests)
 5. **Principle of least privilege** (default to minimal permissions)
 6. **Separate concerns** (org role vs team role vs client role)
+7. **Opt-in new permissions** (undefined = denied, ensures backward compatibility)
+8. **Update existing roles** when adding new permissions (migration scripts)
 
 ---
 

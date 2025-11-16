@@ -24,6 +24,7 @@ import { Route as DashboardSettingsUserRouteImport } from './routes/dashboard/se
 import { Route as DashboardSettingsThemeRouteImport } from './routes/dashboard/settings/theme'
 import { Route as DashboardSettingsOrganizationRouteImport } from './routes/dashboard/settings/organization'
 import { Route as DashboardProvisionProviderRouteImport } from './routes/dashboard/provision/$provider'
+import { Route as DashboardProjectsNewRouteImport } from './routes/dashboard/projects/new'
 import { Route as DashboardProjectsCodeRouteImport } from './routes/dashboard/projects/code'
 import { Route as DashboardProjectsProjectIdRouteImport } from './routes/dashboard/projects/$projectId'
 import { Route as DashboardOperationsWorkflowsRouteImport } from './routes/dashboard/operations/workflows'
@@ -37,6 +38,7 @@ import { Route as DashboardInfrastructureDataRouteImport } from './routes/dashbo
 import { Route as DashboardInfrastructureComputeRouteImport } from './routes/dashboard/infrastructure/compute'
 import { Route as DashboardDocksConnectedRouteImport } from './routes/dashboard/docks/connected'
 import { Route as DashboardDocksAddRouteImport } from './routes/dashboard/docks/add'
+import { Route as DashboardProjectsProjectIdIndexRouteImport } from './routes/dashboard/projects/[projectId]/index'
 import { Route as DashboardProvisionProviderResourceTypeRouteImport } from './routes/dashboard/provision/$provider.$resourceType'
 import { Route as DashboardProjectsProjectIdSettingsRouteImport } from './routes/dashboard/projects/$projectId/settings'
 import { Route as DashboardProjectsProjectIdResourcesRouteImport } from './routes/dashboard/projects/$projectId/resources'
@@ -121,6 +123,11 @@ const DashboardProvisionProviderRoute =
     path: '/provision/$provider',
     getParentRoute: () => DashboardRoute,
   } as any)
+const DashboardProjectsNewRoute = DashboardProjectsNewRouteImport.update({
+  id: '/projects/new',
+  path: '/projects/new',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardProjectsCodeRoute = DashboardProjectsCodeRouteImport.update({
   id: '/projects/code',
   path: '/projects/code',
@@ -196,6 +203,12 @@ const DashboardDocksAddRoute = DashboardDocksAddRouteImport.update({
   path: '/docks/add',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardProjectsProjectIdIndexRoute =
+  DashboardProjectsProjectIdIndexRouteImport.update({
+    id: '/projects/projectId/',
+    path: '/projects/projectId/',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 const DashboardProvisionProviderResourceTypeRoute =
   DashboardProvisionProviderResourceTypeRouteImport.update({
     id: '/$resourceType',
@@ -257,6 +270,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/operations/workflows': typeof DashboardOperationsWorkflowsRoute
   '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRouteWithChildren
   '/dashboard/projects/code': typeof DashboardProjectsCodeRoute
+  '/dashboard/projects/new': typeof DashboardProjectsNewRoute
   '/dashboard/provision/$provider': typeof DashboardProvisionProviderRouteWithChildren
   '/dashboard/settings/organization': typeof DashboardSettingsOrganizationRoute
   '/dashboard/settings/theme': typeof DashboardSettingsThemeRoute
@@ -267,6 +281,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/projects/$projectId/resources': typeof DashboardProjectsProjectIdResourcesRoute
   '/dashboard/projects/$projectId/settings': typeof DashboardProjectsProjectIdSettingsRoute
   '/dashboard/provision/$provider/$resourceType': typeof DashboardProvisionProviderResourceTypeRouteWithChildren
+  '/dashboard/projects/projectId': typeof DashboardProjectsProjectIdIndexRoute
   '/dashboard/provision/$provider/$resourceType/$provisionId': typeof DashboardProvisionProviderResourceTypeProvisionIdRoute
 }
 export interface FileRoutesByTo {
@@ -292,6 +307,7 @@ export interface FileRoutesByTo {
   '/dashboard/operations/workflows': typeof DashboardOperationsWorkflowsRoute
   '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRouteWithChildren
   '/dashboard/projects/code': typeof DashboardProjectsCodeRoute
+  '/dashboard/projects/new': typeof DashboardProjectsNewRoute
   '/dashboard/provision/$provider': typeof DashboardProvisionProviderRouteWithChildren
   '/dashboard/settings/organization': typeof DashboardSettingsOrganizationRoute
   '/dashboard/settings/theme': typeof DashboardSettingsThemeRoute
@@ -302,6 +318,7 @@ export interface FileRoutesByTo {
   '/dashboard/projects/$projectId/resources': typeof DashboardProjectsProjectIdResourcesRoute
   '/dashboard/projects/$projectId/settings': typeof DashboardProjectsProjectIdSettingsRoute
   '/dashboard/provision/$provider/$resourceType': typeof DashboardProvisionProviderResourceTypeRouteWithChildren
+  '/dashboard/projects/projectId': typeof DashboardProjectsProjectIdIndexRoute
   '/dashboard/provision/$provider/$resourceType/$provisionId': typeof DashboardProvisionProviderResourceTypeProvisionIdRoute
 }
 export interface FileRoutesById {
@@ -329,6 +346,7 @@ export interface FileRoutesById {
   '/dashboard/operations/workflows': typeof DashboardOperationsWorkflowsRoute
   '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRouteWithChildren
   '/dashboard/projects/code': typeof DashboardProjectsCodeRoute
+  '/dashboard/projects/new': typeof DashboardProjectsNewRoute
   '/dashboard/provision/$provider': typeof DashboardProvisionProviderRouteWithChildren
   '/dashboard/settings/organization': typeof DashboardSettingsOrganizationRoute
   '/dashboard/settings/theme': typeof DashboardSettingsThemeRoute
@@ -339,6 +357,7 @@ export interface FileRoutesById {
   '/dashboard/projects/$projectId/resources': typeof DashboardProjectsProjectIdResourcesRoute
   '/dashboard/projects/$projectId/settings': typeof DashboardProjectsProjectIdSettingsRoute
   '/dashboard/provision/$provider/$resourceType': typeof DashboardProvisionProviderResourceTypeRouteWithChildren
+  '/dashboard/projects/projectId/': typeof DashboardProjectsProjectIdIndexRoute
   '/dashboard/provision/$provider/$resourceType/$provisionId': typeof DashboardProvisionProviderResourceTypeProvisionIdRoute
 }
 export interface FileRouteTypes {
@@ -367,6 +386,7 @@ export interface FileRouteTypes {
     | '/dashboard/operations/workflows'
     | '/dashboard/projects/$projectId'
     | '/dashboard/projects/code'
+    | '/dashboard/projects/new'
     | '/dashboard/provision/$provider'
     | '/dashboard/settings/organization'
     | '/dashboard/settings/theme'
@@ -377,6 +397,7 @@ export interface FileRouteTypes {
     | '/dashboard/projects/$projectId/resources'
     | '/dashboard/projects/$projectId/settings'
     | '/dashboard/provision/$provider/$resourceType'
+    | '/dashboard/projects/projectId'
     | '/dashboard/provision/$provider/$resourceType/$provisionId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -402,6 +423,7 @@ export interface FileRouteTypes {
     | '/dashboard/operations/workflows'
     | '/dashboard/projects/$projectId'
     | '/dashboard/projects/code'
+    | '/dashboard/projects/new'
     | '/dashboard/provision/$provider'
     | '/dashboard/settings/organization'
     | '/dashboard/settings/theme'
@@ -412,6 +434,7 @@ export interface FileRouteTypes {
     | '/dashboard/projects/$projectId/resources'
     | '/dashboard/projects/$projectId/settings'
     | '/dashboard/provision/$provider/$resourceType'
+    | '/dashboard/projects/projectId'
     | '/dashboard/provision/$provider/$resourceType/$provisionId'
   id:
     | '__root__'
@@ -438,6 +461,7 @@ export interface FileRouteTypes {
     | '/dashboard/operations/workflows'
     | '/dashboard/projects/$projectId'
     | '/dashboard/projects/code'
+    | '/dashboard/projects/new'
     | '/dashboard/provision/$provider'
     | '/dashboard/settings/organization'
     | '/dashboard/settings/theme'
@@ -448,6 +472,7 @@ export interface FileRouteTypes {
     | '/dashboard/projects/$projectId/resources'
     | '/dashboard/projects/$projectId/settings'
     | '/dashboard/provision/$provider/$resourceType'
+    | '/dashboard/projects/projectId/'
     | '/dashboard/provision/$provider/$resourceType/$provisionId'
   fileRoutesById: FileRoutesById
 }
@@ -564,6 +589,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardProvisionProviderRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/projects/new': {
+      id: '/dashboard/projects/new'
+      path: '/projects/new'
+      fullPath: '/dashboard/projects/new'
+      preLoaderRoute: typeof DashboardProjectsNewRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/projects/code': {
       id: '/dashboard/projects/code'
       path: '/projects/code'
@@ -653,6 +685,13 @@ declare module '@tanstack/react-router' {
       path: '/docks/add'
       fullPath: '/dashboard/docks/add'
       preLoaderRoute: typeof DashboardDocksAddRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/projects/projectId/': {
+      id: '/dashboard/projects/projectId/'
+      path: '/projects/projectId'
+      fullPath: '/dashboard/projects/projectId'
+      preLoaderRoute: typeof DashboardProjectsProjectIdIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/provision/$provider/$resourceType': {
@@ -829,8 +868,10 @@ interface DashboardRouteChildren {
   DashboardMonitoringErrorsRoute: typeof DashboardMonitoringErrorsRoute
   DashboardProjectsProjectIdRoute: typeof DashboardProjectsProjectIdRouteWithChildren
   DashboardProjectsCodeRoute: typeof DashboardProjectsCodeRoute
+  DashboardProjectsNewRoute: typeof DashboardProjectsNewRoute
   DashboardProvisionProviderRoute: typeof DashboardProvisionProviderRouteWithChildren
   DashboardProvisionIndexRoute: typeof DashboardProvisionIndexRoute
+  DashboardProjectsProjectIdIndexRoute: typeof DashboardProjectsProjectIdIndexRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
@@ -845,8 +886,10 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardMonitoringErrorsRoute: DashboardMonitoringErrorsRoute,
   DashboardProjectsProjectIdRoute: DashboardProjectsProjectIdRouteWithChildren,
   DashboardProjectsCodeRoute: DashboardProjectsCodeRoute,
+  DashboardProjectsNewRoute: DashboardProjectsNewRoute,
   DashboardProvisionProviderRoute: DashboardProvisionProviderRouteWithChildren,
   DashboardProvisionIndexRoute: DashboardProvisionIndexRoute,
+  DashboardProjectsProjectIdIndexRoute: DashboardProjectsProjectIdIndexRoute,
 }
 
 const DashboardRouteWithChildren = DashboardRoute._addFileChildren(

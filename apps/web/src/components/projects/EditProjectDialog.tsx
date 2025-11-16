@@ -1,0 +1,216 @@
+/**
+ * Edit Project Dialog Component
+ * 
+ * Allows editing project details
+ */
+
+"use client"
+
+import { useState, useEffect } from "react"
+import { useMutation, useQuery } from "convex/react"
+import { api } from "convex/_generated/api"
+import type { Id } from "convex/_generated/dataModel"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Loader2 } from "lucide-react"
+import { toast } from "sonner"
+
+interface EditProjectDialogProps {
+  projectId: Id<"projects">
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}
+
+export function EditProjectDialog({
+  projectId,
+  open,
+  onOpenChange,
+}: EditProjectDialogProps) {
+  const project = useQuery(api["projects/queries"].getProject, { projectId })
+  const teams = useQuery(
+    api["teams/queries"].listTeams,
+    project?.orgId ? { orgId: project.orgId } : "skip"
+  )
+  const clients = useQuery(
+    api["clients/queries"].listClients,
+    project?.orgId ? { orgId: project.orgId } : "skip"
+  )
+
+  const [name, setName] = useState("")
+  const [teamId, setTeamId] = useState("")
+  const [clientId, setClientId] = useState("")
+  const [linearId, setLinearId] = useState("")
+  const [githubRepo, setGithubRepo] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const updateProject = useMutation(api["projects/mutations"].updateProject)
+
+  // Pre-populate form when project loads
+  useEffect(() => {
+    if (project) {
+      setName(project.name || "")
+      setTeamId(project.teamId || "")
+      setClientId(project.clientId || "")
+      setLinearId(project.linearId || "")
+      setGithubRepo(project.githubRepo || "")
+    }
+  }, [project])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    // Form validation
+    if (!name.trim()) {
+      toast.error("Project name is required")
+      return
+    }
+    if (!teamId) {
+      toast.error("Team is required")
+      return
+    }
+    if (!clientId) {
+      toast.error("Client is required")
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      await updateProject({
+        projectId,
+        name: name.trim(),
+        teamId: teamId as Id<"teams">,
+        clientId: clientId as Id<"clients">,
+        linearId: linearId.trim() || undefined,
+        githubRepo: githubRepo.trim() || undefined,
+      })
+
+      toast.success("Project updated successfully")
+      onOpenChange(false)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update project")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  if (!project) {
+    return null
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Edit Project</DialogTitle>
+          <DialogDescription>
+            Update project details
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-name">Project Name</Label>
+            <Input
+              id="edit-name"
+              placeholder="e.g., Website Redesign"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-team">Team</Label>
+            <Select value={teamId} onValueChange={setTeamId} disabled={!teams}>
+              <SelectTrigger id="edit-team">
+                <SelectValue placeholder={teams ? "Select team" : "Loading teams..."} />
+              </SelectTrigger>
+              <SelectContent>
+                {teams?.map((team) => (
+                  <SelectItem key={team._id} value={team._id}>
+                    {team.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-client">Client</Label>
+            <Select value={clientId} onValueChange={setClientId} disabled={!clients}>
+              <SelectTrigger id="edit-client">
+                <SelectValue placeholder={clients ? "Select client" : "Loading clients..."} />
+              </SelectTrigger>
+              <SelectContent>
+                {clients?.map((client) => (
+                  <SelectItem key={client._id} value={client._id}>
+                    {client.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-linearId">Linear ID</Label>
+            <Input
+              id="edit-linearId"
+              placeholder="e.g., PROJ-123"
+              value={linearId}
+              onChange={(e) => setLinearId(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-githubRepo">GitHub Repository</Label>
+            <Input
+              id="edit-githubRepo"
+              placeholder="e.g., owner/repo-name"
+              value={githubRepo}
+              onChange={(e) => setGithubRepo(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Format: owner/repo-name (e.g., github/example-repo)
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
