@@ -1,7 +1,7 @@
 /**
- * Buckets Table Component
+ * Docks Table Component
  * 
- * TanStack Table implementation for displaying object storage buckets from all providers
+ * TanStack Table implementation for displaying connected docks
  */
 
 "use client"
@@ -30,15 +30,28 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronUpIcon,
+  CircleAlertIcon,
   CircleXIcon,
-  Copy,
   Columns3Icon,
-  EllipsisIcon,
   FilterIcon,
   ListFilterIcon,
+  RefreshCw,
+  TrashIcon,
 } from "lucide-react"
 import type { Doc } from "convex/_generated/dataModel"
 import { cn } from "@/lib/utils"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -46,6 +59,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -77,33 +91,130 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { toast } from "sonner"
-import { ProviderBadge } from "./shared/provider-badge"
-import { StatusBadge } from "./shared/status-badge"
-import { formatBytes } from "./shared/format-utils"
-import { TableSkeleton } from "./shared/table-skeleton"
+import { ProviderBadge } from "@/components/resources/shared/provider-badge"
+import { formatDate } from "@/components/resources/shared/format-utils"
+import { TableSkeleton } from "@/components/resources/shared/table-skeleton"
+import { getProviderCategory, CATEGORIES, type DockCategory } from "@/lib/dock-categories"
+import { useMutation } from "convex/react"
+import { api } from "convex/_generated/api"
+import { Loader2 } from "lucide-react"
 
-type Bucket = Doc<"buckets">
+type Dock = Doc<"docks"> & {
+  category: DockCategory
+}
 
 // Multi-column filter for name
-const multiColumnFilterFn: FilterFn<Bucket> = (row, columnId, filterValue) => {
+const nameFilterFn: FilterFn<Dock> = (row, columnId, filterValue) => {
   const searchableContent = row.original.name.toLowerCase()
   const searchTerm = (filterValue ?? "").toLowerCase()
   return searchableContent.includes(searchTerm)
 }
 
+// Status filter
+const statusFilterFn: FilterFn<Dock> = (row, columnId, filterValue: string[]) => {
+  if (!filterValue?.length) return true
+  return filterValue.includes(row.original.lastSyncStatus)
+}
+
 // Provider filter
-const providerFilterFn: FilterFn<Bucket> = (row, columnId, filterValue: string[]) => {
+const providerFilterFn: FilterFn<Dock> = (row, columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.provider)
 }
 
-// Region filter
-const regionFilterFn: FilterFn<Bucket> = (row, columnId, filterValue: string[]) => {
+// Category filter
+const categoryFilterFn: FilterFn<Dock> = (row, columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
-  return filterValue.includes(row.original.region)
+  return filterValue.includes(row.original.category)
 }
 
-const columns: ColumnDef<Bucket>[] = [
+function getStatusBadge(status: string) {
+  switch (status) {
+    case "success":
+      return <Badge variant="outline" className="bg-muted text-muted-foreground">Connected</Badge>
+    case "error":
+      return <Badge variant="destructive">Error</Badge>
+    case "syncing":
+      return <Badge variant="outline" className="bg-muted/50 text-muted-foreground">Syncing...</Badge>
+    case "pending":
+      return <Badge variant="outline" className="bg-muted/30 text-muted-foreground">Pending</Badge>
+    default:
+      return <Badge variant="outline">{status}</Badge>
+  }
+}
+
+function CategoryBadge({ category }: { category: DockCategory }) {
+  const cat = CATEGORIES[category]
+  return (
+    <Badge variant="outline" className="capitalize">
+      {cat.label}
+    </Badge>
+  )
+}
+
+function RowActions({ row }: { row: Row<Dock> }) {
+  const dock = row.original
+  const syncDock = useMutation(api["docks/mutations"].syncDock)
+  const deleteDock = useMutation(api["docks/mutations"].deleteDock)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleSync = async () => {
+    setIsSyncing(true)
+    try {
+      await syncDock({ dockId: dock._id as any })
+      toast.success("Dock synced successfully")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to sync dock")
+    } finally {
+      setIsSyncing(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!confirm("Are you sure you want to delete this dock?")) return
+    setIsDeleting(true)
+    try {
+      await deleteDock({ dockId: dock._id as any })
+      toast.success("Dock deleted successfully")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete dock")
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-8 w-8 p-0"
+        onClick={handleSync}
+        disabled={isSyncing || dock.syncInProgress}
+        title="Sync"
+      >
+        {isSyncing || dock.syncInProgress ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <RefreshCw className="h-4 w-4" />
+        )}
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+        onClick={handleDelete}
+        disabled={isDeleting}
+        title="Delete"
+      >
+        <TrashIcon className="h-4 w-4" />
+      </Button>
+    </div>
+  )
+}
+
+const columns: ColumnDef<Dock>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -127,13 +238,9 @@ const columns: ColumnDef<Bucket>[] = [
   {
     header: "Name",
     accessorKey: "name",
-    cell: ({ row }) => (
-      <div className="font-medium">
-        {row.getValue("name")}
-      </div>
-    ),
+    cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div>,
     size: 200,
-    filterFn: multiColumnFilterFn,
+    filterFn: nameFilterFn,
     enableHiding: false,
   },
   {
@@ -144,63 +251,43 @@ const columns: ColumnDef<Bucket>[] = [
     filterFn: providerFilterFn,
   },
   {
-    header: "Region/Cluster",
-    accessorKey: "region",
-    cell: ({ row }) => {
-      const region = row.getValue("region") as string
-      const cluster = row.original.cluster
-      return <RegionClusterCell region={region} cluster={cluster} />
-    },
-    size: 150,
-    filterFn: regionFilterFn,
-  },
-  {
-    header: "Size",
-    accessorKey: "sizeBytes",
-    cell: ({ row }) => {
-      const sizeBytes = row.original.sizeBytes || 0
-      return <SizeCell sizeBytes={sizeBytes} />
-    },
-    size: 120,
-  },
-  {
-    header: "Objects",
-    accessorKey: "objectCount",
-    cell: ({ row }) => {
-      const count = row.original.objectCount || 0
-      return <span>{count.toLocaleString()}</span>
-    },
+    header: "Category",
+    accessorKey: "category",
+    cell: ({ row }) => <CategoryBadge category={row.getValue("category")} />,
     size: 100,
-  },
-  {
-    header: "S3 Endpoint",
-    accessorKey: "s3Endpoint",
-    cell: ({ row }) => {
-      const endpoint = row.original.s3Endpoint
-      return endpoint ? <S3EndpointCell endpoint={endpoint} /> : <span className="text-muted-foreground">N/A</span>
-    },
-    size: 200,
+    filterFn: categoryFilterFn,
   },
   {
     header: "Status",
-    accessorKey: "status",
-    cell: ({ row }) => <StatusBadge status={row.getValue("status")} />,
-    size: 100,
+    accessorKey: "lastSyncStatus",
+    cell: ({ row }) => getStatusBadge(row.getValue("lastSyncStatus")),
+    size: 120,
+    filterFn: statusFilterFn,
+  },
+  {
+    header: "Last Synced",
+    accessorKey: "lastSyncAt",
+    cell: ({ row }) => {
+      const lastSyncAt = row.getValue("lastSyncAt") as number | undefined
+      return lastSyncAt ? formatDate(lastSyncAt) : "Never"
+    },
+    size: 150,
   },
   {
     id: "actions",
     header: () => <span className="sr-only">Actions</span>,
     cell: ({ row }) => <RowActions row={row} />,
-    size: 60,
+    size: 100,
     enableHiding: false,
   },
 ]
 
-interface BucketsTableProps {
-  data: Bucket[] | undefined
+interface DocksTableProps {
+  data: Doc<"docks">[] | undefined
+  onDelete?: (ids: string[]) => void
 }
 
-export function BucketsTable({ data }: BucketsTableProps) {
+export function DocksTable({ data, onDelete }: DocksTableProps) {
   const id = useId()
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
@@ -211,8 +298,17 @@ export function BucketsTable({ data }: BucketsTableProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }])
 
+  // Add category to each dock
+  const docksWithCategory: Dock[] = useMemo(() => {
+    if (!data) return []
+    return data.map(dock => ({
+      ...dock,
+      category: getProviderCategory(dock.provider),
+    }))
+  }, [data])
+
   const table = useReactTable({
-    data: data || [],
+    data: docksWithCategory,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -227,25 +323,41 @@ export function BucketsTable({ data }: BucketsTableProps) {
     state: { sorting, pagination, columnFilters, columnVisibility },
   })
 
+  const uniqueStatusValues = useMemo(() => {
+    const statusColumn = table.getColumn("lastSyncStatus")
+    if (!statusColumn) return []
+    return Array.from(statusColumn.getFacetedUniqueValues().keys()).sort()
+  }, [table.getColumn("lastSyncStatus")?.getFacetedUniqueValues()])
+
   const uniqueProviderValues = useMemo(() => {
     const providerColumn = table.getColumn("provider")
     if (!providerColumn) return []
     return Array.from(providerColumn.getFacetedUniqueValues().keys()).sort()
   }, [table.getColumn("provider")?.getFacetedUniqueValues()])
 
-  const uniqueRegionValues = useMemo(() => {
-    const regionColumn = table.getColumn("region")
-    if (!regionColumn) return []
-    return Array.from(regionColumn.getFacetedUniqueValues().keys()).sort()
-  }, [table.getColumn("region")?.getFacetedUniqueValues()])
+  const uniqueCategoryValues = useMemo(() => {
+    const categoryColumn = table.getColumn("category")
+    if (!categoryColumn) return []
+    return Array.from(categoryColumn.getFacetedUniqueValues().keys()).sort()
+  }, [table.getColumn("category")?.getFacetedUniqueValues()])
+
+  const selectedStatuses = useMemo(() => {
+    return (table.getColumn("lastSyncStatus")?.getFilterValue() as string[]) ?? []
+  }, [table.getColumn("lastSyncStatus")?.getFilterValue()])
 
   const selectedProviders = useMemo(() => {
     return (table.getColumn("provider")?.getFilterValue() as string[]) ?? []
   }, [table.getColumn("provider")?.getFilterValue()])
 
-  const selectedRegions = useMemo(() => {
-    return (table.getColumn("region")?.getFilterValue() as string[]) ?? []
-  }, [table.getColumn("region")?.getFilterValue()])
+  const selectedCategories = useMemo(() => {
+    return (table.getColumn("category")?.getFilterValue() as string[]) ?? []
+  }, [table.getColumn("category")?.getFilterValue()])
+
+  const handleStatusChange = (checked: boolean, value: string) => {
+    const filterValue = selectedStatuses
+    const newFilterValue = checked ? [...filterValue, value] : filterValue.filter(v => v !== value)
+    table.getColumn("lastSyncStatus")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
+  }
 
   const handleProviderChange = (checked: boolean, value: string) => {
     const filterValue = selectedProviders
@@ -253,16 +365,23 @@ export function BucketsTable({ data }: BucketsTableProps) {
     table.getColumn("provider")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
   }
 
-  const handleRegionChange = (checked: boolean, value: string) => {
-    const filterValue = selectedRegions
+  const handleCategoryChange = (checked: boolean, value: string) => {
+    const filterValue = selectedCategories
     const newFilterValue = checked ? [...filterValue, value] : filterValue.filter(v => v !== value)
-    table.getColumn("region")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
+    table.getColumn("category")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
+  }
+
+  const handleDeleteRows = () => {
+    const selectedRows = table.getSelectedRowModel().rows
+    const ids = selectedRows.map(row => row.original._id)
+    onDelete?.(ids)
+    table.resetRowSelection()
   }
 
   if (data === undefined) {
     return (
       <div className="space-y-4">
-        <TableSkeleton columnCount={8} showCheckbox={true} />
+        <TableSkeleton columnCount={7} showCheckbox={true} />
       </div>
     )
   }
@@ -299,6 +418,72 @@ export function BucketsTable({ data }: BucketsTableProps) {
             )}
           </div>
           <div className="flex gap-x-2">
+            {/* Category Filter */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="h-8 !border-dashed">
+                  <FilterIcon className="-ms-1 opacity-60" size={16} />
+                  Category
+                  {selectedCategories.length > 0 && (
+                    <span className="-me-1 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70">
+                      {selectedCategories.length}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto min-w-36 p-3" align="start">
+                <div className="space-y-3">
+                  <div className="text-xs font-medium text-muted-foreground">Filters</div>
+                  <div className="space-y-3">
+                    {uniqueCategoryValues.map((value, i) => (
+                      <div key={value} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`${id}-category-${i}`}
+                          checked={selectedCategories.includes(value)}
+                          onCheckedChange={(checked: boolean) => handleCategoryChange(checked, value)}
+                        />
+                        <Label htmlFor={`${id}-category-${i}`} className="font-normal capitalize">
+                          {CATEGORIES[value as DockCategory].label}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+            {/* Status Filter */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="h-8 !border-dashed">
+                  <FilterIcon className="-ms-1 opacity-60" size={16} />
+                  Status
+                  {selectedStatuses.length > 0 && (
+                    <span className="-me-1 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70">
+                      {selectedStatuses.length}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto min-w-36 p-3" align="start">
+                <div className="space-y-3">
+                  <div className="text-xs font-medium text-muted-foreground">Filters</div>
+                  <div className="space-y-3">
+                    {uniqueStatusValues.map((value, i) => (
+                      <div key={value} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`${id}-status-${i}`}
+                          checked={selectedStatuses.includes(value)}
+                          onCheckedChange={(checked: boolean) => handleStatusChange(checked, value)}
+                        />
+                        <Label htmlFor={`${id}-status-${i}`} className="font-normal">
+                          {value === "success" ? "Connected" : value}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
             {/* Provider Filter */}
             <Popover>
               <PopoverTrigger asChild>
@@ -332,39 +517,6 @@ export function BucketsTable({ data }: BucketsTableProps) {
                 </div>
               </PopoverContent>
             </Popover>
-            {/* Region Filter */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="h-8 !border-dashed">
-                  <FilterIcon className="-ms-1 opacity-60" size={16} />
-                  Region
-                  {selectedRegions.length > 0 && (
-                    <span className="-me-1 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70">
-                      {selectedRegions.length}
-                    </span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto min-w-36 p-3" align="start">
-                <div className="space-y-3">
-                  <div className="text-xs font-medium text-muted-foreground">Filters</div>
-                  <div className="space-y-3">
-                    {uniqueRegionValues.map((value, i) => (
-                      <div key={value} className="flex items-center gap-2">
-                        <Checkbox
-                          id={`${id}-region-${i}`}
-                          checked={selectedRegions.includes(value)}
-                          onCheckedChange={(checked: boolean) => handleRegionChange(checked, value)}
-                        />
-                        <Label htmlFor={`${id}-region-${i}`} className="font-normal">
-                          {value}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
           </div>
         </div>
         {/* Column Visibility */}
@@ -376,7 +528,7 @@ export function BucketsTable({ data }: BucketsTableProps) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <div className="font-medium px-2 py-1.5 text-xs">Toggle columns</div>
+            <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
             {table.getAllColumns().filter((column) => column.getCanHide()).map((column) => (
               <DropdownMenuCheckboxItem
                 key={column.id}
@@ -390,6 +542,32 @@ export function BucketsTable({ data }: BucketsTableProps) {
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
+        {/* Delete Button */}
+        {table.getSelectedRowModel().rows.length > 0 && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline">
+                <TrashIcon className="-ms-1 opacity-60" size={16} />
+                Delete
+                <span className="-me-1 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70">
+                  {table.getSelectedRowModel().rows.length}
+                </span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete {table.getSelectedRowModel().rows.length} selected dock{table.getSelectedRowModel().rows.length === 1 ? "" : "s"}.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteRows}>Delete</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
 
       {/* Table */}
@@ -447,7 +625,7 @@ export function BucketsTable({ data }: BucketsTableProps) {
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No buckets found.
+                  No docks found.
                 </TableCell>
               </TableRow>
             )}
@@ -462,38 +640,33 @@ export function BucketsTable({ data }: BucketsTableProps) {
             value={table.getState().pagination.pageSize.toString()}
             onValueChange={(value) => table.setPageSize(Number(value))}
           >
-            <SelectTrigger id={id} aria-label="Rows per page" className="w-fit whitespace-nowrap">
+            <SelectTrigger className="h-8 w-[70px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {[10, 25, 50, 100].map((pageSize) => (
-                <SelectItem key={pageSize} value={pageSize.toString()}>
-                  {pageSize}
+              {[10, 20, 30, 50, 100].map((size) => (
+                <SelectItem key={size} value={size.toString()}>
+                  {size}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-        </div>
-        <div className="flex grow justify-end text-xs whitespace-nowrap text-muted-foreground">
-          <p>
-            <span className="text-foreground">
-              {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1}-
-              {Math.min(
-                (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
-                table.getRowCount()
-              )}
-            </span>{" "}
-            of <span className="text-foreground">{table.getRowCount()}</span>
+          <p className="text-xs text-muted-foreground">
+            Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to{" "}
+            {Math.min(
+              (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
+              table.getFilteredRowModel().rows.length
+            )}{" "}
+            of {table.getFilteredRowModel().rows.length} dock{table.getFilteredRowModel().rows.length === 1 ? "" : "s"}
           </p>
         </div>
         <Pagination>
           <PaginationContent>
             <PaginationItem>
               <Button
-                size="icon"
                 variant="outline"
-                className="disabled:pointer-events-none disabled:opacity-50"
-                onClick={() => table.firstPage()}
+                className="h-8 w-8 p-0"
+                onClick={() => table.setPageIndex(0)}
                 disabled={!table.getCanPreviousPage()}
               >
                 <ChevronFirstIcon size={16} />
@@ -501,9 +674,8 @@ export function BucketsTable({ data }: BucketsTableProps) {
             </PaginationItem>
             <PaginationItem>
               <Button
-                size="icon"
                 variant="outline"
-                className="disabled:pointer-events-none disabled:opacity-50"
+                className="h-8 w-8 p-0"
                 onClick={() => table.previousPage()}
                 disabled={!table.getCanPreviousPage()}
               >
@@ -512,9 +684,8 @@ export function BucketsTable({ data }: BucketsTableProps) {
             </PaginationItem>
             <PaginationItem>
               <Button
-                size="icon"
                 variant="outline"
-                className="disabled:pointer-events-none disabled:opacity-50"
+                className="h-8 w-8 p-0"
                 onClick={() => table.nextPage()}
                 disabled={!table.getCanNextPage()}
               >
@@ -523,10 +694,9 @@ export function BucketsTable({ data }: BucketsTableProps) {
             </PaginationItem>
             <PaginationItem>
               <Button
-                size="icon"
                 variant="outline"
-                className="disabled:pointer-events-none disabled:opacity-50"
-                onClick={() => table.lastPage()}
+                className="h-8 w-8 p-0"
+                onClick={() => table.setPageIndex(table.getPageCount() - 1)}
                 disabled={!table.getCanNextPage()}
               >
                 <ChevronLastIcon size={16} />
@@ -536,123 +706,5 @@ export function BucketsTable({ data }: BucketsTableProps) {
         </Pagination>
       </div>
     </div>
-  )
-}
-
-function SizeCell({ sizeBytes }: { sizeBytes: number }) {
-  const formatted = formatBytes(sizeBytes)
-  
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    try {
-      await navigator.clipboard.writeText(formatted)
-      toast.success("Size copied to clipboard")
-    } catch (err) {
-      console.error("Failed to copy size:", err)
-      toast.error("Failed to copy size")
-    }
-  }
-
-  return (
-    <button
-      onClick={handleCopy}
-      className="flex items-center gap-1.5 hover:text-foreground transition-colors group"
-      title="Click to copy"
-    >
-      <span>{formatted}</span>
-      <Copy 
-        className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors"
-      />
-    </button>
-  )
-}
-
-function RegionClusterCell({ region, cluster }: { region: string; cluster?: string }) {
-  const displayText = cluster ? `${region} / ${cluster}` : region
-  
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    try {
-      await navigator.clipboard.writeText(displayText)
-      toast.success("Region/Cluster copied to clipboard")
-    } catch (err) {
-      console.error("Failed to copy region/cluster:", err)
-      toast.error("Failed to copy region/cluster")
-    }
-  }
-
-  return (
-    <button
-      onClick={handleCopy}
-      className="flex items-center gap-1.5 hover:text-foreground transition-colors group"
-      title="Click to copy"
-    >
-      <span>{displayText}</span>
-      <Copy 
-        className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors"
-      />
-    </button>
-  )
-}
-
-function S3EndpointCell({ endpoint }: { endpoint: string }) {
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    try {
-      await navigator.clipboard.writeText(endpoint)
-      toast.success("S3 Endpoint copied to clipboard")
-    } catch (err) {
-      console.error("Failed to copy endpoint:", err)
-      toast.error("Failed to copy endpoint")
-    }
-  }
-
-  return (
-    <button
-      onClick={handleCopy}
-      className="flex items-center gap-1.5 font-mono text-xs hover:text-foreground transition-colors group"
-      title="Click to copy"
-    >
-      <span className="truncate max-w-[180px]">{endpoint}</span>
-      <Copy 
-        className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors shrink-0"
-      />
-    </button>
-  )
-}
-
-function RowActions({ row }: { row: Row<Bucket> }) {
-  const bucket = row.original
-
-  const handleCopyEndpoint = async () => {
-    if (!bucket.s3Endpoint) return
-    try {
-      await navigator.clipboard.writeText(bucket.s3Endpoint)
-      toast.success("S3 Endpoint copied to clipboard")
-    } catch (err) {
-      console.error("Failed to copy endpoint:", err)
-      toast.error("Failed to copy endpoint")
-    }
-  }
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button size="icon" variant="ghost" className="shadow-none">
-          <EllipsisIcon size={16} />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem>View Details</DropdownMenuItem>
-        {bucket.s3Endpoint && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleCopyEndpoint}>
-              Copy Endpoint
-            </DropdownMenuItem>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
   )
 }

@@ -135,9 +135,8 @@ const columns: ColumnDef<BlockVolume>[] = [
     header: "Name",
     accessorKey: "name",
     cell: ({ row }) => (
-      <div className="font-medium flex items-center gap-2">
+      <div className="font-medium">
         {row.getValue("name")}
-        <ProviderBadge provider={row.original.provider} />
       </div>
     ),
     size: 200,

@@ -19,6 +19,12 @@ import {
   Globe,
   House,
   Archive,
+  BarChart3,
+  Activity,
+  Bell,
+  AlertCircle,
+  Link2,
+  Plus,
 } from "lucide-react"
 import { type SidebarData } from "./types"
 import { useUser } from "@clerk/clerk-react"
@@ -171,6 +177,53 @@ export function useSidebarData(): SidebarData {
         title: "",
         items: [
           {
+            title: "Monitoring",
+            icon: BarChart3,
+            items: [
+              {
+                title: "Activity",
+                url: "/dashboard/monitoring/activity",
+                icon: Activity,
+              },
+              {
+                title: "Alerts",
+                url: "/dashboard/monitoring/alerts",
+                icon: Bell,
+              },
+              {
+                title: "Errors",
+                url: "/dashboard/monitoring/errors",
+                icon: AlertCircle,
+              },
+            ],
+          },
+        ],
+      },
+      {
+        title: "",
+        items: [
+          {
+            title: "Docks",
+            icon: Plug,
+            items: [
+              {
+                title: "Connected",
+                url: "/dashboard/docks/connected",
+                icon: Link2,
+              },
+              {
+                title: "Add",
+                url: "/dashboard/docks/add",
+                icon: Plus,
+              },
+            ],
+          },
+        ],
+      },
+      {
+        title: "",
+        items: [
+          {
             title: "Settings",
             icon: Settings,
             items: [
@@ -188,11 +241,6 @@ export function useSidebarData(): SidebarData {
                 title: "Theme",
                 url: "/dashboard/settings/theme",
                 icon: Palette,
-              },
-              {
-                title: "Docks",
-                url: "/dashboard/settings/docks",
-                icon: Plug,
               },
             ],
           },
@@ -316,6 +364,53 @@ export const sidebarData: SidebarData = {
       title: "",
       items: [
         {
+          title: "Monitoring",
+          icon: BarChart3,
+          items: [
+            {
+              title: "Activity",
+              url: "/dashboard/monitoring/activity",
+              icon: Activity,
+            },
+            {
+              title: "Alerts",
+              url: "/dashboard/monitoring/alerts",
+              icon: Bell,
+            },
+            {
+              title: "Errors",
+              url: "/dashboard/monitoring/errors",
+              icon: AlertCircle,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      title: "",
+      items: [
+        {
+          title: "Docks",
+          icon: Plug,
+          items: [
+            {
+              title: "Connected",
+              url: "/dashboard/docks/connected",
+              icon: Link2,
+            },
+            {
+              title: "Add",
+              url: "/dashboard/docks/add",
+              icon: Plus,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      title: "",
+      items: [
+        {
           title: "Settings",
           icon: Settings,
           items: [
@@ -333,11 +428,6 @@ export const sidebarData: SidebarData = {
               title: "Theme",
               url: "/dashboard/settings/theme",
               icon: Palette,
-            },
-            {
-              title: "Docks",
-              url: "/dashboard/settings/docks",
-              icon: Plug,
             },
           ],
         },

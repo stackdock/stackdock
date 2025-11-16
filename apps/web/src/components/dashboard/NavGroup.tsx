@@ -68,23 +68,11 @@ export function NavGroup({ title, items }: NavGroup) {
                 <CollapsibleContent className="CollapsibleContent">
                   <SidebarMenuSub>
                     {item.items.map((subItem) => (
-                      <SidebarMenuSubItem key={subItem.title}>
-                        <SidebarMenuSubButton
-                          asChild
-                          isActive={checkIsActive(pathname, subItem)}
-                        >
-                          <Link
-                            to={subItem.url}
-                            onClick={() => setOpenMobile(false)}
-                          >
-                            {subItem.icon && <subItem.icon />}
-                            <span>{subItem.title}</span>
-                            {subItem.badge && (
-                              <NavBadge>{subItem.badge}</NavBadge>
-                            )}
-                          </Link>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
+                      <NavSubItem
+                        key={subItem.title}
+                        item={subItem}
+                        pathname={pathname}
+                      />
                     ))}
                   </SidebarMenuSub>
                 </CollapsibleContent>
@@ -101,13 +89,84 @@ const NavBadge = ({ children }: { children: ReactNode }) => (
   <Badge className="rounded-full px-1 py-0 text-xs">{children}</Badge>
 )
 
+// Recursive component for nested submenu items
+function NavSubItem({ item, pathname }: { item: NavItem; pathname: string }) {
+  const { setOpenMobile } = useSidebar()
+
+  // If sub-item has no nested items, render as a link
+  if (!item.items && item.url) {
+    return (
+      <SidebarMenuSubItem>
+        <SidebarMenuSubButton
+          asChild
+          isActive={checkIsActive(pathname, item)}
+        >
+          <Link to={item.url} onClick={() => setOpenMobile(false)}>
+            {item.icon && <item.icon />}
+            <span>{item.title}</span>
+            {item.badge && <NavBadge>{item.badge}</NavBadge>}
+          </Link>
+        </SidebarMenuSubButton>
+      </SidebarMenuSubItem>
+    )
+  }
+
+  // If sub-item has nested items, render as collapsible
+  if (item.items) {
+    return (
+      <Collapsible
+        asChild
+        defaultOpen={checkIsActive(pathname, item, true)}
+        className="group/collapsible-sub"
+      >
+        <SidebarMenuSubItem>
+          <CollapsibleTrigger asChild>
+            <SidebarMenuSubButton isActive={checkIsActive(pathname, item)}>
+              {item.icon && <item.icon />}
+              <span>{item.title}</span>
+              {item.badge && <NavBadge>{item.badge}</NavBadge>}
+              <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible-sub:rotate-90" />
+            </SidebarMenuSubButton>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="CollapsibleContent">
+            <SidebarMenuSub>
+              {item.items.map((nestedItem) => (
+                <NavSubItem
+                  key={nestedItem.title}
+                  item={nestedItem}
+                  pathname={pathname}
+                />
+              ))}
+            </SidebarMenuSub>
+          </CollapsibleContent>
+        </SidebarMenuSubItem>
+      </Collapsible>
+    )
+  }
+
+  return null
+}
+
 function checkIsActive(pathname: string, item: NavItem, mainNav = false) {
-  return (
-    pathname === item.url || // /endpoint?search=param
-    pathname.split("?")[0] === item.url || // endpoint
-    !!item?.items?.filter((i) => i.url === pathname).length || // if child nav is active
-    (mainNav &&
-      pathname.split("/")[1] !== "" &&
-      pathname.split("/")[1] === item?.url?.split("/")[1])
-  )
+  // Check if this item's URL matches
+  if (item.url) {
+    if (
+      pathname === item.url ||
+      pathname.split("?")[0] === item.url ||
+      (mainNav &&
+        pathname.split("/")[1] !== "" &&
+        pathname.split("/")[1] === item.url.split("/")[1])
+    ) {
+      return true
+    }
+  }
+
+  // Recursively check nested items
+  if (item.items) {
+    return item.items.some((subItem) =>
+      checkIsActive(pathname, subItem, false)
+    )
+  }
+
+  return false
 }

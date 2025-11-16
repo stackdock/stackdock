@@ -18,7 +18,7 @@ interface BaseNavItem {
 
 export type NavItem =
   | (BaseNavItem & {
-      items: (BaseNavItem & { url: string })[]
+      items: NavItem[]
       url?: never
     })
   | (BaseNavItem & {
