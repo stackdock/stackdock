@@ -1,0 +1,161 @@
+/**
+ * Sentry API Client
+ * 
+ * Handles all HTTP requests to Sentry API
+ * 
+ * @see https://docs.sentry.io/api/
+ */
+
+import type { SentryProject, SentryIssue } from "./types"
+
+export class SentryAPI {
+  private baseUrl: string
+  private apiKey: string
+
+  constructor(apiKey: string, baseUrl: string = "https://sentry.io/api/0") {
+    this.apiKey = apiKey.trim()
+    this.baseUrl = baseUrl
+  }
+
+  /**
+   * Make authenticated request to Sentry API
+   */
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${this.baseUrl}${endpoint}`
+
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => response.statusText)
+      throw new Error(
+        `Sentry API error (${response.status}): ${errorText}`
+      )
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Validate API credentials
+   * Uses lightweight GET /projects/ endpoint (first page only)
+   */
+  async validateCredentials(): Promise<boolean> {
+    try {
+      const url = `${this.baseUrl}/projects/`
+      console.log(`[Sentry] Validating credentials against: ${url}`)
+
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+        },
+      })
+
+      console.log(`[Sentry] Response status: ${response.status}`)
+
+      if (response.status === 401) {
+        const errorText = await response.text().catch(() => response.statusText)
+        console.log(`[Sentry] 401 Unauthorized: ${errorText}`)
+        return false
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => response.statusText)
+        console.log(`[Sentry] API error (${response.status}): ${errorText}`)
+        throw new Error(
+          `Sentry API error (${response.status}): ${errorText}`
+        )
+      }
+
+      // If we get here, credentials are valid
+      console.log(`[Sentry] Credentials validated successfully`)
+      return true
+    } catch (error) {
+      // Network errors or other issues
+      console.error(`[Sentry] Validation error:`, error)
+      if (error instanceof Error) {
+        throw new Error(
+          `Failed to validate Sentry credentials: ${error.message}`
+        )
+      }
+      throw error
+    }
+  }
+
+  /**
+   * List all projects
+   * Returns array of projects
+   */
+  async listProjects(): Promise<SentryProject[]> {
+    const response = await this.request<SentryProject[]>(`/projects/`)
+    return response || []
+  }
+
+  /**
+   * List issues for a project
+   * Returns array of issues
+   * 
+   * @param organizationSlug Organization slug
+   * @param projectSlug Project slug
+   */
+  async listIssues(organizationSlug: string, projectSlug: string): Promise<SentryIssue[]> {
+    const allIssues: SentryIssue[] = []
+    let cursor: string | null = null
+
+    // Sentry uses cursor-based pagination
+    do {
+      const params = new URLSearchParams()
+      if (cursor) {
+        params.set("cursor", cursor)
+      }
+      params.set("per_page", "100")
+
+      const response = await this.request<{
+        data: SentryIssue[]
+        next_cursor: string | null
+        prev_cursor: string | null
+      }>(`/projects/${organizationSlug}/${projectSlug}/issues/?${params.toString()}`)
+
+      if (response.data && response.data.length > 0) {
+        allIssues.push(...response.data)
+      }
+
+      cursor = response.next_cursor || null
+    } while (cursor)
+
+    return allIssues
+  }
+
+  /**
+   * List all issues across all projects
+   * Fetches projects first, then issues for each project
+   */
+  async listAllIssues(): Promise<Array<{ project: SentryProject; issues: SentryIssue[] }>> {
+    const projects = await this.listProjects()
+    const results: Array<{ project: SentryProject; issues: SentryIssue[] }> = []
+
+    // Fetch issues for each project
+    for (const project of projects) {
+      try {
+        const issues = await this.listIssues(project.organization.slug, project.slug)
+        results.push({ project, issues })
+      } catch (error) {
+        console.error(`[Sentry] Failed to fetch issues for project ${project.slug}:`, error)
+        // Continue with other projects even if one fails
+        results.push({ project, issues: [] })
+      }
+    }
+
+    return results
+  }
+}

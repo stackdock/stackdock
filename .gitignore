@@ -1,6 +1,3 @@
-#/endgame
-/operation-bitskrieg.md 
-
 # Dependencies
 node_modules/
 .pnp
@@ -62,20 +59,20 @@ ENCRYPTION_MASTER_KEY*
 *.pem
 .env*.local
 
-# Provider API response dumps (local development only, may contain sensitive data)
-# Ignore entire docks/ folder (local development only)
-docks/
-# But allow important JSON config files
+# Allow important JSON config files
 !package.json
 !package-lock.json
 !tsconfig.json
 !convex.json
 !turbo.json
 
-# Admin Scaffold Reference (Next.js -> TanStack Start Migration)
+# Local Folder (local development only)
 docs/local/*
 
 # Prevent nested git repos in monorepo workspaces
 # StackDock uses a single root git repository
 apps/*/.git/
 packages/*/.git/
+
+#/endgame
+/operation-bitskrieg.md 
