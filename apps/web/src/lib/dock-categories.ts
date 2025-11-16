@@ -1,10 +1,10 @@
 /**
  * Dock Provider Categories
  * 
- * Maps providers to their service categories (IaaS, PaaS, SaaS)
+ * Maps providers to their service categories (IaaS, PaaS, SaaS, DaaS)
  */
 
-export type DockCategory = "iaas" | "paas" | "saas"
+export type DockCategory = "iaas" | "paas" | "saas" | "daas"
 
 export interface CategoryInfo {
   id: DockCategory
@@ -28,6 +28,11 @@ export const CATEGORIES: Record<DockCategory, CategoryInfo> = {
     label: "SaaS",
     description: "Software as a Service",
   },
+  daas: {
+    id: "daas",
+    label: "DaaS",
+    description: "Database as a Service",
+  },
 }
 
 /**
@@ -46,12 +51,14 @@ const PROVIDER_CATEGORIES: Record<string, DockCategory> = {
   netlify: "paas",
   coolify: "paas",
   
+  // DaaS
+  turso: "daas",
+  neon: "daas",
+  convex: "daas",
+  planetscale: "daas",
+  
   // SaaS
   cloudflare: "saas",
-  turso: "saas",
-  neon: "saas",
-  convex: "saas",
-  planetscale: "saas",
   github: "saas",
 }
 

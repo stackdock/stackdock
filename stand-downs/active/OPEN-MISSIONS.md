@@ -141,22 +141,29 @@ Missions and tasks that are open but not actively being worked on.
 ### Continuous Sync with Rate Limit Tracking
 **Status**: 📋 **PLANNED** - Ready for Implementation  
 **Priority**: High (MVP blocker)  
-**Location**: `stand-downs/working/continuous-sync-rate-limit-plan.md`
+**Agent**: Convex Backend Agent
 
 **Summary**: 
 - Transform StackDock from cache to real-time database
-- Continuous background syncing (every 15-30 seconds) for LIST endpoints
+- Continuous background syncing (minimum 1 per minute) for LIST endpoints
 - Rate limit header capture and tracking (MVP - can be removed post-production)
 - Simple change detection to prevent unnecessary updates
-- Configurable sync intervals per dock
-- Event-driven updates for mutations (when implemented)
+- Configurable sync intervals per dock (minimum 60 seconds)
+- Sequential processing to respect provider rate limits
+- Uses Convex `scheduler.runAfter()` for continuous sync loop
+
+**Agents**:
+- **Convex Agent**: `stand-downs/active/continuous-sync-convex-agent-prompt.md`
+
+**Reference Plan**: `stand-downs/working/continuous-sync-rate-limit-plan.md`
 
 **Why Now**: 
 - Currently requires manual sync - UI doesn't update automatically
 - Need to understand API rate limits before production
 - MVP needs real-time feel without manual intervention
+- Critical blocker: Without continuous sync, this is just a cache, not a real-time database
 
-**Goal**: UI updates automatically every 15-30 seconds, respecting rate limits
+**Goal**: UI updates automatically every 60 seconds (minimum), respecting rate limits
 
 ---
 
