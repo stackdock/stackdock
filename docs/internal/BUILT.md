@@ -23,8 +23,8 @@
 | `README.md` | Updated with vision | ✅ Done |
 | `QUICKSTART.md` | Setup instructions | ✅ Done |
 | `START.md` | Run instructions | ✅ Done |
-| `PROGRESS.md` | Current state | ✅ Done |
-| `BUILT.md` | This file | ✅ Done |
+| `PROGRESS.md` | Current state | ✅ Done (in internal/) |
+| `BUILT.md` | This file | ✅ Done (in internal/) |
 
 **Total Documentation**: 30,000+ words. Every decision explained.
 

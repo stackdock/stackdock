@@ -108,11 +108,11 @@ Registry documentation and guides:
 
 ---
 
-### Troubleshooting (`docs/troubleshooting/`)
+### Troubleshooting (`docs/guides/troubleshooting/`)
 
 Common issues and solutions:
 
-- **[TROUBLESHOOTING.md](./troubleshooting/TROUBLESHOOTING.md)** - Common issues
+- **[TROUBLESHOOTING.md](./guides/troubleshooting/TROUBLESHOOTING.md)** - Common issues
   - TanStack Start setup
   - Convex connection problems
   - Clerk authentication issues
@@ -120,11 +120,11 @@ Common issues and solutions:
 
 ---
 
-### Reference (`docs/reference/`)
+### Reference (`docs/guides/reference/`)
 
 System references and state tracking:
 
-- **[STATE-README.md](./reference/STATE-README.md)** - State system guide
+- **[STATE-README.md](./guides/reference/STATE-README.md)** - State system guide
   - How state tracking works
   - State file format
   - Context persistence
@@ -138,9 +138,16 @@ System references and state tracking:
 
 Current state and progress tracking:
 
-- **[PROGRESS.md](./PROGRESS.md)** - Current build progress
-- **[BUILT.md](./BUILT.md)** - What's been built
+- **[STATUS.md](./STATUS.md)** - Current project status
 - **[DOCS_ORGANIZED.md](./DOCS_ORGANIZED.md)** - Documentation organization notes
+
+### Internal Documentation (`docs/internal/`)
+
+Internal documentation and progress tracking:
+
+- **[PROGRESS.md](./internal/PROGRESS.md)** - Current build progress
+- **[BUILT.md](./internal/BUILT.md)** - What's been built
+- **[STATEMENT.md](./internal/STATEMENT.md)** - Internal philosophy & standards
 
 ---
 
@@ -156,7 +163,7 @@ Current state and progress tracking:
 2. [ARCHITECTURE.md](./architecture/ARCHITECTURE.md) - Universal tables section
 
 **Having issues?** Check:
-1. [TROUBLESHOOTING.md](./troubleshooting/TROUBLESHOOTING.md)
+1. [TROUBLESHOOTING.md](./guides/troubleshooting/TROUBLESHOOTING.md)
 2. [CLERK_SETUP.md](./guides/CLERK_SETUP.md) - Auth troubleshooting section
 
 ---

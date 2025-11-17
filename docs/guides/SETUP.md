@@ -115,7 +115,7 @@ Watching for changes...
 
 ## Troubleshooting
 
-See [docs/troubleshooting/TROUBLESHOOTING.md](./docs/troubleshooting/TROUBLESHOOTING.md)
+See [TROUBLESHOOTING.md](./troubleshooting/TROUBLESHOOTING.md)
 
 Common issues:
 - **Convex import errors** → See "Convex Import Path" below

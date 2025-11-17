@@ -15,9 +15,7 @@ docs/
 │
 ├── [TOP-LEVEL]                        # High-level overview docs
 │   ├── STATUS.md                      # Current project status
-│   ├── PROGRESS.md                    # Build progress tracking
-│   ├── BUILT.md                       # What's been completed
-│   └── REFACTORING.md                 # Refactoring notes
+│   └── DOCS_ORGANIZED.md              # Documentation organization notes
 │
 ├── architecture/                      # System architecture (MID-LEVEL)
 │   ├── ARCHITECTURE.md                # Complete system design (23k+ words)
@@ -107,6 +105,8 @@ docs/
 │       └── [other archived items]
 │
 ├── internal/                         # Internal documentation (LOW-LEVEL)
+│   ├── PROGRESS.md                    # Build progress tracking
+│   ├── BUILT.md                       # What's been completed
 │   └── STATEMENT.md                  # Internal philosophy & standards
 │
 ├── archived/                         # Archived docs (ARCHIVED)
@@ -146,13 +146,11 @@ docs/
 ## 📊 Documentation Levels
 
 ### TOP-LEVEL (High-Level Overview)
-**Purpose**: Quick status, progress, overview  
+**Purpose**: Quick status, overview  
 **Location**: `docs/[TOP-LEVEL]/` or root of `docs/`  
 **Files**:
 - `STATUS.md` - Current project status
-- `PROGRESS.md` - Build progress
-- `BUILT.md` - What's completed
-- `REFACTORING.md` - Refactoring notes
+- `DOCS_ORGANIZED.md` - Documentation organization notes
 
 **Audience**: Everyone (developers, stakeholders, AI agents)
 
@@ -169,11 +167,11 @@ docs/
 
 ### LOW-LEVEL (Reference & Implementation)
 **Purpose**: Detailed implementation details, SOPs, reference materials  
-**Location**: `docs/workflows/principle-engineers/`, `docs/reference/`, `docs/internal/`  
+**Location**: `docs/guides/workflows/principle-engineers/`, `docs/guides/reference/`, `docs/internal/`  
 **Files**:
 - Principle engineer SOPs (frontend-shadcn.md, backend-convex.md, etc.)
 - Reference materials (STATE-README.md)
-- Internal docs (STATEMENT.md)
+- Internal docs (PROGRESS.md, BUILT.md, STATEMENT.md)
 - Agent system files (stand-downs/agents/)
 
 **Audience**: AI agents, principle engineers, deep-dive developers
@@ -207,10 +205,10 @@ docs/
 ## 📝 File Naming Conventions
 
 ### Status Files
-- `STATUS.md` - Current project status
-- `PROGRESS.md` - Build progress
-- `BUILT.md` - What's built
-- `MISSION-STATUS.md` - Mission status
+- `STATUS.md` - Current project status (docs root)
+- `PROGRESS.md` - Build progress (docs/internal/)
+- `BUILT.md` - What's built (docs/internal/)
+- `MISSION-STATUS.md` - Mission status (stand-downs/working/)
 
 ### Guide Files
 - `SETUP.md` - Setup instructions
@@ -239,7 +237,7 @@ docs/
 
 **Current Status?**
 - `docs/STATUS.md` - Project status
-- `docs/PROGRESS.md` - Build progress
+- `docs/internal/PROGRESS.md` - Build progress
 - `docs/stand-downs/active/OPEN-MISSIONS.md` - Active missions
 
 **How to Build Something?**

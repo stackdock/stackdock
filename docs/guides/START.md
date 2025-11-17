@@ -179,4 +179,4 @@ With your feedback, we'll build:
 
 **You're ready. The foundation is solid. Go show them the future.** ⚓️
 
-**Need help? Read: `QUICKSTART.md`, `ARCHITECTURE.md`, `PROGRESS.md`**
+**Need help? Read: `QUICKSTART.md`, `ARCHITECTURE.md`, `../STATUS.md`**

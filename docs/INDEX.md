@@ -30,8 +30,7 @@
 - [Building UI Components](./guides/REGISTRY_GUIDE.md)
 
 ### Help
-- [TROUBLESHOOTING.md](./troubleshooting/TROUBLESHOOTING.md) - Common issues
-- [CURRENT_ISSUE.md](./troubleshooting/CURRENT_ISSUE.md) - Active problems
+- [TROUBLESHOOTING.md](./guides/troubleshooting/TROUBLESHOOTING.md) - Common issues
 
 ---
 
@@ -57,13 +56,11 @@ stackdock/
     ├── README.md              # Main docs entry point
     ├── INDEX.md               # Quick navigation (this file)
     ├── DIRECTORY_TREE.md      # Complete directory structure
-    ├── REORGANIZATION_PLAN.md # Reorganization plan
+    ├── DOCS_ORGANIZED.md      # Documentation organization notes
     │
     ├── [TOP-LEVEL STATUS]
     │   ├── STATUS.md          # Current project status
-    │   ├── PROGRESS.md        # Build progress
-    │   ├── BUILT.md           # What's completed
-    │   └── REFACTORING.md     # Refactoring notes
+    │   └── DOCS_ORGANIZED.md  # Documentation organization notes
     │
     ├── architecture/          # System architecture (MID-LEVEL)
     │   ├── ARCHITECTURE.md    # System design
@@ -125,7 +122,9 @@ stackdock/
     │   └── agents/            # Agent system files
     │
     ├── internal/              # Internal documentation
-    │   └── STATEMENT.md
+    │   ├── PROGRESS.md        # Build progress tracking
+    │   ├── BUILT.md           # What's been completed
+    │   └── STATEMENT.md       # Internal philosophy & standards
     │
     ├── archived/              # Archived docs
     ├── local/                 # Local reference files

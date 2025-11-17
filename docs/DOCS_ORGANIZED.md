@@ -4,7 +4,6 @@
 
 ### Root Level (Essential Only)
 - `README.md` - Project overview
-- `SETUP.md` - Setup instructions
 - `.cursorrules` - AI assistant rules
 - `.stackdock-state.json` - State tracking
 - `AI-HALL-OF-SHAME.md` - Lessons learned
@@ -15,23 +14,56 @@
 docs/
 ├── README.md              # Doc navigation
 ├── INDEX.md               # Quick reference
+├── STATUS.md              # Current project status
+├── DIRECTORY_TREE.md      # Complete directory structure
+├── DOCS_ORGANIZED.md      # Documentation organization notes
 │
 ├── architecture/
 │   ├── ARCHITECTURE.md    # 23k word system design
 │   ├── SECURITY.md        # Security patterns  
-│   └── RBAC.md            # Permission system
+│   ├── RBAC.md            # Permission system
+│   ├── SCHEMA_DESIGN.md   # Database schema design
+│   ├── NAVIGATION_ARCHITECTURE.md
+│   ├── ACCESSIBILITY.md
+│   └── DEVELOPMENT_PRIORITY.md
 │
 ├── guides/
+│   ├── SETUP.md           # Setup instructions
+│   ├── QUICKSTART.md      # Quick start
+│   ├── START.md           # Start StackDock
 │   ├── CONTRIBUTING.md    # Development workflow
 │   ├── DOCK_ADAPTER_GUIDE.md
-│   └── REGISTRY_GUIDE.md
+│   ├── REGISTRY_GUIDE.md
+│   ├── CLERK_SETUP.md
+│   ├── CONVEX_SETUP.md
+│   ├── reference/
+│   │   └── STATE-README.md    # State system guide
+│   ├── troubleshooting/
+│   │   └── TROUBLESHOOTING.md # Common issues
+│   └── workflows/
+│       ├── WORKFLOW.md
+│       ├── AGENT_SYSTEM.md
+│       ├── STAND_DOWNS.md
+│       ├── PIPELINE.md
+│       ├── MERGE_CRITERIA.md
+│       ├── BRANCH_PROTECTION.md
+│       └── principle-engineers/
 │
-├── troubleshooting/
-│   ├── TROUBLESHOOTING.md # Common issues
-│   └── CURRENT_ISSUE.md   # Active problems
+├── stand-downs/
+│   ├── active/            # Active missions
+│   ├── working/          # In-progress missions
+│   ├── archived/         # Completed missions
+│   └── agents/           # Agent system files
 │
-└── reference/
-    └── STATE-README.md    # State system guide
+├── internal/
+│   ├── PROGRESS.md       # Build progress
+│   ├── BUILT.md          # What's built
+│   └── STATEMENT.md      # Internal philosophy
+│
+├── archived/             # Archived docs
+├── local/                # Local reference files
+│
+└── AI-HALL-OF-SHAME.md   # Lessons learned (never move)
 ```
 
 ### Deleted (Consolidated)
@@ -39,8 +71,9 @@ docs/
 - ✅ FIX_APPLIED.md (temporary)
 - ✅ READY.md (temporary)
 - ✅ CLEAN_INSTALL.md (temporary)
-- ✅ SETUP_NOW.md (consolidated into SETUP.md)
-- ✅ CONTEXT-SYSTEM-IMPLEMENTED.md (merged into STATE-README.md)
+- ✅ SETUP_NOW.md (consolidated into guides/SETUP.md)
+- ✅ CONTEXT-SYSTEM-IMPLEMENTED.md (merged into guides/reference/STATE-README.md)
+- ✅ REFACTORING.md (archived to docs/archived/)
 
 ---
 

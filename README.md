@@ -1,4 +1,4 @@
-![Image of Stackdock logo](/docs/stackdock-logo-dark-mode.svg "Stackdock logo")
+![Image of Stackdock logo](/docs/stackdock-new-logo-dark.svg "Stackdock logo")
 
 <div align="center">
   <h1>StackDock</h1>
@@ -51,11 +51,11 @@ npx stackdock add cloudflare
 
 ## Welcome Aboard Captain! ⚓️
 
-You're early – but welcome to the shipyard! The blueprints are evolving, the vision is locked in, and we're building in public.
+Welcome to the shipyard! The blueprints are evolving, the vision is locked in, and the project is being built in public.
 
 **This isn't just another tool.** It's infrastructure's Democracy moment.
 
-**IMPORTANT: StackDock is currently in READ-ONLY mode. All functionality is view-only. No write operations (create, modify, delete, provision) are available or implemented.**
+**IMPORTANT: StackDock is currently in READ-ONLY mode. All functionality is view-only. No write operations (create, modify, delete, provision) are available or implemented yet.**
 
 Star the repo to watch the build! 
 
@@ -130,14 +130,15 @@ Star the repo to watch the build!
 ### Core Architecture
 
 **Universal Tables** (Provider-Agnostic):
-- `servers`: Coolify, Vultr, DigitalOcean, Linode, Hetzner, GridPane → ONE table (Laravel Forge, Ploi etc. next)
-- `webServices`: Coolify, Vercel, Netlify, Cloudflare → ONE table (Railway, Render, Laravel Forge, Ploi etc. next)
-- `domains`: Cloudflare, GridPane, DNS Records → ONE table (DNSimple, DNS Made Easy, NameCheap, Laravel Forge, Ploi, Name.com etc. next)
-- `databases`: Turso, Neon, Convex, PlanetScale → ONE table (Supabase, Xata, Pocketbase, )
+- `servers`: Coolify, Vultr, DigitalOcean, Linode, Hetzner, GridPane → ONE table (Laravel Forge, Ploi -> planned)
+- `webServices`: Coolify, Vercel, Netlify, Cloudflare → ONE table (Railway, Render, Laravel Forge, Ploi -> planned)
+- `domains`: Cloudflare, GridPane, DNS Records → ONE table (DNSimple, DNS Made Easy, NameCheap, Laravel Forge, Ploi, Name.com -> planned)
+- `databases`: Turso, Neon, Convex, PlanetScale → ONE table (Supabase, Xata, Pocketbase -> planned)
+- `projects`: Core StackDock feature to link resources into one project and PM tools (Linear, Jira -> planned and currently scoping)
 
 **Dock Adapters** (Translators):
-- GridPane API → Universal `webServices` table
-- Vercel API → Universal `webServices` table
+- Vercel, Netlify, Cloudflare, GridPane, etc. API → Universal `webServices` table
+- Digital Ocean, Linode, Vultr, Hetzner, etc. API → Universal `servers` table
 - Provider-specific data in `fullApiData` field
 - Runtime adapters: `convex/docks/adapters/` (execution)
 - Registry adapters: `packages/docks/` (copy/paste/own)
@@ -187,9 +188,9 @@ NODE_ENV=development
 **Open http://localhost:3000**
 
 You should see:
-- Landing page with StackDock branding
-- **Green "Connected" status** if Convex is configured correctly
-- Connection status indicator shows: "Connected • Convex is connected!"
+- Clerk auth page
+- Redirect to dashboard after auth
+- Start adding providers under "Docks"
 
 ---
 
@@ -244,9 +245,9 @@ You should see:
 - ✅ Better Stack (uptime monitoring)
 
 ### Universal Tables ✅
-- ✅ `servers` - 6 providers (GridPane, Vultr, DigitalOcean, Linode, Hetzner, Coolify) - Polymorphic deduplication ✅
+- ✅ `servers` - 6 providers (GridPane, Vultr, DigitalOcean, Linode, Hetzner, Coolify) - Client side Polymorphic deduplication 
 - ✅ `webServices` - 5 providers (GridPane, Vercel, Netlify, Cloudflare, Coolify)
-- ✅ `domains` - 2 providers (GridPane, Cloudflare) - Polymorphic deduplication ✅
+- ✅ `domains` - 2 providers (GridPane, Cloudflare) - Client side Polymorphic deduplication 
 - ✅ `databases` - 5 providers (Turso, Neon, Convex, PlanetScale, Coolify)
 - ✅ `issues` - 1 provider (Sentry) - Monitoring issues/errors
 - ✅ `monitors` - 1 provider (Better Stack) - Uptime monitoring
@@ -254,11 +255,15 @@ You should see:
 - ✅ `deployments` - 1 provider (Convex)
 - ✅ `projects` - 1 provider (GitHub - repositories, branches, issues, commits)
 
-### Shelved for Post-MVP 📋
+### Shelved for Post-MVP launch 11/17 📋
 - 📋 **Linear adapter** - Shelved (complex project linking system)
 - 📋 **Projects Core System** - Shelved (polymorphic resource linking to projects)
 - 📋 **Complex Auth IaaS** (AWS/GCP/Azure) - Shelved (multi-field auth complexity)
 - 📋 **Insights Board Enhancements** - Shelved (advanced visualization deferred)
+- 📋 **Audits** - Shelved (frontend, convex, security, devops, cli etc.)
+- 📋 **Docker-CI/CD** - Shelved (docker, dev, staging/preview, + deployment scripts (win - mac - linux) support)
+- 📋 **E2E Testing Scaffold and implementation** - Yeah this will suck but I need practice. Perfect!
+- 📋 **GitHub Org Level admin stuffs** - Have some type of handle on contributors, discussions, pr's etc.
 
 ---
 
@@ -374,7 +379,7 @@ All documentation is organized in `docs/`:
 - [ ] Aggregated dashboards - **SHELVED**
 - [ ] Cross-provider analytics - **SHELVED**
 
-**Current Progress**: ✅ **MVP COMPLETE** - Core platform complete. Universal schema validated across 16 providers. UI foundation polished. Monitoring integration complete (Sentry). Polymorphic deduplication working. **Shelved**: Linear, Projects Core System, Complex Auth IaaS, Insights enhancements.
+**Current Progress**: ✅ **MVP COMPLETE** - Core platform complete. Universal schema validated across 16 providers. UI foundation polished. Monitoring integration complete (Sentry). Client side Polymorphic table deduplication working. **Shelved**: Linear, Projects Core System, Complex Auth IaaS, Insights enhancements.
 
 ---
 
