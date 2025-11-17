@@ -5,6 +5,12 @@ import { getAllPosts, formatDate } from '@/lib/blog'
 import { BlogCard } from '@/components/blog/blog-card'
 import { GetStartedCTA } from '@/components/blog/cta-card'
 
+
+// Only allow alphanumeric, hyphens, underscores, and tildes in slugs
+function sanitizeSlug(slug: string): string {
+  return slug.replace(/[^a-zA-Z0-9-_~]/g, '');
+}
+
 export const metadata = {
   title: 'Blog | StackDock',
   description: 'Technical articles, tutorials, and insights about multi-cloud management with StackDock.',
@@ -83,7 +89,7 @@ export default function BlogPage() {
             <h2 className="text-2xl font-mono font-semibold text-white mb-6">Featured Article</h2>
             <div className="bg-gradient-to-r from-neutral-900 to-neutral-800 border border-neutral-700 rounded-lg overflow-hidden">
               <Link
-                href={`/blog/${posts[0].slug}`}
+                href={`/blog/${sanitizeSlug(posts[0].slug)}`}
                 className="block group focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black"
               >
                 <div className="flex flex-col lg:flex-row">
