@@ -143,8 +143,15 @@ export const sentryAdapter: DockAdapter = {
           project: project.name,
           projectSlug: project.slug,
           organizationSlug: project.organization.slug,
-          // Sentry API returns count as string, convert to number
-          count: typeof issue.count === "string" ? parseInt(issue.count, 10) : issue.count,
+          // Convert count from string to number if needed (Sentry API sometimes returns strings)
+          // Handle NaN cases by falling back to 0
+          count: (() => {
+            if (typeof issue.count === "string") {
+              const parsed = parseInt(issue.count, 10);
+              return Number.isNaN(parsed) ? 0 : parsed;
+            }
+            return issue.count;
+          })(),
           userCount: issue.userCount,
           firstSeen: isoToTimestamp(issue.firstSeen),
           lastSeen: isoToTimestamp(issue.lastSeen),
@@ -179,7 +186,6 @@ export const sentryAdapter: DockAdapter = {
 
     for (const existing of existingIssues) {
       if (!syncedResourceIds.has(existing.providerResourceId)) {
-        console.log(`[Sentry] Deleting orphaned issue: ${existing.title} (${existing.providerResourceId})`)
         await ctx.db.delete(existing._id)
       }
     }

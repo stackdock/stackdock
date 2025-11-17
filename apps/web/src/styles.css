@@ -155,6 +155,7 @@
   --color-provider-hetzner: var(--provider-hetzner);
   --color-provider-github: var(--provider-github);
   --color-provider-coolify: var(--provider-coolify);
+  --color-provider-sentry: var(--provider-sentry);
 }
 
 @layer base {

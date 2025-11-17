@@ -215,6 +215,7 @@ export class SentryAPI {
     )
   }
 
+
   /**
    * List all issues across all projects
    * Handles multiple organizations by fetching issues from each org separately
@@ -379,7 +380,8 @@ export class SentryAPI {
         results.push({ project, issues: [] })
       }
     }
-
+    
+    console.log(`[Sentry API] Grouped issues into ${results.length} projects`)
     return results
   }
 }

@@ -101,31 +101,39 @@ import { ProviderBadge } from "./shared/provider-badge"
 import { StatusBadge } from "./shared/status-badge"
 import { formatDate, formatExpiryDate, isExpiringSoon } from "./shared/format-utils"
 import { TableSkeleton } from "./shared/table-skeleton"
+import { deduplicateDomains, type DeduplicatedDomain } from "@/lib/resource-deduplication"
 
 type Domain = Doc<"domains">
 
-const domainFilterFn: FilterFn<Domain> = (row, columnId, filterValue) => {
+const domainFilterFn: FilterFn<Domain | DeduplicatedDomain> = (row, columnId, filterValue) => {
   const searchableContent = row.original.domainName.toLowerCase()
   const searchTerm = (filterValue ?? "").toLowerCase()
   return searchableContent.includes(searchTerm)
 }
 
-const statusFilterFn: FilterFn<Domain> = (row, columnId, filterValue: string[]) => {
+const statusFilterFn: FilterFn<Domain | DeduplicatedDomain> = (row, columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.status)
 }
 
-const providerFilterFn: FilterFn<Domain> = (row, columnId, filterValue: string[]) => {
+const providerFilterFn: FilterFn<Domain | DeduplicatedDomain> = (row, columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
+  
+  // Handle deduplicated domains (has providers array)
+  if ("providers" in row.original && Array.isArray(row.original.providers)) {
+    return row.original.providers.some(provider => filterValue.includes(provider))
+  }
+  
+  // Handle regular domains
   return filterValue.includes(row.original.provider)
 }
 
-const expiryFilterFn: FilterFn<Domain> = (row, columnId, filterValue: boolean) => {
+const expiryFilterFn: FilterFn<Domain | DeduplicatedDomain> = (row, columnId, filterValue: boolean) => {
   if (!filterValue) return true
   return isExpiringSoon(row.original.expiresAt)
 }
 
-function DNSRecordsCell({ row }: { row: Row<Domain> }) {
+function DNSRecordsCell({ row }: { row: Row<Domain | DeduplicatedDomain> }) {
   const [open, setOpen] = useState(false)
   const records = row.original.fullApiData?.dnsRecords as Array<{
     id: string
@@ -191,7 +199,7 @@ function DNSRecordsCell({ row }: { row: Row<Domain> }) {
   )
 }
 
-const columns: ColumnDef<Domain>[] = [
+const columns: ColumnDef<Domain | DeduplicatedDomain>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -223,7 +231,15 @@ const columns: ColumnDef<Domain>[] = [
   {
     header: "Provider",
     accessorKey: "provider",
-    cell: ({ row }) => <ProviderBadge provider={row.getValue("provider")} />,
+    cell: ({ row }) => {
+      // Handle deduplicated domains (has providers array)
+      const domain = row.original
+      if ("providers" in domain && Array.isArray(domain.providers)) {
+        return <ProviderBadge provider={domain.providers} />
+      }
+      // Handle regular domains
+      return <ProviderBadge provider={row.getValue("provider") as string} />
+    },
     size: 120,
     filterFn: providerFilterFn,
   },
@@ -286,8 +302,14 @@ export function DomainsTable({ data, onDelete }: DomainsTableProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [sorting, setSorting] = useState<SortingState>([{ id: "domainName", desc: false }])
 
+  // Deduplicate domains before passing to table
+  const deduplicatedData = useMemo(() => {
+    if (!data) return undefined
+    return deduplicateDomains(data)
+  }, [data])
+
   const table = useReactTable({
-    data: data || [],
+    data: deduplicatedData || [],
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),

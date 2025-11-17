@@ -16,7 +16,27 @@ export const Route = createFileRoute("/dashboard/monitoring/issues")({
 })
 
 function IssuesPage() {
-  const issues = useQuery(api["monitoring/queries"].listIssues)
+  const issues = useQuery(api["monitoring/queries"].listAlerts)
+  
+  // Loading state
+  if (issues === undefined) {
+    return (
+      <main className="flex flex-1 flex-col gap-4 p-4 md:p-6 lg:p-8">
+        <div className="space-y-0.5">
+          <h1 className="text-xl font-bold tracking-tight md:text-2xl lg:text-3xl">
+            Error Issues
+          </h1>
+          <p className="text-sm text-muted-foreground md:text-base">
+            Monitor and track errors and exceptions from all your applications
+          </p>
+        </div>
+        <div className="flex items-center justify-center p-12">
+          <p className="text-sm text-muted-foreground">Loading issues...</p>
+        </div>
+      </main>
+    )
+  }
+  
   const issuesList = issues || []
 
   return (
