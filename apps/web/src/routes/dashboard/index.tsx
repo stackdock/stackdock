@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router"
 import { useQuery } from "convex/react"
 import { api } from "convex/_generated/api"
 import { Cpu, Cloud, Database, Globe, CodeXml, HardDrive, Archive } from "lucide-react"
+import { useMemo } from "react"
+import { deduplicateServers, deduplicateDomains } from "@/lib/resource-deduplication"
 
 export const Route = createFileRoute("/dashboard/")({
   component: InsightsPage,
@@ -24,6 +26,12 @@ function InsightsPage() {
   const blockVolumesList = blockVolumes || []
   const bucketsList = buckets || []
   
+  // Deduplicate servers for accurate count (polymorphic resources)
+  const deduplicatedServers = useMemo(() => {
+    if (!servers) return []
+    return deduplicateServers(servers)
+  }, [servers])
+  
   // Filter out canary and staging subdomains from domains count
   const filteredDomainsList = domainsList.filter(domain => {
     const domainName = domain.domainName.toLowerCase()
@@ -32,7 +40,15 @@ function InsightsPage() {
            !domainName.includes('.canary.') &&
            !domainName.includes('.staging.')
   })
-  const domainsCount = filteredDomainsList.length
+  
+  // Deduplicate domains for accurate count (polymorphic resources)
+  const deduplicatedDomains = useMemo(() => {
+    if (!filteredDomainsList || filteredDomainsList.length === 0) return []
+    return deduplicateDomains(filteredDomainsList)
+  }, [filteredDomainsList])
+  
+  const serversCount = deduplicatedServers.length
+  const domainsCount = deduplicatedDomains.length
   
   // Filter GitHub projects for repositories count
   const githubProjects = projectsList.filter(p => p.githubRepo && p.fullApiData) || []
@@ -75,7 +91,7 @@ function InsightsPage() {
             </h3>
           </div>
           <p className="text-2xl font-bold text-foreground md:text-3xl">
-            {serversList.length}
+            {serversCount}
           </p>
         </div>
         

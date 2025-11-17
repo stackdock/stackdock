@@ -33,6 +33,7 @@ import {
   CircleXIcon,
   Columns3Icon,
   EllipsisIcon,
+  ExternalLink,
   FilterIcon,
   ListFilterIcon,
   TrashIcon,

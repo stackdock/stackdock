@@ -83,6 +83,7 @@ export class CloudflareAPI {
    * Get all DNS zones (with pagination)
    * GET /zones
    * Cloudflare API v4 uses pagination - fetches all pages
+   * Uses per_page=100 to minimize number of requests
    */
   async getZones(): Promise<CloudflareZone[]> {
     const allZones: CloudflareZone[] = []
@@ -90,8 +91,7 @@ export class CloudflareAPI {
     let totalPages = 1
     
     do {
-      // Build URL: only add page param for page > 1
-      // Let Cloudflare use default per_page (don't specify it)
+      // Build URL - only add page parameter if > 1 (Cloudflare defaults to page 1)
       const url = page === 1 ? "/zones" : `/zones?page=${page}`
       
       const response = await this.request<CloudflareZonesResponse>(url)
@@ -103,9 +103,12 @@ export class CloudflareAPI {
       // Update pagination info from response
       if (response.result_info) {
         totalPages = response.result_info.total_pages || 1
-        page++
+        const currentPage = response.result_info.page || page
+        
+        // Move to next page
+        page = currentPage + 1
       } else {
-        // No pagination info, assume single page
+        // No pagination info - assume single page
         break
       }
     } while (page <= totalPages)
@@ -117,6 +120,7 @@ export class CloudflareAPI {
    * Get DNS records for a zone (with pagination)
    * GET /zones/{zone_id}/dns_records
    * Cloudflare API v4 uses pagination - fetches all pages
+   * Uses per_page=100 to minimize number of requests
    */
   async getDNSRecords(zoneId: string): Promise<CloudflareDNSRecord[]> {
     const allRecords: CloudflareDNSRecord[] = []
@@ -124,10 +128,9 @@ export class CloudflareAPI {
     let totalPages = 1
     
     do {
-      // Build URL: only add page param for page > 1
-      // Let Cloudflare use default per_page (don't specify it)
+      // Build URL - only add page parameter if > 1 (Cloudflare defaults to page 1)
       const url = page === 1 
-        ? `/zones/${zoneId}/dns_records`
+        ? `/zones/${zoneId}/dns_records` 
         : `/zones/${zoneId}/dns_records?page=${page}`
       
       const response = await this.request<CloudflareDNSRecordsResponse>(url)
@@ -139,9 +142,12 @@ export class CloudflareAPI {
       // Update pagination info from response
       if (response.result_info) {
         totalPages = response.result_info.total_pages || 1
-        page++
+        const currentPage = response.result_info.page || page
+        
+        // Move to next page
+        page = currentPage + 1
       } else {
-        // No pagination info, assume single page
+        // No pagination info - assume single page
         break
       }
     } while (page <= totalPages)
@@ -155,6 +161,7 @@ export class CloudflareAPI {
    * 
    * Requires account ID (extract from zones or store in dock)
    * Cloudflare API v4 uses pagination - fetches all pages
+   * Uses per_page=100 to minimize number of requests
    */
   async getPages(accountId: string): Promise<CloudflarePage[]> {
     const allPages: CloudflarePage[] = []
@@ -162,10 +169,9 @@ export class CloudflareAPI {
     let totalPages = 1
     
     do {
-      // Build URL: only add page param for page > 1
-      // Let Cloudflare use default per_page (don't specify it)
-      const url = page === 1
-        ? `/accounts/${accountId}/pages/projects`
+      // Build URL - only add page parameter if > 1 (Cloudflare defaults to page 1)
+      const url = page === 1 
+        ? `/accounts/${accountId}/pages/projects` 
         : `/accounts/${accountId}/pages/projects?page=${page}`
       
       const response = await this.request<CloudflarePagesResponse>(url)
@@ -177,9 +183,12 @@ export class CloudflareAPI {
       // Update pagination info from response
       if (response.result_info) {
         totalPages = response.result_info.total_pages || 1
-        page++
+        const currentPage = response.result_info.page || page
+        
+        // Move to next page
+        page = currentPage + 1
       } else {
-        // No pagination info, assume single page
+        // No pagination info - assume single page
         break
       }
     } while (page <= totalPages)
@@ -194,18 +203,17 @@ export class CloudflareAPI {
    * Requires account ID (extract from zones or store in dock)
    * Cloudflare API v4 uses pagination - fetches all pages
    * Note: Workers API doesn't return total_pages, so we calculate it from total_count
+   * Uses per_page=100 to minimize number of requests
    */
   async getWorkers(accountId: string): Promise<CloudflareWorker[]> {
     const allWorkers: CloudflareWorker[] = []
     let page = 1
     let totalPages = 1
-    let perPage = 50 // Track per_page from first response
     
     do {
-      // Build URL: only add page param for page > 1
-      // Let Cloudflare use default per_page (don't specify it)
-      const url = page === 1
-        ? `/accounts/${accountId}/workers/scripts`
+      // Build URL - only add page parameter if > 1 (Cloudflare defaults to page 1)
+      const url = page === 1 
+        ? `/accounts/${accountId}/workers/scripts` 
         : `/accounts/${accountId}/workers/scripts?page=${page}`
       
       const response = await this.request<CloudflareWorkersResponse>(url)
@@ -216,14 +224,15 @@ export class CloudflareAPI {
       
       // Update pagination info from response
       if (response.result_info) {
-        // Track per_page from first response for calculating total_pages
-        if (page === 1) {
-          perPage = response.result_info.per_page || 50
-        }
-        // Workers API doesn't provide total_pages, calculate from total_count
+        const currentPage = response.result_info.page || page
         const totalCount = response.result_info.total_count || 0
+        const perPage = response.result_info.per_page || 20
+        
+        // Workers API doesn't provide total_pages, calculate from total_count
         totalPages = Math.ceil(totalCount / perPage) || 1
-        page++
+        
+        // Move to next page
+        page = currentPage + 1
       } else {
         // No pagination info, assume single page
         break
