@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { createPortal } from "react-dom"
 import { ChevronsUpDown, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useOrganizationList, useOrganization } from "@clerk/clerk-react"
@@ -34,6 +35,7 @@ export function TeamSwitcher({ teams }: Props) {
   const { organizationList, setActive } = useOrganizationList()
   const { organization } = useOrganization()
   const [activeTeam, setActiveTeam] = React.useState(teams[0])
+  const [open, setOpen] = React.useState(false)
 
   // Use Clerk organizations if available, otherwise fallback to teams prop
   const displayTeams = organizationList?.length
@@ -55,10 +57,22 @@ export function TeamSwitcher({ teams }: Props) {
   }
 
   return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+    <>
+      {typeof window !== "undefined" &&
+        createPortal(
+          <div
+            className={cn(
+              "fixed inset-0 z-50 bg-black/80 transition-opacity duration-200",
+              open ? "opacity-100" : "pointer-events-none opacity-0"
+            )}
+            onClick={() => setOpen(false)}
+          />,
+          document.body
+        )}
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <DropdownMenu open={open} onOpenChange={setOpen}>
+            <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
               className="ring-sidebar-primary/50 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground focus-visible:ring-1"
@@ -79,7 +93,7 @@ export function TeamSwitcher({ teams }: Props) {
             className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
             align="start"
             side={isMobile ? "bottom" : "right"}
-            sideOffset={4}
+            sideOffset={12}
           >
             <DropdownMenuLabel className="text-muted-foreground text-xs">
               Organizations
@@ -113,5 +127,6 @@ export function TeamSwitcher({ teams }: Props) {
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
+    </>
   )
 }

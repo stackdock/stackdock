@@ -1,5 +1,7 @@
 "use client"
 
+import * as React from "react"
+import { createPortal } from "react-dom"
 import {
   BadgeCheck,
   Bell,
@@ -9,6 +11,7 @@ import {
 } from "lucide-react"
 import { Link } from "@tanstack/react-router"
 import { SignOutButton } from "@clerk/clerk-react"
+import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -36,12 +39,25 @@ interface Props {
 
 export function NavUser({ user }: Props) {
   const { isMobile } = useSidebar()
+  const [open, setOpen] = React.useState(false)
 
   return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+    <>
+      {typeof window !== "undefined" &&
+        createPortal(
+          <div
+            className={cn(
+              "fixed inset-0 z-50 bg-black/80 transition-opacity duration-200",
+              open ? "opacity-100" : "pointer-events-none opacity-0"
+            )}
+            onClick={() => setOpen(false)}
+          />,
+          document.body
+        )}
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <DropdownMenu open={open} onOpenChange={setOpen}>
+            <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
@@ -63,7 +79,7 @@ export function NavUser({ user }: Props) {
             className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
             side={isMobile ? "bottom" : "right"}
             align="end"
-            sideOffset={4}
+            sideOffset={12}
           >
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-xs">
@@ -111,5 +127,6 @@ export function NavUser({ user }: Props) {
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
+    </>
   )
 }

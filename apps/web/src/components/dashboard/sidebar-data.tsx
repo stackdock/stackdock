@@ -40,7 +40,7 @@ function useSidebarUser() {
   const convexUser = useQuery(api.users.getCurrent)
   
   return {
-    name: convexUser?.name || user?.fullName || user?.firstName || "User",
+    name: user?.firstName || convexUser?.name || user?.fullName || user?.primaryEmailAddress?.emailAddress?.split("@")[0] || "User",
     email: user?.primaryEmailAddress?.emailAddress || "",
     avatar: user?.imageUrl || "",
   }
