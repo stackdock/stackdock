@@ -158,7 +158,7 @@ function NavSubItem({ item, pathname }: { item: NavItem; pathname: string }) {
   return null
 }
 
-function checkIsActive(pathname: string, item: NavItem, mainNav = false) {
+function checkIsActive(pathname: string, item: NavItem, mainNav = false): boolean {
   // Check if this item's URL matches
   if (item.url) {
     if (
@@ -174,7 +174,7 @@ function checkIsActive(pathname: string, item: NavItem, mainNav = false) {
 
   // Recursively check nested items
   if (item.items) {
-    return item.items.some((subItem) =>
+    return item.items.some((subItem: NavItem): boolean =>
       checkIsActive(pathname, subItem, false)
     )
   }

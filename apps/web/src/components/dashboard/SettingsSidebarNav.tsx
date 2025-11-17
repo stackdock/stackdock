@@ -1,15 +1,8 @@
 "use client"
 
-import { useState } from "react"
 import { Link, useRouterState } from "@tanstack/react-router"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
-import {
-  Building2,
-  User,
-  Palette,
-  Plug,
-} from "lucide-react"
 
 interface Props extends React.HTMLAttributes<HTMLElement> {
   items: {

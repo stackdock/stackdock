@@ -4,7 +4,7 @@ import * as React from "react"
 import { createPortal } from "react-dom"
 import { ChevronsUpDown, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useOrganizationList, useOrganization } from "@clerk/clerk-react"
+import { useOrganizationList } from "@clerk/clerk-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,20 +32,19 @@ interface Props {
 
 export function TeamSwitcher({ teams }: Props) {
   const { isMobile } = useSidebar()
-  const { organizationList, setActive } = useOrganizationList()
-  const { organization } = useOrganization()
+  const { userMemberships, setActive } = useOrganizationList()
   const [activeTeam, setActiveTeam] = React.useState(teams[0])
   const [open, setOpen] = React.useState(false)
 
   // Use Clerk organizations if available, otherwise fallback to teams prop
-  const displayTeams = organizationList?.length
-    ? organizationList.map((org) => ({
-        name: org.organization.name,
+  const displayTeams = userMemberships?.data?.length
+    ? userMemberships.data.map((membership) => ({
+        name: membership.organization.name,
         logo: Building2,
-        plan: org.organization.membersCount
-          ? `${org.organization.membersCount} members`
+        plan: membership.organization.membersCount
+          ? `${membership.organization.membersCount} members`
           : "Free",
-        id: org.organization.id,
+        id: membership.organization.id,
       }))
     : teams
 

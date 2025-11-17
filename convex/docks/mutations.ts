@@ -293,7 +293,19 @@ export const syncDockResourcesMutation = internalMutation({
     }
 
     if (args.fetchedData.issues !== undefined && adapter.syncIssues) {
+      console.log(`[Sync Mutation] ✅ Calling syncIssues with ${args.fetchedData.issues.length} projects for dock ${dock._id}`)
       await adapter.syncIssues(ctx, dock, args.fetchedData.issues)
+      console.log(`[Sync Mutation] ✅ syncIssues completed for dock ${dock._id}`)
+    } else {
+      const issuesStatus = args.fetchedData.issues === undefined ? "undefined (not passed)" : `defined (${Array.isArray(args.fetchedData.issues) ? args.fetchedData.issues.length : "?"} items)`
+      const adapterStatus = adapter.syncIssues ? "exists" : "missing"
+      console.log(`[Sync Mutation] ⏭️  NOT calling syncIssues - issues: ${issuesStatus}, adapter.syncIssues: ${adapterStatus}`)
+      if (args.fetchedData.issues === undefined) {
+        console.log(`[Sync Mutation] ⚠️  WARNING: issues is undefined - sync will NOT run!`)
+      }
+      if (!adapter.syncIssues) {
+        console.log(`[Sync Mutation] ⚠️  WARNING: adapter.syncIssues is missing for provider ${args.provider}`)
+      }
     }
 
     // Mark sync as successful

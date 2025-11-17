@@ -21,7 +21,6 @@ import {
   Archive,
   BarChart3,
   Activity,
-  Bell,
   AlertCircle,
   Link2,
   Plus,
@@ -48,7 +47,6 @@ function useSidebarUser() {
 
 // Helper hook to get organizations from Clerk
 function useSidebarTeams() {
-  const { user } = useUser()
   const organizations = useQuery(api.organizations.list)
   
   if (!organizations || organizations.length === 0) {
