@@ -17,15 +17,14 @@ function OrganizationPage() {
   const currentOrgId = useQuery(api.organizations.getCurrentOrgId)
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold">Organization</h2>
-          <p className="text-muted-foreground text-xs">
-            Manage your organization settings
-          </p>
-        </div>
-        <CreateOrganizationDialog />
+    <main className="flex flex-1 flex-col gap-4 p-4 md:p-6 lg:p-8">
+      <div className="space-y-0.5">
+        <h1 className="text-xl font-bold tracking-tight md:text-2xl lg:text-3xl">
+          Organization
+        </h1>
+        <p className="text-sm text-muted-foreground md:text-base">
+          Manage your organization settings
+        </p>
       </div>
 
       {organizations === undefined ? (
@@ -81,6 +80,6 @@ function OrganizationPage() {
           ))}
         </div>
       )}
-    </div>
+    </main>
   )
 }
