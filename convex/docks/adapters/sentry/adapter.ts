@@ -127,7 +127,14 @@ export const sentryAdapter: DockAdapter = {
           projectSlug: project.slug,
           organizationSlug: project.organization.slug,
           // Convert count from string to number if needed (Sentry API sometimes returns strings)
-          count: typeof issue.count === "string" ? parseInt(issue.count, 10) : issue.count,
+          // Handle NaN cases by falling back to 0
+          count: (() => {
+            if (typeof issue.count === "string") {
+              const parsed = parseInt(issue.count, 10);
+              return Number.isNaN(parsed) ? 0 : parsed;
+            }
+            return issue.count;
+          })(),
           userCount: issue.userCount,
           firstSeen: isoToTimestamp(issue.firstSeen),
           lastSeen: isoToTimestamp(issue.lastSeen),

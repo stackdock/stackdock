@@ -46,6 +46,36 @@ export class SentryAPI {
   }
 
   /**
+   * Make authenticated request to Sentry API and return both data and headers
+   * Used for pagination when cursor is in Link headers
+   */
+  private async requestWithHeaders<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<{ data: T; headers: Headers }> {
+    const url = `${this.baseUrl}${endpoint}`
+
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => response.statusText)
+      throw new Error(
+        `Sentry API error (${response.status}): ${errorText}`
+      )
+    }
+
+    const data = await response.json()
+    return { data, headers: response.headers }
+  }
+
+  /**
    * Validate API credentials
    * Uses lightweight GET /projects/ endpoint (first page only)
    */
@@ -137,14 +167,36 @@ export class SentryAPI {
   }
 
   /**
+   * Parse cursor from Sentry Link header
+   * Link header format: <https://sentry.io/api/0/organizations/{org}/issues/?cursor=...>; rel="next"
+   */
+  private parseCursorFromLinkHeader(linkHeader: string | null): string | null {
+    if (!linkHeader) return null
+
+    // Find rel="next" entry
+    const nextMatch = linkHeader.match(/<([^>]+)>; rel="next"/)
+    if (!nextMatch) return null
+
+    try {
+      const nextUrl = new URL(nextMatch[1])
+      return nextUrl.searchParams.get("cursor")
+    } catch {
+      return null
+    }
+  }
+
+  /**
    * List issues at organization level (more efficient)
    * Returns array of issues directly (each issue has project embedded)
+   * 
+   * Note: Sentry API returns bare arrays with pagination cursor in Link headers,
+   * not in the response body. This method parses Link headers to extract cursor.
    */
   async listOrgIssues(organizationSlug: string): Promise<SentryIssue[]> {
     const allIssues: SentryIssue[] = []
     let cursor: string | null = null
 
-    // Sentry uses cursor-based pagination
+    // Sentry uses cursor-based pagination with Link headers
     do {
       const params = new URLSearchParams()
       if (cursor) {
@@ -152,23 +204,33 @@ export class SentryAPI {
       }
       params.set("per_page", "100")
 
-      const response = await this.request<{
-        data?: SentryIssue[]
-        next_cursor?: string | null
-        prev_cursor?: string | null
-      } | SentryIssue[]>(`/organizations/${organizationSlug}/issues/?${params.toString()}`)
+      const endpoint = `/organizations/${organizationSlug}/issues/?${params.toString()}`
+      const { data: response, headers } = await this.requestWithHeaders<
+        SentryIssue[] | {
+          data?: SentryIssue[]
+          next_cursor?: string | null
+          prev_cursor?: string | null
+        }
+      >(endpoint)
 
       // Handle both formats: direct array or wrapped in { data: [...] }
       let issues: SentryIssue[] = []
       let nextCursor: string | null = null
 
       if (Array.isArray(response)) {
-        // Direct array format
+        // Direct array format - cursor is in Link header
         issues = response
+        const linkHeader = headers.get("Link")
+        nextCursor = this.parseCursorFromLinkHeader(linkHeader)
       } else if (response.data) {
-        // Wrapped format
+        // Wrapped format - cursor might be in body or Link header
         issues = response.data
         nextCursor = response.next_cursor || null
+        // If no cursor in body, check Link header
+        if (!nextCursor) {
+          const linkHeader = headers.get("Link")
+          nextCursor = this.parseCursorFromLinkHeader(linkHeader)
+        }
       }
 
       if (issues.length > 0) {

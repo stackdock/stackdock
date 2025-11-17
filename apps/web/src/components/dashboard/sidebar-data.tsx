@@ -360,7 +360,7 @@ export const sidebarData: SidebarData = {
             },
             {
               title: "Issues",
-              url: "/dashboard/monitoring/alerts",
+              url: "/dashboard/monitoring/issues",
               icon: AlertCircle,
             },
             {
