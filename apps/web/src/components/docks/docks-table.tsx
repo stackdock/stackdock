@@ -296,9 +296,12 @@ const columns: ColumnDef<Dock>[] = [
   {
     id: "syncInterval",
     header: "Sync Interval",
-    accessorKey: "syncConfig",
+    accessorFn: (row) => {
+      // Access syncConfig from the dock data
+      return (row as Dock).syncConfig
+    },
     cell: ({ row }) => {
-      const syncConfig = row.getValue("syncConfig") as { intervalSeconds?: number } | undefined
+      const syncConfig = row.getValue("syncInterval") as { intervalSeconds?: number } | undefined
       const interval = syncConfig?.intervalSeconds || 120
       const minutes = Math.round(interval / 60)
       return (
@@ -346,6 +349,22 @@ export function DocksTable({ data, onDelete }: DocksTableProps) {
     }))
   }, [data])
 
+  // Get valid column IDs to filter out invalid visibility state
+  const validColumnIds = useMemo(() => {
+    return new Set(columns.map(col => col.id || col.accessorKey).filter(Boolean))
+  }, [])
+
+  // Clean up columnVisibility to only include valid column IDs
+  const cleanedColumnVisibility = useMemo(() => {
+    const cleaned: VisibilityState = {}
+    Object.keys(columnVisibility).forEach(key => {
+      if (validColumnIds.has(key)) {
+        cleaned[key] = columnVisibility[key]
+      }
+    })
+    return cleaned
+  }, [columnVisibility, validColumnIds])
+
   const table = useReactTable({
     data: docksWithCategory,
     columns,
@@ -359,55 +378,91 @@ export function DocksTable({ data, onDelete }: DocksTableProps) {
     onColumnVisibilityChange: setColumnVisibility,
     getFilteredRowModel: getFilteredRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
-    state: { sorting, pagination, columnFilters, columnVisibility },
+    state: { sorting, pagination, columnFilters, columnVisibility: cleanedColumnVisibility },
   })
 
   const uniqueStatusValues = useMemo(() => {
-    const statusColumn = table.getColumn("lastSyncStatus")
-    if (!statusColumn) return []
-    return Array.from(statusColumn.getFacetedUniqueValues().keys()).sort()
+    try {
+      const statusColumn = table.getColumn("lastSyncStatus")
+      if (!statusColumn) return []
+      return Array.from(statusColumn.getFacetedUniqueValues().keys()).sort()
+    } catch {
+      return []
+    }
   }, [table.getColumn("lastSyncStatus")?.getFacetedUniqueValues()])
 
   const uniqueProviderValues = useMemo(() => {
-    const providerColumn = table.getColumn("provider")
-    if (!providerColumn) return []
-    return Array.from(providerColumn.getFacetedUniqueValues().keys()).sort()
+    try {
+      const providerColumn = table.getColumn("provider")
+      if (!providerColumn) return []
+      return Array.from(providerColumn.getFacetedUniqueValues().keys()).sort()
+    } catch {
+      return []
+    }
   }, [table.getColumn("provider")?.getFacetedUniqueValues()])
 
   const uniqueCategoryValues = useMemo(() => {
-    const categoryColumn = table.getColumn("category")
-    if (!categoryColumn) return []
-    return Array.from(categoryColumn.getFacetedUniqueValues().keys()).sort()
+    try {
+      const categoryColumn = table.getColumn("category")
+      if (!categoryColumn) return []
+      return Array.from(categoryColumn.getFacetedUniqueValues().keys()).sort()
+    } catch {
+      return []
+    }
   }, [table.getColumn("category")?.getFacetedUniqueValues()])
 
   const selectedStatuses = useMemo(() => {
-    return (table.getColumn("lastSyncStatus")?.getFilterValue() as string[]) ?? []
+    try {
+      return (table.getColumn("lastSyncStatus")?.getFilterValue() as string[]) ?? []
+    } catch {
+      return []
+    }
   }, [table.getColumn("lastSyncStatus")?.getFilterValue()])
 
   const selectedProviders = useMemo(() => {
-    return (table.getColumn("provider")?.getFilterValue() as string[]) ?? []
+    try {
+      return (table.getColumn("provider")?.getFilterValue() as string[]) ?? []
+    } catch {
+      return []
+    }
   }, [table.getColumn("provider")?.getFilterValue()])
 
   const selectedCategories = useMemo(() => {
-    return (table.getColumn("category")?.getFilterValue() as string[]) ?? []
+    try {
+      return (table.getColumn("category")?.getFilterValue() as string[]) ?? []
+    } catch {
+      return []
+    }
   }, [table.getColumn("category")?.getFilterValue()])
 
   const handleStatusChange = (checked: boolean, value: string) => {
-    const filterValue = selectedStatuses
-    const newFilterValue = checked ? [...filterValue, value] : filterValue.filter(v => v !== value)
-    table.getColumn("lastSyncStatus")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
+    try {
+      const filterValue = selectedStatuses
+      const newFilterValue = checked ? [...filterValue, value] : filterValue.filter(v => v !== value)
+      table.getColumn("lastSyncStatus")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
+    } catch (err) {
+      console.warn("Failed to update status filter:", err)
+    }
   }
 
   const handleProviderChange = (checked: boolean, value: string) => {
-    const filterValue = selectedProviders
-    const newFilterValue = checked ? [...filterValue, value] : filterValue.filter(v => v !== value)
-    table.getColumn("provider")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
+    try {
+      const filterValue = selectedProviders
+      const newFilterValue = checked ? [...filterValue, value] : filterValue.filter(v => v !== value)
+      table.getColumn("provider")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
+    } catch (err) {
+      console.warn("Failed to update provider filter:", err)
+    }
   }
 
   const handleCategoryChange = (checked: boolean, value: string) => {
-    const filterValue = selectedCategories
-    const newFilterValue = checked ? [...filterValue, value] : filterValue.filter(v => v !== value)
-    table.getColumn("category")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
+    try {
+      const filterValue = selectedCategories
+      const newFilterValue = checked ? [...filterValue, value] : filterValue.filter(v => v !== value)
+      table.getColumn("category")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
+    } catch (err) {
+      console.warn("Failed to update category filter:", err)
+    }
   }
 
   const handleDeleteRows = () => {
@@ -437,7 +492,13 @@ export function DocksTable({ data, onDelete }: DocksTableProps) {
               ref={inputRef}
               className={cn("h-8 w-[150px] lg:w-[250px] ps-9", Boolean(table.getColumn("name")?.getFilterValue()) && "pe-9")}
               value={(table.getColumn("name")?.getFilterValue() ?? "") as string}
-              onChange={(e) => table.getColumn("name")?.setFilterValue(e.target.value)}
+              onChange={(e) => {
+                try {
+                  table.getColumn("name")?.setFilterValue(e.target.value)
+                } catch (err) {
+                  console.warn("Failed to update name filter:", err)
+                }
+              }}
               placeholder="Filter by name..."
               type="text"
             />
@@ -448,8 +509,12 @@ export function DocksTable({ data, onDelete }: DocksTableProps) {
               <button
                 className="absolute inset-y-0 end-0 flex h-full w-9 items-center justify-center rounded-e-md text-muted-foreground/80 hover:text-foreground"
                 onClick={() => {
-                  table.getColumn("name")?.setFilterValue("")
-                  inputRef.current?.focus()
+                  try {
+                    table.getColumn("name")?.setFilterValue("")
+                    inputRef.current?.focus()
+                  } catch (err) {
+                    console.warn("Failed to clear name filter:", err)
+                  }
                 }}
               >
                 <CircleXIcon size={16} />
@@ -568,17 +633,26 @@ export function DocksTable({ data, onDelete }: DocksTableProps) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
-            {table.getAllColumns().filter((column) => column.getCanHide()).map((column) => (
-              <DropdownMenuCheckboxItem
-                key={column.id}
-                className="capitalize"
-                checked={column.getIsVisible()}
-                onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                onSelect={(e) => e.preventDefault()}
-              >
-                {column.id}
-              </DropdownMenuCheckboxItem>
-            ))}
+            {table.getAllColumns()
+              .filter((column) => column.getCanHide())
+              .filter((column) => column.id) // Only include columns with valid IDs
+              .map((column) => (
+                <DropdownMenuCheckboxItem
+                  key={column.id}
+                  className="capitalize"
+                  checked={column.getIsVisible()}
+                  onCheckedChange={(value) => {
+                    try {
+                      column.toggleVisibility(!!value)
+                    } catch (err) {
+                      console.warn(`Failed to toggle visibility for column ${column.id}:`, err)
+                    }
+                  }}
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  {column.id}
+                </DropdownMenuCheckboxItem>
+              ))}
           </DropdownMenuContent>
         </DropdownMenu>
         {/* Delete Button */}

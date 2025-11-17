@@ -303,7 +303,7 @@ export const syncDockResourcesMutation = internalMutation({
     try {
       const syncConfig = dock.syncConfig || {
         enabled: true,
-        intervalSeconds: 60,
+        intervalSeconds: getRecommendedSyncInterval(dock.provider),
         consecutiveFailures: 0,
       }
       syncConfig.lastSyncAttempt = Date.now()
@@ -380,7 +380,7 @@ export const updateSyncStatus = internalMutation({
     // Update syncConfig
     const syncConfig = dock.syncConfig || {
       enabled: true,
-      intervalSeconds: 60,
+      intervalSeconds: getRecommendedSyncInterval(dock.provider),
       consecutiveFailures: 0,
     }
 
@@ -608,9 +608,10 @@ export const enableSyncOnAllDocks = internalMutation({
     let alreadyEnabled = 0
 
     for (const dock of docks) {
+      const recommendedInterval = getRecommendedSyncInterval(dock.provider)
       const syncConfig = dock.syncConfig || {
         enabled: true,
-        intervalSeconds: 60,
+        intervalSeconds: recommendedInterval,
         consecutiveFailures: 0,
       }
 
@@ -619,7 +620,7 @@ export const enableSyncOnAllDocks = internalMutation({
         await ctx.db.patch(dock._id, {
           syncConfig: {
             enabled: true,
-            intervalSeconds: 60,
+            intervalSeconds: recommendedInterval,
             consecutiveFailures: syncConfig.consecutiveFailures || 0,
             lastSyncAttempt: syncConfig.lastSyncAttempt,
             backoffUntil: syncConfig.backoffUntil,
@@ -675,7 +676,7 @@ export const updateSyncInterval = mutation({
     // Update sync config
     const syncConfig = dock.syncConfig || {
       enabled: true,
-      intervalSeconds: 120,
+      intervalSeconds: getRecommendedSyncInterval(dock.provider),
       consecutiveFailures: 0,
     }
     
@@ -702,13 +703,13 @@ export const updateDocksWithProviderIntervals = internalMutation({
     
     for (const dock of docks) {
       const recommended = getRecommendedSyncInterval(dock.provider)
-      const current = dock.syncConfig?.intervalSeconds || 60
+      const current = dock.syncConfig?.intervalSeconds || recommended
       
       // Only update if current interval is less than recommended
       if (current < recommended) {
         const syncConfig = dock.syncConfig || {
           enabled: true,
-          intervalSeconds: 60,
+          intervalSeconds: recommended,
           consecutiveFailures: 0,
         }
         
