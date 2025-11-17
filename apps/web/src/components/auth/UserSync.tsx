@@ -15,7 +15,7 @@ export function UserSync() {
     if (currentUser === null) {
       // Small delay to ensure everything is settled
       const timer = setTimeout(() => {
-        ensureUser().catch((error) => {
+        ensureUser().catch(() => {
           // Silently ignore - user might already exist or auth might not be ready
           // The query will retry automatically
         })

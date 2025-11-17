@@ -217,82 +217,153 @@ export class SentryAPI {
 
   /**
    * List all issues across all projects
+   * Handles multiple organizations by fetching issues from each org separately
    * Uses organization-level endpoint for efficiency, then groups by project
    */
   async listAllIssues(): Promise<Array<{ project: SentryProject; issues: SentryIssue[] }>> {
     const projects = await this.listProjects()
     
-    // Get organization slug from first project (all projects in same org)
     if (projects.length === 0) {
       return []
     }
     
-    const organizationSlug = projects[0].organization.slug
-    console.log(`[Sentry API] Fetching organization-level issues for org: ${organizationSlug}`)
+    // Collect distinct organization slugs from all projects
+    const orgSlugs = new Set<string>()
+    const projectsByOrg = new Map<string, SentryProject[]>()
     
-    // Fetch all issues at organization level (more efficient)
-    let allIssues: SentryIssue[]
-    try {
-      allIssues = await this.listOrgIssues(organizationSlug)
-      console.log(`[Sentry API] Fetched ${allIssues.length} issues from organization endpoint`)
-    } catch (error) {
-      console.error(`[Sentry] Failed to fetch organization issues:`, error)
-      // Fallback to per-project fetching
-      console.log(`[Sentry API] Falling back to per-project fetching`)
-      const results: Array<{ project: SentryProject; issues: SentryIssue[] }> = []
-      for (const project of projects) {
-        try {
-          const issues = await this.listIssues(project.organization.slug, project.slug)
-          results.push({ project, issues })
-        } catch (err) {
-          console.error(`[Sentry] Failed to fetch issues for project ${project.slug}:`, err)
-          results.push({ project, issues: [] })
+    for (const project of projects) {
+      const orgSlug = project.organization.slug
+      orgSlugs.add(orgSlug)
+      if (!projectsByOrg.has(orgSlug)) {
+        projectsByOrg.set(orgSlug, [])
+      }
+      projectsByOrg.get(orgSlug)!.push(project)
+    }
+    
+    console.log(`[Sentry API] Found ${orgSlugs.size} organization(s) across ${projects.length} project(s)`)
+    
+    // Fetch issues from each organization and track which org they belong to
+    const issuesByOrgSlug = new Map<string, SentryIssue[]>()
+    const issueToOrgMap = new Map<string, string>() // Map issue ID to org slug
+    
+    for (const orgSlug of orgSlugs) {
+      try {
+        console.log(`[Sentry API] Fetching issues for organization: ${orgSlug}`)
+        const orgIssues = await this.listOrgIssues(orgSlug)
+        console.log(`[Sentry API] Fetched ${orgIssues.length} issues from org ${orgSlug}`)
+        issuesByOrgSlug.set(orgSlug, orgIssues)
+        // Track which org each issue belongs to
+        for (const issue of orgIssues) {
+          issueToOrgMap.set(issue.id, orgSlug)
+        }
+      } catch (error) {
+        console.error(`[Sentry API] Failed to fetch issues for org ${orgSlug}:`, error)
+        
+        // Fallback: try per-project fetching for this org
+        console.log(`[Sentry API] Falling back to per-project fetching for org ${orgSlug}`)
+        const orgProjects = projectsByOrg.get(orgSlug) || []
+        const fallbackIssues: SentryIssue[] = []
+        for (const project of orgProjects) {
+          try {
+            const projectIssues = await this.listIssues(orgSlug, project.slug)
+            fallbackIssues.push(...projectIssues)
+            // Track which org each issue belongs to
+            for (const issue of projectIssues) {
+              issueToOrgMap.set(issue.id, orgSlug)
+            }
+          } catch (err) {
+            console.error(`[Sentry API] Failed to fetch issues for project ${project.slug} in org ${orgSlug}:`, err)
+          }
+        }
+        issuesByOrgSlug.set(orgSlug, fallbackIssues)
+      }
+    }
+    
+    // Aggregate all issues (deduplicated by ID)
+    const allIssues: SentryIssue[] = []
+    const seenIssueIds = new Set<string>()
+    for (const orgIssues of issuesByOrgSlug.values()) {
+      for (const issue of orgIssues) {
+        if (!seenIssueIds.has(issue.id)) {
+          seenIssueIds.add(issue.id)
+          allIssues.push(issue)
         }
       }
-      return results
     }
+    
+    console.log(`[Sentry API] Total unique issues fetched across all organizations: ${allIssues.length}`)
 
-    // Group issues by project slug
+    // Create project map: key is `${orgSlug}/${projectSlug}` to handle same slug across orgs
     const projectMap = new Map<string, SentryProject>()
-    projects.forEach(p => {
-      projectMap.set(p.slug, p)
-    })
+    for (const project of projects) {
+      const key = `${project.organization.slug}/${project.slug}`
+      projectMap.set(key, project)
+    }
 
     const results: Array<{ project: SentryProject; issues: SentryIssue[] }> = []
     const issuesByProject = new Map<string, SentryIssue[]>()
 
-    // Group issues by project
+    // Group issues by project (using org/project key)
     for (const issue of allIssues) {
       const projectSlug = issue.project.slug
-      if (!issuesByProject.has(projectSlug)) {
-        issuesByProject.set(projectSlug, [])
+      // Get org from our tracking map
+      const orgSlug = issueToOrgMap.get(issue.id)
+      
+      if (!orgSlug) {
+        // Fallback: try to infer from project slug (less reliable)
+        for (const project of projects) {
+          if (project.slug === projectSlug) {
+            issueToOrgMap.set(issue.id, project.organization.slug)
+            break
+          }
+        }
+        const fallbackOrg = issueToOrgMap.get(issue.id)
+        if (!fallbackOrg) {
+          console.warn(`[Sentry API] Could not determine org for issue ${issue.id} in project ${projectSlug}, skipping`)
+          continue
+        }
       }
-      issuesByProject.get(projectSlug)!.push(issue)
+      
+      const finalOrgSlug = orgSlug || issueToOrgMap.get(issue.id)!
+      const key = `${finalOrgSlug}/${projectSlug}`
+      if (!issuesByProject.has(key)) {
+        issuesByProject.set(key, [])
+      }
+      issuesByProject.get(key)!.push(issue)
     }
 
     // Create results array with project info
-    for (const [projectSlug, issues] of issuesByProject.entries()) {
-      const project = projectMap.get(projectSlug)
+    for (const [key, issues] of issuesByProject.entries()) {
+      const project = projectMap.get(key)
       if (project) {
         results.push({ project, issues })
       } else {
         // Project not in projects list, but has issues - create minimal project from issue data
-        // Use first issue's project data and fill in required fields with defaults
+        const [orgSlug, projectSlug] = key.split("/")
         const firstIssue = issues[0]
+        const issueIds = issues.map(i => i.id).join(", ")
+        
+        // Log warning for orphaned project
+        console.warn(
+          `[Sentry API] ⚠️  Creating minimal project fallback - project not found in projects list. ` +
+          `Issue IDs: [${issueIds}], Project: ${firstIssue.project.name} (${firstIssue.project.slug}, id: ${firstIssue.project.id}), ` +
+          `Organization: ${orgSlug || "unknown"}`
+        )
+        
         const minimalProject: SentryProject = {
           id: firstIssue.project.id,
           slug: firstIssue.project.slug,
           name: firstIssue.project.name,
           platform: firstIssue.platform || null,
-          dateCreated: new Date().toISOString(), // Not available, use current time
+          dateCreated: new Date().toISOString(),
           firstEvent: null,
           features: [],
           status: "active",
           isBookmarked: false,
           organization: {
-            slug: organizationSlug,
-            id: "", // Not available in issue response
-            name: "", // Not available in issue response
+            slug: orgSlug || "unknown",
+            id: orgSlug || "unknown", // Use orgSlug as placeholder (not available in issue response)
+            name: `Unknown (${orgSlug || "unknown"})`, // Derived placeholder from orgSlug
           },
           isMember: true,
           color: "",
@@ -303,7 +374,8 @@ export class SentryAPI {
 
     // Add projects with no issues
     for (const project of projects) {
-      if (!issuesByProject.has(project.slug)) {
+      const key = `${project.organization.slug}/${project.slug}`
+      if (!issuesByProject.has(key)) {
         results.push({ project, issues: [] })
       }
     }

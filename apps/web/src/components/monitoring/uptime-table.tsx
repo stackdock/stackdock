@@ -93,42 +93,28 @@ import { ProviderBadge } from "@/components/resources/shared/provider-badge"
 import { StatusBadge } from "@/components/resources/shared/status-badge"
 import { formatDate } from "@/components/resources/shared/format-utils"
 import { Badge } from "@/components/ui/badge"
-import { ExternalLink } from "lucide-react"
 
 type Monitor = Doc<"monitors">
 
 // Multi-column filter for name and URL
-const multiColumnFilterFn: FilterFn<Monitor> = (row, columnId, filterValue) => {
+const multiColumnFilterFn: FilterFn<Monitor> = (row, _columnId, filterValue) => {
   const searchableContent = `${row.original.name} ${row.original.url || ""} ${row.original.monitorGroupName || ""}`.toLowerCase()
   const searchTerm = (filterValue ?? "").toLowerCase()
   return searchableContent.includes(searchTerm)
 }
 
 // Status filter
-const statusFilterFn: FilterFn<Monitor> = (row, columnId, filterValue: string[]) => {
+const statusFilterFn: FilterFn<Monitor> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.status)
 }
 
 // Provider filter
-const providerFilterFn: FilterFn<Monitor> = (row, columnId, filterValue: string[]) => {
+const providerFilterFn: FilterFn<Monitor> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.provider)
 }
 
-// Status badge mapping
-function getStatusBadgeVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
-  switch (status.toLowerCase()) {
-    case "up":
-      return "default"
-    case "down":
-      return "destructive"
-    case "paused":
-      return "secondary"
-    default:
-      return "outline"
-  }
-}
 
 const columns: ColumnDef<Monitor>[] = [
   {
@@ -195,7 +181,7 @@ const columns: ColumnDef<Monitor>[] = [
     cell: ({ row }) => {
       const status = row.getValue("status") as string
       return (
-        <StatusBadge status={status} variant={getStatusBadgeVariant(status)} />
+        <StatusBadge status={status} />
       )
     },
     size: 120,
