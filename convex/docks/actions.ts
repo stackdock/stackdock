@@ -105,7 +105,7 @@ export const syncDockResources = internalAction({
     let blockVolumes: any[] = [] // Block storage volumes (Vultr blocks, DO volumes)
     let buckets: any[] = [] // Object storage buckets (Linode buckets)
     let monitors: any[] = [] // Uptime monitors (Better Stack, etc.)
-    let issues: any[] = [] // Error issues (Sentry, etc.)
+    let issues: any[] = [] // Error issues (Sentry calls them "issues", we use "alerts" in UI)
 
     try {
       // GridPane-specific: Use GridPaneAPI directly
@@ -664,11 +664,16 @@ export const syncDockResources = internalAction({
         const api = new SentryAPI(args.apiKey)
 
         if (args.resourceTypes.includes("issues")) {
+          // Sentry logging only
           console.log(`[Dock Action] [Sentry] Fetching issues`)
           const projectsWithIssues = await api.listAllIssues()
-          // Flatten to array of { project, issues } objects
-          issues = projectsWithIssues
           console.log(`[Dock Action] [Sentry] Fetched ${projectsWithIssues.length} projects with issues`)
+          // Log total issues count
+          const totalIssues = projectsWithIssues.reduce((sum, p) => sum + (p.issues?.length || 0), 0)
+          console.log(`[Dock Action] [Sentry] Total issues across all projects: ${totalIssues}`)
+          // Flatten to array of { project, issues } objects
+          // Note: Sentry API uses "issues" terminology, we store them in "issues" table
+          issues = projectsWithIssues
         }
 
         // Sentry only supports issues
@@ -719,12 +724,11 @@ export const syncDockResources = internalAction({
         issues: args.resourceTypes.includes("issues") ? issues : undefined,
       }
       
+      // Sentry logging only
       if (args.provider === "sentry") {
         console.log(`[Dock Action] [Sentry] 📤 Calling syncDockResourcesMutation`)
         console.log(`[Dock Action] [Sentry]   - issues: ${fetchedData.issues === undefined ? "undefined" : `array(${fetchedData.issues.length})`}`)
       }
-      
-      // Logging silenced except for Sentry
       
       await ctx.runMutation(internal.docks.mutations.syncDockResourcesMutation, {
         dockId: args.dockId,

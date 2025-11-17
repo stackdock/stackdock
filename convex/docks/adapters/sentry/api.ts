@@ -19,6 +19,7 @@ export class SentryAPI {
 
   /**
    * Make authenticated request to Sentry API
+   * Returns JSON response only (headers discarded)
    */
   private async request<T>(
     endpoint: string,
@@ -46,33 +47,86 @@ export class SentryAPI {
   }
 
   /**
-   * Make authenticated request to Sentry API and return both data and headers
-   * Used for pagination when cursor is in Link headers
+   * Parse Link header to extract pagination cursor
+   * Sentry uses Link headers with rel="next" and rel="previous"
+   * Format: <url>; rel="next", <url>; rel="previous"
+   * Returns the cursor parameter from the next URL, or null if no next link
    */
-  private async requestWithHeaders<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<{ data: T; headers: Headers }> {
-    const url = `${this.baseUrl}${endpoint}`
+  private parseLinkHeader(linkHeader: string | null): string | null {
+    if (!linkHeader) return null
 
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-    })
+    // Find rel="next" link
+    const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/i)
+    if (!nextMatch) return null
 
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => response.statusText)
-      throw new Error(
-        `Sentry API error (${response.status}): ${errorText}`
-      )
+    const nextUrl = nextMatch[1]
+    
+    try {
+      // Handle both absolute and relative URLs
+      // If relative, resolve against baseUrl
+      const url = nextUrl.startsWith("http")
+        ? new URL(nextUrl)
+        : new URL(nextUrl, this.baseUrl)
+      
+      const cursor = url.searchParams.get("cursor")
+      return cursor
+    } catch (error) {
+      console.warn(`[Sentry API] Failed to parse Link header URL: ${nextUrl}`, error)
+      return null
     }
+  }
 
-    const data = await response.json()
-    return { data, headers: response.headers }
+  /**
+   * Fetch paginated data from Sentry API
+   * Sentry returns plain JSON arrays and pagination via Link headers
+   * This method handles pagination by parsing Link headers
+   */
+  private async fetchPaginated<T>(
+    endpoint: string,
+    params: URLSearchParams = new URLSearchParams()
+  ): Promise<T[]> {
+    const allItems: T[] = []
+    let cursor: string | null = null
+
+    do {
+      const currentParams = new URLSearchParams(params)
+      if (cursor) {
+        currentParams.set("cursor", cursor)
+      }
+      currentParams.set("per_page", "100")
+
+      const url = `${this.baseUrl}${endpoint}?${currentParams.toString()}`
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => response.statusText)
+        throw new Error(
+          `Sentry API error (${response.status}): ${errorText}`
+        )
+      }
+
+      // Sentry returns plain JSON arrays
+      const items: T[] = await response.json()
+      if (Array.isArray(items) && items.length > 0) {
+        allItems.push(...items)
+      }
+
+      // Parse Link header for next cursor
+      const linkHeader = response.headers.get("Link")
+      cursor = this.parseLinkHeader(linkHeader)
+
+      // If we got less than per_page items, we're done (no more pages)
+      if (items.length < 100) {
+        break
+      }
+    } while (cursor)
+
+    return allItems
   }
 
   /**
@@ -133,119 +187,39 @@ export class SentryAPI {
 
   /**
    * List issues for a project
-   * Returns array of issues
+   * 
+   * Sentry API returns plain JSON arrays (not wrapped objects)
+   * Pagination is handled via Link headers (rel="next")
    * 
    * @param organizationSlug Organization slug
    * @param projectSlug Project slug
    */
   async listIssues(organizationSlug: string, projectSlug: string): Promise<SentryIssue[]> {
-    const allIssues: SentryIssue[] = []
-    let cursor: string | null = null
-
-    // Sentry uses cursor-based pagination
-    do {
-      const params = new URLSearchParams()
-      if (cursor) {
-        params.set("cursor", cursor)
-      }
-      params.set("per_page", "100")
-
-      const response = await this.request<{
-        data: SentryIssue[]
-        next_cursor: string | null
-        prev_cursor: string | null
-      }>(`/projects/${organizationSlug}/${projectSlug}/issues/?${params.toString()}`)
-
-      if (response.data && response.data.length > 0) {
-        allIssues.push(...response.data)
-      }
-
-      cursor = response.next_cursor || null
-    } while (cursor)
-
-    return allIssues
+    return this.fetchPaginated<SentryIssue>(
+      `/projects/${organizationSlug}/${projectSlug}/issues/`
+    )
   }
 
   /**
-   * Parse cursor from Sentry Link header
-   * Link header format: <https://sentry.io/api/0/organizations/{org}/issues/?cursor=...>; rel="next"
-   */
-  private parseCursorFromLinkHeader(linkHeader: string | null): string | null {
-    if (!linkHeader) return null
-
-    // Find rel="next" entry
-    const nextMatch = linkHeader.match(/<([^>]+)>; rel="next"/)
-    if (!nextMatch) return null
-
-    try {
-      const nextUrl = new URL(nextMatch[1])
-      return nextUrl.searchParams.get("cursor")
-    } catch {
-      return null
-    }
-  }
-
-  /**
-   * List issues at organization level (more efficient)
-   * Returns array of issues directly (each issue has project embedded)
+   * List all issues for an organization
+   * Uses organization-level endpoint which is more efficient
    * 
-   * Note: Sentry API returns bare arrays with pagination cursor in Link headers,
-   * not in the response body. This method parses Link headers to extract cursor.
+   * Sentry API returns plain JSON arrays (not wrapped objects)
+   * Pagination is handled via Link headers (rel="next")
+   * 
+   * @param organizationSlug Organization slug
    */
   async listOrgIssues(organizationSlug: string): Promise<SentryIssue[]> {
-    const allIssues: SentryIssue[] = []
-    let cursor: string | null = null
-
-    // Sentry uses cursor-based pagination with Link headers
-    do {
-      const params = new URLSearchParams()
-      if (cursor) {
-        params.set("cursor", cursor)
-      }
-      params.set("per_page", "100")
-
-      const endpoint = `/organizations/${organizationSlug}/issues/?${params.toString()}`
-      const { data: response, headers } = await this.requestWithHeaders<
-        SentryIssue[] | {
-          data?: SentryIssue[]
-          next_cursor?: string | null
-          prev_cursor?: string | null
-        }
-      >(endpoint)
-
-      // Handle both formats: direct array or wrapped in { data: [...] }
-      let issues: SentryIssue[] = []
-      let nextCursor: string | null = null
-
-      if (Array.isArray(response)) {
-        // Direct array format - cursor is in Link header
-        issues = response
-        const linkHeader = headers.get("Link")
-        nextCursor = this.parseCursorFromLinkHeader(linkHeader)
-      } else if (response.data) {
-        // Wrapped format - cursor might be in body or Link header
-        issues = response.data
-        nextCursor = response.next_cursor || null
-        // If no cursor in body, check Link header
-        if (!nextCursor) {
-          const linkHeader = headers.get("Link")
-          nextCursor = this.parseCursorFromLinkHeader(linkHeader)
-        }
-      }
-
-      if (issues.length > 0) {
-        allIssues.push(...issues)
-      }
-
-      cursor = nextCursor || null
-    } while (cursor)
-
-    return allIssues
+    return this.fetchPaginated<SentryIssue>(
+      `/organizations/${organizationSlug}/issues/`
+    )
   }
+
 
   /**
    * List all issues across all projects
-   * Uses organization-level endpoint first (more efficient), falls back to per-project if needed
+   * Handles multiple organizations by fetching issues from each org separately
+   * Uses organization-level endpoint for efficiency, then groups by project
    */
   async listAllIssues(): Promise<Array<{ project: SentryProject; issues: SentryIssue[] }>> {
     const projects = await this.listProjects()
@@ -253,61 +227,161 @@ export class SentryAPI {
     if (projects.length === 0) {
       return []
     }
-
-    // Get organization slug from first project (all projects in same org)
-    const organizationSlug = projects[0].organization.slug
-
-    // Try organization-level endpoint first (more efficient)
-    try {
-      console.log(`[Sentry] Fetching issues at organization level: ${organizationSlug}`)
-      const orgIssues = await this.listOrgIssues(organizationSlug)
-      console.log(`[Sentry] Fetched ${orgIssues.length} issues from organization endpoint`)
-
-      // Group issues by project
-      const projectMap = new Map<string, SentryProject>()
-      for (const project of projects) {
-        projectMap.set(project.slug, project)
+    
+    // Collect distinct organization slugs from all projects
+    const orgSlugs = new Set<string>()
+    const projectsByOrg = new Map<string, SentryProject[]>()
+    
+    for (const project of projects) {
+      const orgSlug = project.organization.slug
+      orgSlugs.add(orgSlug)
+      if (!projectsByOrg.has(orgSlug)) {
+        projectsByOrg.set(orgSlug, [])
       }
-
-      const results: Array<{ project: SentryProject; issues: SentryIssue[] }> = []
-      
-      // Group issues by project slug
-      const issuesByProject = new Map<string, SentryIssue[]>()
-      for (const issue of orgIssues) {
-        const projectSlug = issue.project?.slug
-        if (projectSlug) {
-          if (!issuesByProject.has(projectSlug)) {
-            issuesByProject.set(projectSlug, [])
-          }
-          issuesByProject.get(projectSlug)!.push(issue)
-        }
-      }
-
-      // Create results array with project info
-      for (const project of projects) {
-        const issues = issuesByProject.get(project.slug) || []
-        results.push({ project, issues })
-      }
-
-      console.log(`[Sentry] Grouped ${orgIssues.length} issues into ${results.length} projects`)
-      return results
-    } catch (error) {
-      console.log(`[Sentry] Organization-level fetch failed, falling back to per-project:`, error)
-      // Fallback to per-project fetching
-      const results: Array<{ project: SentryProject; issues: SentryIssue[] }> = []
-
-      for (const project of projects) {
-        try {
-          const issues = await this.listIssues(project.organization.slug, project.slug)
-          results.push({ project, issues })
-        } catch (error) {
-          console.error(`[Sentry] Failed to fetch issues for project ${project.slug}:`, error)
-          // Continue with other projects even if one fails
-          results.push({ project, issues: [] })
-        }
-      }
-
-      return results
+      projectsByOrg.get(orgSlug)!.push(project)
     }
+    
+    console.log(`[Sentry API] Found ${orgSlugs.size} organization(s) across ${projects.length} project(s)`)
+    
+    // Fetch issues from each organization and track which org they belong to
+    const issuesByOrgSlug = new Map<string, SentryIssue[]>()
+    const issueToOrgMap = new Map<string, string>() // Map issue ID to org slug
+    
+    for (const orgSlug of orgSlugs) {
+      try {
+        console.log(`[Sentry API] Fetching issues for organization: ${orgSlug}`)
+        const orgIssues = await this.listOrgIssues(orgSlug)
+        console.log(`[Sentry API] Fetched ${orgIssues.length} issues from org ${orgSlug}`)
+        issuesByOrgSlug.set(orgSlug, orgIssues)
+        // Track which org each issue belongs to
+        for (const issue of orgIssues) {
+          issueToOrgMap.set(issue.id, orgSlug)
+        }
+      } catch (error) {
+        console.error(`[Sentry API] Failed to fetch issues for org ${orgSlug}:`, error)
+        
+        // Fallback: try per-project fetching for this org
+        console.log(`[Sentry API] Falling back to per-project fetching for org ${orgSlug}`)
+        const orgProjects = projectsByOrg.get(orgSlug) || []
+        const fallbackIssues: SentryIssue[] = []
+        for (const project of orgProjects) {
+          try {
+            const projectIssues = await this.listIssues(orgSlug, project.slug)
+            fallbackIssues.push(...projectIssues)
+            // Track which org each issue belongs to
+            for (const issue of projectIssues) {
+              issueToOrgMap.set(issue.id, orgSlug)
+            }
+          } catch (err) {
+            console.error(`[Sentry API] Failed to fetch issues for project ${project.slug} in org ${orgSlug}:`, err)
+          }
+        }
+        issuesByOrgSlug.set(orgSlug, fallbackIssues)
+      }
+    }
+    
+    // Aggregate all issues (deduplicated by ID)
+    const allIssues: SentryIssue[] = []
+    const seenIssueIds = new Set<string>()
+    for (const orgIssues of issuesByOrgSlug.values()) {
+      for (const issue of orgIssues) {
+        if (!seenIssueIds.has(issue.id)) {
+          seenIssueIds.add(issue.id)
+          allIssues.push(issue)
+        }
+      }
+    }
+    
+    console.log(`[Sentry API] Total unique issues fetched across all organizations: ${allIssues.length}`)
+
+    // Create project map: key is `${orgSlug}/${projectSlug}` to handle same slug across orgs
+    const projectMap = new Map<string, SentryProject>()
+    for (const project of projects) {
+      const key = `${project.organization.slug}/${project.slug}`
+      projectMap.set(key, project)
+    }
+
+    const results: Array<{ project: SentryProject; issues: SentryIssue[] }> = []
+    const issuesByProject = new Map<string, SentryIssue[]>()
+
+    // Group issues by project (using org/project key)
+    for (const issue of allIssues) {
+      const projectSlug = issue.project.slug
+      // Get org from our tracking map
+      const orgSlug = issueToOrgMap.get(issue.id)
+      
+      if (!orgSlug) {
+        // Fallback: try to infer from project slug (less reliable)
+        for (const project of projects) {
+          if (project.slug === projectSlug) {
+            issueToOrgMap.set(issue.id, project.organization.slug)
+            break
+          }
+        }
+        const fallbackOrg = issueToOrgMap.get(issue.id)
+        if (!fallbackOrg) {
+          console.warn(`[Sentry API] Could not determine org for issue ${issue.id} in project ${projectSlug}, skipping`)
+          continue
+        }
+      }
+      
+      const finalOrgSlug = orgSlug || issueToOrgMap.get(issue.id)!
+      const key = `${finalOrgSlug}/${projectSlug}`
+      if (!issuesByProject.has(key)) {
+        issuesByProject.set(key, [])
+      }
+      issuesByProject.get(key)!.push(issue)
+    }
+
+    // Create results array with project info
+    for (const [key, issues] of issuesByProject.entries()) {
+      const project = projectMap.get(key)
+      if (project) {
+        results.push({ project, issues })
+      } else {
+        // Project not in projects list, but has issues - create minimal project from issue data
+        const [orgSlug, projectSlug] = key.split("/")
+        const firstIssue = issues[0]
+        const issueIds = issues.map(i => i.id).join(", ")
+        
+        // Log warning for orphaned project
+        console.warn(
+          `[Sentry API] ⚠️  Creating minimal project fallback - project not found in projects list. ` +
+          `Issue IDs: [${issueIds}], Project: ${firstIssue.project.name} (${firstIssue.project.slug}, id: ${firstIssue.project.id}), ` +
+          `Organization: ${orgSlug || "unknown"}`
+        )
+        
+        const minimalProject: SentryProject = {
+          id: firstIssue.project.id,
+          slug: firstIssue.project.slug,
+          name: firstIssue.project.name,
+          platform: firstIssue.platform || null,
+          dateCreated: new Date().toISOString(),
+          firstEvent: null,
+          features: [],
+          status: "active",
+          isBookmarked: false,
+          organization: {
+            slug: orgSlug || "unknown",
+            id: orgSlug || "unknown", // Use orgSlug as placeholder (not available in issue response)
+            name: `Unknown (${orgSlug || "unknown"})`, // Derived placeholder from orgSlug
+          },
+          isMember: true,
+          color: "",
+        }
+        results.push({ project: minimalProject, issues })
+      }
+    }
+
+    // Add projects with no issues
+    for (const project of projects) {
+      const key = `${project.organization.slug}/${project.slug}`
+      if (!issuesByProject.has(key)) {
+        results.push({ project, issues: [] })
+      }
+    }
+    
+    console.log(`[Sentry API] Grouped issues into ${results.length} projects`)
+    return results
   }
 }

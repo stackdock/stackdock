@@ -42,13 +42,13 @@
   
   /* Provider Brand Colors */
   --provider-gridpane: #1b453b;
-  --provider-vercel: #000000;
+  --provider-vercel: #000000; /* Dark for light mode */
   --provider-netlify: #00e599;
   --provider-cloudflare: #FF6634;
   --provider-turso: #4ff8d2;
   --provider-neon: #01E59A;
   --provider-convex: #EFB025;
-  --provider-planetscale: #FAFBFC;
+  --provider-planetscale: #181717; /* Dark for light mode (near-black, matching GitHub) */
   --provider-vultr: #031059;
   --provider-digitalocean: #0080FF;
   --provider-linode: #00A95C;
@@ -91,6 +91,14 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  
+  /* Provider Brand Colors - Dark Mode Overrides */
+  /* Vercel: Light color for dark mode (was black in light mode) */
+  --provider-vercel: #ffffff;
+  /* PlanetScale: Light color for dark mode (was near-white in light mode, now dark in light mode) */
+  --provider-planetscale: #FAFBFC;
+  /* GitHub: Light color for dark mode (was near-black in light mode) */
+  --provider-github: #ffffff;
 }
 
 @theme inline {
@@ -140,6 +148,7 @@
   --color-provider-neon: var(--provider-neon);
   --color-provider-convex: var(--provider-convex);
   --color-provider-planetscale: var(--provider-planetscale);
+  --color-provider-sentry: var(--provider-sentry);
   --color-provider-vultr: var(--provider-vultr);
   --color-provider-digitalocean: var(--provider-digitalocean);
   --color-provider-linode: var(--provider-linode);

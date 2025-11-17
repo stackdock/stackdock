@@ -92,31 +92,30 @@ import { ProviderBadge } from "@/components/resources/shared/provider-badge"
 import { StatusBadge } from "@/components/resources/shared/status-badge"
 import { formatDate } from "@/components/resources/shared/format-utils"
 import { Badge } from "@/components/ui/badge"
-import { ExternalLink } from "lucide-react"
 
 type Issue = Doc<"issues">
 
 // Multi-column filter for title and project
-const multiColumnFilterFn: FilterFn<Issue> = (row, columnId, filterValue) => {
+const multiColumnFilterFn: FilterFn<Issue> = (row, _columnId, filterValue) => {
   const searchableContent = `${row.original.title} ${row.original.project || ""}`.toLowerCase()
   const searchTerm = (filterValue ?? "").toLowerCase()
   return searchableContent.includes(searchTerm)
 }
 
 // Status filter
-const statusFilterFn: FilterFn<Issue> = (row, columnId, filterValue: string[]) => {
+const statusFilterFn: FilterFn<Issue> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.status)
 }
 
 // Severity filter
-const severityFilterFn: FilterFn<Issue> = (row, columnId, filterValue: string[]) => {
+const severityFilterFn: FilterFn<Issue> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.severity)
 }
 
 // Provider filter
-const providerFilterFn: FilterFn<Issue> = (row, columnId, filterValue: string[]) => {
+const providerFilterFn: FilterFn<Issue> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.provider)
 }
@@ -137,19 +136,6 @@ function getSeverityBadgeVariant(severity: string): "default" | "secondary" | "d
   }
 }
 
-// Status badge mapping
-function getStatusBadgeVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
-  switch (status.toLowerCase()) {
-    case "open":
-      return "destructive"
-    case "resolved":
-      return "default"
-    case "ignored":
-      return "secondary"
-    default:
-      return "outline"
-  }
-}
 
 const columns: ColumnDef<Issue>[] = [
   {
@@ -194,7 +180,7 @@ const columns: ColumnDef<Issue>[] = [
     cell: ({ row }) => {
       const status = row.getValue("status") as string
       return (
-        <StatusBadge status={status} variant={getStatusBadgeVariant(status)} />
+        <StatusBadge status={status} />
       )
     },
     size: 120,
