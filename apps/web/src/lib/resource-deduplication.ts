@@ -352,17 +352,21 @@ export function deduplicateDomains(domains: Doc<"domains">[]): DeduplicatedDomai
   for (const domain of domains) {
     const normalizedDomain = normalizeDomainName(domain.domainName)
     
-    if (!groups.has(normalizedDomain)) {
-      groups.set(normalizedDomain, [])
+    // If normalized domain is empty, use unique fallback key (like deduplicateServers)
+    // This prevents invalid/empty domains from being incorrectly merged together
+    const groupKey = normalizedDomain || `unique:${domain._id}`
+    
+    if (!groups.has(groupKey)) {
+      groups.set(groupKey, [])
     }
     
-    groups.get(normalizedDomain)!.push(domain)
+    groups.get(groupKey)!.push(domain)
   }
   
   // Convert groups to deduplicated domains
   const deduplicated: DeduplicatedDomain[] = []
   
-  for (const [normalizedDomain, group] of groups.entries()) {
+  for (const [_groupKey, group] of groups.entries()) {
     if (group.length === 0) continue
     
     // Use most recent domain as primary (by updatedAt, or first if no timestamp)
