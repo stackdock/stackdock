@@ -137,21 +137,147 @@ export class SentryAPI {
   }
 
   /**
+   * List all issues for an organization
+   * Uses organization-level endpoint which is more efficient
+   * Handles both response formats: direct array or wrapped in { data: [...] }
+   */
+  async listOrgIssues(organizationSlug: string): Promise<SentryIssue[]> {
+    const allIssues: SentryIssue[] = []
+    let cursor: string | null = null
+
+    // Sentry uses cursor-based pagination
+    do {
+      const params = new URLSearchParams()
+      if (cursor) {
+        params.set("cursor", cursor)
+      }
+      params.set("per_page", "100")
+
+      // Organization-level endpoint - handle both response formats
+      const response = await this.request<any>(`/organizations/${organizationSlug}/issues/?${params.toString()}`)
+
+      // Handle both formats: direct array or wrapped in { data: [...] }
+      let issues: SentryIssue[] = []
+      let nextCursor: string | null = null
+
+      if (Array.isArray(response)) {
+        // Direct array format (from listOrgIssues.json)
+        issues = response
+        // Note: Direct array format might not have cursor info in response
+        // We'll need to check if there are more pages differently
+      } else if (response.data && Array.isArray(response.data)) {
+        // Wrapped format: { data: [...], next_cursor: ... }
+        issues = response.data
+        nextCursor = response.next_cursor || null
+      } else {
+        console.warn(`[Sentry API] Unexpected response format from org issues endpoint:`, typeof response)
+        break
+      }
+
+      if (issues.length > 0) {
+        allIssues.push(...issues)
+      }
+
+      // If we got less than per_page items, we're done (for direct array format)
+      if (Array.isArray(response) && issues.length < 100) {
+        break
+      }
+
+      cursor = nextCursor
+    } while (cursor)
+
+    return allIssues
+  }
+
+  /**
    * List all issues across all projects
-   * Fetches projects first, then issues for each project
+   * Uses organization-level endpoint for efficiency, then groups by project
    */
   async listAllIssues(): Promise<Array<{ project: SentryProject; issues: SentryIssue[] }>> {
     const projects = await this.listProjects()
-    const results: Array<{ project: SentryProject; issues: SentryIssue[] }> = []
+    
+    // Get organization slug from first project (all projects in same org)
+    if (projects.length === 0) {
+      return []
+    }
+    
+    const organizationSlug = projects[0].organization.slug
+    console.log(`[Sentry API] Fetching organization-level issues for org: ${organizationSlug}`)
+    
+    // Fetch all issues at organization level (more efficient)
+    let allIssues: SentryIssue[]
+    try {
+      allIssues = await this.listOrgIssues(organizationSlug)
+      console.log(`[Sentry API] Fetched ${allIssues.length} issues from organization endpoint`)
+    } catch (error) {
+      console.error(`[Sentry] Failed to fetch organization issues:`, error)
+      // Fallback to per-project fetching
+      console.log(`[Sentry API] Falling back to per-project fetching`)
+      const results: Array<{ project: SentryProject; issues: SentryIssue[] }> = []
+      for (const project of projects) {
+        try {
+          const issues = await this.listIssues(project.organization.slug, project.slug)
+          results.push({ project, issues })
+        } catch (err) {
+          console.error(`[Sentry] Failed to fetch issues for project ${project.slug}:`, err)
+          results.push({ project, issues: [] })
+        }
+      }
+      return results
+    }
 
-    // Fetch issues for each project
-    for (const project of projects) {
-      try {
-        const issues = await this.listIssues(project.organization.slug, project.slug)
+    // Group issues by project slug
+    const projectMap = new Map<string, SentryProject>()
+    projects.forEach(p => {
+      projectMap.set(p.slug, p)
+    })
+
+    const results: Array<{ project: SentryProject; issues: SentryIssue[] }> = []
+    const issuesByProject = new Map<string, SentryIssue[]>()
+
+    // Group issues by project
+    for (const issue of allIssues) {
+      const projectSlug = issue.project.slug
+      if (!issuesByProject.has(projectSlug)) {
+        issuesByProject.set(projectSlug, [])
+      }
+      issuesByProject.get(projectSlug)!.push(issue)
+    }
+
+    // Create results array with project info
+    for (const [projectSlug, issues] of issuesByProject.entries()) {
+      const project = projectMap.get(projectSlug)
+      if (project) {
         results.push({ project, issues })
-      } catch (error) {
-        console.error(`[Sentry] Failed to fetch issues for project ${project.slug}:`, error)
-        // Continue with other projects even if one fails
+      } else {
+        // Project not in projects list, but has issues - create minimal project from issue data
+        // Use first issue's project data and fill in required fields with defaults
+        const firstIssue = issues[0]
+        const minimalProject: SentryProject = {
+          id: firstIssue.project.id,
+          slug: firstIssue.project.slug,
+          name: firstIssue.project.name,
+          platform: firstIssue.platform || null,
+          dateCreated: new Date().toISOString(), // Not available, use current time
+          firstEvent: null,
+          features: [],
+          status: "active",
+          isBookmarked: false,
+          organization: {
+            slug: organizationSlug,
+            id: "", // Not available in issue response
+            name: "", // Not available in issue response
+          },
+          isMember: true,
+          color: "",
+        }
+        results.push({ project: minimalProject, issues })
+      }
+    }
+
+    // Add projects with no issues
+    for (const project of projects) {
+      if (!issuesByProject.has(project.slug)) {
         results.push({ project, issues: [] })
       }
     }

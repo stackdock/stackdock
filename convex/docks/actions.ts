@@ -107,7 +107,7 @@ export const syncDockResources = internalAction({
     let blockVolumes: any[] = [] // Block storage volumes (Vultr blocks, DO volumes)
     let buckets: any[] = [] // Object storage buckets (Linode buckets)
     let monitors: any[] = [] // Uptime monitors (Better Stack, etc.)
-    let issues: any[] = [] // Error issues (Sentry, etc.)
+    let issues: any[] = [] // Error issues (Sentry calls them "issues", we use "alerts" in UI)
 
     try {
       // GridPane-specific: Use GridPaneAPI directly
@@ -703,10 +703,17 @@ export const syncDockResources = internalAction({
         const api = new SentryAPI(args.apiKey)
 
         if (args.resourceTypes.includes("issues")) {
-          console.log(`[Dock Action] Fetching issues for ${args.provider}`)
+          console.log(`[Dock Action] ✅ Fetching issues for ${args.provider} (Sentry calls them "issues")`)
           const projectsWithIssues = await api.listAllIssues()
+          console.log(`[Dock Action] ✅ Fetched ${projectsWithIssues.length} projects with issues`)
+          // Log total issues count
+          const totalIssues = projectsWithIssues.reduce((sum, p) => sum + (p.issues?.length || 0), 0)
+          console.log(`[Dock Action] ✅ Total issues across all projects: ${totalIssues}`)
           // Flatten to array of { project, issues } objects
+          // Note: Sentry API uses "issues" terminology, we store them in "issues" table
           issues = projectsWithIssues
+        } else {
+          console.log(`[Dock Action] ⏭️  Skipping issues fetch - "issues" not in resourceTypes: [${args.resourceTypes.join(", ")}]`)
         }
 
         // Sentry only supports issues
@@ -764,6 +771,8 @@ export const syncDockResources = internalAction({
       console.log(`[Dock Action]   - dockId: ${args.dockId}`)
       console.log(`[Dock Action]   - provider: ${args.provider}`)
       console.log(`[Dock Action]   - resourceTypes: [${args.resourceTypes.join(", ")}]`)
+      console.log(`[Dock Action]   - issues: ${fetchedData.issues === undefined ? "undefined ❌" : `array(${fetchedData.issues.length}) ✅`}`)
+      console.log(`[Dock Action]   - issues in resourceTypes: ${args.resourceTypes.includes("issues") ? "✅ YES" : "❌ NO"}`)
       console.log(`[Dock Action]   - buckets: ${fetchedData.buckets === undefined ? "undefined ❌" : `array(${fetchedData.buckets.length}) ✅`}`)
       console.log(`[Dock Action]   - buckets in resourceTypes: ${args.resourceTypes.includes("buckets") ? "✅ YES" : "❌ NO"}`)
       console.log(`[Dock Action]   - isAutoSync: ${args.isAutoSync ? "✅ YES" : "❌ NO"}`)
@@ -771,7 +780,8 @@ export const syncDockResources = internalAction({
       // Log all resource types being passed
       Object.entries(fetchedData).forEach(([key, value]) => {
         if (value !== undefined) {
-          console.log(`[Dock Action]   - ${key}: array(${Array.isArray(value) ? value.length : "?"})`)
+          const count = Array.isArray(value) ? value.length : "?"
+          console.log(`[Dock Action]   - ${key}: array(${count})`)
         }
       })
       

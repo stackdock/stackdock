@@ -345,6 +345,10 @@ export interface DockAdapter {
    * 3. Map provider fields to universal schema
    * 4. Store all provider-specific data in `fullApiData`
    * 
+   * **Terminology Note**: Some providers (like Sentry) call these "issues", but StackDock
+   * uses "alerts" in user-facing contexts to avoid confusion with GitHub issues, bug trackers, etc.
+   * Internally, we use "issues" table for backward compatibility and semantic clarity.
+   * 
    * @param ctx - Convex mutation context (has database access)
    * @param dock - The dock document (contains encrypted API key)
    * @param preFetchedData - Optional: Pre-fetched data from action (if provided, skips fetch)

@@ -353,18 +353,21 @@ export default defineSchema({
     .index("by_dock_resource", ["dockId", "providerResourceId"]) // Prevent duplicate syncs
     .index("by_status", ["orgId", "status"]), // For filtering by status
 
-  // Master Fleet List: Issues (Errors/Exceptions)
+  // Master Fleet List: Issues (Errors/Exceptions/Alerts)
+  // Note: Sentry calls them "issues", but StackDock calls them "alerts" in user-facing contexts
+  // to avoid confusion with GitHub issues, bug trackers, etc. Internally, we use "issues" table
+  // for backward compatibility and semantic clarity (these are error tracking issues).
   issues: defineTable({
     orgId: v.id("organizations"),
     dockId: v.id("docks"),
     provider: v.string(), // "sentry", "rollbar", "bugsnag", etc.
-    providerResourceId: v.string(), // Issue ID from provider
+    providerResourceId: v.string(), // Issue ID from provider (Sentry calls it "issue ID")
     title: v.string(), // Issue title/name
     status: v.string(), // "open", "resolved", "ignored", etc.
     severity: v.string(), // "low", "medium", "high", "critical"
-    project: v.string(), // Project name
-    projectSlug: v.optional(v.string()), // Project slug
-    organizationSlug: v.optional(v.string()), // Organization slug
+    project: v.string(), // Provider project name (Sentry project, not StackDock project)
+    projectSlug: v.optional(v.string()), // Provider project slug
+    organizationSlug: v.optional(v.string()), // Provider organization slug
     count: v.optional(v.number()), // Number of occurrences
     userCount: v.optional(v.number()), // Number of affected users
     firstSeen: v.optional(v.number()), // First seen timestamp

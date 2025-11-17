@@ -31,6 +31,7 @@ const providerBorderColors: Record<string, string> = {
   coolify: "var(--provider-coolify)",
   betterstack: "var(--provider-betterstack)",
   "better-stack": "var(--provider-betterstack)", // Handle hyphenated version
+  sentry: "var(--provider-sentry)",
 }
 
 // Map provider names to their display names (with proper capitalization)
@@ -51,6 +52,7 @@ const providerDisplayNames: Record<string, string> = {
   coolify: "Coolify",
   betterstack: "BetterStack",
   "better-stack": "BetterStack", // Handle hyphenated version
+  sentry: "Sentry",
 }
 
 /**

@@ -31,7 +31,9 @@ export interface SentryProject {
 
 /**
  * Sentry Issue
- * Maps to universal `issues` table
+ * 
+ * **Terminology Note**: Sentry calls these "issues", but StackDock maps them to the
+ * universal `issues` table (StackDock uses "alerts" in user-facing contexts to avoid confusion with GitHub issues, bug trackers, etc.)
  * 
  * @see https://docs.sentry.io/api/events/list-a-projects-issues/
  */

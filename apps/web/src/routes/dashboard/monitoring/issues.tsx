@@ -36,12 +36,24 @@ function IssuesPage() {
           <div className="space-y-2">
             <h3 className="text-lg font-semibold">No issues found</h3>
             <p className="text-sm text-muted-foreground max-w-sm">
-              Connect a monitoring provider dock (like Sentry) to start tracking errors.
+              {issues === undefined 
+                ? "Loading issues..."
+                : "Connect a monitoring provider dock (like Sentry) and sync it to start tracking errors."}
             </p>
+            {issues !== undefined && (
+              <p className="text-xs text-muted-foreground max-w-sm mt-2">
+                If you already have a Sentry dock connected, make sure to sync it from the Docks page.
+              </p>
+            )}
           </div>
-          <Button asChild>
-            <a href="/dashboard/docks/add">Connect a Dock</a>
-          </Button>
+          <div className="flex gap-2">
+            <Button asChild variant="outline">
+              <a href="/dashboard/docks/connected">View Docks</a>
+            </Button>
+            <Button asChild>
+              <a href="/dashboard/docks/add">Connect a Dock</a>
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">

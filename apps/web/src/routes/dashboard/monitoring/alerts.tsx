@@ -1,11 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router"
+import { useQuery } from "convex/react"
+import { api } from "convex/_generated/api"
+import { IssuesTable } from "@/components/monitoring/issues-table"
 import { Bell } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 export const Route = createFileRoute("/dashboard/monitoring/alerts")({
   component: AlertsPage,
 })
 
 function AlertsPage() {
+  const alerts = useQuery(api["monitoring/queries"].listAlerts)
+  const alertsList = alerts || []
+
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 md:p-6 lg:p-8">
       <div className="space-y-0.5">
@@ -13,22 +20,34 @@ function AlertsPage() {
           Alerts
         </h1>
         <p className="text-sm text-muted-foreground md:text-base">
-          System alerts and notifications
+          System alerts and notifications from your monitoring providers
         </p>
       </div>
-      
-      {/* Alerts Table */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            Alerts
-          </h2>
+
+      {alertsList.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed p-12 text-center">
+          <Bell className="h-12 w-12 text-muted-foreground" />
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold">No alerts found</h3>
+            <p className="text-sm text-muted-foreground max-w-sm">
+              Connect a monitoring provider dock (like Sentry) to start tracking alerts and errors.
+            </p>
+          </div>
+          <Button asChild>
+            <a href="/dashboard/docks/add">Connect a Dock</a>
+          </Button>
         </div>
-        <div className="rounded-lg border border-border bg-card p-4 md:p-6">
-          <p className="text-muted-foreground">Alerts coming soon...</p>
+      ) : (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Bell className="h-5 w-5" />
+              {alertsList.length} {alertsList.length === 1 ? "Alert" : "Alerts"}
+            </h2>
+          </div>
+          <IssuesTable data={alerts} />
         </div>
-      </div>
+      )}
     </main>
   )
 }

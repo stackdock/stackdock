@@ -7,6 +7,10 @@
  * - GET /projects/ → validateCredentials() and listProjects()
  * - GET /projects/{org}/{project}/issues/ → syncIssues()
  * 
+ * **Terminology Note**: Sentry calls them "issues", but StackDock uses "alerts" in user-facing
+ * contexts to avoid confusion with GitHub issues, bug trackers, etc. Internally, we use "issues"
+ * table for backward compatibility and semantic clarity (these are error tracking issues).
+ * 
  * @see https://docs.sentry.io/api/
  * @see convex/docks/_types.ts for DockAdapter interface
  */
@@ -68,12 +72,16 @@ export const sentryAdapter: DockAdapter = {
   },
 
   /**
-   * Sync Sentry issues to universal `issues` table
+   * Sync Sentry "issues" to universal `issues` table
+   * 
+   * **Terminology**: Sentry calls them "issues", but StackDock uses "alerts" in user-facing
+   * contexts to avoid confusion with GitHub issues, bug trackers, etc. Internally, we use "issues"
+   * table for backward compatibility and semantic clarity (these are error tracking issues).
    * 
    * Flow:
    * 1. If preFetchedData provided, use it (from action)
    * 2. Otherwise, decrypt API key and fetch data
-   * 3. For each project, fetch issues
+   * 3. For each project, fetch issues (Sentry's terminology)
    * 4. For each issue, upsert into `issues` table
    * 5. Map level to severity, status to universal status
    * 6. Store all Sentry fields in fullApiData
@@ -83,10 +91,15 @@ export const sentryAdapter: DockAdapter = {
     dock: Doc<"docks">,
     preFetchedData?: Array<{ project: SentryProject; issues: SentryIssue[] }>
   ): Promise<void> {
+    console.log(`[Sentry Adapter] 🔄 syncIssues called for dock ${dock._id}`)
+    console.log(`[Sentry Adapter]   - preFetchedData provided: ${!!preFetchedData}`)
+    console.log(`[Sentry Adapter]   - preFetchedData length: ${preFetchedData?.length || 0}`)
+    
     let projectsWithIssues: Array<{ project: SentryProject; issues: SentryIssue[] }>
 
     if (preFetchedData) {
       // Use pre-fetched data from action
+      console.log(`[Sentry Adapter] ✅ Using pre-fetched data: ${preFetchedData.length} projects`)
       projectsWithIssues = preFetchedData
     } else {
       // Fetch data directly (fallback, shouldn't happen in normal flow)
@@ -102,8 +115,12 @@ export const sentryAdapter: DockAdapter = {
     // Track synced resource IDs for orphan detection
     const syncedResourceIds = new Set<string>()
 
-    // Sync each issue to universal table
+    // Sync each Sentry "issue" to StackDock "issues" table
+    let totalIssuesSynced = 0
+    console.log(`[Sentry Adapter] 🔄 Starting sync for ${projectsWithIssues.length} projects`)
+    
     for (const { project, issues } of projectsWithIssues) {
+      console.log(`[Sentry Adapter]   - Project: ${project.name} (${project.slug}) - ${issues.length} issues`)
       for (const issue of issues) {
         const providerResourceId = issue.id
         syncedResourceIds.add(providerResourceId)
@@ -126,7 +143,8 @@ export const sentryAdapter: DockAdapter = {
           project: project.name,
           projectSlug: project.slug,
           organizationSlug: project.organization.slug,
-          count: issue.count,
+          // Sentry API returns count as string, convert to number
+          count: typeof issue.count === "string" ? parseInt(issue.count, 10) : issue.count,
           userCount: issue.userCount,
           firstSeen: isoToTimestamp(issue.firstSeen),
           lastSeen: isoToTimestamp(issue.lastSeen),
@@ -146,9 +164,12 @@ export const sentryAdapter: DockAdapter = {
           await ctx.db.patch(existing._id, issueData)
         } else {
           await ctx.db.insert("issues", issueData)
+          totalIssuesSynced++
         }
       }
     }
+    
+    console.log(`[Sentry Adapter] ✅ Sync complete: ${totalIssuesSynced} new issues inserted`)
 
     // Delete orphaned resources (exist in DB but not in API response)
     const existingIssues = await ctx.db
