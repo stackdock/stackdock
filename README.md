@@ -195,8 +195,8 @@ You should see:
 
 ## ✅ Current Status
 
-**Last Updated**: November 16, 2025  
-**Current Status**: See `STATUS.md` for detailed status and next steps
+**Last Updated**: November 17, 2025  
+**Current Status**: MVP Ready - 16 Providers Integrated
 
 ### Core Platform ✅
 - ✅ **TanStack Start** - Fully configured with file-based routing
@@ -207,14 +207,15 @@ You should see:
   - ✅ All resource queries protected (`resources:read`)
   - ✅ All project queries protected (`projects:read`)
   - ✅ All mutations protected (manual checks + `withRBAC` middleware)
-  - ✅ Monitoring permission added for Sentry/Linear integration
+  - ✅ Monitoring permission added for Sentry integration
 - ✅ **Encryption** - AES-256-GCM encryption for API keys (no .env required)
 - ✅ **Audit Logging** - Comprehensive audit trail infrastructure
 - ✅ **Navigation** - Clean collapsible navigation structure
 - ✅ **Continuous Sync** - Automated background syncing (60s+ intervals, provider-aware)
 - ✅ **Rate Limit Tracking** - Comprehensive rate limit monitoring and logging
+- ✅ **Polymorphic Deduplication** - Client-side deduplication for servers and domains
 
-### Provider Integration ✅ (13 Providers)
+### Provider Integration ✅ (16 Providers)
 
 **PaaS/Web Services** (5 providers):
 - ✅ GridPane (servers, web services, domains, backups)
@@ -238,19 +239,26 @@ You should see:
 **Project Providers** (1 provider):
 - ✅ GitHub (repos/branches/commits/issues/)
 
+**Monitoring Providers** (2 providers):
+- ✅ Sentry (issues/errors) - Integrated into monitoring/issues table
+- ✅ Better Stack (uptime monitoring)
+
 ### Universal Tables ✅
-- ✅ `servers` - 6 providers (GridPane, Vultr, DigitalOcean, Linode, Hetzner, Coolify)
+- ✅ `servers` - 6 providers (GridPane, Vultr, DigitalOcean, Linode, Hetzner, Coolify) - Polymorphic deduplication ✅
 - ✅ `webServices` - 5 providers (GridPane, Vercel, Netlify, Cloudflare, Coolify)
-- ✅ `domains` - 2 providers (GridPane, Cloudflare)
+- ✅ `domains` - 2 providers (GridPane, Cloudflare) - Polymorphic deduplication ✅
 - ✅ `databases` - 5 providers (Turso, Neon, Convex, PlanetScale, Coolify)
+- ✅ `issues` - 1 provider (Sentry) - Monitoring issues/errors
+- ✅ `monitors` - 1 provider (Better Stack) - Uptime monitoring
 - ✅ `backupSchedules` - 2 providers (GridPane, Neon)
 - ✅ `deployments` - 1 provider (Convex)
 - ✅ `projects` - 1 provider (GitHub - repositories, branches, issues, commits)
 
-### Next Phase 🎯
-- 🔄 Projects & Monitoring providers (Linear + Sentry) - **NEXT** ( complete)
-- 📋 Complex auth IaaS providers (AWS/GCP/Azure) - Instances w/ read-only IAM roles
-- 📋 Insights board (data visualization)
+### Shelved for Post-MVP 📋
+- 📋 **Linear adapter** - Shelved (complex project linking system)
+- 📋 **Projects Core System** - Shelved (polymorphic resource linking to projects)
+- 📋 **Complex Auth IaaS** (AWS/GCP/Azure) - Shelved (multi-field auth complexity)
+- 📋 **Insights Board Enhancements** - Shelved (advanced visualization deferred)
 
 ---
 
@@ -310,7 +318,7 @@ All documentation is organized in `docs/`:
 
 ### ✅ Phase 2: Translation Layer Validation (Mission 5 & 7 - Complete)
 
-**Status**: ✅ **COMPLETE** - Universal schema validated across 13 providers
+**Status**: ✅ **COMPLETE** - Universal schema validated across 16 providers
 
 **PaaS Providers** (Web Services) ✅:
 - [x] Vercel dock adapter 
@@ -331,42 +339,42 @@ All documentation is organized in `docs/`:
 
 **Translation Layer**: ✅ Validated and refined across multiple provider types
 
-### 🔄 Phase 3: Projects & Monitoring Providers (Current Focus - Mission 7)
+### ✅ Phase 3: Projects & Monitoring Providers (Complete)
 
-**Status**: IN PROGRESS - GitHub complete, Projects UI in progress, Linear/Sentry next
+**Status**: ✅ **COMPLETE** - GitHub and Sentry integrated
 
 **Projects & Monitoring Providers** (Simple API Key Auth):
 - [x] GitHub adapter (read-only) ✅
   - Repos, branches, issues, commits → `projects` table
   - Intelligent commit pagination (hybrid approach)
   - Host filter for multi-provider support
-- [ ] Projects UI - **IN PROGRESS**
+- [x] Projects UI - **COMPLETE**
   - [x] Code page with repositories table ✅
-  - [ ] Create/edit projects
-  - [ ] Link resources to projects
-  - [ ] Project detail pages
-- [ ] Linear adapter (read-only) - **NEXT**
-  - Projects, issues → `projects` table
-- [ ] Sentry adapter (read-only)
-  - Projects, alerts → monitoring/alerts structure
+- [x] Sentry adapter (read-only) ✅
+  - Issues/errors → `issues` table (monitoring/issues page)
+- [x] Better Stack adapter (read-only) ✅
+  - Uptime monitoring → `monitors` table
 
-**Strategy**: Build Projects and Monitoring pages with real data before tackling complex auth
+**Shelved for Post-MVP**:
+- [ ] Linear adapter - **SHELVED** (complex project linking system)
+- [ ] Projects Core System - **SHELVED** (polymorphic resource linking)
 
-### 📋 Phase 4: Complex Auth IaaS Providers (After Phase 3 - Mission 7)
+### 📋 Phase 4: Complex Auth IaaS Providers (Shelved)
 
-**IaaS Providers** (Multi-Field Auth):
+**IaaS Providers** (Multi-Field Auth) - **SHELVED FOR POST-MVP**:
 - [ ] AWS adapter (IAM role, multi-field auth)
 - [ ] GCP adapter (service account, multi-field auth)
 - [ ] Azure adapter (client ID/secret/tenant, multi-field auth)
 
-### 📋 Phase 5: Insights Board (Mission 8)
+### 📋 Phase 5: Insights Board (Shelved)
 
-**Insights Board**:
-- [ ] Data visualization
-- [ ] Aggregated dashboards
-- [ ] Cross-provider analytics
+**Insights Board** - **BASIC VERSION COMPLETE, ENHANCEMENTS SHELVED**:
+- [x] Basic insights dashboard with deduplicated counts ✅
+- [ ] Advanced data visualization - **SHELVED**
+- [ ] Aggregated dashboards - **SHELVED**
+- [ ] Cross-provider analytics - **SHELVED**
 
-**Current Progress**: Core read only platform complete. Universal schema validated across 13 providers. UI foundation polished. **Current**: Adding Linear/GitHub/Sentry (Projects & Monitoring). **Next**: Complex auth IaaS (AWS/GCP/Azure), then Insights board.
+**Current Progress**: ✅ **MVP COMPLETE** - Core platform complete. Universal schema validated across 16 providers. UI foundation polished. Monitoring integration complete (Sentry). Polymorphic deduplication working. **Shelved**: Linear, Projects Core System, Complex Auth IaaS, Insights enhancements.
 
 ---
 
@@ -412,7 +420,7 @@ vercelDeployments: { ... }
 ```
 User → Enters API key/token → System validates → Encrypts → Stores in docks table
 ```
-*13 providers supported: GridPane, Vercel, Netlify, Cloudflare, Turso, Neon, Convex, PlanetScale, Vultr, DigitalOcean, Linode, Hetzner, Coolify*
+*16 providers supported: GridPane, Vercel, Netlify, Cloudflare, Turso, Neon, Convex, PlanetScale, Vultr, DigitalOcean, Linode, Hetzner, Coolify, GitHub, Sentry, Better Stack*
 
 **2. Sync Resources** ✅:
 ```
@@ -440,25 +448,29 @@ Real-time status updates via Convex subscriptions
 
 **✅ What's Working**:
 - Core platform (auth, RBAC, encryption, audit)
-- 13 providers integrated and syncing
+- 16 providers integrated and syncing
 - Universal schema validated across multiple provider types
 - Resource tables displaying real-time data from all providers
 - UI foundation fully functional (TanStack Table components)
 - Real-time sync (Convex subscriptions)
 - Provider-agnostic UI (badges, tables, sheets)
+- Polymorphic deduplication (servers and domains)
+- Monitoring integration (Sentry issues, Better Stack uptime)
 
-**🎯 Current Focus**:
-- Linear + GitHub + Sentry adapters (Projects & Monitoring providers) - **NEXT**
-- Complex auth IaaS providers (AWS/GCP/Azure) - After Projects & Monitoring
-- Insights board (data visualization)
-- See [`stand-downs/working/MISSION-STATUS.md`](./stand-downs/working/MISSION-STATUS.md) for current mission status
+**🎯 MVP Status**:
+- ✅ **MVP COMPLETE** - 16 providers integrated
+- ✅ Sentry issues integrated into monitoring/issues table
+- ✅ Polymorphic deduplication working
+- ✅ Insights dashboard with accurate counts
+- 📋 Post-MVP: Linear, Projects Core System, Complex Auth IaaS, Insights enhancements
 
 **🚀 What You Can Do Now** (READ-ONLY):
-- Connect 13 providers with encrypted API keys ✅ (read-only)
+- Connect 16 providers with encrypted API keys ✅ (read-only)
 - Sync resources from all providers ✅ (read-only sync)
 - View unified dashboard with all resources ✅ (read-only viewing)
 - See real-time updates across all providers ✅ (read-only subscriptions)
-- Add more provider adapters (AWS, GCP, Azure, Sentry, etc.) (read-only adapters)
+- View monitoring issues from Sentry ✅ (read-only)
+- View uptime monitors from Better Stack ✅ (read-only)
 
 **⚠️ What You CANNOT Do**:
 - ❌ Create, modify, or delete any resources
@@ -466,10 +478,17 @@ Real-time status updates via Convex subscriptions
 - ❌ Make changes to provider resources
 - ❌ Perform any write operations
 
-**📋 Next Milestone**: Solo Developer MVP
-- Projects & Monitoring providers (Linear + GitHub + Sentry)
-- Complex auth providers (AWS/GCP/Azure)
-- Insights board (data visualization)
+**📋 MVP Milestone**: ✅ **COMPLETE**
+- ✅ 16 providers integrated
+- ✅ Monitoring providers (Sentry + Better Stack)
+- ✅ Polymorphic deduplication
+- ✅ Basic insights dashboard
+
+**📋 Post-MVP Roadmap**:
+- Linear adapter (shelved)
+- Projects Core System (shelved)
+- Complex auth providers (AWS/GCP/Azure - shelved)
+- Insights board enhancements (shelved)
 
 ### For Developers Finding This Repo
 
@@ -478,9 +497,11 @@ Real-time status updates via Convex subscriptions
 - Review code (all open source)
 - Understand the patterns (universal tables, dock adapters)
 - Set up locally (see Quick Start)
-- Connect 13 providers and sync resources ✅ (read-only)
+- Connect 16 providers and sync resources ✅ (read-only)
 - View unified dashboard with all resources ✅ (read-only)
-- Contribute adapters for new providers (AWS, GCP, Azure, Sentry, etc.) (read-only adapters)
+- View monitoring issues from Sentry ✅ (read-only)
+- View uptime monitors from Better Stack ✅ (read-only)
+- Contribute adapters for new providers (read-only adapters)
 - Build UI components (read-only display components)
 
 **⚠️ You CANNOT**:
@@ -500,17 +521,27 @@ Real-time status updates via Convex subscriptions
 ### Planned Docks (Adapters)
 
 **PaaS/Server Management**:
-✅ GridPane, ✅ Vercel, ✅ Netlify, ✅ Coolify (read-only: servers, services, databases), Kinsta, Rocket.net, RunCloud, Cloudways, Render, Fly.io, Railway, Laravel Forge, Ploi, InstaWP
+✅ GridPane, ✅ Vercel, ✅ Netlify, ✅ Cloudflare, ✅ Coolify (read-only: servers, services, databases)
+📋 Kinsta, Rocket.net, RunCloud, Cloudways, Render, Fly.io, Railway, Laravel Forge, Ploi, InstaWP (planned)
 
 **IaaS**:
 ✅ Vultr, ✅ DigitalOcean, ✅ Linode, ✅ Hetzner (simple auth complete)
-AWS, GCP, Azure (multi-field auth - next)
+📋 AWS, GCP, Azure (multi-field auth - shelved for post-MVP)
+
+**Database Providers**:
+✅ Turso, ✅ Neon, ✅ Convex, ✅ PlanetScale
 
 **DNS/Domains**:
-Cloudflare, DNSimple, DNS Made Easy, Name.com, Namecheap
+✅ Cloudflare, ✅ GridPane
+📋 DNSimple, DNS Made Easy, Name.com, Namecheap (planned)
 
 **APM/Monitoring**:
-Posthog, New Relic, Sentry, Datadog
+✅ Sentry (issues/errors), ✅ Better Stack (uptime)
+📋 Posthog, New Relic, Datadog (planned)
+
+**Project Management**:
+✅ GitHub (repositories, branches, issues, commits)
+📋 Linear (shelved for post-MVP)
 
 **If it has an API, it can be a dock.**
 
