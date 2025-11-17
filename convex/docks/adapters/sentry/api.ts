@@ -19,6 +19,7 @@ export class SentryAPI {
 
   /**
    * Make authenticated request to Sentry API
+   * Returns JSON response only (headers discarded)
    */
   private async request<T>(
     endpoint: string,
@@ -43,6 +44,89 @@ export class SentryAPI {
     }
 
     return response.json()
+  }
+
+  /**
+   * Parse Link header to extract pagination cursor
+   * Sentry uses Link headers with rel="next" and rel="previous"
+   * Format: <url>; rel="next", <url>; rel="previous"
+   * Returns the cursor parameter from the next URL, or null if no next link
+   */
+  private parseLinkHeader(linkHeader: string | null): string | null {
+    if (!linkHeader) return null
+
+    // Find rel="next" link
+    const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/i)
+    if (!nextMatch) return null
+
+    const nextUrl = nextMatch[1]
+    
+    try {
+      // Handle both absolute and relative URLs
+      // If relative, resolve against baseUrl
+      const url = nextUrl.startsWith("http")
+        ? new URL(nextUrl)
+        : new URL(nextUrl, this.baseUrl)
+      
+      const cursor = url.searchParams.get("cursor")
+      return cursor
+    } catch (error) {
+      console.warn(`[Sentry API] Failed to parse Link header URL: ${nextUrl}`, error)
+      return null
+    }
+  }
+
+  /**
+   * Fetch paginated data from Sentry API
+   * Sentry returns plain JSON arrays and pagination via Link headers
+   * This method handles pagination by parsing Link headers
+   */
+  private async fetchPaginated<T>(
+    endpoint: string,
+    params: URLSearchParams = new URLSearchParams()
+  ): Promise<T[]> {
+    const allItems: T[] = []
+    let cursor: string | null = null
+
+    do {
+      const currentParams = new URLSearchParams(params)
+      if (cursor) {
+        currentParams.set("cursor", cursor)
+      }
+      currentParams.set("per_page", "100")
+
+      const url = `${this.baseUrl}${endpoint}?${currentParams.toString()}`
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => response.statusText)
+        throw new Error(
+          `Sentry API error (${response.status}): ${errorText}`
+        )
+      }
+
+      // Sentry returns plain JSON arrays
+      const items: T[] = await response.json()
+      if (Array.isArray(items) && items.length > 0) {
+        allItems.push(...items)
+      }
+
+      // Parse Link header for next cursor
+      const linkHeader = response.headers.get("Link")
+      cursor = this.parseLinkHeader(linkHeader)
+
+      // If we got less than per_page items, we're done (no more pages)
+      if (items.length < 100) {
+        break
+      }
+    } while (cursor)
+
+    return allItems
   }
 
   /**
@@ -103,90 +187,32 @@ export class SentryAPI {
 
   /**
    * List issues for a project
-   * Returns array of issues
+   * 
+   * Sentry API returns plain JSON arrays (not wrapped objects)
+   * Pagination is handled via Link headers (rel="next")
    * 
    * @param organizationSlug Organization slug
    * @param projectSlug Project slug
    */
   async listIssues(organizationSlug: string, projectSlug: string): Promise<SentryIssue[]> {
-    const allIssues: SentryIssue[] = []
-    let cursor: string | null = null
-
-    // Sentry uses cursor-based pagination
-    do {
-      const params = new URLSearchParams()
-      if (cursor) {
-        params.set("cursor", cursor)
-      }
-      params.set("per_page", "100")
-
-      const response = await this.request<{
-        data: SentryIssue[]
-        next_cursor: string | null
-        prev_cursor: string | null
-      }>(`/projects/${organizationSlug}/${projectSlug}/issues/?${params.toString()}`)
-
-      if (response.data && response.data.length > 0) {
-        allIssues.push(...response.data)
-      }
-
-      cursor = response.next_cursor || null
-    } while (cursor)
-
-    return allIssues
+    return this.fetchPaginated<SentryIssue>(
+      `/projects/${organizationSlug}/${projectSlug}/issues/`
+    )
   }
 
   /**
    * List all issues for an organization
    * Uses organization-level endpoint which is more efficient
-   * Handles both response formats: direct array or wrapped in { data: [...] }
+   * 
+   * Sentry API returns plain JSON arrays (not wrapped objects)
+   * Pagination is handled via Link headers (rel="next")
+   * 
+   * @param organizationSlug Organization slug
    */
   async listOrgIssues(organizationSlug: string): Promise<SentryIssue[]> {
-    const allIssues: SentryIssue[] = []
-    let cursor: string | null = null
-
-    // Sentry uses cursor-based pagination
-    do {
-      const params = new URLSearchParams()
-      if (cursor) {
-        params.set("cursor", cursor)
-      }
-      params.set("per_page", "100")
-
-      // Organization-level endpoint - handle both response formats
-      const response = await this.request<any>(`/organizations/${organizationSlug}/issues/?${params.toString()}`)
-
-      // Handle both formats: direct array or wrapped in { data: [...] }
-      let issues: SentryIssue[] = []
-      let nextCursor: string | null = null
-
-      if (Array.isArray(response)) {
-        // Direct array format (from listOrgIssues.json)
-        issues = response
-        // Note: Direct array format might not have cursor info in response
-        // We'll need to check if there are more pages differently
-      } else if (response.data && Array.isArray(response.data)) {
-        // Wrapped format: { data: [...], next_cursor: ... }
-        issues = response.data
-        nextCursor = response.next_cursor || null
-      } else {
-        console.warn(`[Sentry API] Unexpected response format from org issues endpoint:`, typeof response)
-        break
-      }
-
-      if (issues.length > 0) {
-        allIssues.push(...issues)
-      }
-
-      // If we got less than per_page items, we're done (for direct array format)
-      if (Array.isArray(response) && issues.length < 100) {
-        break
-      }
-
-      cursor = nextCursor
-    } while (cursor)
-
-    return allIssues
+    return this.fetchPaginated<SentryIssue>(
+      `/organizations/${organizationSlug}/issues/`
+    )
   }
 
   /**
