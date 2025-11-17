@@ -4,6 +4,11 @@ import matter from 'gray-matter'
 import readingTime from 'reading-time'
 import yaml from 'js-yaml'
 
+// Sanitizes a slug to contain only safe URL path characters: a-z, A-Z, 0-9, -, _
+function sanitizeSlug(slug: string): string {
+  return slug.replace(/[^a-zA-Z0-9-_]/g, '');
+}
+
 // Configure gray-matter to use js-yaml 4 compatible parser
 const matterOptions = {
   engines: {
@@ -215,7 +220,8 @@ export function getAllDrafts(): BlogPost[] {
     
     const drafts = draftFiles
       .map((file) => {
-        const slug = file.replace(/\.mdx$/, '')
+        const rawSlug = file.replace(/\.mdx$/, '')
+        const slug = sanitizeSlug(rawSlug)
         try {
           return getDraftBySlug(slug)
         } catch (error) {
