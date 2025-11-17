@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useQuery } from "convex/react"
 import { api } from "convex/_generated/api"
+import { useMemo } from "react"
 import { Globe } from "lucide-react"
 import { DomainsTable } from "@/components/resources/domains-table"
+import { deduplicateDomains } from "@/lib/resource-deduplication"
 
 export const Route = createFileRoute("/dashboard/infrastructure/networking")({
   component: NetworkingPage,
@@ -22,7 +24,14 @@ function NetworkingPage() {
                !domainName.includes('.canary.') &&
                !domainName.includes('.staging.')
       })
-  const displayCount = filteredDomainsList?.length ?? 0
+  
+  // Deduplicate domains for accurate count
+  const deduplicatedDomains = useMemo(() => {
+    if (!filteredDomainsList) return undefined
+    return deduplicateDomains(filteredDomainsList)
+  }, [filteredDomainsList])
+  
+  const displayCount = deduplicatedDomains?.length ?? 0
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 md:p-6 lg:p-8">

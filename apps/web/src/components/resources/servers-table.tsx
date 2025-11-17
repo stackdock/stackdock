@@ -96,29 +96,37 @@ import { ProviderBadge } from "./shared/provider-badge"
 import { StatusBadge } from "./shared/status-badge"
 import { formatDate } from "./shared/format-utils"
 import { TableSkeleton } from "./shared/table-skeleton"
+import { deduplicateServers, type DeduplicatedServer } from "@/lib/resource-deduplication"
 
 type Server = Doc<"servers">
 
 // Multi-column filter for name + IP
-const multiColumnFilterFn: FilterFn<Server> = (row, columnId, filterValue) => {
+const multiColumnFilterFn: FilterFn<Server | DeduplicatedServer> = (row, columnId, filterValue) => {
   const searchableContent = `${row.original.name} ${row.original.primaryIpAddress || ""}`.toLowerCase()
   const searchTerm = (filterValue ?? "").toLowerCase()
   return searchableContent.includes(searchTerm)
 }
 
 // Status filter
-const statusFilterFn: FilterFn<Server> = (row, columnId, filterValue: string[]) => {
+const statusFilterFn: FilterFn<Server | DeduplicatedServer> = (row, columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.status)
 }
 
-// Provider filter
-const providerFilterFn: FilterFn<Server> = (row, columnId, filterValue: string[]) => {
+// Provider filter - works with both regular servers and deduplicated servers
+const providerFilterFn: FilterFn<Server | DeduplicatedServer> = (row, columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
+  
+  // Handle deduplicated servers (has providers array)
+  if ("providers" in row.original && Array.isArray(row.original.providers)) {
+    return row.original.providers.some(provider => filterValue.includes(provider))
+  }
+  
+  // Handle regular servers
   return filterValue.includes(row.original.provider)
 }
 
-const columns: ColumnDef<Server>[] = [
+const columns: ColumnDef<Server | DeduplicatedServer>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -150,7 +158,15 @@ const columns: ColumnDef<Server>[] = [
   {
     header: "Provider",
     accessorKey: "provider",
-    cell: ({ row }) => <ProviderBadge provider={row.getValue("provider")} />,
+    cell: ({ row }) => {
+      // Handle deduplicated servers (has providers array)
+      const server = row.original
+      if ("providers" in server && Array.isArray(server.providers)) {
+        return <ProviderBadge provider={server.providers} />
+      }
+      // Handle regular servers
+      return <ProviderBadge provider={row.getValue("provider") as string} />
+    },
     size: 120,
     filterFn: providerFilterFn,
   },
@@ -204,8 +220,14 @@ export function ServersTable({ data, onDelete }: ServersTableProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }])
 
+  // Deduplicate servers before passing to table
+  const deduplicatedData = useMemo(() => {
+    if (!data) return undefined
+    return deduplicateServers(data)
+  }, [data])
+
   const table = useReactTable({
-    data: data || [],
+    data: deduplicatedData || [],
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),

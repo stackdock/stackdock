@@ -34,9 +34,6 @@ import { Route as DashboardOperationsBackupsRouteImport } from './routes/dashboa
 import { Route as DashboardMonitoringUptimeRouteImport } from './routes/dashboard/monitoring/uptime'
 import { Route as DashboardMonitoringLogsRouteImport } from './routes/dashboard/monitoring/logs'
 import { Route as DashboardMonitoringIssuesRouteImport } from './routes/dashboard/monitoring/issues'
-import { Route as DashboardMonitoringErrorsRouteImport } from './routes/dashboard/monitoring/errors'
-import { Route as DashboardMonitoringAlertsRouteImport } from './routes/dashboard/monitoring/alerts'
-import { Route as DashboardMonitoringActivityRouteImport } from './routes/dashboard/monitoring/activity'
 import { Route as DashboardInfrastructureStorageRouteImport } from './routes/dashboard/infrastructure/storage'
 import { Route as DashboardInfrastructureNetworkingRouteImport } from './routes/dashboard/infrastructure/networking'
 import { Route as DashboardInfrastructureDataRouteImport } from './routes/dashboard/infrastructure/data'
@@ -184,24 +181,6 @@ const DashboardMonitoringIssuesRoute =
     path: '/monitoring/issues',
     getParentRoute: () => DashboardRoute,
   } as any)
-const DashboardMonitoringErrorsRoute =
-  DashboardMonitoringErrorsRouteImport.update({
-    id: '/monitoring/errors',
-    path: '/monitoring/errors',
-    getParentRoute: () => DashboardRoute,
-  } as any)
-const DashboardMonitoringAlertsRoute =
-  DashboardMonitoringAlertsRouteImport.update({
-    id: '/monitoring/alerts',
-    path: '/monitoring/alerts',
-    getParentRoute: () => DashboardRoute,
-  } as any)
-const DashboardMonitoringActivityRoute =
-  DashboardMonitoringActivityRouteImport.update({
-    id: '/monitoring/activity',
-    path: '/monitoring/activity',
-    getParentRoute: () => DashboardRoute,
-  } as any)
 const DashboardInfrastructureStorageRoute =
   DashboardInfrastructureStorageRouteImport.update({
     id: '/storage',
@@ -296,9 +275,6 @@ export interface FileRoutesByFullPath {
   '/dashboard/infrastructure/data': typeof DashboardInfrastructureDataRoute
   '/dashboard/infrastructure/networking': typeof DashboardInfrastructureNetworkingRoute
   '/dashboard/infrastructure/storage': typeof DashboardInfrastructureStorageRoute
-  '/dashboard/monitoring/activity': typeof DashboardMonitoringActivityRoute
-  '/dashboard/monitoring/alerts': typeof DashboardMonitoringAlertsRoute
-  '/dashboard/monitoring/errors': typeof DashboardMonitoringErrorsRoute
   '/dashboard/monitoring/issues': typeof DashboardMonitoringIssuesRoute
   '/dashboard/monitoring/logs': typeof DashboardMonitoringLogsRoute
   '/dashboard/monitoring/uptime': typeof DashboardMonitoringUptimeRoute
@@ -338,9 +314,6 @@ export interface FileRoutesByTo {
   '/dashboard/infrastructure/data': typeof DashboardInfrastructureDataRoute
   '/dashboard/infrastructure/networking': typeof DashboardInfrastructureNetworkingRoute
   '/dashboard/infrastructure/storage': typeof DashboardInfrastructureStorageRoute
-  '/dashboard/monitoring/activity': typeof DashboardMonitoringActivityRoute
-  '/dashboard/monitoring/alerts': typeof DashboardMonitoringAlertsRoute
-  '/dashboard/monitoring/errors': typeof DashboardMonitoringErrorsRoute
   '/dashboard/monitoring/issues': typeof DashboardMonitoringIssuesRoute
   '/dashboard/monitoring/logs': typeof DashboardMonitoringLogsRoute
   '/dashboard/monitoring/uptime': typeof DashboardMonitoringUptimeRoute
@@ -381,9 +354,6 @@ export interface FileRoutesById {
   '/dashboard/infrastructure/data': typeof DashboardInfrastructureDataRoute
   '/dashboard/infrastructure/networking': typeof DashboardInfrastructureNetworkingRoute
   '/dashboard/infrastructure/storage': typeof DashboardInfrastructureStorageRoute
-  '/dashboard/monitoring/activity': typeof DashboardMonitoringActivityRoute
-  '/dashboard/monitoring/alerts': typeof DashboardMonitoringAlertsRoute
-  '/dashboard/monitoring/errors': typeof DashboardMonitoringErrorsRoute
   '/dashboard/monitoring/issues': typeof DashboardMonitoringIssuesRoute
   '/dashboard/monitoring/logs': typeof DashboardMonitoringLogsRoute
   '/dashboard/monitoring/uptime': typeof DashboardMonitoringUptimeRoute
@@ -426,9 +396,6 @@ export interface FileRouteTypes {
     | '/dashboard/infrastructure/data'
     | '/dashboard/infrastructure/networking'
     | '/dashboard/infrastructure/storage'
-    | '/dashboard/monitoring/activity'
-    | '/dashboard/monitoring/alerts'
-    | '/dashboard/monitoring/errors'
     | '/dashboard/monitoring/issues'
     | '/dashboard/monitoring/logs'
     | '/dashboard/monitoring/uptime'
@@ -468,9 +435,6 @@ export interface FileRouteTypes {
     | '/dashboard/infrastructure/data'
     | '/dashboard/infrastructure/networking'
     | '/dashboard/infrastructure/storage'
-    | '/dashboard/monitoring/activity'
-    | '/dashboard/monitoring/alerts'
-    | '/dashboard/monitoring/errors'
     | '/dashboard/monitoring/issues'
     | '/dashboard/monitoring/logs'
     | '/dashboard/monitoring/uptime'
@@ -510,9 +474,6 @@ export interface FileRouteTypes {
     | '/dashboard/infrastructure/data'
     | '/dashboard/infrastructure/networking'
     | '/dashboard/infrastructure/storage'
-    | '/dashboard/monitoring/activity'
-    | '/dashboard/monitoring/alerts'
-    | '/dashboard/monitoring/errors'
     | '/dashboard/monitoring/issues'
     | '/dashboard/monitoring/logs'
     | '/dashboard/monitoring/uptime'
@@ -718,27 +679,6 @@ declare module '@tanstack/react-router' {
       path: '/monitoring/issues'
       fullPath: '/dashboard/monitoring/issues'
       preLoaderRoute: typeof DashboardMonitoringIssuesRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/dashboard/monitoring/errors': {
-      id: '/dashboard/monitoring/errors'
-      path: '/monitoring/errors'
-      fullPath: '/dashboard/monitoring/errors'
-      preLoaderRoute: typeof DashboardMonitoringErrorsRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/dashboard/monitoring/alerts': {
-      id: '/dashboard/monitoring/alerts'
-      path: '/monitoring/alerts'
-      fullPath: '/dashboard/monitoring/alerts'
-      preLoaderRoute: typeof DashboardMonitoringAlertsRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/dashboard/monitoring/activity': {
-      id: '/dashboard/monitoring/activity'
-      path: '/monitoring/activity'
-      fullPath: '/dashboard/monitoring/activity'
-      preLoaderRoute: typeof DashboardMonitoringActivityRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/infrastructure/storage': {
@@ -964,9 +904,6 @@ interface DashboardRouteChildren {
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardDocksAddRoute: typeof DashboardDocksAddRoute
   DashboardDocksConnectedRoute: typeof DashboardDocksConnectedRoute
-  DashboardMonitoringActivityRoute: typeof DashboardMonitoringActivityRoute
-  DashboardMonitoringAlertsRoute: typeof DashboardMonitoringAlertsRoute
-  DashboardMonitoringErrorsRoute: typeof DashboardMonitoringErrorsRoute
   DashboardMonitoringIssuesRoute: typeof DashboardMonitoringIssuesRoute
   DashboardMonitoringLogsRoute: typeof DashboardMonitoringLogsRoute
   DashboardMonitoringUptimeRoute: typeof DashboardMonitoringUptimeRoute
@@ -985,9 +922,6 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardDocksAddRoute: DashboardDocksAddRoute,
   DashboardDocksConnectedRoute: DashboardDocksConnectedRoute,
-  DashboardMonitoringActivityRoute: DashboardMonitoringActivityRoute,
-  DashboardMonitoringAlertsRoute: DashboardMonitoringAlertsRoute,
-  DashboardMonitoringErrorsRoute: DashboardMonitoringErrorsRoute,
   DashboardMonitoringIssuesRoute: DashboardMonitoringIssuesRoute,
   DashboardMonitoringLogsRoute: DashboardMonitoringLogsRoute,
   DashboardMonitoringUptimeRoute: DashboardMonitoringUptimeRoute,

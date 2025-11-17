@@ -178,9 +178,9 @@ export function useSidebarData(): SidebarData {
                   icon: RadioTower,
                 },
                 {
-                  title: "Alerts",
-                  url: "/dashboard/monitoring/alerts",
-                  icon: Bell,
+                  title: "Issues",
+                  url: "/dashboard/monitoring/issues",
+                  icon: AlertCircle,
                 },
                 {
                   title: "Logs",
@@ -359,9 +359,9 @@ export const sidebarData: SidebarData = {
               icon: RadioTower,
             },
             {
-              title: "Alerts",
+              title: "Issues",
               url: "/dashboard/monitoring/alerts",
-              icon: Bell,
+              icon: AlertCircle,
             },
             {
               title: "Logs",

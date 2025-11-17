@@ -39,7 +39,7 @@ export const validateCredentials = internalAction({
     apiKey: v.string(),
   },
   handler: async (ctx, args) => {
-    console.log(`[Dock Action] Validating credentials for provider: ${args.provider}`)
+    // Logging silenced except for Sentry
     
     const adapter = getAdapter(args.provider)
     if (!adapter) {
@@ -47,12 +47,10 @@ export const validateCredentials = internalAction({
     }
 
     try {
-      console.log(`[Dock Action] Calling adapter.validateCredentials`)
       const isValid = await adapter.validateCredentials(args.apiKey)
-      console.log(`[Dock Action] Validation result: ${isValid}`)
       return { valid: isValid }
     } catch (error) {
-      console.error(`[Dock Action] Validation error:`, error)
+      // Error logging silenced except for Sentry
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error"
       throw new Error(`Failed to validate credentials: ${errorMessage}`)
@@ -87,7 +85,7 @@ export const syncDockResources = internalAction({
     isAutoSync: v.optional(v.boolean()), // Flag for auto-sync vs manual
   },
   handler: async (ctx, args) => {
-    console.log(`[Dock Action] Syncing resources for dock ${args.dockId}, provider: ${args.provider}`)
+    // Logging silenced except for Sentry
     
     const adapter = getAdapter(args.provider)
     if (!adapter) {
@@ -116,31 +114,24 @@ export const syncDockResources = internalAction({
 
         // Sync requested resource types
         if (args.resourceTypes.includes("servers")) {
-          console.log(`[Dock Action] Fetching servers for ${args.provider}`)
           servers = await api.getServers()
         }
 
         if (args.resourceTypes.includes("webServices")) {
-          console.log(`[Dock Action] Fetching sites for ${args.provider}`)
           webServices = await api.getSites()
         }
 
         if (args.resourceTypes.includes("domains")) {
-          console.log(`[Dock Action] Fetching domains for ${args.provider}`)
           domains = await api.getDomains()
         }
 
         // GridPane doesn't have databases endpoint yet
         if (args.resourceTypes.includes("databases")) {
-          console.log(`[Dock Action] Databases not supported for ${args.provider}`)
           databases = []
         }
 
         // Always fetch backups for GridPane (not in resourceTypes, but always sync)
-        console.log(`[Dock Action] Fetching backup schedules for ${args.provider}`)
         backupSchedules = await api.getAllBackupSchedules()
-
-        console.log(`[Dock Action] Fetching backup integrations for ${args.provider}`)
         backupIntegrations = await api.getBackupIntegrations()
       } else if (args.provider === "vercel") {
         // Vercel-specific: Use VercelAPI directly
@@ -148,23 +139,19 @@ export const syncDockResources = internalAction({
 
         // Vercel only supports webServices (projects)
         if (args.resourceTypes.includes("webServices")) {
-          console.log(`[Dock Action] Fetching projects for ${args.provider}`)
           webServices = await api.getProjects()
         }
 
         // Vercel doesn't support servers, domains, or databases via this API
         if (args.resourceTypes.includes("servers")) {
-          console.log(`[Dock Action] Servers not supported for ${args.provider}`)
           servers = []
         }
 
         if (args.resourceTypes.includes("domains")) {
-          console.log(`[Dock Action] Domains not supported for ${args.provider} (use separate domains API)`)
           domains = []
         }
 
         if (args.resourceTypes.includes("databases")) {
-          console.log(`[Dock Action] Databases not supported for ${args.provider}`)
           databases = []
         }
       } else if (args.provider === "netlify") {
@@ -173,23 +160,19 @@ export const syncDockResources = internalAction({
 
         // Netlify only supports webServices (sites)
         if (args.resourceTypes.includes("webServices")) {
-          console.log(`[Dock Action] Fetching sites for ${args.provider}`)
           webServices = await api.getSites()
         }
 
         // Netlify doesn't support servers, domains, or databases via this API
         if (args.resourceTypes.includes("servers")) {
-          console.log(`[Dock Action] Servers not supported for ${args.provider}`)
           servers = []
         }
 
         if (args.resourceTypes.includes("domains")) {
-          console.log(`[Dock Action] Domains not supported for ${args.provider} (use separate domains API)`)
           domains = []
         }
 
         if (args.resourceTypes.includes("databases")) {
-          console.log(`[Dock Action] Databases not supported for ${args.provider}`)
           databases = []
         }
       } else if (args.provider === "cloudflare") {
@@ -199,25 +182,20 @@ export const syncDockResources = internalAction({
         // Get zones first (to extract account ID)
         let accountId: string | undefined
         if (args.resourceTypes.includes("domains")) {
-          console.log(`[Dock Action] Fetching zones for ${args.provider}`)
           domains = await api.getZones()
 
           // Extract account ID from first zone
           if (domains.length > 0 && domains[0].account?.id) {
             accountId = domains[0].account.id
-            console.log(`[Dock Action] Extracted account ID: ${accountId}`)
           }
 
           // Fetch DNS records for each zone (must be done in action, not mutation)
-          console.log(`[Dock Action] Fetching DNS records for ${domains.length} zones`)
           for (const zone of domains) {
             try {
               const records = await api.getDNSRecords(zone.id)
               // Attach DNS records to zone object (will be passed to adapter)
               ;(zone as any).dnsRecords = records
-              console.log(`[Dock Action] Fetched ${records.length} DNS records for zone ${zone.id} (${zone.name})`)
             } catch (error) {
-              console.error(`[Dock Action] Failed to fetch DNS records for zone ${zone.id} (${zone.name}):`, error)
               ;(zone as any).dnsRecords = [] // Empty array if fetch fails
             }
           }
@@ -225,7 +203,6 @@ export const syncDockResources = internalAction({
 
         // Get Pages (requires account ID)
         if (args.resourceTypes.includes("webServices") && accountId) {
-          console.log(`[Dock Action] Fetching Pages for ${args.provider}`)
           const pages = await api.getPages(accountId)
           // Mark as pages type for adapter to distinguish
           webServices.push(...pages.map((p: any) => ({ ...p, _type: "pages" })))
@@ -233,7 +210,6 @@ export const syncDockResources = internalAction({
 
         // Get Workers (requires account ID)
         if (args.resourceTypes.includes("webServices") && accountId) {
-          console.log(`[Dock Action] Fetching Workers for ${args.provider}`)
           const workers = await api.getWorkers(accountId)
           // Mark as workers type for adapter to distinguish
           webServices.push(...workers.map((w: any) => ({ ...w, _type: "workers" })))
@@ -241,12 +217,10 @@ export const syncDockResources = internalAction({
 
         // Cloudflare doesn't support servers or databases via this API
         if (args.resourceTypes.includes("servers")) {
-          console.log(`[Dock Action] Servers not supported for ${args.provider}`)
           servers = []
         }
 
         if (args.resourceTypes.includes("databases")) {
-          console.log(`[Dock Action] Databases not supported for ${args.provider}`)
           databases = []
         }
       } else if (args.provider === "turso") {
@@ -264,21 +238,17 @@ export const syncDockResources = internalAction({
         }
 
         if (args.resourceTypes.includes("databases")) {
-          console.log(`[Dock Action] Fetching databases for ${args.provider} (org: ${orgSlug})`)
           databases = await api.listDatabases(orgSlug)
         }
 
         // Turso doesn't support servers, webServices, or domains
         if (args.resourceTypes.includes("servers")) {
-          console.log(`[Dock Action] Servers not supported for ${args.provider}`)
           servers = []
         }
         if (args.resourceTypes.includes("webServices")) {
-          console.log(`[Dock Action] Web services not supported for ${args.provider}`)
           webServices = []
         }
         if (args.resourceTypes.includes("domains")) {
-          console.log(`[Dock Action] Domains not supported for ${args.provider}`)
           domains = []
         }
       } else if (args.provider === "neon") {
@@ -289,7 +259,6 @@ export const syncDockResources = internalAction({
         const projects = await api.listProjects()
         
         if (projects.length === 0) {
-          console.log(`[Dock Action] No projects found for Neon account`)
           databases = []
           backupSchedules = []
         } else {
@@ -311,12 +280,10 @@ export const syncDockResources = internalAction({
           }
 
           if (args.resourceTypes.includes("databases")) {
-            console.log(`[Dock Action] Fetching databases for ${args.provider} (${allDatabases.length} databases found)`)
             databases = allDatabases
           }
 
           // Always fetch snapshots for Neon (similar to GridPane backups)
-          console.log(`[Dock Action] Fetching snapshots for ${args.provider}`)
           const allSnapshots: Array<{
             project: any
             branch: any
@@ -347,15 +314,12 @@ export const syncDockResources = internalAction({
 
         // Neon doesn't support servers, webServices, or domains
         if (args.resourceTypes.includes("servers")) {
-          console.log(`[Dock Action] Servers not supported for ${args.provider}`)
           servers = []
         }
         if (args.resourceTypes.includes("webServices")) {
-          console.log(`[Dock Action] Web services not supported for ${args.provider}`)
           webServices = []
         }
         if (args.resourceTypes.includes("domains")) {
-          console.log(`[Dock Action] Domains not supported for ${args.provider}`)
           domains = []
         }
       } else if (args.provider === "convex") {
@@ -371,18 +335,15 @@ export const syncDockResources = internalAction({
         const projects = await api.listProjects(teamId)
 
         if (projects.length === 0) {
-          console.log(`[Dock Action] No projects found for Convex account`)
           databases = []
           deployments = []
         } else {
           // Step 3: For each project, get deployments
           if (args.resourceTypes.includes("databases")) {
-            console.log(`[Dock Action] Fetching databases (projects) for ${args.provider} (${projects.length} projects found)`)
             databases = projects
           }
 
           // Always fetch deployments for Convex
-          console.log(`[Dock Action] Fetching deployments for ${args.provider}`)
           const allDeployments: any[] = []
           
           for (const project of projects) {
@@ -703,31 +664,27 @@ export const syncDockResources = internalAction({
         const api = new SentryAPI(args.apiKey)
 
         if (args.resourceTypes.includes("issues")) {
-          console.log(`[Dock Action] Fetching issues for ${args.provider}`)
+          console.log(`[Dock Action] [Sentry] Fetching issues`)
           const projectsWithIssues = await api.listAllIssues()
           // Flatten to array of { project, issues } objects
           issues = projectsWithIssues
+          console.log(`[Dock Action] [Sentry] Fetched ${projectsWithIssues.length} projects with issues`)
         }
 
         // Sentry only supports issues
         if (args.resourceTypes.includes("servers")) {
-          console.log(`[Dock Action] Servers not supported for ${args.provider}`)
           servers = []
         }
         if (args.resourceTypes.includes("webServices")) {
-          console.log(`[Dock Action] Web services not supported for ${args.provider}`)
           webServices = []
         }
         if (args.resourceTypes.includes("domains")) {
-          console.log(`[Dock Action] Domains not supported for ${args.provider}`)
           domains = []
         }
         if (args.resourceTypes.includes("databases")) {
-          console.log(`[Dock Action] Databases not supported for ${args.provider}`)
           databases = []
         }
         if (args.resourceTypes.includes("monitors")) {
-          console.log(`[Dock Action] Monitors not supported for ${args.provider}`)
           monitors = []
         }
       } else {
@@ -736,7 +693,9 @@ export const syncDockResources = internalAction({
         throw new Error(`Provider ${args.provider} sync not yet implemented in action`)
       }
 
-      console.log(`[Dock Action] Sync complete: ${servers.length} servers, ${webServices.length} webServices, ${domains.length} domains, ${databases.length} databases, ${deployments.length} deployments, ${backupSchedules.length} backup schedules, ${backupIntegrations.length} backup integrations, ${blockVolumes.length} block volumes, ${buckets.length} buckets, ${monitors.length} monitors, ${issues.length} issues`)
+      if (args.provider === "sentry") {
+        console.log(`[Dock Action] [Sentry] Sync complete: ${issues.length} issues`)
+      }
 
       // Note: Rate limit headers are captured by individual API clients
       // They will be updated via updateRateLimitInfo mutation when we update API clients
@@ -760,20 +719,12 @@ export const syncDockResources = internalAction({
         issues: args.resourceTypes.includes("issues") ? issues : undefined,
       }
       
-      console.log(`[Dock Action] 📤 Calling syncDockResourcesMutation with:`)
-      console.log(`[Dock Action]   - dockId: ${args.dockId}`)
-      console.log(`[Dock Action]   - provider: ${args.provider}`)
-      console.log(`[Dock Action]   - resourceTypes: [${args.resourceTypes.join(", ")}]`)
-      console.log(`[Dock Action]   - buckets: ${fetchedData.buckets === undefined ? "undefined ❌" : `array(${fetchedData.buckets.length}) ✅`}`)
-      console.log(`[Dock Action]   - buckets in resourceTypes: ${args.resourceTypes.includes("buckets") ? "✅ YES" : "❌ NO"}`)
-      console.log(`[Dock Action]   - isAutoSync: ${args.isAutoSync ? "✅ YES" : "❌ NO"}`)
+      if (args.provider === "sentry") {
+        console.log(`[Dock Action] [Sentry] 📤 Calling syncDockResourcesMutation`)
+        console.log(`[Dock Action] [Sentry]   - issues: ${fetchedData.issues === undefined ? "undefined" : `array(${fetchedData.issues.length})`}`)
+      }
       
-      // Log all resource types being passed
-      Object.entries(fetchedData).forEach(([key, value]) => {
-        if (value !== undefined) {
-          console.log(`[Dock Action]   - ${key}: array(${Array.isArray(value) ? value.length : "?"})`)
-        }
-      })
+      // Logging silenced except for Sentry
       
       await ctx.runMutation(internal.docks.mutations.syncDockResourcesMutation, {
         dockId: args.dockId,
@@ -783,7 +734,7 @@ export const syncDockResources = internalAction({
 
       return { success: true }
     } catch (error) {
-      console.error(`[Dock Action] Sync error for dock ${args.dockId}:`, error)
+      // Error logging silenced except for Sentry
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error"
       
@@ -797,7 +748,7 @@ export const syncDockResources = internalAction({
         })
       } catch (statusError) {
         // If updating status fails, log but don't throw (original error is more important)
-        console.error(`[Dock Action] Failed to update sync status:`, statusError)
+        // Error logging silenced except for Sentry
       }
       
       throw new Error(`Failed to sync dock resources: ${errorMessage}`)
@@ -825,7 +776,7 @@ export const fetchMoreCommits = action({
     perPage: v.optional(v.number()), // Commits per page (default: 10)
   },
   handler: async (ctx, args) => {
-    console.log(`[Dock Action] Fetching commits page ${args.page} for ${args.owner}/${args.repo}`)
+    // Logging silenced except for Sentry
     
     // Get dock and verify permissions via internal query
     const dock = await ctx.runQuery(internal.docks.queries.getDockForAction, {

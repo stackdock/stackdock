@@ -126,7 +126,8 @@ export const sentryAdapter: DockAdapter = {
           project: project.name,
           projectSlug: project.slug,
           organizationSlug: project.organization.slug,
-          count: issue.count,
+          // Convert count from string to number if needed (Sentry API sometimes returns strings)
+          count: typeof issue.count === "string" ? parseInt(issue.count, 10) : issue.count,
           userCount: issue.userCount,
           firstSeen: isoToTimestamp(issue.firstSeen),
           lastSeen: isoToTimestamp(issue.lastSeen),
@@ -158,7 +159,6 @@ export const sentryAdapter: DockAdapter = {
 
     for (const existing of existingIssues) {
       if (!syncedResourceIds.has(existing.providerResourceId)) {
-        console.log(`[Sentry] Deleting orphaned issue: ${existing.title} (${existing.providerResourceId})`)
         await ctx.db.delete(existing._id)
       }
     }

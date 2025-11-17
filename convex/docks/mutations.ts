@@ -273,19 +273,7 @@ export const syncDockResourcesMutation = internalMutation({
     }
 
     if (args.fetchedData.buckets !== undefined && adapter.syncBuckets) {
-      console.log(`[Sync Mutation] ✅ Calling syncBuckets with ${args.fetchedData.buckets.length} buckets for dock ${dock._id}`)
       await adapter.syncBuckets(ctx, dock, args.fetchedData.buckets)
-      console.log(`[Sync Mutation] ✅ syncBuckets completed for dock ${dock._id}`)
-    } else {
-      const bucketsStatus = args.fetchedData.buckets === undefined ? "undefined (not passed)" : `defined (${args.fetchedData.buckets.length} items)`
-      const adapterStatus = adapter.syncBuckets ? "exists" : "missing"
-      console.log(`[Sync Mutation] ⏭️  NOT calling syncBuckets - buckets: ${bucketsStatus}, adapter.syncBuckets: ${adapterStatus}`)
-      if (args.fetchedData.buckets === undefined) {
-        console.log(`[Sync Mutation] ⚠️  WARNING: buckets is undefined - deletion logic will NOT run!`)
-      }
-      if (!adapter.syncBuckets) {
-        console.log(`[Sync Mutation] ⚠️  WARNING: adapter.syncBuckets is missing for provider ${args.provider}`)
-      }
     }
 
     if (args.fetchedData.monitors !== undefined && adapter.syncMonitors) {
@@ -293,7 +281,21 @@ export const syncDockResourcesMutation = internalMutation({
     }
 
     if (args.fetchedData.issues !== undefined && adapter.syncIssues) {
-      await adapter.syncIssues(ctx, dock, args.fetchedData.issues)
+      // Sentry logging only
+      if (args.provider === "sentry") {
+        console.log(`[Sync Mutation] Calling syncIssues with ${args.fetchedData.issues.length} projects`)
+      }
+      try {
+        await adapter.syncIssues(ctx, dock, args.fetchedData.issues)
+        if (args.provider === "sentry") {
+          console.log(`[Sync Mutation] syncIssues completed successfully`)
+        }
+      } catch (error) {
+        if (args.provider === "sentry") {
+          console.error(`[Sync Mutation] ERROR in syncIssues:`, error)
+        }
+        throw error
+      }
     }
 
     // Mark sync as successful
@@ -319,9 +321,13 @@ export const syncDockResourcesMutation = internalMutation({
         updatedAt: Date.now(),
       })
 
-      console.log(`[Sync Mutation] ✅ Sync completed successfully, lastSyncAttempt updated to ${new Date(syncConfig.lastSyncAttempt).toISOString()}`)
+      if (args.provider === "sentry") {
+        console.log(`[Sync Mutation] ✅ Sync completed successfully, lastSyncAttempt updated to ${new Date(syncConfig.lastSyncAttempt).toISOString()}`)
+      }
     } catch (error) {
-      console.error(`[Sync Mutation] ❌ Error updating sync status:`, error)
+      if (args.provider === "sentry") {
+        console.error(`[Sync Mutation] ❌ Error updating sync status:`, error)
+      }
       // Still try to update basic status even if syncConfig update fails
       await ctx.db.patch(args.dockId, {
         syncInProgress: false,

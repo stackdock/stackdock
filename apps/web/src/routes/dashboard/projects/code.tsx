@@ -1,5 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { useEffect } from "react"
+import { createFileRoute } from "@tanstack/react-router"
 import { useQuery } from "convex/react"
 import { api } from "convex/_generated/api"
 import { CodeXml } from "lucide-react"
@@ -12,25 +11,6 @@ export const Route = createFileRoute("/dashboard/projects/code")({
 function ProjectsCodePage() {
   // Query GitHub repositories from universal repositories table
   const repositories = useQuery(api["docks/queries"].listGitHubRepositories)
-  
-  // Debug logging
-  useEffect(() => {
-    if (repositories !== undefined) {
-      console.log(`[Code Page] DEBUG: Received ${repositories.length} repositories`)
-      if (repositories.length > 0) {
-        console.log(`[Code Page] DEBUG: Sample repository:`, {
-          id: repositories[0]._id,
-          name: repositories[0].name,
-          fullName: repositories[0].fullName,
-          provider: repositories[0].provider,
-          hasFullApiData: !!repositories[0].fullApiData,
-          hasRepository: !!repositories[0].fullApiData?.repository,
-        })
-      } else {
-        console.warn(`[Code Page] DEBUG: No repositories found. Check Convex logs for query details.`)
-      }
-    }
-  }, [repositories])
   
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 md:p-6 lg:p-8">

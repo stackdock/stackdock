@@ -90,3 +90,48 @@ export const listIssues = query({
     return issues
   },
 })
+
+/**
+ * List all alerts (semantic alias for listIssues)
+ * 
+ * This is a semantic alias for backward compatibility and user-facing clarity.
+ * Internally, we use the "issues" table, but in user-facing contexts we call them "alerts"
+ * to avoid confusion with GitHub issues, bug trackers, etc.
+ * 
+ * Requires "monitoring:read" permission.
+ */
+export const listAlerts = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx)
+    
+    // Get user's org from memberships
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .first()
+    
+    if (!membership) {
+      throw new ConvexError("Not authorized")
+    }
+    
+    // Check monitoring:read permission
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      membership.orgId,
+      "monitoring:read"
+    )
+    if (!hasPermission) {
+      throw new ConvexError("Permission denied: monitoring:read required")
+    }
+    
+    // Query issues table (backward compatible), return as "alerts"
+      const alerts = await ctx.db
+        .query("issues")
+        .withIndex("by_orgId", (q) => q.eq("orgId", membership.orgId))
+        .collect()
+
+      return alerts
+  },
+})

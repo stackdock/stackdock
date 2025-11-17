@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useQuery } from "convex/react"
 import { api } from "convex/_generated/api"
+import { useMemo } from "react"
 import { Server, Cloud, Cpu } from "lucide-react"
 import { ServersTable } from "@/components/resources/servers-table"
 import { WebServicesTable } from "@/components/resources/web-services-table"
+import { deduplicateServers } from "@/lib/resource-deduplication"
 
 export const Route = createFileRoute("/dashboard/infrastructure/compute")({
   component: ComputePage,
@@ -12,7 +14,14 @@ export const Route = createFileRoute("/dashboard/infrastructure/compute")({
 function ComputePage() {
   const servers = useQuery(api["resources/queries"].listServers)
   const webServices = useQuery(api["resources/queries"].listWebServices)
-  const serversList = servers || []
+  
+  // Deduplicate servers for accurate count
+  const deduplicatedServers = useMemo(() => {
+    if (!servers) return undefined
+    return deduplicateServers(servers)
+  }, [servers])
+  
+  const serversList = deduplicatedServers || []
   const webServicesList = webServices || []
 
   return (

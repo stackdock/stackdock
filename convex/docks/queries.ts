@@ -156,8 +156,6 @@ export const listGitHubRepositories = query({
       .withIndex("by_orgId", (q) => q.eq("orgId", membership.orgId))
       .collect()
     
-    console.log(`[listGitHubRepositories] DEBUG: Found ${repositories.length} repositories for org ${membership.orgId}`)
-    
     return repositories
   },
 })

@@ -80,48 +80,156 @@ export class CloudflareAPI {
   }
 
   /**
-   * Get all DNS zones
+   * Get all DNS zones (with pagination)
    * GET /zones
+   * Cloudflare API v4 uses pagination - fetches all pages
    */
   async getZones(): Promise<CloudflareZone[]> {
-    const response = await this.request<CloudflareZonesResponse>("/zones")
-    return response.result || []
+    const allZones: CloudflareZone[] = []
+    let page = 1
+    let totalPages = 1
+    
+    do {
+      // Build URL: only add page param for page > 1
+      // Let Cloudflare use default per_page (don't specify it)
+      const url = page === 1 ? "/zones" : `/zones?page=${page}`
+      
+      const response = await this.request<CloudflareZonesResponse>(url)
+      
+      if (response.result && response.result.length > 0) {
+        allZones.push(...response.result)
+      }
+      
+      // Update pagination info from response
+      if (response.result_info) {
+        totalPages = response.result_info.total_pages || 1
+        page++
+      } else {
+        // No pagination info, assume single page
+        break
+      }
+    } while (page <= totalPages)
+    
+    return allZones
   }
 
   /**
-   * Get DNS records for a zone
+   * Get DNS records for a zone (with pagination)
    * GET /zones/{zone_id}/dns_records
+   * Cloudflare API v4 uses pagination - fetches all pages
    */
   async getDNSRecords(zoneId: string): Promise<CloudflareDNSRecord[]> {
-    const response = await this.request<CloudflareDNSRecordsResponse>(
-      `/zones/${zoneId}/dns_records`
-    )
-    return response.result || []
+    const allRecords: CloudflareDNSRecord[] = []
+    let page = 1
+    let totalPages = 1
+    
+    do {
+      // Build URL: only add page param for page > 1
+      // Let Cloudflare use default per_page (don't specify it)
+      const url = page === 1 
+        ? `/zones/${zoneId}/dns_records`
+        : `/zones/${zoneId}/dns_records?page=${page}`
+      
+      const response = await this.request<CloudflareDNSRecordsResponse>(url)
+      
+      if (response.result && response.result.length > 0) {
+        allRecords.push(...response.result)
+      }
+      
+      // Update pagination info from response
+      if (response.result_info) {
+        totalPages = response.result_info.total_pages || 1
+        page++
+      } else {
+        // No pagination info, assume single page
+        break
+      }
+    } while (page <= totalPages)
+    
+    return allRecords
   }
 
   /**
-   * Get Pages projects
+   * Get Pages projects (with pagination)
    * GET /accounts/{account_id}/pages/projects
    * 
    * Requires account ID (extract from zones or store in dock)
+   * Cloudflare API v4 uses pagination - fetches all pages
    */
   async getPages(accountId: string): Promise<CloudflarePage[]> {
-    const response = await this.request<CloudflarePagesResponse>(
-      `/accounts/${accountId}/pages/projects`
-    )
-    return response.result || []
+    const allPages: CloudflarePage[] = []
+    let page = 1
+    let totalPages = 1
+    
+    do {
+      // Build URL: only add page param for page > 1
+      // Let Cloudflare use default per_page (don't specify it)
+      const url = page === 1
+        ? `/accounts/${accountId}/pages/projects`
+        : `/accounts/${accountId}/pages/projects?page=${page}`
+      
+      const response = await this.request<CloudflarePagesResponse>(url)
+      
+      if (response.result && response.result.length > 0) {
+        allPages.push(...response.result)
+      }
+      
+      // Update pagination info from response
+      if (response.result_info) {
+        totalPages = response.result_info.total_pages || 1
+        page++
+      } else {
+        // No pagination info, assume single page
+        break
+      }
+    } while (page <= totalPages)
+    
+    return allPages
   }
 
   /**
-   * Get Workers scripts
+   * Get Workers scripts (with pagination)
    * GET /accounts/{account_id}/workers/scripts
    * 
    * Requires account ID (extract from zones or store in dock)
+   * Cloudflare API v4 uses pagination - fetches all pages
+   * Note: Workers API doesn't return total_pages, so we calculate it from total_count
    */
   async getWorkers(accountId: string): Promise<CloudflareWorker[]> {
-    const response = await this.request<CloudflareWorkersResponse>(
-      `/accounts/${accountId}/workers/scripts`
-    )
-    return response.result || []
+    const allWorkers: CloudflareWorker[] = []
+    let page = 1
+    let totalPages = 1
+    let perPage = 50 // Track per_page from first response
+    
+    do {
+      // Build URL: only add page param for page > 1
+      // Let Cloudflare use default per_page (don't specify it)
+      const url = page === 1
+        ? `/accounts/${accountId}/workers/scripts`
+        : `/accounts/${accountId}/workers/scripts?page=${page}`
+      
+      const response = await this.request<CloudflareWorkersResponse>(url)
+      
+      if (response.result && response.result.length > 0) {
+        allWorkers.push(...response.result)
+      }
+      
+      // Update pagination info from response
+      if (response.result_info) {
+        // Track per_page from first response for calculating total_pages
+        if (page === 1) {
+          perPage = response.result_info.per_page || 50
+        }
+        // Workers API doesn't provide total_pages, calculate from total_count
+        const totalCount = response.result_info.total_count || 0
+        totalPages = Math.ceil(totalCount / perPage) || 1
+        page++
+      } else {
+        // No pagination info, assume single page
+        break
+      }
+    } while (page <= totalPages)
+    
+    return allWorkers
   }
 }

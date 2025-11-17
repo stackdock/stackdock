@@ -489,20 +489,6 @@ export function RepositoriesTable({ projects }: RepositoriesTableProps) {
   const id = useId()
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   
-  // Debug logging
-  useEffect(() => {
-    console.log(`[RepositoriesTable] DEBUG: Received ${projects?.length ?? 0} repositories`)
-    if (projects && projects.length > 0) {
-      console.log(`[RepositoriesTable] DEBUG: Sample repository:`, {
-        id: projects[0]._id,
-        name: projects[0].name,
-        fullName: projects[0].fullName,
-        provider: projects[0].provider,
-        hasFullApiData: !!projects[0].fullApiData,
-      })
-    }
-  }, [projects])
-  
   // Get valid column IDs to filter out any stale/invalid column visibility state
   // Compute this once since columns is a constant
   const validColumnIds = useMemo(() => {
@@ -568,9 +554,7 @@ export function RepositoriesTable({ projects }: RepositoriesTableProps) {
   }, []) // Only run on mount to clean up any stale column visibility state
 
   const tableData = useMemo(() => {
-    const data = projects || []
-    console.log(`[RepositoriesTable] DEBUG: Table data prepared: ${data.length} repositories`)
-    return data
+    return projects || []
   }, [projects])
 
   const table = useReactTable({
@@ -601,15 +585,6 @@ export function RepositoriesTable({ projects }: RepositoriesTableProps) {
     enableColumnFilters: false,
     state: { sorting, pagination, columnFilters, columnVisibility: filteredColumnVisibility },
   })
-
-  // Debug logging for table rows
-  useEffect(() => {
-    const rows = table.getRowModel().rows
-    console.log(`[RepositoriesTable] DEBUG: Table rows: ${rows.length} rows rendered`)
-    if (rows.length === 0 && tableData.length > 0) {
-      console.warn(`[RepositoriesTable] DEBUG: Data exists (${tableData.length}) but no rows rendered. Check filters/sorting.`)
-    }
-  }, [table, tableData])
 
   const uniqueLanguageValues = useMemo(() => {
     const languageColumn = table.getColumn("language")
