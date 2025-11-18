@@ -40,6 +40,7 @@ import { Route as DashboardInfrastructureDataRouteImport } from './routes/dashbo
 import { Route as DashboardInfrastructureComputeRouteImport } from './routes/dashboard/infrastructure/compute'
 import { Route as DashboardDocksConnectedRouteImport } from './routes/dashboard/docks/connected'
 import { Route as DashboardDocksAddRouteImport } from './routes/dashboard/docks/add'
+import { Route as DashboardSettingsBillingIndexRouteImport } from './routes/dashboard/settings/billing/index'
 import { Route as DashboardProjectsProjectSlugIndexRouteImport } from './routes/dashboard/projects/$projectSlug/index'
 import { Route as DashboardProvisionProviderResourceTypeRouteImport } from './routes/dashboard/provision/$provider.$resourceType'
 import { Route as DashboardProjectsProjectSlugSettingsRouteImport } from './routes/dashboard/projects/$projectSlug/settings'
@@ -215,6 +216,12 @@ const DashboardDocksAddRoute = DashboardDocksAddRouteImport.update({
   path: '/docks/add',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardSettingsBillingIndexRoute =
+  DashboardSettingsBillingIndexRouteImport.update({
+    id: '/billing/',
+    path: '/billing/',
+    getParentRoute: () => DashboardSettingsRoute,
+  } as any)
 const DashboardProjectsProjectSlugIndexRoute =
   DashboardProjectsProjectSlugIndexRouteImport.update({
     id: '/',
@@ -296,6 +303,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/projects/$projectSlug/settings': typeof DashboardProjectsProjectSlugSettingsRoute
   '/dashboard/provision/$provider/$resourceType': typeof DashboardProvisionProviderResourceTypeRouteWithChildren
   '/dashboard/projects/$projectSlug/': typeof DashboardProjectsProjectSlugIndexRoute
+  '/dashboard/settings/billing': typeof DashboardSettingsBillingIndexRoute
   '/dashboard/provision/$provider/$resourceType/$provisionId': typeof DashboardProvisionProviderResourceTypeProvisionIdRoute
 }
 export interface FileRoutesByTo {
@@ -334,6 +342,7 @@ export interface FileRoutesByTo {
   '/dashboard/projects/$projectSlug/settings': typeof DashboardProjectsProjectSlugSettingsRoute
   '/dashboard/provision/$provider/$resourceType': typeof DashboardProvisionProviderResourceTypeRouteWithChildren
   '/dashboard/projects/$projectSlug': typeof DashboardProjectsProjectSlugIndexRoute
+  '/dashboard/settings/billing': typeof DashboardSettingsBillingIndexRoute
   '/dashboard/provision/$provider/$resourceType/$provisionId': typeof DashboardProvisionProviderResourceTypeProvisionIdRoute
 }
 export interface FileRoutesById {
@@ -375,6 +384,7 @@ export interface FileRoutesById {
   '/dashboard/projects/$projectSlug/settings': typeof DashboardProjectsProjectSlugSettingsRoute
   '/dashboard/provision/$provider/$resourceType': typeof DashboardProvisionProviderResourceTypeRouteWithChildren
   '/dashboard/projects/$projectSlug/': typeof DashboardProjectsProjectSlugIndexRoute
+  '/dashboard/settings/billing/': typeof DashboardSettingsBillingIndexRoute
   '/dashboard/provision/$provider/$resourceType/$provisionId': typeof DashboardProvisionProviderResourceTypeProvisionIdRoute
 }
 export interface FileRouteTypes {
@@ -417,6 +427,7 @@ export interface FileRouteTypes {
     | '/dashboard/projects/$projectSlug/settings'
     | '/dashboard/provision/$provider/$resourceType'
     | '/dashboard/projects/$projectSlug/'
+    | '/dashboard/settings/billing'
     | '/dashboard/provision/$provider/$resourceType/$provisionId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -455,6 +466,7 @@ export interface FileRouteTypes {
     | '/dashboard/projects/$projectSlug/settings'
     | '/dashboard/provision/$provider/$resourceType'
     | '/dashboard/projects/$projectSlug'
+    | '/dashboard/settings/billing'
     | '/dashboard/provision/$provider/$resourceType/$provisionId'
   id:
     | '__root__'
@@ -495,6 +507,7 @@ export interface FileRouteTypes {
     | '/dashboard/projects/$projectSlug/settings'
     | '/dashboard/provision/$provider/$resourceType'
     | '/dashboard/projects/$projectSlug/'
+    | '/dashboard/settings/billing/'
     | '/dashboard/provision/$provider/$resourceType/$provisionId'
   fileRoutesById: FileRoutesById
 }
@@ -723,6 +736,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardDocksAddRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/settings/billing/': {
+      id: '/dashboard/settings/billing/'
+      path: '/billing'
+      fullPath: '/dashboard/settings/billing'
+      preLoaderRoute: typeof DashboardSettingsBillingIndexRouteImport
+      parentRoute: typeof DashboardSettingsRoute
+    }
     '/dashboard/projects/$projectSlug/': {
       id: '/dashboard/projects/$projectSlug/'
       path: '/'
@@ -828,6 +848,7 @@ interface DashboardSettingsRouteChildren {
   DashboardSettingsOrganizationRoute: typeof DashboardSettingsOrganizationRoute
   DashboardSettingsThemeRoute: typeof DashboardSettingsThemeRoute
   DashboardSettingsUserRoute: typeof DashboardSettingsUserRoute
+  DashboardSettingsBillingIndexRoute: typeof DashboardSettingsBillingIndexRoute
 }
 
 const DashboardSettingsRouteChildren: DashboardSettingsRouteChildren = {
@@ -835,6 +856,7 @@ const DashboardSettingsRouteChildren: DashboardSettingsRouteChildren = {
   DashboardSettingsOrganizationRoute: DashboardSettingsOrganizationRoute,
   DashboardSettingsThemeRoute: DashboardSettingsThemeRoute,
   DashboardSettingsUserRoute: DashboardSettingsUserRoute,
+  DashboardSettingsBillingIndexRoute: DashboardSettingsBillingIndexRoute,
 }
 
 const DashboardSettingsRouteWithChildren =
