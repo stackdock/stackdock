@@ -57,6 +57,9 @@ Thumbs.db
 *.pem
 .cache/
 
+# Fumadocs
+.source/
+
 # Debug
 .pnpm-debug.log
 

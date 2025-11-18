@@ -1,0 +1,71 @@
+# StackDock - Root Netlify Configuration
+# This configuration is for the marketing site deployment
+# The docs app should be deployed separately on a subdomain (recommended)
+
+[build]
+  # Build command for the marketing site
+  command = "npm run build:marketing"
+  
+  # Directory to publish (Next.js output from marketing app)
+  publish = "apps/marketing/.next"
+  
+  # Base directory - root for monorepo access
+  base = "."
+
+[build.environment]
+  # Node.js version
+  NODE_VERSION = "20"
+  
+  # NPM version  
+  NPM_VERSION = "10"
+
+# Next.js plugin for marketing site
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Netlify Forms integration
+# Add data-netlify="true" to forms in your marketing site to enable
+[build.processing]
+  skip_processing = false
+
+# Security headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+# Cache static assets
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+# Optional: Proxy to docs subdomain (if using subdomain approach)
+# Uncomment these redirects if you want to proxy /docs/* to docs subdomain
+# [[redirects]]
+#   from = "/docs/*"
+#   to = "https://docs.stackdock.com/:splat"
+#   status = 200
+#   force = true
+
+# 404 page
+[[redirects]]
+  from = "/*"
+  to = "/404"
+  status = 404
+
+# Development context
+[context.deploy-preview]
+  command = "npm run build:marketing"
+
+[context.branch-deploy]
+  command = "npm run build:marketing"
