@@ -56,6 +56,37 @@ npx stackdock add gridpane
 
 ## The Three Registries
 
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    StackDock Platform                        │
+│                  (Orchestration Layer)                       │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │   RBAC       │  │  Encryption   │  │    Audit    │     │
+│  │  System      │  │  (AES-256)    │  │   Logging    │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘     │
+│                                                              │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │         Universal Tables (convex/schema.ts)          │  │
+│  │  servers | webServices | domains | databases | ...  │  │
+│  └──────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+                            ▲
+                            │
+        ┌───────────────────┼───────────────────┐
+        │                   │                   │
+        ▼                   ▼                   ▼
+┌──────────────┐   ┌──────────────┐   ┌──────────────┐
+│ Docks        │   │ UI           │   │ CLI          │
+│ Registry     │   │ Registry     │   │ Tool         │
+│              │   │              │   │              │
+│ packages/    │   │ packages/    │   │ packages/    │
+│ docks/       │   │ ui/          │   │ cli/         │
+│              │   │              │   │              │
+│ Copy/Paste/  │   │ Copy/Paste/  │   │ Install      │
+│ Own          │   │ Own          │   │ Components   │
+└──────────────┘   └──────────────┘   └──────────────┘
+```
+
 ### 1. Docks Registry (Infrastructure Adapters)
 
 **What it is**: A registry of provider adapters that translate APIs to universal schema.
@@ -102,6 +133,38 @@ npx stackdock add gridpane
 ---
 
 ## Universal Table Architecture
+
+### The Universal Table Pattern
+
+```
+Provider APIs                    Universal Tables
+─────────────────                ────────────────────
+                                 
+GridPane API ────┐               
+                 │               
+Vercel API ──────┤               
+                 │               
+Netlify API ─────┼───┐           
+                 │   │           
+Cloudflare API ──┘   │           
+                     │           
+Coolify API ─────────┼───┐       
+                     │   │       
+                     │   │       
+                     ▼   ▼       
+            ┌─────────────────┐ 
+            │  webServices     │ 
+            │  (Universal)    │ 
+            └─────────────────┘ 
+                     │           
+                     │           
+                     ▼           
+            ┌─────────────────┐ 
+            │  fullApiData    │ 
+            │  (Provider-     │ 
+            │   specific)     │ 
+            └─────────────────┘ 
+```
 
 ### The Problem: Provider-Specific Tables
 
@@ -502,6 +565,61 @@ const permissions = await ctx.db
 ---
 
 ## Dock Adapter Pattern
+
+### Dock Adapter Flow
+
+```
+┌─────────────┐
+│   User      │
+│  Clicks     │
+│  "Sync"     │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────────────┐
+│  Dock Adapter       │
+│  (convex/docks/     │
+│   adapters/)        │
+│                     │
+│  1. Decrypt API Key │
+│  2. Call Provider   │
+│     API             │
+│  3. Transform Data  │
+│     (Provider →     │
+│      Universal)     │
+└──────┬──────────────┘
+       │
+       ▼
+┌─────────────────────┐
+│  Universal Table    │
+│  (servers,          │
+│   webServices,      │
+│   domains, etc.)    │
+└─────────────────────┘
+```
+
+### Provider Integration
+
+```
+┌─────────────────────────────────────────────────────────┐
+│              StackDock Universal Tables                │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ │
+│  │ servers  │ │webServices│ │ domains  │ │databases │ │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘ │
+└─────────────────────────────────────────────────────────┘
+         ▲              ▲              ▲              ▲
+         │              │              │              │
+    ┌────┴────┐    ┌────┴────┐    ┌────┴────┐    ┌────┴────┐
+    │         │    │         │    │         │    │         │
+┌───┴───┐ ┌──┴──┐ ┌┴───┐ ┌──┴──┐ ┌┴───┐ ┌──┴──┐ ┌┴───┐ ┌──┴──┐
+│GridPane│ │Vultr│ │Verc│ │Netl│ │Cloud│ │Grid│ │Turso│ │Neon │
+│        │ │     │ │el  │ │ify │ │flare│ │Pane│ │     │ │     │
+└────────┘ └─────┘ └────┘ └────┘ └─────┘ └─────┘ └─────┘ └─────┘
+┌───┴───┐ ┌──┴──┐ ┌──┴──┐ ┌──┴──┐ ┌──┴──┐ ┌──┴──┐ ┌──┴──┐ ┌──┴──┐
+│Digital│ │Lino│ │Hetz │ │Cooli│ │GitHu│ │Sentr│ │Bette│ │Conve│
+│Ocean  │ │de  │ │ner  │ │fy   │ │b    │ │y    │ │r    │ │x    │
+└───────┘ └────┘ └─────┘ └─────┘ └─────┘ └─────┘ └─────┘ └─────┘
+```
 
 ### The Interface
 
