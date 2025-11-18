@@ -335,7 +335,7 @@ export const listServersPaginated = query({
   args: {
     paginationOpts: v.object({
       numItems: v.number(),
-      cursor: v.optional(v.string()),
+      cursor: v.union(v.string(), v.null()),
     }),
   },
   handler: async (ctx, args) => {
@@ -385,7 +385,7 @@ export const listDomainsPaginated = query({
   args: {
     paginationOpts: v.object({
       numItems: v.number(),
-      cursor: v.optional(v.string()),
+      cursor: v.union(v.string(), v.null()),
     }),
   },
   handler: async (ctx, args) => {
@@ -435,7 +435,7 @@ export const listDatabasesPaginated = query({
   args: {
     paginationOpts: v.object({
       numItems: v.number(),
-      cursor: v.optional(v.string()),
+      cursor: v.union(v.string(), v.null()),
     }),
   },
   handler: async (ctx, args) => {
@@ -485,7 +485,7 @@ export const listWebServicesPaginated = query({
   args: {
     paginationOpts: v.object({
       numItems: v.number(),
-      cursor: v.optional(v.string()),
+      cursor: v.union(v.string(), v.null()),
     }),
   },
   handler: async (ctx, args) => {

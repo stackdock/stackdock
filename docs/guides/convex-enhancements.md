@@ -17,7 +17,7 @@ function FileUploadComponent() {
 
   const handleUpload = async (file: File) => {
     // 1. Store the file in Convex storage
-    const storageId = await convex.mutation(api.lib.storage.generateUploadUrl)
+    const storageId = await convex.mutation(api.storage.mutations.generateUploadUrl)
     
     // 2. Upload the file
     const result = await fetch(storageId, {
@@ -29,7 +29,7 @@ function FileUploadComponent() {
     const { storageId: fileStorageId } = await result.json()
     
     // 3. Create metadata record
-    const fileId = await convex.mutation(api.lib.storage.uploadFile, {
+    const fileId = await convex.mutation(api.storage.mutations.uploadFile, {
       storageId: fileStorageId,
       filename: file.name,
       contentType: file.type,
@@ -51,7 +51,7 @@ import { useQuery } from "convex/react"
 
 function FileDownloadComponent({ fileId }) {
   // Get download URL
-  const fileUrl = useQuery(api.lib.storage.getFileUrl, { fileId })
+  const fileUrl = useQuery(api.storage.queries.getFileUrl, { fileId })
   
   return (
     <a href={fileUrl} download>
@@ -69,7 +69,7 @@ import { useQuery } from "convex/react"
 
 function ProjectFilesComponent({ projectId }) {
   // List all files for a project
-  const files = useQuery(api.lib.storage.listProjectFiles, { projectId })
+  const files = useQuery(api.storage.queries.listProjectFiles, { projectId })
   
   return (
     <ul>

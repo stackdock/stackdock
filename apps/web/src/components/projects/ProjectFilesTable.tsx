@@ -24,8 +24,8 @@ interface ProjectFilesTableProps {
 }
 
 export function ProjectFilesTable({ projectId }: ProjectFilesTableProps) {
-  const files = useQuery(api.lib.storage.listProjectFiles, { projectId })
-  const deleteFile = useMutation(api.lib.storage.deleteFile)
+  const files = useQuery(api.storage.queries.listProjectFiles, { projectId })
+  const deleteFile = useMutation(api.storage.mutations.deleteFile)
 
   const handleDelete = async (fileId: Id<"fileUploads">, filename: string) => {
     if (!confirm(`Are you sure you want to delete "${filename}"?`)) {
@@ -122,7 +122,7 @@ export function ProjectFilesTable({ projectId }: ProjectFilesTableProps) {
 }
 
 function FileDownloadButton({ fileId, filename }: { fileId: Id<"fileUploads">; filename: string }) {
-  const fileUrl = useQuery(api.lib.storage.getFileUrl, { fileId })
+  const fileUrl = useQuery(api.storage.queries.getFileUrl, { fileId })
 
   return (
     <Button

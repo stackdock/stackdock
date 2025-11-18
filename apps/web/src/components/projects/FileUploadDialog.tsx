@@ -43,8 +43,8 @@ export function FileUploadDialog({ projectId, dockId, trigger }: FileUploadDialo
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const generateUploadUrl = useMutation(api.lib.storage.generateUploadUrl)
-  const uploadFile = useMutation(api.lib.storage.uploadFile)
+  const generateUploadUrl = useMutation(api.storage.mutations.generateUploadUrl)
+  const uploadFile = useMutation(api.storage.mutations.uploadFile)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]

@@ -266,7 +266,7 @@ export const listProjectsPaginated = query({
   args: {
     paginationOpts: v.object({
       numItems: v.number(),
-      cursor: v.optional(v.string()),
+      cursor: v.union(v.string(), v.null()),
     }),
   },
   handler: async (ctx, args) => {
