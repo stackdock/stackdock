@@ -21,11 +21,31 @@ reviews:
   poem: false
   collapse_walkthrough: false
   
-  # Auto-reply settings
-  auto_reply: true
-  
   # Request changes workflow
   request_changes_workflow: false
+  
+  # Static analysis tools configuration
+  tools:
+    eslint:
+      enabled: true
+    
+    markdownlint:
+      enabled: true
+    
+    yamllint:
+      enabled: true
+    
+    actionlint:
+      enabled: true
+    
+    shellcheck:
+      enabled: true
+    
+    biome:
+      enabled: false
+    
+    ruff:
+      enabled: false
   
   # Path-based review instructions for monorepo structure
   path_instructions:
@@ -74,29 +94,6 @@ reviews:
         - Proper secret handling
         - Efficient CI/CD patterns
         - Action version pinning
-
-# Static analysis tools configuration
-tools:
-  eslint:
-    enabled: true
-  
-  markdownlint:
-    enabled: true
-  
-  yamllint:
-    enabled: true
-  
-  actionlint:
-    enabled: true
-  
-  shellcheck:
-    enabled: true
-  
-  biome:
-    enabled: false
-  
-  ruff:
-    enabled: false
 
 # Chat settings
 chat:
