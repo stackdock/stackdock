@@ -12,6 +12,13 @@ dist/
 build/
 .next/
 out/
+.vercel/
+
+# Cloudflare
+.wrangler/
+wrangler.toml.local
+.dev.vars
+.mf/
 
 # Environment files
 .env
