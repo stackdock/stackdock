@@ -26,6 +26,7 @@ import { hetznerAdapter } from "./adapters/hetzner"
 import { coolifyAdapter } from "./adapters/coolify"
 import { betterStackAdapter } from "./adapters/betterstack"
 import { sentryAdapter } from "./adapters/sentry"
+import { firecrawlAdapter } from "./adapters/firecrawl"
 
 /**
  * Registry of all dock adapters
@@ -50,6 +51,7 @@ const adapterRegistry: Record<string, DockAdapter> = {
   coolify: coolifyAdapter,
   "better-stack": betterStackAdapter,
   sentry: sentryAdapter,
+  firecrawl: firecrawlAdapter,
   // Add more adapters here:
   // aws: awsAdapter,
 }
@@ -101,6 +103,7 @@ const providerMetadata: Record<string, { displayName: string }> = {
   coolify: { displayName: "Coolify" },
   "better-stack": { displayName: "Better Stack" },
   sentry: { displayName: "Sentry" },
+  firecrawl: { displayName: "Firecrawl Health Monitoring" },
   // Add more as adapters are added:
   // aws: { displayName: "AWS" },
 }
