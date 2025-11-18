@@ -5,8 +5,9 @@
 This folder contains **open missions and reference documents** that are not actively being worked on.
 
 For **active work**, see:
-- `../working/in-progress/` - Currently being worked on
-- `../working/completed/` - Recently completed work
+- `../working/` - Currently being worked on
+- `../blocking/` - Current blockers
+- `../archived/` - Recently completed or shelved work
 
 ---
 
