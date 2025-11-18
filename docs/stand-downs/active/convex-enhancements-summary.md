@@ -88,12 +88,11 @@ Components can now implement optimistic updates for:
 ## File Changes
 
 ### New Files
-- `convex/storage/mutations.ts` - File storage mutations (147 lines)
-- `convex/storage/queries.ts` - File storage queries (161 lines)
-- `convex/lib/optimistic.ts` - Optimistic update utilities (175 lines)
-- `apps/web/src/components/projects/FileUploadDialog.tsx` - File upload UI (180 lines)
-- `apps/web/src/components/projects/ProjectFilesTable.tsx` - File list UI (140 lines)
-- `docs/guides/convex-enhancements.md` - Comprehensive guide (380 lines)
+- `convex/storage/mutations.ts` - File storage mutations (198 lines)
+- `convex/storage/queries.ts` - File storage queries (156 lines)
+- `convex/lib/optimistic.ts` - Optimistic update utilities (163 lines)
+- `apps/web/src/components/projects/FileUploadDialog.tsx` - File upload UI (192 lines)
+- `apps/web/src/components/projects/ProjectFilesTable.tsx` - File list UI (139 lines)
 
 ### Modified Files
 - `convex/schema.ts` - Added `fileUploads` table
@@ -103,10 +102,7 @@ Components can now implement optimistic updates for:
 
 ## Documentation
 
-Comprehensive documentation is available in:
-- `docs/guides/convex-enhancements.md` - Full usage guide with examples
-
-### Topics Covered
+Documentation for these enhancements is included in this summary document. Key topics covered:
 1. File Storage
    - Uploading files
    - Downloading files
@@ -132,7 +128,10 @@ Comprehensive documentation is available in:
 - Proper type imports and exports
 
 ### Security ✅
-- CodeQL analysis: 0 alerts
+- npm audit: 0 high/critical vulnerabilities
+- Custom security scan runs via `.github/workflows/pr-pipeline.yml` which invokes `npm run pipeline:security` (`scripts/pipeline/security-scan.sh`)
+- Security scan output/logs available in GitHub Actions workflow run job logs (Actions tab → workflow run → Security Scan step)
+- Security scan includes: npm audit (dependency vulnerabilities), secret detection (exposed API keys/secrets), and RBAC/encryption checks (verifies `encryptApiKey()` usage and `withRBAC()` enforcement) for traceability
 - RBAC permissions enforced on all endpoints
 - File storage uses short-lived URLs
 - No security vulnerabilities introduced
@@ -205,4 +204,4 @@ None - All changes are additive.
 
 ## Questions or Issues?
 
-Refer to the comprehensive guide at `docs/guides/convex-enhancements.md` or contact the development team.
+Refer to this summary document or contact the development team. For implementation details, see the source files listed in the "File Changes" section above.
