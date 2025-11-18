@@ -32,7 +32,7 @@ export default function WaitlistPage() {
         <div className="max-w-3xl w-full text-center space-y-12">
           {/* Logo */}
           <header className="flex justify-center mb-8">
-            <div className="relative w-[280px] h-[40px] md:w-[420px] md:h-[60px]">
+            <div className="relative w-[280px] h-[40px] md:w-[500px] md:h-[72px]">
               <Image
                 src="/stackdock-logo.svg"
                 alt="StackDock - Multi-Cloud Management Platform"

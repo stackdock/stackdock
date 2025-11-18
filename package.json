@@ -34,6 +34,7 @@
     "pipeline:build": "bash scripts/pipeline/build-verify.sh"
   },
   "devDependencies": {
+    "@octokit/rest": "^20.0.0",
     "@types/node": "^20.0.0",
     "convex": "^1.28.0",
     "esbuild": "^0.25.0",
