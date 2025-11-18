@@ -49,6 +49,7 @@
     "npm": ">=9.0.0"
   },
   "dependencies": {
+    "@mendable/firecrawl-js": "^1.21.1",
     "@radix-ui/react-select": "^2.2.6"
   },
   "overrides": {
