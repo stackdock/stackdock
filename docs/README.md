@@ -138,16 +138,15 @@ System references and state tracking:
 
 Current state and progress tracking:
 
-- **[STATUS.md](./STATUS.md)** - Current project status
-- **[DOCS_ORGANIZED.md](./DOCS_ORGANIZED.md)** - Documentation organization notes
+- **[STATUS.md](./STATUS.md)** - Current project status (references `.stackdock-state.json` as source of truth)
+- **[MISSIONS.md](./MISSIONS.md)** - Post-MVP mission tracking and overview
 
-### Internal Documentation (`docs/internal/`)
+### Internal Documentation (`docs/`)
 
-Internal documentation and progress tracking:
+Internal documentation:
 
-- **[PROGRESS.md](./internal/PROGRESS.md)** - Current build progress
-- **[BUILT.md](./internal/BUILT.md)** - What's been built
-- **[STATEMENT.md](./internal/STATEMENT.md)** - Internal philosophy & standards
+- **[STATEMENT.md](./STATEMENT.md)** - Internal philosophy & standards
+- **[.stackdock-state.json](../.stackdock-state.json)** - Machine-readable state (single source of truth)
 
 ---
 

@@ -55,12 +55,8 @@ stackdock/
 └── docs/
     ├── README.md              # Main docs entry point
     ├── INDEX.md               # Quick navigation (this file)
-    ├── DIRECTORY_TREE.md      # Complete directory structure
-    ├── DOCS_ORGANIZED.md      # Documentation organization notes
-    │
-    ├── [TOP-LEVEL STATUS]
-    │   ├── STATUS.md          # Current project status
-    │   └── DOCS_ORGANIZED.md  # Documentation organization notes
+    ├── STATUS.md              # Current project status
+    ├── MISSIONS.md            # Post-MVP mission tracking
     │
     ├── architecture/          # System architecture (MID-LEVEL)
     │   ├── ARCHITECTURE.md    # System design
@@ -70,16 +66,6 @@ stackdock/
     │   ├── NAVIGATION_ARCHITECTURE.md
     │   ├── ACCESSIBILITY.md
     │   └── DEVELOPMENT_PRIORITY.md
-    │
-    ├── guides/                # Step-by-step guides (MID-LEVEL)
-    │   ├── SETUP.md           # Setup instructions
-    │   ├── QUICKSTART.md      # Quick start
-    │   ├── START.md           # Start StackDock
-    │   ├── CONTRIBUTING.md    # Development workflow
-    │   ├── DOCK_ADAPTER_GUIDE.md
-    │   ├── REGISTRY_GUIDE.md
-    │   ├── CLERK_SETUP.md
-    │   └── CONVEX_SETUP.md
     │
     ├── guides/                # Step-by-step guides (MID-LEVEL)
     │   ├── SETUP.md           # Setup instructions
@@ -121,10 +107,7 @@ stackdock/
     │   ├── archived/          # Completed missions
     │   └── agents/            # Agent system files
     │
-    ├── internal/              # Internal documentation
-    │   ├── PROGRESS.md        # Build progress tracking
-    │   ├── BUILT.md           # What's been completed
-    │   └── STATEMENT.md       # Internal philosophy & standards
+    ├── STATEMENT.md          # Internal philosophy & standards
     │
     ├── archived/              # Archived docs
     ├── local/                 # Local reference files
@@ -142,7 +125,7 @@ stackdock/
 - **Internal** (`internal/`) - For agents and AI
 - **Local** (`local/`) - Not pushed to GitHub (adapter JSONs, templates)
 
-See [DIRECTORY_TREE.md](./DIRECTORY_TREE.md) for complete structure details.
+See [STATUS.md](./STATUS.md) for current project status and [.stackdock-state.json](../.stackdock-state.json) for machine-readable state.
 
 ---
 

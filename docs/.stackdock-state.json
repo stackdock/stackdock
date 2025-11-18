@@ -1,9 +1,11 @@
 {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "lastUpdated": "2025-11-17T00:00:00Z",
   "projectStartDate": "2025-10-22",
   "currentDate": "2025-11-17",
-  "missions": {
+  "mvpStatus": "complete",
+  "mvpCompleted": "2025-11-17T00:00:00Z",
+  "archivedMissions": {
     "mission-1": {
       "id": "mission-1",
       "title": "Monorepo & Docs Setup for New Apps",
@@ -93,6 +95,120 @@
       "notes": "MVP COMPLETE. GitHub adapter complete. Sentry issues integrated into monitoring/issues table. Better Stack uptime monitoring integrated. Polymorphic deduplication working for servers and domains. Insights dashboard updated with accurate deduplicated counts. Cloudflare pagination fixed. Linear and Projects Core System shelved for post-MVP."
     }
   },
+  "missions": {
+    "mission-1": {
+      "id": "mission-1",
+      "title": "Clear Issues",
+      "status": "pending",
+      "priority": "high",
+      "githubIssues": ["extract-universal-types", "add-shared-tsconfig-base", "implement-adapter-contract-tests", "wire-ci-cd-github-actions", "add-type-lint-enforcement", "create-provider-capability-matrix", "implement-audit-log-ui", "create-fake-provider-adapter"],
+      "estimatedHours": {
+        "min": 26,
+        "max": 37
+      },
+      "dependencies": [],
+      "notes": "Complete all 8 GitHub issues from critical gaps review. See .github/ISSUES/ for issue details."
+    },
+    "mission-2": {
+      "id": "mission-2",
+      "title": "Scaffold CLI",
+      "status": "pending",
+      "priority": "high",
+      "scope": "packages/cli/ implementation",
+      "dependencies": [],
+      "notes": "Build out CLI tool for registry management. Structure exists, needs implementation."
+    },
+    "mission-3": {
+      "id": "mission-3",
+      "title": "Test UI/Adapter Registry",
+      "status": "pending",
+      "priority": "high",
+      "scope": "Contract tests, integration tests",
+      "dependencies": ["mission-1"],
+      "notes": "Implement test suite for adapters and UI components. Depends on Mission 1 (extract types)."
+    },
+    "mission-4": {
+      "id": "mission-4",
+      "title": "Full Audit Sweep",
+      "status": "pending",
+      "priority": "medium",
+      "scope": "Remove orphaned code, fix technical debt",
+      "dependencies": [],
+      "notes": "Comprehensive code review and cleanup."
+    },
+    "mission-5": {
+      "id": "mission-5",
+      "title": "Cleanup UI",
+      "status": "pending",
+      "priority": "medium",
+      "scope": "Component cleanup, accessibility improvements",
+      "dependencies": [],
+      "notes": "Polish UI components, improve UX."
+    },
+    "mission-6": {
+      "id": "mission-6",
+      "title": "Add Linear",
+      "status": "pending",
+      "priority": "medium",
+      "scope": "Linear API integration, adapter implementation",
+      "dependencies": [],
+      "notes": "Integrate Linear adapter. Previously shelved, now post-MVP priority."
+    },
+    "mission-7": {
+      "id": "mission-7",
+      "title": "Harden Project Resources and Linking",
+      "status": "pending",
+      "priority": "high",
+      "scope": "Polymorphic resource linking, project management",
+      "dependencies": ["mission-1"],
+      "notes": "Complete project resource linking system. Depends on Mission 1 (extract types)."
+    },
+    "mission-8": {
+      "id": "mission-8",
+      "title": "Docker Support",
+      "status": "pending",
+      "priority": "low",
+      "scope": "Dockerfiles, docker-compose, deployment configs",
+      "dependencies": [],
+      "notes": "Add Docker support for development/deployment."
+    },
+    "mission-9": {
+      "id": "mission-9",
+      "title": "Dev/Build/Deploy Scripts",
+      "status": "pending",
+      "priority": "medium",
+      "scope": "npm scripts, CI/CD improvements, deployment automation",
+      "dependencies": ["mission-1"],
+      "notes": "Standardize development and deployment scripts. Depends on Mission 1 (CI/CD setup)."
+    },
+    "mission-10": {
+      "id": "mission-10",
+      "title": "Version Number Management",
+      "status": "pending",
+      "priority": "low",
+      "scope": "Versioning strategy, changelog, release process",
+      "dependencies": [],
+      "notes": "Implement semantic versioning and release management."
+    },
+    "mission-11": {
+      "id": "mission-11",
+      "title": "New Marketing Site",
+      "status": "in_progress",
+      "priority": "medium",
+      "scope": "apps/marketing/ - content, blog posts, landing page",
+      "dependencies": [],
+      "notes": "Complete marketing site/blog. Structure exists, needs content."
+    },
+    "mission-12": {
+      "id": "mission-12",
+      "title": "Fill Blog Backlog",
+      "status": "pending",
+      "priority": "low",
+      "scope": "Write blog posts, content strategy",
+      "dependencies": ["mission-11"],
+      "notes": "Create blog content for marketing site. Depends on Mission 11."
+    }
+  },
   "setup": {
     "dependencies": {
       "root": true,
@@ -159,9 +275,12 @@
     "rate-limit-tracking-implemented",
     "clerk-login-working",
     "dev-server-port-3000",
-    "mvp-complete"
+    "mvp-complete",
+    "mission-reset-complete",
+    "documentation-links-fixed"
   ],
   "nextSteps": [
+    "start-mission-1-clear-issues",
     "create-github-issues-for-shelved-features",
     "cleanup-orphaned-code",
     "comprehensive-testing-all-16-providers",
@@ -169,8 +288,8 @@
     "prepare-mvp-release"
   ],
   "shelved": {
-    "linear-adapter": "Complex project linking system - deferred to post-MVP",
-    "projects-core-system": "Polymorphic resource linking to projects - deferred to post-MVP",
+    "linear-adapter": "Complex project linking system - deferred to post-MVP (now Mission 6)",
+    "projects-core-system": "Polymorphic resource linking to projects - deferred to post-MVP (now Mission 7)",
     "complex-auth-iaas": "AWS/GCP/Azure multi-field auth - deferred to post-MVP",
     "insights-enhancements": "Advanced data visualization - deferred to post-MVP"
   },
@@ -190,7 +309,8 @@
     "Architecture intact - translation layer working, universal schema validated",
     "RBAC, encryption, audit logging all functional",
     "Continuous sync working with provider-aware intervals",
-    "Shelved for post-MVP: Linear adapter, Projects Core System, Complex Auth IaaS, Insights enhancements",
-    "This state file is the ONLY source of truth - must be in root directory per .cursorrules"
+    "Mission reset complete - old missions (1-7) archived, new missions (1-12) created",
+    "Documentation links fixed - INDEX.md, README.md, STATUS.md updated",
+    "This state file is the ONLY source of truth - located in docs/ directory"
   ]
 }

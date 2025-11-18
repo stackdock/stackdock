@@ -1,32 +1,38 @@
 # StackDock Status
-**Last Updated**: November 16, 2025  
-**Project Start**: October 22, 2025
+**Last Updated**: November 17, 2025  
+**Project Start**: October 22, 2025  
+**MVP Completed**: November 17, 2025
+
+> **Note**: This file provides a human-readable summary. For the authoritative, machine-readable state, see [`.stackdock-state.json`](../.stackdock-state.json) in the repository root.
 
 ## Current State
 
+### ✅ MVP Status: COMPLETE
+
+**MVP completed on November 17, 2025** with 16 providers integrated and all core features functional.
+
 ### What's Working (Verified)
-- ✅ **13 Providers Integrated** - All syncing successfully
-  - GridPane, Vercel, Netlify, Cloudflare, Turso, Neon, Convex, PlanetScale, Vultr, DigitalOcean, Linode, Hetzner, Coolify, GitHub
+- ✅ **16 Providers Integrated** - All syncing successfully
+  - **PaaS**: GridPane, Vercel, Netlify, Cloudflare, Coolify
+  - **Databases**: Turso, Neon, Convex, PlanetScale
+  - **IaaS**: Vultr, DigitalOcean, Linode, Hetzner
+  - **Projects**: GitHub
+  - **Monitoring**: Sentry, Better Stack
 - ✅ **Read-Only MVP Functional** - All providers syncing, universal tables displaying data
 - ✅ **Core Platform** - TanStack Start, Convex, Clerk all working
 - ✅ **RBAC System** - Full coverage, all queries/mutations protected
 - ✅ **Encryption** - AES-256-GCM for API keys
 - ✅ **Audit Logging** - Comprehensive audit trail
 - ✅ **Continuous Sync** - Provider-aware intervals (60s+)
-- ✅ **Code Table** - Working correctly, queries `repositories` table (universal table for GitHub, GitLab, etc.)
-- ✅ **Projects Feature** - Backend complete, UI 60% complete (create/edit/link resources working)
+- ✅ **Polymorphic Deduplication** - Servers and domains deduplicated across providers
+- ✅ **Monitoring Integration** - Sentry issues and Better Stack uptime monitors
+- ✅ **Insights Dashboard** - Accurate deduplicated counts
 
-### What's In Progress
-- 🔄 **Projects Feature** - 60% complete (UI remaining 40%)
-- 🔄 **Monitoring Feature** - 0% complete (Linear/Sentry adapters next)
-
-### What's Next
-- **Immediate**: Complete Projects UI remaining 40%
-- **High Priority**: Linear adapter integration
-- **High Priority**: Sentry adapter integration
-- **High Priority**: Monitoring pages (activity, alerts, errors)
-- **Medium Priority**: Complex auth IaaS providers (AWS/GCP/Azure)
-- **Low Priority**: Insights board, documentation cleanup, testing
+### Shelved for Post-MVP
+- **Linear Adapter** - Complex project linking system
+- **Projects Core System** - Polymorphic resource linking to projects
+- **Complex Auth IaaS** - AWS/GCP/Azure multi-field auth complexity
+- **Insights Enhancements** - Advanced visualization deferred
 
 ---
 
@@ -44,7 +50,7 @@
 - [x] Continuous sync (60s+ intervals)
 - [x] Rate limit tracking
 
-### ✅ Provider Integration (13/13 - 100%)
+### ✅ Provider Integration (16/16 - 100%)
 - [x] GridPane (servers, web services, domains, backups)
 - [x] Vercel (web services)
 - [x] Netlify (web services)
@@ -59,6 +65,8 @@
 - [x] Hetzner (servers)
 - [x] Coolify (servers, web services, databases)
 - [x] GitHub (repositories, branches, issues, commits)
+- [x] Sentry (issues/alerts)
+- [x] Better Stack (uptime monitors)
 
 ### ✅ Universal Tables (100%)
 - [x] `servers` - 6 providers
@@ -71,145 +79,66 @@
 - [x] `deployments` - 1 provider
 - [x] `repositories` - 1 provider (GitHub, universal table)
 
-### 🔄 Projects Feature (60%)
-- [x] Projects schema
-- [x] GitHub adapter integration
-- [x] Code page with repositories table
-- [x] RBAC protection (projects:read, projects:full)
-- [x] Create project UI (`/dashboard/projects/new`)
-- [x] Edit project UI (EditProjectDialog component)
-- [x] Link resources to projects UI (LinkResourceDialog component)
-- [x] Project detail pages (`/dashboard/projects/$projectSlug`)
-- [x] Project resource management (link/unlink)
-- [ ] Project activity/overview pages (remaining UI polish)
-- [ ] Project settings page
+### ✅ Monitoring Feature (100%)
+- [x] Sentry adapter (issues/alerts)
+- [x] Better Stack adapter (uptime monitors)
+- [x] Monitoring pages (issues, uptime)
+- [x] RBAC protection (monitoring:read, monitoring:full)
+- [x] Universal `issues` table (Sentry issues)
+- [x] Universal `monitors` table (Better Stack monitors)
 
-**Note**: Projects feature is organizational (linking resources together), separate from `repositories` table (universal table for GitHub/GitLab).
-
-### 📋 Monitoring Feature (0%)
-- [ ] Linear adapter
-- [ ] Sentry adapter
-- [ ] Monitoring pages (activity, alerts, errors)
-- [ ] RBAC protection (monitoring:read, monitoring:full)
+**Note**: Linear adapter shelved for post-MVP due to complexity.
 
 ---
 
-## Next Steps
+## Post-MVP Roadmap
 
-### Immediate Priorities
+See [MISSIONS.md](./MISSIONS.md) for detailed post-MVP mission structure.
 
-#### 1. Complete Projects UI (Remaining 40%)
-**Status**: Backend complete, UI 60% complete
+### New Missions (1-12)
 
-**Remaining Tasks**:
-- [ ] Project activity/overview pages polish
-- [ ] Project settings page
-- [ ] UI improvements and polish
-
-**Estimated Time**: 2-3 hours
-
-#### 2. Linear Integration (High Priority)
-**Status**: Not started
-
-**Tasks**:
-- [ ] Linear adapter (`convex/docks/adapters/linear/adapter.ts`)
-- [ ] Linear API client (GraphQL)
-- [ ] Linear dock registration
-- [ ] Linear sync action
-
-**API Documentation**: https://linear.app/docs/api
-
-**Estimated Time**: 3-4 hours
-
-#### 3. Sentry Integration (High Priority)
-**Status**: Not started
-
-**Tasks**:
-- [ ] Sentry adapter (`convex/docks/adapters/sentry/adapter.ts`)
-- [ ] Sentry API client (REST)
-- [ ] Sentry dock registration
-- [ ] Sentry sync action
-- [ ] Monitoring schema (alerts table if needed)
-
-**API Documentation**: https://docs.sentry.io/api/
-
-**Estimated Time**: 3-4 hours
-
-#### 4. Monitoring Pages (High Priority)
-**Status**: Routes exist, need content
-
-**Tasks**:
-- [ ] Activity page (audit logs)
-- [ ] Alerts page (Sentry alerts)
-- [ ] Errors page (Sentry errors)
-- [ ] Audit log queries
-- [ ] Alerts queries
-
-**Estimated Time**: 4-5 hours
-
-### Medium Priority
-
-#### 5. Complex Auth IaaS Providers
-**Status**: Not started
-
-**Providers**: AWS, GCP, Azure
-
-**Tasks**:
-- [ ] Multi-field authentication UI
-- [ ] IAM role/service account handling
-- [ ] Read-only instance fetching
-- [ ] Universal table mapping
-
-**Estimated Time**: 8-12 hours per provider
-
-#### 6. Insights Board
-**Status**: Not started
-
-**Tasks**:
-- [ ] Data visualization components
-- [ ] Cross-provider analytics
-- [ ] Aggregated dashboards
-- [ ] Charts and graphs
-
-**Estimated Time**: 10-15 hours
+1. **Clear Issues** - Complete all GitHub issues from critical gaps review
+2. **Scaffold CLI** - Build out CLI tool for registry management
+3. **Test UI/Adapter Registry** - Implement test suite for adapters and UI components
+4. **Full Audit Sweep** - Comprehensive code review and cleanup
+5. **Cleanup UI** - Polish UI components, improve UX
+6. **Add Linear** - Integrate Linear adapter (previously shelved)
+7. **Harden Project Resources and Linking** - Complete project resource linking system
+8. **Docker Support** - Add Docker support for development/deployment
+9. **Dev/Build/Deploy Scripts** - Standardize development and deployment scripts
+10. **Version Number Management** - Implement semantic versioning and release management
+11. **New Marketing Site** - Complete marketing site/blog (in progress)
+12. **Fill Blog Backlog** - Create blog content for marketing site
 
 ---
 
 ## Progress Summary
 
 - **Core Platform**: 100% ✅
-- **Provider Integration**: 100% ✅ (13 providers)
-- **Projects Feature**: 60% 🔄
-- **Monitoring Feature**: 0% 📋
-- **Overall MVP**: ~85% complete
+- **Provider Integration**: 100% ✅ (16 providers)
+- **Monitoring Feature**: 100% ✅ (Sentry + Better Stack)
+- **Polymorphic Deduplication**: 100% ✅ (Servers + Domains)
+- **Overall MVP**: 100% ✅ **COMPLETE**
 
-**Estimated Time to MVP**: 15-20 hours
+**MVP Completed**: November 17, 2025
 
 ---
 
 ## Technical Notes
 
 - **RBAC**: All queries/mutations protected. New features must include RBAC checks.
-- **Monitoring Permission**: Added to schema, ready for Sentry/Linear integration.
+- **Monitoring**: Sentry issues integrated into universal `issues` table. Better Stack monitors integrated.
 - **Continuous Sync**: Working with provider-aware intervals. No changes needed.
 - **Rate Limits**: Comprehensive tracking in place. Monitor logs for optimization.
 - **Architecture**: Translation layer working correctly. Universal tables validated across all providers.
-- **Projects vs Repositories**: Projects are organizational (StackDock feature), repositories are universal table (provider data).
+- **Polymorphic Deduplication**: Client-side deduplication working for servers and domains across providers.
+- **Cloudflare Pagination**: Fixed for zones, DNS records, Pages, and Workers.
 
 ---
 
-## Quick Wins (Can be done in parallel)
+## State File
 
-1. **Project Activity/Overview Pages** (2 hours)
-   - Polish existing project detail pages
-   - Add activity feed
-
-2. **Audit Log Queries** (1 hour)
-   - Add `listAuditLogs` query
-   - Basic filtering
-
-3. **Project Settings Page** (1 hour)
-   - Settings UI for project configuration
+For authoritative, machine-readable state information, see [`.stackdock-state.json`](../.stackdock-state.json) in the repository root.
 
 ---
 
