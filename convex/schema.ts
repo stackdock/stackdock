@@ -524,4 +524,142 @@ export default defineSchema({
     .index("by_org", ["orgId", "timestamp"])
     .index("by_user", ["userId", "timestamp"])
     .index("by_resource", ["resourceType", "resourceId"]),
+
+  // == LAYER 9: BILLING & MONETIZATION (Autumn Integration) ==
+  // Note: These tables provide the foundation for Autumn integration
+  // Currently scaffolded for future implementation
+
+  // Subscription management (links to Autumn)
+  subscriptions: defineTable({
+    orgId: v.id("organizations"),
+    autumnCustomerId: v.optional(v.string()), // Autumn customer ID
+    autumnSubscriptionId: v.optional(v.string()), // Autumn subscription ID
+    planId: v.string(), // References plans table or Autumn plan ID
+    status: v.union(
+      v.literal("active"),
+      v.literal("cancelled"),
+      v.literal("past_due"),
+      v.literal("trialing"),
+      v.literal("incomplete")
+    ),
+    currentPeriodStart: v.number(),
+    currentPeriodEnd: v.number(),
+    cancelAtPeriodEnd: v.boolean(),
+    trialEnd: v.optional(v.number()),
+    metadata: v.optional(v.any()), // Additional subscription metadata
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_autumn_customer", ["autumnCustomerId"])
+    .index("by_status", ["status"]),
+
+  // Billing customers (links organizations to payment provider)
+  customers: defineTable({
+    orgId: v.id("organizations"),
+    autumnCustomerId: v.string(), // Autumn customer ID
+    stripeCustomerId: v.optional(v.string()), // Stripe customer ID (if using Stripe)
+    email: v.string(),
+    name: v.optional(v.string()),
+    paymentMethod: v.optional(v.object({
+      type: v.string(), // "card", "bank_account", etc.
+      last4: v.optional(v.string()),
+      brand: v.optional(v.string()),
+    })),
+    billingAddress: v.optional(v.object({
+      line1: v.optional(v.string()),
+      line2: v.optional(v.string()),
+      city: v.optional(v.string()),
+      state: v.optional(v.string()),
+      postalCode: v.optional(v.string()),
+      country: v.optional(v.string()),
+    })),
+    metadata: v.optional(v.any()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_autumn_customer", ["autumnCustomerId"])
+    .index("by_stripe_customer", ["stripeCustomerId"]),
+
+  // Pricing plans and feature definitions
+  plans: defineTable({
+    name: v.string(), // "Free", "Pro", "Enterprise"
+    displayName: v.string(), // "Professional Plan"
+    description: v.optional(v.string()),
+    autumnPlanId: v.optional(v.string()), // Autumn plan ID
+    stripePriceId: v.optional(v.string()), // Stripe price ID
+    amount: v.number(), // Price in cents
+    currency: v.string(), // "usd", "eur", etc.
+    interval: v.union(v.literal("month"), v.literal("year"), v.literal("one_time")),
+    features: v.object({
+      // Feature flags and limits
+      maxDocks: v.number(),
+      maxProjects: v.number(),
+      maxTeamMembers: v.number(),
+      multiCloudSupport: v.boolean(),
+      advancedMonitoring: v.boolean(),
+      apiAccess: v.boolean(),
+      prioritySupport: v.boolean(),
+      customIntegrations: v.boolean(),
+      // Usage limits
+      maxApiCallsPerMonth: v.optional(v.number()),
+      maxStorageGB: v.optional(v.number()),
+    }),
+    isActive: v.boolean(),
+    sortOrder: v.number(), // For display ordering
+    metadata: v.optional(v.any()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_active", ["isActive"])
+    .index("by_sort_order", ["sortOrder"]),
+
+  // Usage tracking and metering
+  usageRecords: defineTable({
+    orgId: v.id("organizations"),
+    subscriptionId: v.id("subscriptions"),
+    metricType: v.string(), // "api_calls", "docks", "projects", "storage", etc.
+    quantity: v.number(),
+    timestamp: v.number(),
+    metadata: v.optional(v.any()), // Additional context (dock ID, project ID, etc.)
+  })
+    .index("by_org", ["orgId", "timestamp"])
+    .index("by_subscription", ["subscriptionId", "timestamp"])
+    .index("by_metric", ["metricType", "timestamp"]),
+
+  // Invoice records
+  invoices: defineTable({
+    orgId: v.id("organizations"),
+    customerId: v.id("customers"),
+    subscriptionId: v.optional(v.id("subscriptions")),
+    autumnInvoiceId: v.optional(v.string()), // Autumn invoice ID
+    stripeInvoiceId: v.optional(v.string()), // Stripe invoice ID
+    number: v.string(), // Invoice number
+    status: v.union(
+      v.literal("draft"),
+      v.literal("open"),
+      v.literal("paid"),
+      v.literal("void"),
+      v.literal("uncollectible")
+    ),
+    amount: v.number(), // Total amount in cents
+    currency: v.string(),
+    amountPaid: v.number(),
+    amountDue: v.number(),
+    periodStart: v.number(),
+    periodEnd: v.number(),
+    dueDate: v.optional(v.number()),
+    paidAt: v.optional(v.number()),
+    hostedInvoiceUrl: v.optional(v.string()), // URL to view invoice
+    invoicePdf: v.optional(v.string()), // URL to PDF
+    metadata: v.optional(v.any()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId", "createdAt"])
+    .index("by_customer", ["customerId"])
+    .index("by_status", ["status"])
+    .index("by_autumn_invoice", ["autumnInvoiceId"])
+    .index("by_stripe_invoice", ["stripeInvoiceId"]),
 });
