@@ -212,6 +212,92 @@ convex/docks/adapters/gridpane/
 
 ## Development Workflow
 
+### Sync Flow
+
+```
+┌──────────┐
+│  User    │
+│  Action  │
+└────┬─────┘
+     │
+     ▼
+┌─────────────────┐
+│  Convex         │
+│  Mutation       │
+│  (withRBAC)     │
+└────┬────────────┘
+     │
+     ▼
+┌─────────────────┐
+│  Scheduler      │
+│  (runAfter)     │
+└────┬────────────┘
+     │
+     ▼
+┌─────────────────┐
+│  Convex Action  │
+│  (External API) │
+└────┬────────────┘
+     │
+     ▼
+┌─────────────────┐
+│  Dock Adapter   │
+│  1. Decrypt Key │
+│  2. Call API    │
+│  3. Transform   │
+└────┬────────────┘
+     │
+     ▼
+┌─────────────────┐
+│  Internal       │
+│  Mutation       │
+└────┬────────────┘
+     │
+     ▼
+┌─────────────────┐
+│  Universal      │
+│  Table          │
+│  (Insert/Update)│
+└─────────────────┘
+```
+
+### RBAC Flow
+
+```
+┌──────────┐
+│  Client  │
+│  Request │
+└────┬─────┘
+     │
+     ▼
+┌─────────────────┐
+│  Convex Query/  │
+│  Mutation       │
+└────┬────────────┘
+     │
+     ▼
+┌─────────────────┐
+│  withRBAC()     │
+│  Middleware     │
+└────┬────────────┘
+     │
+     ▼
+┌─────────────────┐
+│  getCurrentUser │
+│  (Clerk)        │
+└────┬────────────┘
+     │
+     ▼
+┌─────────────────┐
+│  checkPermission│
+│  (RBAC)         │
+└────┬────────────┘
+     │
+     ├─── Allowed ────► Execute Query/Mutation
+     │
+     └─── Denied ─────► Throw ConvexError
+```
+
 ### Creating a New Feature
 
 1. **Create a feature branch**

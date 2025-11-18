@@ -524,4 +524,27 @@ export default defineSchema({
     .index("by_org", ["orgId", "timestamp"])
     .index("by_user", ["userId", "timestamp"])
     .index("by_resource", ["resourceType", "resourceId"]),
+
+  // == LAYER 9: FILE STORAGE ==
+
+  fileUploads: defineTable({
+    orgId: v.id("organizations"),
+    uploadedBy: v.id("users"),
+    storageId: v.string(), // Convex storage ID
+    filename: v.string(),
+    contentType: v.string(), // MIME type
+    size: v.number(), // File size in bytes
+    category: v.union(
+      v.literal("config"),
+      v.literal("backup"),
+      v.literal("attachment")
+    ),
+    projectId: v.optional(v.id("projects")),
+    dockId: v.optional(v.id("docks")),
+    uploadedAt: v.number(),
+  })
+    .index("by_orgId", ["orgId"])
+    .index("by_project", ["projectId"])
+    .index("by_dock", ["dockId"])
+    .index("by_uploadedBy", ["uploadedBy"]),
 });

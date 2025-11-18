@@ -2,9 +2,6 @@
 
 > An honest retrospective of every mistake made during this session, where I went wrong, and how to prevent it.
 
-**🚨 CRITICAL RULE: THIS FILE MUST ALWAYS STAY IN ROOT DIRECTORY 🚨**  
-**DO NOT MOVE THIS FILE TO docs/ OR ANY SUBDIRECTORY. IT BELONGS IN THE ROOT.**
-
 ---
 
 ## Session: Enterprise Workflow System Implementation (2024-01-XX)

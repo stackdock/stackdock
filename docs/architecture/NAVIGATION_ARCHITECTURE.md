@@ -29,40 +29,49 @@
 ### Complete Route Structure
 
 ```
-Dashboard
-├── Insights          → /dashboard (overview/stats)
-└── Projects          → /dashboard/projects (list)
-    └── $projectId    → /dashboard/projects/$projectId (detail + sub-routes)
+Dashboard ▼
+├── Insights          → /dashboard
+└── Projects          → /dashboard/projects
+    └── $projectId    → /dashboard/projects/$projectId
+        ├── Overview  → /dashboard/projects/$projectId/overview
+        ├── Resources → /dashboard/projects/$projectId/resources
+        ├── Activity  → /dashboard/projects/$projectId/activity
+        └── Settings  → /dashboard/projects/$projectId/settings
 
-Infrastructure
-├── Compute           → /dashboard/infrastructure/compute (servers + web services tables)
-│   ├── Servers       → /dashboard/infrastructure/servers (servers table - FUTURE)
-│   │   └── $serverId → /dashboard/infrastructure/servers/$serverId (server detail)
-│   └── Web Services  → /dashboard/infrastructure/web-services (web services table - FUTURE)
-│       └── $webServiceId → /dashboard/infrastructure/web-services/$webServiceId (detail)
-├── Data              → /dashboard/infrastructure/data (databases table)
-│   └── Databases     → /dashboard/infrastructure/databases (databases table - FUTURE)
-│       └── $databaseId → /dashboard/infrastructure/databases/$databaseId (detail)
-└── Networking        → /dashboard/infrastructure/networking (domains table)
-    └── Domains       → /dashboard/infrastructure/domains (domains table - FUTURE)
-        └── $domainId → /dashboard/infrastructure/domains/$domainId (detail)
+Infrastructure ▼
+├── Compute           → /dashboard/infrastructure/compute
+│   ├── Servers       → /dashboard/infrastructure/servers (future)
+│   │   └── $serverId → /dashboard/infrastructure/servers/$serverId
+│   └── Web Services  → /dashboard/infrastructure/web-services (future)
+│       └── $webServiceId → /dashboard/infrastructure/web-services/$webServiceId
+├── Data              → /dashboard/infrastructure/data
+│   └── Databases     → /dashboard/infrastructure/databases (future)
+│       └── $databaseId → /dashboard/infrastructure/databases/$databaseId
+└── Networking        → /dashboard/infrastructure/networking
+    └── Domains       → /dashboard/infrastructure/domains (future)
+        └── $domainId → /dashboard/infrastructure/domains/$domainId
 
-Operations
-├── Backups           → /dashboard/operations/backups (backup schedules + integrations)
-│   └── $backupId     → /dashboard/operations/backups/$backupId (backup detail - FUTURE)
-└── Workflows         → /dashboard/operations/workflows (workflows table)
-    └── $workflowId   → /dashboard/operations/workflows/$workflowId (workflow detail - FUTURE)
+Operations ▼
+├── Backups           → /dashboard/operations/backups
+│   └── $backupId     → /dashboard/operations/backups/$backupId (future)
+└── Workflows         → /dashboard/operations/workflows
+    └── $workflowId   → /dashboard/operations/workflows/$workflowId (future)
 
-Monitoring (FUTURE)
-├── Activity          → /dashboard/monitoring/activity (activity feed)
-│   └── $activityId   → /dashboard/monitoring/activity/$activityId (activity detail)
-├── Alerts            → /dashboard/monitoring/alerts (alerts table)
-│   └── $alertId     → /dashboard/monitoring/alerts/$alertId (alert detail)
-└── Logs              → /dashboard/monitoring/logs (logs viewer)
-    └── $logId        → /dashboard/monitoring/logs/$logId (log detail)
+Monitoring ▼ (Future)
+├── Issues            → /dashboard/monitoring/issues
+├── Uptime            → /dashboard/monitoring/uptime
+├── Activity          → /dashboard/monitoring/activity
+│   └── $activityId   → /dashboard/monitoring/activity/$activityId
+├── Alerts            → /dashboard/monitoring/alerts
+│   └── $alertId     → /dashboard/monitoring/alerts/$alertId
+└── Logs              → /dashboard/monitoring/logs
+    └── $logId        → /dashboard/monitoring/logs/$logId
 
-Settings
+Settings ▼
 ├── Organization      → /dashboard/settings/organization
+├── Teams             → /dashboard/settings/teams
+├── Clients           → /dashboard/settings/clients
+├── Roles             → /dashboard/settings/roles
 ├── User              → /dashboard/settings/user
 ├── Theme             → /dashboard/settings/theme
 └── Docks             → /dashboard/settings/docks
@@ -73,6 +82,43 @@ Settings
 ## 🎨 Sidebar Navigation Structure (What Users See)
 
 ### Current Implementation (Working - CHECKPOINT)
+
+```
+┌─────────────────────────────────────┐
+│  StackDock                          │
+├─────────────────────────────────────┤
+│  ▼ Dashboard                        │
+│    • Insights                       │
+│    • Projects                       │
+├─────────────────────────────────────┤
+│  ▼ Infrastructure                   │
+│    • Compute                        │
+│    • Data                           │
+│    • Networking                     │
+├─────────────────────────────────────┤
+│  ▼ Operations                       │
+│    • Backups                        │
+│    • Workflows                      │
+├─────────────────────────────────────┤
+│  ▼ Monitoring (Future)              │
+│    • Issues                         │
+│    • Uptime                         │
+│    • Activity                       │
+│    • Alerts                         │
+│    • Logs                           │
+├─────────────────────────────────────┤
+│  ▼ Settings                         │
+│    • Organization                   │
+│    • Teams                          │
+│    • Clients                        │
+│    • Roles                          │
+│    • User                           │
+│    • Theme                          │
+│    • Docks                          │
+└─────────────────────────────────────┘
+```
+
+### Collapsible Structure (Text View)
 
 ```
 Dashboard ▼ (collapsible parent)
@@ -90,11 +136,16 @@ Operations ▼ (collapsible parent)
 
 Settings ▼ (collapsible parent)
 ├── Organization      → /dashboard/settings/organization
+├── Teams             → /dashboard/settings/teams
+├── Clients           → /dashboard/settings/clients
+├── Roles             → /dashboard/settings/roles
 ├── User              → /dashboard/settings/user
 ├── Theme             → /dashboard/settings/theme
 └── Docks             → /dashboard/settings/docks
 
 Monitoring ▼ (FUTURE - collapsible parent)
+├── Issues            → /dashboard/monitoring/issues
+├── Uptime            → /dashboard/monitoring/uptime
 ├── Activity          → /dashboard/monitoring/activity
 ├── Alerts            → /dashboard/monitoring/alerts
 └── Logs              → /dashboard/monitoring/logs
