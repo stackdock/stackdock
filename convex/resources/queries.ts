@@ -3,12 +3,15 @@
  * 
  * Fetch servers, webServices, domains, databases, blockVolumes, and buckets from universal tables.
  * All queries filter by user's organization for RBAC.
+ * 
+ * Includes paginated versions for large datasets.
  */
 
 import { query, internalQuery } from "../_generated/server"
 import { v } from "convex/values"
 import { getCurrentUser, checkPermission } from "../lib/rbac"
 import { ConvexError } from "convex/values"
+import type { PaginationResult } from "convex/server"
 
 /**
  * List all servers for the current user's organization
@@ -318,5 +321,207 @@ export const getCounts = query({
       webServices: webServices.length,
       domains: domains.length,
     }
+  },
+})
+
+// == PAGINATED QUERIES ==
+
+/**
+ * List servers with pagination
+ * 
+ * Use this for large datasets (>100 servers) to improve performance.
+ */
+export const listServersPaginated = query({
+  args: {
+    paginationOpts: v.object({
+      numItems: v.number(),
+      cursor: v.optional(v.string()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx)
+    
+    // Get user's org from memberships
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .first()
+    
+    if (!membership) {
+      return {
+        page: [],
+        isDone: true,
+        continueCursor: undefined,
+      }
+    }
+    
+    // Check resources:read permission
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      membership.orgId,
+      "resources:read"
+    )
+    if (!hasPermission) {
+      throw new ConvexError("Permission denied: resources:read required")
+    }
+    
+    // Fetch servers with pagination
+    const result = await ctx.db
+      .query("servers")
+      .withIndex("by_orgId", (q) => q.eq("orgId", membership.orgId))
+      .paginate(args.paginationOpts)
+    
+    return result
+  },
+})
+
+/**
+ * List domains with pagination
+ * 
+ * Use this for large datasets (>100 domains) to improve performance.
+ */
+export const listDomainsPaginated = query({
+  args: {
+    paginationOpts: v.object({
+      numItems: v.number(),
+      cursor: v.optional(v.string()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx)
+    
+    // Get user's org from memberships
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .first()
+    
+    if (!membership) {
+      return {
+        page: [],
+        isDone: true,
+        continueCursor: undefined,
+      }
+    }
+    
+    // Check resources:read permission
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      membership.orgId,
+      "resources:read"
+    )
+    if (!hasPermission) {
+      throw new ConvexError("Permission denied: resources:read required")
+    }
+    
+    // Fetch domains with pagination
+    const result = await ctx.db
+      .query("domains")
+      .withIndex("by_orgId", (q) => q.eq("orgId", membership.orgId))
+      .paginate(args.paginationOpts)
+    
+    return result
+  },
+})
+
+/**
+ * List databases with pagination
+ * 
+ * Use this for large datasets (>100 databases) to improve performance.
+ */
+export const listDatabasesPaginated = query({
+  args: {
+    paginationOpts: v.object({
+      numItems: v.number(),
+      cursor: v.optional(v.string()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx)
+    
+    // Get user's org from memberships
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .first()
+    
+    if (!membership) {
+      return {
+        page: [],
+        isDone: true,
+        continueCursor: undefined,
+      }
+    }
+    
+    // Check resources:read permission
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      membership.orgId,
+      "resources:read"
+    )
+    if (!hasPermission) {
+      throw new ConvexError("Permission denied: resources:read required")
+    }
+    
+    // Fetch databases with pagination
+    const result = await ctx.db
+      .query("databases")
+      .withIndex("by_orgId", (q) => q.eq("orgId", membership.orgId))
+      .paginate(args.paginationOpts)
+    
+    return result
+  },
+})
+
+/**
+ * List web services with pagination
+ * 
+ * Use this for large datasets (>100 web services) to improve performance.
+ */
+export const listWebServicesPaginated = query({
+  args: {
+    paginationOpts: v.object({
+      numItems: v.number(),
+      cursor: v.optional(v.string()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx)
+    
+    // Get user's org from memberships
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .first()
+    
+    if (!membership) {
+      return {
+        page: [],
+        isDone: true,
+        continueCursor: undefined,
+      }
+    }
+    
+    // Check resources:read permission
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      membership.orgId,
+      "resources:read"
+    )
+    if (!hasPermission) {
+      throw new ConvexError("Permission denied: resources:read required")
+    }
+    
+    // Fetch web services with pagination
+    const result = await ctx.db
+      .query("webServices")
+      .withIndex("by_orgId", (q) => q.eq("orgId", membership.orgId))
+      .paginate(args.paginationOpts)
+    
+    return result
   },
 })

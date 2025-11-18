@@ -256,3 +256,53 @@ export const getProjectResources = query({
     return resources.filter((r) => r.resource !== null)
   },
 })
+
+/**
+ * List projects with pagination
+ * 
+ * Use this for organizations with many projects (>100) to improve performance.
+ */
+export const listProjectsPaginated = query({
+  args: {
+    paginationOpts: v.object({
+      numItems: v.number(),
+      cursor: v.optional(v.string()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx)
+    
+    // Get user's org from memberships
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .first()
+    
+    if (!membership) {
+      return {
+        page: [],
+        isDone: true,
+        continueCursor: undefined,
+      }
+    }
+    
+    // Check projects:read permission
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      membership.orgId,
+      "projects:read"
+    )
+    if (!hasPermission) {
+      throw new ConvexError("Permission denied: projects:read required")
+    }
+    
+    // Fetch projects with pagination
+    const result = await ctx.db
+      .query("projects")
+      .withIndex("by_orgId", (q) => q.eq("orgId", membership.orgId))
+      .paginate(args.paginationOpts)
+    
+    return result
+  },
+})
