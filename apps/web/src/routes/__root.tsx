@@ -2,12 +2,17 @@ import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 
-import Header from '../components/Header'
+
 import { ConvexClerkProvider } from '../lib/convex-clerk'
 import { ThemeProvider } from '../components/dashboard/ThemeProvider'
 import { Toaster } from '@/components/ui/sonner'
+import { MonitoringErrorBoundary } from '@stackdock/monitoring'
+import { initWebMonitoring } from '../lib/monitoring'
 
 import appCss from '../styles.css?url'
+
+// Initialize monitoring
+initWebMonitoring()
 
 export const Route = createRootRoute({
   head: () => ({
@@ -85,8 +90,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           storageKey="theme"
           disableTransitionOnChange
         >
-          <ConvexClerkProvider>{content}</ConvexClerkProvider>
-          <Toaster />
+          <MonitoringErrorBoundary>
+            <ConvexClerkProvider>{content}</ConvexClerkProvider>
+            <Toaster />
+          </MonitoringErrorBoundary>
         </ThemeProvider>
       </body>
     </html>
