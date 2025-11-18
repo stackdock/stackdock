@@ -1,0 +1,126 @@
+# .coderabbit.yaml
+# CodeRabbit configuration for StackDock monorepo
+
+language: en-US
+early_access: false
+enable_free_tier: true
+
+reviews:
+  # Enable automatic code reviews on pull requests
+  auto_review:
+    enabled: true
+    drafts: false  # Skip draft PRs
+    base_branches:
+      - main
+      - develop
+  
+  # Review behavior settings
+  high_level_summary: true
+  high_level_summary_placeholder: "@coderabbitai summary"
+  review_status: true
+  poem: false
+  collapse_walkthrough: false
+  
+  # Auto-reply settings
+  auto_reply: true
+  
+  # Request changes workflow
+  request_changes_workflow: false
+  
+  # Path-based review instructions for monorepo structure
+  path_instructions:
+    - path: "apps/web/**/*"
+      instructions: |
+        Review Next.js application code with focus on:
+        - React best practices and hooks usage
+        - Next.js App Router patterns
+        - Component design and reusability
+        - TypeScript type safety
+        - Performance and rendering optimization
+        - Accessibility (a11y)
+        - Error handling and edge cases
+    
+    - path: "convex/**/*"
+      instructions: |
+        Review Convex backend code with focus on:
+        - Query and mutation function patterns
+        - Schema design and validation
+        - Authorization and authentication logic
+        - Error handling
+        - Performance and query optimization
+        - Type safety with Convex validators
+    
+    - path: "packages/**/*"
+      instructions: |
+        Review shared package code with focus on:
+        - Clean API design and public exports
+        - Reusability across the monorepo
+        - TypeScript type safety and generics
+        - Documentation and usage examples
+        - Zero breaking changes to dependents
+    
+    - path: "**/*.test.{ts,tsx,js,jsx}"
+      instructions: |
+        Review test files with focus on:
+        - Test coverage and edge cases
+        - Test readability and maintainability
+        - Proper mocking and test isolation
+        - Assertion quality
+    
+    - path: ".github/**/*"
+      instructions: |
+        Review GitHub configuration with focus on:
+        - Workflow security and best practices
+        - Proper secret handling
+        - Efficient CI/CD patterns
+        - Action version pinning
+
+# Static analysis tools configuration
+tools:
+  eslint:
+    enabled: true
+  
+  markdownlint:
+    enabled: true
+  
+  yamllint:
+    enabled: true
+  
+  actionlint:
+    enabled: true
+  
+  shellcheck:
+    enabled: true
+  
+  biome:
+    enabled: false
+  
+  ruff:
+    enabled: false
+
+# Chat settings
+chat:
+  auto_reply: true
+
+# Knowledge base settings
+knowledge_base:
+  opt_out: false
+  learnings:
+    scope: auto  # 'auto' learns from all PRs, 'user' only when explicitly told
+
+# File handling
+ignore:
+  # Ignore generated files
+  - "**/*.generated.*"
+  - "**/dist/**"
+  - "**/build/**"
+  - "**/.next/**"
+  - "**/node_modules/**"
+  - "**/.turbo/**"
+  - "**/coverage/**"
+  
+  # Ignore lock files (reviewed separately)
+  - "**/package-lock.json"
+  - "**/yarn.lock"
+  - "**/pnpm-lock.yaml"
+  - "**/bun.lockb"
