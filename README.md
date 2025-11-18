@@ -127,6 +127,85 @@ Star the repo to watch the build!
    - Real-time sync
    - CLI tool (`packages/cli/`) for registry management
 
+### Monorepo Structure
+
+```
+stackdock/
+├── apps/
+│   ├── web/                          # Main TanStack Start app
+│   │   ├── src/
+│   │   │   ├── routes/              # File-based routing
+│   │   │   │   ├── dashboard/       # Dashboard routes
+│   │   │   │   │   ├── docks/       # Dock management
+│   │   │   │   │   ├── infrastructure/ # Resource views
+│   │   │   │   │   ├── monitoring/  # Monitoring dashboards
+│   │   │   │   │   ├── projects/    # Project management
+│   │   │   │   │   └── settings/    # Settings pages
+│   │   │   │   └── api/             # API routes (webhooks)
+│   │   │   ├── components/         # React components
+│   │   │   ├── lib/                 # Utilities
+│   │   │   └── machines/            # XState state machines
+│   │   ├── package.json
+│   │   └── vite.config.ts
+│   └── marketing/                   # Next.js marketing site
+│       ├── app/                     # Next.js app directory
+│       ├── lib/                     # Blog utilities
+│       └── package.json
+│
+├── packages/
+│   ├── docks/                       # Dock adapter registry
+│   ├── ui/                          # UI component registry
+│   ├── cli/                         # CLI tool
+│   └── shared/                      # Shared utilities
+│
+├── convex/                          # Convex backend
+│   ├── schema.ts                    # Database schema (29 tables)
+│   ├── auth.config.ts               # Clerk authentication
+│   ├── docks/                       # Dock management
+│   │   ├── adapters/                # 16 provider adapters
+│   │   │   ├── gridpane/
+│   │   │   ├── vercel/
+│   │   │   ├── netlify/
+│   │   │   ├── cloudflare/
+│   │   │   ├── turso/
+│   │   │   ├── neon/
+│   │   │   ├── convex/
+│   │   │   ├── planetscale/
+│   │   │   ├── vultr/
+│   │   │   ├── digitalocean/
+│   │   │   ├── linode/
+│   │   │   ├── hetzner/
+│   │   │   ├── coolify/
+│   │   │   ├── github/
+│   │   │   ├── sentry/
+│   │   │   └── betterstack/
+│   │   ├── mutations.ts
+│   │   ├── queries.ts
+│   │   ├── actions.ts
+│   │   └── scheduled.ts
+│   ├── resources/                   # Resource queries
+│   ├── projects/                    # Project management
+│   ├── monitoring/                  # Monitoring features
+│   ├── organizations/              # Organization management
+│   └── lib/                         # Utilities (RBAC, encryption, audit)
+│
+├── docs/                            # Documentation
+│   ├── .stackdock-state.json        # State file (source of truth)
+│   ├── architecture/                # Architecture docs
+│   ├── guides/                      # Setup and contribution guides
+│   ├── stand-downs/                 # Quality reviews
+│   └── turnover/                    # Turnover documentation
+│
+├── .github/
+│   ├── workflows/                  # GitHub Actions
+│   ├── ISSUES/                      # Local issue files
+│   └── scripts/                     # Automation scripts
+│
+├── .cursorrules                     # AI assistant rules
+├── package.json                     # Root package.json
+└── README.md                        # Project README
+```
+
 ### Core Architecture
 
 **Universal Tables** (Provider-Agnostic):
