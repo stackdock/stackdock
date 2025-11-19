@@ -1,13 +1,13 @@
 # StackDock - Root Netlify Configuration
-# This configuration is for the marketing site deployment
-# The docs app should be deployed separately on a subdomain (recommended)
+# This configuration is for the DOCS app deployment only
+# The marketing app is deployed on Cloudflare Pages (not Netlify)
 
 [build]
-  # Build command for the marketing site
-  command = "npm run build:marketing"
+  # Build command for the docs app (from monorepo root)
+  command = "npm run build:docs"
   
-  # Directory to publish (Next.js output from marketing app)
-  publish = "apps/marketing/.next"
+  # Directory to publish (Next.js output from docs app)
+  publish = "apps/docs/.next"
   
   # Base directory - root for monorepo access
   base = "."
@@ -19,14 +19,9 @@
   # NPM version  
   NPM_VERSION = "10"
 
-# Next.js plugin for marketing site
+# Next.js plugin for docs app
 [[plugins]]
   package = "@netlify/plugin-nextjs"
-
-# Netlify Forms integration
-# Add data-netlify="true" to forms in your marketing site to enable
-[build.processing]
-  skip_processing = false
 
 # Security headers
 [[headers]]
@@ -65,7 +60,7 @@
 
 # Development context
 [context.deploy-preview]
-  command = "npm run build:marketing"
+  command = "npm run build:docs"
 
 [context.branch-deploy]
-  command = "npm run build:marketing"
+  command = "npm run build:docs"

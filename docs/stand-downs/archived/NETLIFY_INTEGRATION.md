@@ -4,12 +4,12 @@ This document describes StackDock's integration with Netlify platform features.
 
 ## Overview
 
-StackDock now leverages Netlify as a deployment platform in addition to using it as a data source. This integration includes:
+StackDock leverages Netlify for the documentation site deployment and platform features. This integration includes:
 
 - ✅ **Documentation Site** - Fumadocs app deployed on Netlify
 - ✅ **Netlify Functions** - Serverless API endpoints
 - ✅ **Edge Functions** - Global edge-side logic
-- ✅ **Netlify Forms** - Contact form integration in marketing site
+- ✅ **Netlify Forms** - Contact form component (works cross-platform, marketing site deployed on Cloudflare Pages)
 - ✅ **Deploy Previews** - Automated preview deployments
 - ✅ **Deployment Configuration** - Complete netlify.toml configurations
 
@@ -21,9 +21,9 @@ StackDock now leverages Netlify as a deployment platform in addition to using it
 stackdock/
 ├── apps/
 │   ├── docs/           # Documentation site (Fumadocs + Netlify)
-│   ├── marketing/      # Marketing site (Next.js + Netlify Forms)
+│   ├── marketing/      # Marketing site (Next.js + Cloudflare Pages)
 │   └── web/            # Main web app (TanStack Start + Convex)
-├── netlify.toml        # Marketing site deployment config
+├── netlify.toml        # Docs app deployment config (root)
 └── docs/guides/        # Deployment guides
 ```
 
@@ -46,9 +46,11 @@ stackdock/
 #### Marketing Site (apps/marketing)
 
 - **URL:** `stackdock.com`
-- **Netlify Site:** Main Netlify site
-- **Build Command:** `npm run build:marketing`
-- **Publish Directory:** `apps/marketing/.next`
+- **Platform:** Cloudflare Pages (not Netlify)
+- **Configuration:** `apps/marketing/wrangler.toml`
+- **Build Command:** `npm run build`
+- **Publish Directory:** `.next`
+- **Note:** Uses Netlify Forms component (works cross-platform via client-side submission)
 
 ## Netlify Features
 
@@ -109,6 +111,11 @@ Contact form component in marketing site at `apps/marketing/components/netlify-c
 - Custom submission handling
 - Email notifications (configure in Netlify UI)
 
+**Cross-Platform Support:**
+- ✅ Works on Netlify (native integration)
+- ✅ Works on Cloudflare Pages (client-side submission to Netlify endpoint)
+- The marketing site is deployed on Cloudflare Pages, but the form component submits to Netlify's form endpoint
+
 **Integration:**
 ```tsx
 import { NetlifyContactForm } from '@/components/netlify-contact-form';
@@ -142,11 +149,11 @@ Complete Netlify configuration for the documentation site:
 
 ### netlify.toml (root)
 
-Configuration for the marketing site:
-- Build settings for marketing app
+Configuration for the documentation site (deployed from monorepo root):
+- Build settings for docs app
 - Security headers
 - Static asset caching
-- Optional proxy to docs subdomain
+- Note: Marketing site is deployed on Cloudflare Pages, not Netlify
 
 ## Local Development
 
@@ -315,12 +322,7 @@ Comprehensive guides available:
    - Configure build settings
    - Set up custom domain
 
-3. **Deploy Marketing Site:**
-   - Create Netlify site for marketing
-   - Configure build settings
-   - Set up main domain
-
-4. **Test Integration:**
+3. **Test Integration:**
    - Verify functions work
    - Test edge functions
    - Submit test form
