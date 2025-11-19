@@ -4,7 +4,7 @@ This document maps which providers support which universal tables and operations
 
 ## Quick Reference
 
-StackDock integrates **17 providers** across **10 universal table types**:
+StackDock integrates **16 providers** across **10 universal table types**:
 
 - ✅ = Supported (read-only sync)
 - ❌ = Not supported
@@ -225,5 +225,5 @@ See [DOCK_ADAPTER_GUIDE.md](../guides/DOCK_ADAPTER_GUIDE.md) for detailed instru
 ## Version
 
 Last updated: November 2024  
-Total Providers: 17  
+Total Providers: 16  
 Total Universal Tables: 10
