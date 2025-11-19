@@ -9,6 +9,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@stackdock/shared": "file:../../packages/shared",
     "@clerk/clerk-react": "^5.53.4",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-alert-dialog": "^1.1.15",

@@ -14,6 +14,7 @@
 import type { DockAdapter } from "../../_types"
 import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
+import type { Server, BlockVolume } from "../../../lib/universalTypes"
 import { decryptApiKey } from "../../../lib/encryption"
 import { VultrAPI } from "./api"
 import type { VultrInstance, VultrBlock } from "./types"
@@ -105,7 +106,7 @@ export const vultrAdapter: DockAdapter = {
         )
         .first()
 
-      const serverData = {
+      const serverData : Omit<Server, "_id" | "_creationTime"> = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "vultr",
@@ -195,7 +196,7 @@ export const vultrAdapter: DockAdapter = {
         )
         .first()
 
-      const volumeData = {
+      const volumeData : Omit<BlockVolume, "_id" | "_creationTime"> = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "vultr",

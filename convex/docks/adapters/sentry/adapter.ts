@@ -18,6 +18,7 @@
 import type { DockAdapter } from "../../_types"
 import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
+import type { Issue } from "../../../lib/universalTypes"
 import { decryptApiKey } from "../../../lib/encryption"
 import { SentryAPI } from "./api"
 import type { SentryIssue, SentryProject } from "./types"
@@ -132,7 +133,7 @@ export const sentryAdapter: DockAdapter = {
           )
           .first()
 
-        const issueData = {
+        const issueData : Omit<Issue, "_id" | "_creationTime"> = {
           orgId: dock.orgId,
           dockId: dock._id,
           provider: "sentry",

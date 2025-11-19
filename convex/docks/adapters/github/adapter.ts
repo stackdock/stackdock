@@ -18,6 +18,7 @@
 import type { DockAdapter } from "../../_types"
 import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
+import type { Repository } from "../../../lib/universalTypes"
 import { GitHubAPI } from "./api"
 import type { GitHubRepositoryWithDetails } from "./types"
 
