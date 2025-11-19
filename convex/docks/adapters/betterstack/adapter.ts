@@ -14,6 +14,7 @@
 import type { DockAdapter } from "../../_types"
 import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
+import type { Monitor } from "../../../lib/universalTypes"
 import { decryptApiKey } from "../../../lib/encryption"
 import { BetterStackAPI } from "./api"
 import type { BetterStackMonitor, BetterStackMonitorGroup } from "./types"
@@ -127,7 +128,7 @@ export const betterStackAdapter: DockAdapter = {
       const attrs = monitor.attributes
       const groupName = groupMap.get(attrs.monitor_group_id) || undefined
 
-      const monitorData = {
+      const monitorData : Omit<Monitor, "_id" | "_creationTime"> = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "better-stack",

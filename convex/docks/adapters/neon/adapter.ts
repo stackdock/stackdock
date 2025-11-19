@@ -16,6 +16,7 @@
 import type { DockAdapter } from "../../_types"
 import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
+import type { Database, BackupSchedule } from "../../../lib/universalTypes"
 import { decryptApiKey } from "../../../lib/encryption"
 import { NeonAPI } from "./api"
 import type { NeonProject, NeonBranch, NeonDatabase, NeonSnapshot } from "./types"
@@ -136,7 +137,7 @@ export const neonAdapter: DockAdapter = {
         )
         .first()
 
-      const databaseData = {
+      const databaseData : Omit<Database, "_id" | "_creationTime"> = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "neon",
@@ -279,7 +280,7 @@ export const neonAdapter: DockAdapter = {
 
       // Map Neon snapshot to universal backupSchedules schema
       // Note: backupSchedules has GridPane-specific fields, so we'll adapt them
-      const backupData = {
+      const backupData : Omit<BackupSchedule, "_id" | "_creationTime"> = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "neon",

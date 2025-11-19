@@ -1,21 +1,47 @@
 {
   "name": "@stackdock/shared",
   "version": "0.1.0",
-  "description": "Shared types and utilities for StackDock",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "private": true,
+  "description": "Shared TypeScript types and utilities for StackDock",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./schema": {
+      "types": "./dist/schema.d.ts",
+      "default": "./dist/schema.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist"
   },
   "keywords": [
     "stackdock",
-    "shared",
-    "types"
+    "types",
+    "shared"
   ],
   "author": "StackDock Team",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stackdock/stackdock.git",
+    "directory": "packages/shared"
+  },
   "devDependencies": {
+    "@types/node": "^20.0.0",
     "typescript": "^5.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

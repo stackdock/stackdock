@@ -217,6 +217,8 @@ export const syncDockResourcesMutation = internalMutation({
       monitors: v.optional(v.array(v.any())),
       issues: v.optional(v.array(v.any())),
     }),
+    // Optional: For GitHub batch syncing - tracks all repo names across batches for orphan deletion
+    allSyncedRepoNames: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     // Get dock to access orgId and verify dock exists
@@ -264,8 +266,22 @@ export const syncDockResourcesMutation = internalMutation({
     }
 
     // GitHub repository sync: Syncs to repositories table (NOT projects table)
+    // For GitHub, support batch syncing with allSyncedRepoNames parameter
     if (args.fetchedData.repositories !== undefined && adapter.syncRepositories) {
-      await adapter.syncRepositories(ctx, dock, args.fetchedData.repositories)
+      if (args.provider === "github" && args.allSyncedRepoNames) {
+        // GitHub adapter supports third parameter for batch syncing
+        // Type assertion needed because interface doesn't include it
+        const githubAdapter = adapter as any
+        await githubAdapter.syncRepositories(
+          ctx,
+          dock,
+          args.fetchedData.repositories,
+          new Set(args.allSyncedRepoNames)
+        )
+      } else {
+        // Standard adapter call (no batch syncing)
+        await adapter.syncRepositories(ctx, dock, args.fetchedData.repositories)
+      }
     }
 
     if (args.fetchedData.blockVolumes !== undefined && adapter.syncBlockVolumes) {

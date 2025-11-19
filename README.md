@@ -5,6 +5,9 @@
   <p><strong>Open Source Developer Multi-Cloud Management Platform</strong></p>
   <p>Manage websites, apps, databases, servers, and APM tools across multiple providers from a unified interface.</p>
   <p>
+    <a href="https://github.com/stackdock/stackdock/actions/workflows/ci.yml">
+      <img src="https://img.shields.io/github/actions/workflow/status/stackdock/stackdock/ci.yml?branch=main&style=flat-square&logo=github&label=CI" alt="CI Status"/>
+    </a>
     <a href="https://www.typescriptlang.org/">
       <img src="https://img.shields.io/badge/TypeScript-5.x-blue?style=flat-square&logo=typescript" alt="TypeScript"/>
     </a>

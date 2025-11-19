@@ -14,6 +14,7 @@
 import type { DockAdapter } from "../../_types"
 import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
+import type { Database } from "../../../lib/universalTypes"
 import { decryptApiKey } from "../../../lib/encryption"
 import { TursoAPI } from "./api"
 import type { TursoDatabase } from "./types"
@@ -106,7 +107,7 @@ export const tursoAdapter: DockAdapter = {
         )
         .first()
 
-      const databaseData = {
+      const databaseData : Omit<Database, "_id" | "_creationTime"> = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "turso",

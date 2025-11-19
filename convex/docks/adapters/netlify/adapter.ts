@@ -14,6 +14,7 @@
 import type { DockAdapter } from "../../_types"
 import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
+import type { WebService } from "../../../lib/universalTypes"
 import { decryptApiKey } from "../../../lib/encryption"
 import { NetlifyAPI } from "./api"
 import type { NetlifySite } from "./types"
@@ -170,7 +171,7 @@ export const netlifyAdapter: DockAdapter = {
         )
         .first()
 
-      const universalWebService = {
+      const universalWebService: Omit<WebService, "_id" | "_creationTime"> = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "netlify",

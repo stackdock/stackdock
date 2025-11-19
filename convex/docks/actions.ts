@@ -515,33 +515,90 @@ export const syncDockResources = internalAction({
         const api = new GitHubAPI(args.apiKey)
 
         // GitHub repository sync: Fetch repos with details to populate fullApiData
+        // CRITICAL: Process in batches to avoid Convex 1 MiB mutation limit
         if (args.resourceTypes.includes("repositories")) {
           console.log(`[Dock Action] Fetching GitHub repositories with details...`)
           const repos = await api.listRepositories()
+          console.log(`[Dock Action] Found ${repos.length} repositories, processing in batches...`)
           
-          // Fetch details for each repository (branches, issues, commits, pullRequests)
-          const reposWithDetails = await Promise.all(
-            repos.map(async (repo) => {
-              const [owner, repoName] = repo.full_name.split("/")
-              const [branches, issues, commits, pullRequests] = await Promise.all([
-                api.listBranches(owner, repoName).catch(() => []),
-                api.listIssues(owner, repoName).catch(() => []),
-                api.listCommits(owner, repoName, { limit: 10, page: 1 }).catch(() => []),
-                api.listPullRequests(owner, repoName).catch(() => []),
-              ])
-              
-              return {
-                ...repo,
-                branches,
-                issues,
-                commits,
-                pullRequests,
-              }
+          // Process repositories in batches to avoid payload size limits
+          // Each batch includes repository + branches + issues + commits + PRs
+          // Batch size of 10-15 should keep payloads under 1 MiB
+          const BATCH_SIZE = 12
+          const batches: typeof repos[] = []
+          
+          for (let i = 0; i < repos.length; i += BATCH_SIZE) {
+            batches.push(repos.slice(i, i + BATCH_SIZE))
+          }
+          
+          console.log(`[Dock Action] Processing ${batches.length} batches of repositories...`)
+          
+          // Track all synced repo names across batches for orphan deletion
+          const allSyncedRepoNames = new Set<string>()
+          
+          // Process each batch sequentially to avoid rate limits
+          for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
+            const batch = batches[batchIdx]
+            console.log(`[Dock Action] Processing batch ${batchIdx + 1}/${batches.length} (${batch.length} repos)...`)
+            
+            // Fetch details for repositories in this batch
+            const reposWithDetails = await Promise.all(
+              batch.map(async (repo) => {
+                const [owner, repoName] = repo.full_name.split("/")
+                const [branches, issues, commits, pullRequests] = await Promise.all([
+                  api.listBranches(owner, repoName).catch(() => []),
+                  api.listIssues(owner, repoName).catch(() => []),
+                  api.listCommits(owner, repoName, { limit: 10, page: 1 }).catch(() => []),
+                  api.listPullRequests(owner, repoName).catch(() => []),
+                ])
+                
+                // Track this repo name for orphan deletion
+                allSyncedRepoNames.add(repo.full_name)
+                
+                return {
+                  ...repo,
+                  branches,
+                  issues,
+                  commits,
+                  pullRequests,
+                }
+              })
+            )
+            
+            // Sync this batch immediately (don't accumulate all batches)
+            // This prevents the payload from getting too large
+            // Pass allSyncedRepoNames so adapter can delete orphans correctly
+            await ctx.runMutation(internal.docks.mutations.syncDockResourcesMutation, {
+              dockId: args.dockId,
+              provider: args.provider,
+              fetchedData: {
+                servers: undefined,
+                webServices: undefined,
+                domains: undefined,
+                databases: undefined,
+                deployments: undefined,
+                backupSchedules: undefined,
+                backupIntegrations: undefined,
+                repositories: reposWithDetails, // Only this batch
+                blockVolumes: undefined,
+                buckets: undefined,
+                monitors: undefined,
+                issues: undefined,
+              },
+              allSyncedRepoNames: Array.from(allSyncedRepoNames), // All repos synced so far
             })
-          )
+            
+            console.log(`[Dock Action] ✅ Batch ${batchIdx + 1}/${batches.length} synced (${reposWithDetails.length} repos, ${allSyncedRepoNames.size} total tracked)`)
+            
+            // Small delay between batches to respect rate limits
+            if (batchIdx < batches.length - 1) {
+              await new Promise(resolve => setTimeout(resolve, 500))
+            }
+          }
           
-          repositories = reposWithDetails
-          console.log(`[Dock Action] Fetched ${repositories.length} GitHub repositories with details`)
+          // Set repositories to empty array since we've already synced them in batches
+          repositories = []
+          console.log(`[Dock Action] ✅ All ${repos.length} GitHub repositories synced in ${batches.length} batches`)
         }
 
         // GitHub doesn't support other resource types
