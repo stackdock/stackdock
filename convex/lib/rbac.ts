@@ -2,6 +2,80 @@ import { ConvexError } from "convex/values"
 import type { MutationCtx, QueryCtx } from "../_generated/server"
 import type { Id } from "../_generated/dataModel"
 
+// ============================================================================
+// TYPE-SAFE PERMISSIONS
+// ============================================================================
+
+/**
+ * Resource types in the RBAC system
+ * 
+ * These types are defined here for Convex compatibility. For external packages,
+ * use types from @stackdock/shared package.
+ * 
+ * @see packages/shared/src/rbac.ts for shared type definitions
+ */
+export type RBACResource = 
+  | "projects"
+  | "resources"
+  | "docks"
+  | "operations"
+  | "settings"
+  | "provisioning"
+  | "monitoring"
+
+/**
+ * Permission levels in the RBAC system
+ */
+export type RBACLevel = "none" | "read" | "full"
+
+/**
+ * Permission string format: "resource:level"
+ * 
+ * This provides compile-time type safety for permission checks.
+ * 
+ * @example
+ * ```typescript
+ * const permission: Permission = "docks:full" // OK
+ * const badPermission: Permission = "invalid:permission" // Type error!
+ * ```
+ */
+export type Permission = `${RBACResource}:${RBACLevel}`
+
+/**
+ * Common permission constants
+ * 
+ * Use these for consistency and autocomplete.
+ */
+export const Permissions = {
+  // Projects
+  PROJECTS_FULL: "projects:full" as const,
+  PROJECTS_READ: "projects:read" as const,
+  
+  // Resources (infrastructure)
+  RESOURCES_FULL: "resources:full" as const,
+  RESOURCES_READ: "resources:read" as const,
+  
+  // Docks (provider connections)
+  DOCKS_FULL: "docks:full" as const,
+  DOCKS_READ: "docks:read" as const,
+  
+  // Operations (backup/restore)
+  OPERATIONS_FULL: "operations:full" as const,
+  OPERATIONS_READ: "operations:read" as const,
+  
+  // Settings (org/team/role management)
+  SETTINGS_FULL: "settings:full" as const,
+  SETTINGS_READ: "settings:read" as const,
+  
+  // Provisioning (infrastructure provisioning)
+  PROVISIONING_FULL: "provisioning:full" as const,
+  PROVISIONING_READ: "provisioning:read" as const,
+  
+  // Monitoring (monitoring and alerting)
+  MONITORING_FULL: "monitoring:full" as const,
+  MONITORING_READ: "monitoring:read" as const,
+} satisfies Record<string, Permission>
+
 /**
  * Get the currently authenticated user from Clerk
  */
@@ -25,7 +99,36 @@ export async function getCurrentUser(ctx: QueryCtx | MutationCtx) {
 
 /**
  * Check if user has a specific permission in an organization
+ * 
+ * **Type Safety**: Accepts Permission type for compile-time validation.
+ * 
+ * @param ctx - Convex context
+ * @param userId - User ID
+ * @param orgId - Organization ID
+ * @param permission - Permission to check (e.g., "docks:full")
+ * @returns True if user has permission
+ * 
+ * @example
+ * ```typescript
+ * // With type safety
+ * const hasAccess = await checkPermission(ctx, user._id, orgId, Permissions.DOCKS_FULL)
+ * 
+ * // Backward compatible
+ * const hasAccess = await checkPermission(ctx, user._id, orgId, "docks:full")
+ * ```
  */
+export async function checkPermission(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users">,
+  orgId: Id<"organizations">,
+  permission: Permission
+): Promise<boolean>
+export async function checkPermission(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users">,
+  orgId: Id<"organizations">,
+  permission: string
+): Promise<boolean>
 export async function checkPermission(
   ctx: QueryCtx | MutationCtx,
   userId: Id<"users">,
@@ -77,7 +180,35 @@ export async function checkPermission(
 /**
  * RBAC middleware for mutations
  * Wraps a mutation handler and checks permissions before execution
+ * 
+ * **Type Safety**: Accepts Permission type for compile-time validation.
+ * 
+ * @param permission - Permission required to execute the mutation
+ * @returns Middleware function that wraps the handler
+ * 
+ * @example
+ * ```typescript
+ * // With type safety
+ * export const createDock = mutation({
+ *   handler: withRBAC(Permissions.DOCKS_FULL)(async (ctx, args, user) => {
+ *     // ...
+ *   })
+ * })
+ * 
+ * // Backward compatible
+ * export const createDock = mutation({
+ *   handler: withRBAC("docks:full")(async (ctx, args, user) => {
+ *     // ...
+ *   })
+ * })
+ * ```
  */
+export function withRBAC(permission: Permission): <Args extends { orgId: Id<"organizations"> }>(
+  handler: (ctx: MutationCtx, args: Args, user: any) => Promise<any>
+) => (ctx: MutationCtx, args: Args) => Promise<any>
+export function withRBAC(permission: string): <Args extends { orgId: Id<"organizations"> }>(
+  handler: (ctx: MutationCtx, args: Args, user: any) => Promise<any>
+) => (ctx: MutationCtx, args: Args) => Promise<any>
 export function withRBAC(permission: string) {
   return <Args extends { orgId: Id<"organizations"> }>(
     handler: (ctx: MutationCtx, args: Args, user: any) => Promise<any>
