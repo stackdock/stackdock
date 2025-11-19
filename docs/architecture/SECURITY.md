@@ -243,6 +243,202 @@ ENCRYPTION_MASTER_KEY=<64-char-hex>
 
 ---
 
+## Type-Level Enforcement
+
+### Branded Types for Encryption
+
+To prevent accidental exposure of plaintext API keys, StackDock uses **branded types** (also called phantom types or nominal types) to enforce encryption at compile time.
+
+#### What are Branded Types?
+
+Branded types add a compile-time marker to a base type to make it incompatible with other values of the same base type:
+
+```typescript
+// Without branded types (unsafe)
+const apiKey: string = "secret-key-123"
+await ctx.db.insert("docks", { encryptedApiKey: apiKey }) // Oops! Plaintext stored!
+
+// With branded types (type-safe)
+const plaintext: PlaintextApiKey = toPlaintextApiKey("secret-key-123")
+const encrypted: EncryptedApiKey = await encryptApiKey(plaintext)
+await ctx.db.insert("docks", { encryptedApiKey: encrypted }) // Type-safe!
+```
+
+#### Type Definitions
+
+```typescript
+// convex/lib/encryption.ts
+
+/**
+ * Plaintext API key (unencrypted)
+ * Must be encrypted before storage
+ */
+export type PlaintextApiKey = string & { readonly __brand: 'PlaintextApiKey' }
+
+/**
+ * Encrypted API key (ciphertext)
+ * Safe to store in database
+ */
+export type EncryptedApiKey = ArrayBuffer & { readonly __brand: 'EncryptedApiKey' }
+```
+
+#### Using Branded Types
+
+**1. Converting user input to PlaintextApiKey**:
+```typescript
+import { toPlaintextApiKey } from "../lib/encryption"
+
+export const createDock = mutation({
+  args: {
+    apiKey: v.string(), // User input
+    // ...
+  },
+  handler: async (ctx, args) => {
+    // Convert to branded type
+    const plaintext = toPlaintextApiKey(args.apiKey)
+    
+    // Encrypt (only accepts PlaintextApiKey)
+    const encrypted = await encryptApiKey(plaintext)
+    
+    // Store (only accepts EncryptedApiKey)
+    await ctx.db.insert("docks", {
+      encryptedApiKey: encrypted,
+      // ...
+    })
+  }
+})
+```
+
+**2. Decrypting for use**:
+```typescript
+import { toEncryptedApiKey, decryptApiKey } from "../lib/encryption"
+
+export const syncDock = internalMutation({
+  handler: async (ctx, args) => {
+    const dock = await ctx.db.get(args.dockId)
+    
+    // Convert to branded type (optional, for clarity)
+    const encrypted = toEncryptedApiKey(dock.encryptedApiKey)
+    
+    // Decrypt (returns PlaintextApiKey)
+    const plaintext = await decryptApiKey(encrypted, ctx, {
+      dockId: dock._id,
+      orgId: dock.orgId,
+    })
+    
+    // Use plaintext (server-side only!)
+    await fetch(providerApi, {
+      headers: { Authorization: `Bearer ${plaintext}` }
+    })
+  }
+})
+```
+
+#### Benefits of Type Enforcement
+
+1. **Compile-time safety**: TypeScript catches misuse before runtime
+2. **Self-documenting**: Types make it clear what's encrypted vs plaintext
+3. **Forced conversions**: Must use encryption functions to convert types
+4. **IDE support**: Better autocomplete and error messages
+5. **Refactoring**: Easy to find all encryption/decryption points
+
+#### Backward Compatibility
+
+The encryption functions maintain backward compatibility using function overloads:
+
+```typescript
+// New code (type-safe)
+const encrypted = await encryptApiKey(plaintext as PlaintextApiKey)
+
+// Existing code (still works)
+const encrypted = await encryptApiKey("my-api-key-123")
+```
+
+### How to Add a New Secret Field Safely
+
+Follow these steps when adding a new secret field to the schema:
+
+**Step 1: Define the field in schema**
+```typescript
+// convex/schema.ts
+myTable: defineTable({
+  // ...
+  encryptedSecret: v.bytes(),
+  // ...
+})
+```
+
+**Step 2: Create encryption/decryption helpers** (if needed)
+```typescript
+// convex/lib/encryption.ts
+
+// Reuse existing functions or create specialized versions
+export async function encryptSecret(plaintext: PlaintextApiKey): Promise<EncryptedApiKey> {
+  return encryptApiKey(plaintext) // Reuse existing encryption
+}
+
+export async function decryptSecret(
+  encrypted: EncryptedApiKey,
+  ctx?: any,
+  auditMetadata?: { resourceId?: any; orgId?: any }
+): Promise<PlaintextApiKey> {
+  return decryptApiKey(encrypted, ctx, auditMetadata)
+}
+```
+
+**Step 3: Use branded types in mutations**
+```typescript
+// convex/myTable/mutations.ts
+import { toPlaintextApiKey, encryptSecret } from "../lib/encryption"
+
+export const createResource = mutation({
+  args: {
+    secret: v.string(),
+    // ...
+  },
+  handler: withRBAC("resources:full")(async (ctx, args, user) => {
+    // Convert to branded type
+    const plaintext = toPlaintextApiKey(args.secret)
+    
+    // Encrypt
+    const encrypted = await encryptSecret(plaintext)
+    
+    // Store
+    await ctx.db.insert("myTable", {
+      encryptedSecret: encrypted,
+      // ...
+    })
+  })
+})
+```
+
+**Step 4: Add audit logging**
+```typescript
+// When decrypting
+const plaintext = await decryptSecret(resource.encryptedSecret, ctx, {
+  resourceId: resource._id,
+  orgId: resource.orgId,
+})
+
+// Audit log is automatically created by decryptApiKey
+```
+
+**Step 5: Document usage**
+- Update this security guide
+- Add comments in schema
+- Add examples in mutation files
+
+**Security Checklist for New Secret Fields**:
+- [ ] Field stored as `v.bytes()` in schema
+- [ ] User input converted to `PlaintextApiKey` before encryption
+- [ ] Encrypted with `encryptApiKey()` or specialized function
+- [ ] Decryption includes audit logging
+- [ ] Never sent to client in queries
+- [ ] Never logged in plaintext
+- [ ] Type-safe with branded types
+
+---
+
 ## Provisioning Credential Security
 
 ### Overview
