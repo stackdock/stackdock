@@ -44,89 +44,102 @@ export const githubAdapter: DockAdapter = {
    * 1. If preFetchedData provided, use it (from action - includes branches/issues/commits/pullRequests)
    * 2. For each repository, upsert into repositories table
    * 3. Store all repository data in fullApiData
+   * 
+   * @param allSyncedRepoNames - Optional: Set of all repo names synced across all batches.
+   *                              If provided, orphan deletion will use this set instead of just
+   *                              the current batch. Used for batch syncing to avoid payload limits.
    */
   async syncRepositories(
     ctx: MutationCtx,
     dock: Doc<"docks">,
-    preFetchedData?: GitHubRepositoryWithDetails[]
+    preFetchedData?: GitHubRepositoryWithDetails[],
+    allSyncedRepoNames?: Set<string>
   ): Promise<void> {
-    // preFetchedData should already include branches/issues/commits/pullRequests from action
-    if (!preFetchedData || preFetchedData.length === 0) {
-      console.log("[GitHub] No repositories to sync")
-      return
-    }
+    // Track which repos we've synced in this batch (for orphan detection)
+    const batchSyncedRepoFullNames = new Set<string>()
 
-    // Track which repos we've synced (for orphan detection)
-    const syncedRepoFullNames = new Set<string>()
+    // If preFetchedData is provided, sync those repos
+    if (preFetchedData && preFetchedData.length > 0) {
+      for (const repo of preFetchedData) {
+        // Type-safe access to branches/issues/commits/pullRequests
+        const branches = repo.branches || []
+        const issues = repo.issues || []
+        const commits = (repo as any).commits || []
+        const pullRequests = (repo as any).pullRequests || []
+        
+        // Track this repo as synced (both batch and all)
+        batchSyncedRepoFullNames.add(repo.full_name)
+        if (allSyncedRepoNames) {
+          allSyncedRepoNames.add(repo.full_name)
+        }
+        
+        // Find existing repository by providerResourceId (full_name)
+        const existing = await ctx.db
+          .query("repositories")
+          .withIndex("by_dock_resource", (q) => 
+            q.eq("dockId", dock._id).eq("providerResourceId", repo.full_name)
+          )
+          .first()
 
-    for (const repo of preFetchedData) {
-      // Type-safe access to branches/issues/commits/pullRequests
-      const branches = repo.branches || []
-      const issues = repo.issues || []
-      const commits = (repo as any).commits || []
-      const pullRequests = (repo as any).pullRequests || []
-      
-      // Track this repo as synced
-      syncedRepoFullNames.add(repo.full_name)
-      
-      // Find existing repository by providerResourceId (full_name)
-      const existing = await ctx.db
-        .query("repositories")
-        .withIndex("by_dock_resource", (q) => 
-          q.eq("dockId", dock._id).eq("providerResourceId", repo.full_name)
-        )
-        .first()
+        const repositoryData = {
+          orgId: dock.orgId,
+          dockId: dock._id,
+          provider: "github",
+          providerResourceId: repo.full_name,
+          name: repo.name,
+          fullName: repo.full_name,
+          description: repo.description || undefined,
+          language: repo.language || undefined,
+          private: repo.private || false,
+          url: repo.html_url || undefined,
+          defaultBranch: repo.default_branch || undefined,
+          fullApiData: {
+            repository: repo, // Complete repository object
+            branches, // Type-safe
+            issues, // Type-safe
+            commits, // Commits array
+            pullRequests, // Pull requests array
+          },
+          updatedAt: Date.now(),
+        }
 
-      const repositoryData = {
-        orgId: dock.orgId,
-        dockId: dock._id,
-        provider: "github",
-        providerResourceId: repo.full_name,
-        name: repo.name,
-        fullName: repo.full_name,
-        description: repo.description || undefined,
-        language: repo.language || undefined,
-        private: repo.private || false,
-        url: repo.html_url || undefined,
-        defaultBranch: repo.default_branch || undefined,
-        fullApiData: {
-          repository: repo, // Complete repository object
-          branches, // Type-safe
-          issues, // Type-safe
-          commits, // Commits array
-          pullRequests, // Pull requests array
-        },
-        updatedAt: Date.now(),
-      }
-
-      if (existing) {
-        // Update existing repository
-        await ctx.db.patch(existing._id, repositoryData)
-        console.log(`[GitHub] Updated repository ${repo.full_name}`)
-      } else {
-        // Create new repository
-        await ctx.db.insert("repositories", repositoryData)
-        console.log(`[GitHub] Created repository ${repo.full_name}`)
-      }
-    }
-
-    // Delete orphaned repositories (exist in DB but not in API response)
-    // Only delete discovered resources (provisioningSource === undefined)
-    const existingRepos = await ctx.db
-      .query("repositories")
-      .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
-      .collect()
-
-    for (const existingRepo of existingRepos) {
-      if (!syncedRepoFullNames.has(existingRepo.providerResourceId)) {
-        // Only delete if not provisioned via SST (discovered resources)
-        if (!existingRepo.fullApiData?.provisioningSource) {
-          await ctx.db.delete(existingRepo._id)
-          console.log(`[GitHub] Deleted orphaned repository ${existingRepo.providerResourceId}`)
+        if (existing) {
+          // Update existing repository
+          await ctx.db.patch(existing._id, repositoryData)
+          console.log(`[GitHub] Updated repository ${repo.full_name}`)
+        } else {
+          // Create new repository
+          await ctx.db.insert("repositories", repositoryData)
+          console.log(`[GitHub] Created repository ${repo.full_name}`)
         }
       }
     }
 
-    console.log(`[GitHub] Sync complete. Synced ${syncedRepoFullNames.size} repositories.`)
+    // Delete orphaned repositories (exist in DB but not in API response)
+    // Use allSyncedRepoNames if provided (for batch syncing), otherwise use batch set
+    // Only delete discovered resources (provisioningSource === undefined)
+    // Only delete orphans if we have synced repos (skip if this is just an orphan cleanup call)
+    const syncedRepoSet = allSyncedRepoNames || batchSyncedRepoFullNames
+    if (syncedRepoSet.size > 0) {
+      const existingRepos = await ctx.db
+        .query("repositories")
+        .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
+        .collect()
+
+      for (const existingRepo of existingRepos) {
+        if (!syncedRepoSet.has(existingRepo.providerResourceId)) {
+          // Only delete if not provisioned via SST (discovered resources)
+          if (!existingRepo.fullApiData?.provisioningSource) {
+            await ctx.db.delete(existingRepo._id)
+            console.log(`[GitHub] Deleted orphaned repository ${existingRepo.providerResourceId}`)
+          }
+        }
+      }
+    }
+
+    const syncedCount = preFetchedData?.length || 0
+    if (syncedCount > 0) {
+      console.log(`[GitHub] Batch sync complete. Synced ${syncedCount} repositories.`)
+    }
   },
 }

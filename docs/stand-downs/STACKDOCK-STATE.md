@@ -2,7 +2,7 @@
 
 **Source File**: `docs/.stackdock-state.json`  
 **Last Updated**: November 17, 2025  
-**Version**: 0.1.0  
+**Document Version**: 0.1.0  
 **Purpose**: Machine-readable single source of truth for project state
 
 > **CRITICAL**: This file is the ONLY source of truth. Always read `docs/.stackdock-state.json` first in every session.
@@ -516,4 +516,4 @@ Human-readable project notes and milestones. **Total: 18 notes**
 
 **Last Updated**: November 17, 2025  
 **State File Version**: 2.0.0  
-**Document Version**: 1.0
+**Document Version**: 0.1.0
