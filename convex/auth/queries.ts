@@ -41,17 +41,15 @@ export const listAuthActivity = query({
     
     // Build query for auth events
     const limit = args.limit || 100
+    
+    // Query logs with org filter and timestamp filter if provided
     let query = ctx.db
       .query("auditLogs")
       .withIndex("by_org", (q) => {
-        let base = q.eq("orgId", args.orgId)
-        
-        // Apply start date filter if provided
         if (args.startDate) {
-          base = base.gte("timestamp", args.startDate)
+          return q.eq("orgId", args.orgId).gte("timestamp", args.startDate)
         }
-        
-        return base
+        return q.eq("orgId", args.orgId)
       })
       .order("desc")
     
