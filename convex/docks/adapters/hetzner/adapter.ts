@@ -13,6 +13,7 @@
 import type { DockAdapter } from "../../_types"
 import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
+import type { Server } from "../../../lib/universalTypes"
 import { decryptApiKey } from "../../../lib/encryption"
 import { HetznerAPI } from "./api"
 import type { HetznerServer } from "./types"
@@ -109,7 +110,7 @@ export const hetznerAdapter: DockAdapter = {
       // Extract primary IP from public_net.ipv4.ip
       const primaryIpAddress = server.public_net?.ipv4?.ip || undefined
 
-      const serverData = {
+      const serverData : Omit<Server, "_id" | "_creationTime"> = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "hetzner",

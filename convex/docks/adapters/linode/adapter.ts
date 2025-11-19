@@ -14,6 +14,7 @@
 import type { DockAdapter } from "../../_types"
 import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
+import type { Server, Bucket } from "../../../lib/universalTypes"
 import { decryptApiKey } from "../../../lib/encryption"
 import { LinodeAPI } from "./api"
 import type { LinodeInstance, LinodeBucket } from "./types"
@@ -120,7 +121,7 @@ export const linodeAdapter: DockAdapter = {
         )
         .first()
 
-      const serverData = {
+      const serverData : Omit<Server, "_id" | "_creationTime"> = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "linode",
@@ -213,7 +214,7 @@ export const linodeAdapter: DockAdapter = {
         )
         .first()
 
-      const bucketData = {
+      const bucketData : Omit<Bucket, "_id" | "_creationTime"> = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "linode",
