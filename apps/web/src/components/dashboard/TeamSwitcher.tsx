@@ -33,8 +33,12 @@ interface Props {
 export function TeamSwitcher({ teams }: Props) {
   const { isMobile } = useSidebar()
   const { userMemberships, setActive } = useOrganizationList()
-  const [activeTeam, setActiveTeam] = React.useState(teams[0])
+  const [activeTeam, setActiveTeam] = React.useState<typeof teams[0] | undefined>(teams[0])
   const [open, setOpen] = React.useState(false)
+  
+  if (!activeTeam) {
+    return null
+  }
 
   // Use Clerk organizations if available, otherwise fallback to teams prop
   const displayTeams = userMemberships?.data?.length

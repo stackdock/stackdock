@@ -4,7 +4,6 @@
  * Color-coded badge for displaying resource status
  */
 
-import * as React from "react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 

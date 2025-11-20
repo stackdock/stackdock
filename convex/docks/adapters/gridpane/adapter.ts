@@ -16,7 +16,6 @@
 import type { DockAdapter } from "../../_types"
 import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
-import type { WebService, Server, Domain, BackupSchedule, BackupIntegration } from "../../../lib/universalTypes"
 import { decryptApiKey } from "../../../lib/encryption"
 import { GridPaneAPI } from "./api"
 import type {
@@ -132,14 +131,14 @@ export const gridpaneAdapter: DockAdapter = {
         )
         .first()
 
-      const universalServer: Omit<Server, "_id" | "_creationTime"> = {
+      const universalServer = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "gridpane",
         providerResourceId,
         name: server.label,
-        primaryIpAddress: server.ip || undefined,
-        region: server.region || undefined,
+        ...(server.ip ? { primaryIpAddress: server.ip } : {}),
+        ...(server.region ? { region: server.region } : {}),
         status: mapServerStatus(server.status),
         fullApiData: server, // Store all GridPane-specific fields
         updatedAt: Date.now(),
@@ -223,7 +222,7 @@ export const gridpaneAdapter: DockAdapter = {
         environment = "production"
       }
 
-      const universalWebService: Omit<WebService, "_id" | "_creationTime"> = {
+      const universalWebService = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "gridpane",
@@ -309,13 +308,13 @@ export const gridpaneAdapter: DockAdapter = {
         ? new Date(domain.updated_at).getTime() + 365 * 24 * 60 * 60 * 1000 // Assume 1 year from update
         : undefined
 
-      const universalDomain: Omit<Domain, "_id" | "_creationTime"> = {
+      const universalDomain = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "gridpane",
         providerResourceId,
         domainName: domain.url,
-        expiresAt,
+        ...(expiresAt !== undefined ? { expiresAt } : {}),
         status: mapDomainStatus(domain),
         fullApiData: domain, // Store all GridPane-specific fields
         updatedAt: Date.now(),
@@ -383,7 +382,7 @@ export const gridpaneAdapter: DockAdapter = {
         .first()
 
       // Map GridPane schedule to universal schema
-      const universalSchedule: Omit<BackupSchedule, "_id" | "_creationTime"> = {
+      const universalSchedule = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "gridpane",
@@ -396,8 +395,8 @@ export const gridpaneAdapter: DockAdapter = {
         hour: schedule.time?.split(":")[0] || "00",
         minute: schedule.time?.split(":")[1] || "00",
         time: schedule.time || "00:00",
-        dayOfWeek: schedule.day_of_week ?? undefined, // Convert null to undefined
-        serviceId: schedule.integration_id ?? undefined, // Convert null/undefined to undefined
+        ...(schedule.day_of_week !== null && schedule.day_of_week !== undefined ? { dayOfWeek: schedule.day_of_week } : {}),
+        ...(schedule.integration_id !== null && schedule.integration_id !== undefined ? { serviceId: schedule.integration_id } : {}),
         enabled: schedule.enabled,
         remoteBackupsEnabled: schedule.remote_backups_enabled,
         fullApiData: schedule,
@@ -464,7 +463,7 @@ export const gridpaneAdapter: DockAdapter = {
       // Map GridPane integration to universal schema
       // Note: Don't store tokens/secrets in fullApiData - they're sensitive
       const { token, secret_token, ...safeData } = integration
-      const universalIntegration: Omit<BackupIntegration, "_id" | "_creationTime"> = {
+      const universalIntegration = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "gridpane",
@@ -472,7 +471,7 @@ export const gridpaneAdapter: DockAdapter = {
         integrationId: integration.id,
         integratedService: integration.integrated_service,
         integrationName: integration.integration_name,
-        region: integration.region,
+        ...(integration.region ? { region: integration.region } : {}),
         fullApiData: safeData, // Exclude tokens/secrets
         status: "active",
         updatedAt: Date.now(),

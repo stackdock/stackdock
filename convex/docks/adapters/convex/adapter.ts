@@ -15,7 +15,6 @@
 import type { DockAdapter } from "../../_types"
 import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
-import type { Database, Deployment } from "../../../lib/universalTypes"
 import { decryptApiKey } from "../../../lib/encryption"
 import { ConvexAPI } from "./api"
 import type { ConvexProject, ConvexDeployment } from "./types"
@@ -88,7 +87,7 @@ export const convexAdapter: DockAdapter = {
         )
         .first()
 
-      const databaseData : Omit<Database, "_id" | "_creationTime"> = {
+      const databaseData = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "convex",
@@ -190,7 +189,7 @@ export const convexAdapter: DockAdapter = {
         )
         .first()
 
-      const deploymentData : Omit<Deployment, "_id" | "_creationTime"> = {
+      const deploymentData = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "convex",

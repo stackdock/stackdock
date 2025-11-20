@@ -25,7 +25,6 @@ import { BetterStackAPI } from "./adapters/betterstack/api"
 import { SentryAPI } from "./adapters/sentry/api"
 import { decryptApiKey } from "../lib/encryption"
 import { internal } from "../_generated/api"
-import type { Id } from "../_generated/dataModel"
 
 /**
  * Validate API credentials for a provider
@@ -38,7 +37,7 @@ export const validateCredentials = internalAction({
     provider: v.string(),
     apiKey: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     // Logging silenced except for Sentry
     
     const adapter = getAdapter(args.provider)
@@ -523,8 +522,9 @@ export const syncDockResources = internalAction({
           
           // Process repositories in batches to avoid payload size limits
           // Each batch includes repository + branches + issues + commits + PRs
-          // Batch size of 10-15 should keep payloads under 1 MiB
-          const BATCH_SIZE = 12
+          // Batch size reduced to 4 to keep payloads under 1 MiB
+          // Repos with many branches/issues/PRs can be very large, so smaller batches are safer
+          const BATCH_SIZE = 4
           const batches: typeof repos[] = []
           
           for (let i = 0; i < repos.length; i += BATCH_SIZE) {
@@ -539,12 +539,18 @@ export const syncDockResources = internalAction({
           // Process each batch sequentially to avoid rate limits
           for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
             const batch = batches[batchIdx]
+            if (!batch) continue // Skip if batch is undefined
+            
             console.log(`[Dock Action] Processing batch ${batchIdx + 1}/${batches.length} (${batch.length} repos)...`)
             
             // Fetch details for repositories in this batch
             const reposWithDetails = await Promise.all(
               batch.map(async (repo) => {
                 const [owner, repoName] = repo.full_name.split("/")
+                if (!owner || !repoName) {
+                  console.warn(`[Dock Action] Invalid repo full_name format: ${repo.full_name}`)
+                  return repo
+                }
                 const [branches, issues, commits, pullRequests] = await Promise.all([
                   api.listBranches(owner, repoName).catch(() => []),
                   api.listIssues(owner, repoName).catch(() => []),
@@ -567,25 +573,17 @@ export const syncDockResources = internalAction({
             
             // Sync this batch immediately (don't accumulate all batches)
             // This prevents the payload from getting too large
-            // Pass allSyncedRepoNames so adapter can delete orphans correctly
+            // Only pass allSyncedRepoNames on the last batch to avoid payload bloat
+            const isLastBatch = batchIdx === batches.length - 1
             await ctx.runMutation(internal.docks.mutations.syncDockResourcesMutation, {
               dockId: args.dockId,
               provider: args.provider,
               fetchedData: {
-                servers: undefined,
-                webServices: undefined,
-                domains: undefined,
-                databases: undefined,
-                deployments: undefined,
-                backupSchedules: undefined,
-                backupIntegrations: undefined,
                 repositories: reposWithDetails, // Only this batch
-                blockVolumes: undefined,
-                buckets: undefined,
-                monitors: undefined,
-                issues: undefined,
               },
-              allSyncedRepoNames: Array.from(allSyncedRepoNames), // All repos synced so far
+              // Only pass allSyncedRepoNames on last batch to avoid payload size issues
+              // Orphan deletion will happen on the last batch
+              ...(isLastBatch ? { allSyncedRepoNames: Array.from(allSyncedRepoNames) } : {}),
             })
             
             console.log(`[Dock Action] ✅ Batch ${batchIdx + 1}/${batches.length} synced (${reposWithDetails.length} repos, ${allSyncedRepoNames.size} total tracked)`)
@@ -766,19 +764,32 @@ export const syncDockResources = internalAction({
       // Call internal mutation to sync using adapter methods
       // CRITICAL: Always pass arrays (even empty ones) so deletion logic can run
       // If we pass undefined, the adapter method won't be called and orphaned resources won't be deleted
-      const fetchedData = {
-        servers: args.resourceTypes.includes("servers") ? servers : undefined,
-        webServices: args.resourceTypes.includes("webServices") ? webServices : undefined,
-        domains: args.resourceTypes.includes("domains") ? domains : undefined,
-        databases: args.resourceTypes.includes("databases") ? databases : undefined,
-        deployments: args.resourceTypes.includes("deployments") ? deployments : undefined,
-        backupSchedules: backupSchedules.length > 0 ? backupSchedules : undefined,
-        backupIntegrations: backupIntegrations.length > 0 ? backupIntegrations : undefined,
-        repositories: args.resourceTypes.includes("repositories") ? repositories : undefined,
-        blockVolumes: args.resourceTypes.includes("blockVolumes") ? blockVolumes : undefined,
-        buckets: args.resourceTypes.includes("buckets") ? buckets : undefined,
-        monitors: args.resourceTypes.includes("monitors") ? monitors : undefined,
-        issues: args.resourceTypes.includes("issues") ? issues : undefined,
+      const fetchedData: {
+        servers?: any[]
+        webServices?: any[]
+        domains?: any[]
+        databases?: any[]
+        deployments?: any[]
+        backupSchedules?: any[]
+        backupIntegrations?: any[]
+        repositories?: any[]
+        blockVolumes?: any[]
+        buckets?: any[]
+        monitors?: any[]
+        issues?: any[]
+      } = {
+        ...(args.resourceTypes.includes("servers") && servers ? { servers } : {}),
+        ...(args.resourceTypes.includes("webServices") && webServices ? { webServices } : {}),
+        ...(args.resourceTypes.includes("domains") && domains ? { domains } : {}),
+        ...(args.resourceTypes.includes("databases") && databases ? { databases } : {}),
+        ...(args.resourceTypes.includes("deployments") && deployments ? { deployments } : {}),
+        ...(backupSchedules.length > 0 ? { backupSchedules } : {}),
+        ...(backupIntegrations.length > 0 ? { backupIntegrations } : {}),
+        ...(args.resourceTypes.includes("repositories") && repositories ? { repositories } : {}),
+        ...(args.resourceTypes.includes("blockVolumes") && blockVolumes ? { blockVolumes } : {}),
+        ...(args.resourceTypes.includes("buckets") && buckets ? { buckets } : {}),
+        ...(args.resourceTypes.includes("monitors") && monitors ? { monitors } : {}),
+        ...(args.resourceTypes.includes("issues") && issues ? { issues } : {}),
       }
       
       // Sentry logging only
@@ -836,7 +847,7 @@ export const fetchMoreCommits = action({
     page: v.number(), // Page number (1-indexed, page 2 = commits 11-20, etc.)
     perPage: v.optional(v.number()), // Commits per page (default: 10)
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<any[]> => {
     // Logging silenced except for Sentry
     
     // Get dock and verify permissions via internal query
@@ -857,15 +868,15 @@ export const fetchMoreCommits = action({
     }
     
     // Decrypt API key (actions can use decryptApiKey, but without audit logging)
-    const apiKey = await decryptApiKey(dock.encryptedApiKey)
+    const apiKey: string = await decryptApiKey(dock.encryptedApiKey)
     
     // Fetch commits
-    const perPage = args.perPage || 10
-    const api = new GitHubAPI(apiKey)
+    const perPage: number = args.perPage || 10
+    const api: GitHubAPI = new GitHubAPI(apiKey)
     
     // GitHub API uses per_page and page parameters
     // Page 1 = commits 0-9, page 2 = commits 10-19, etc.
-    const commits = await api.listCommits(args.owner, args.repo, {
+    const commits: any[] = await api.listCommits(args.owner, args.repo, {
       limit: perPage,
       page: args.page,
     })

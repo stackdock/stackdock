@@ -91,34 +91,34 @@ interface BackupSchedule {
 }
 
 // Multi-column filter for site URL
-const siteFilterFn: FilterFn<BackupSchedule> = (row, columnId, filterValue) => {
+const siteFilterFn: FilterFn<BackupSchedule> = (row, _columnId, filterValue) => {
   const searchableContent = row.original.siteUrl.toLowerCase()
   const searchTerm = (filterValue ?? "").toLowerCase()
   return searchableContent.includes(searchTerm)
 }
 
 // Status filter (enabled/disabled)
-const statusFilterFn: FilterFn<BackupSchedule> = (row, columnId, filterValue: string[]) => {
+const statusFilterFn: FilterFn<BackupSchedule> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   const status = row.original.enabled ? "enabled" : "disabled"
   return filterValue.includes(status)
 }
 
 // Provider filter
-const providerFilterFn: FilterFn<BackupSchedule> = (row, columnId, filterValue: string[]) => {
+const providerFilterFn: FilterFn<BackupSchedule> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.provider)
 }
 
 // Type filter (local/remote)
-const typeFilterFn: FilterFn<BackupSchedule> = (row, columnId, filterValue: string[]) => {
+const typeFilterFn: FilterFn<BackupSchedule> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   const type = row.original.type || "unknown"
   return filterValue.includes(type)
 }
 
 // Frequency filter
-const frequencyFilterFn: FilterFn<BackupSchedule> = (row, columnId, filterValue: string[]) => {
+const frequencyFilterFn: FilterFn<BackupSchedule> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.frequency)
 }

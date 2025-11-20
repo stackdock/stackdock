@@ -11,7 +11,6 @@ import { query, internalQuery } from "../_generated/server"
 import { v } from "convex/values"
 import { getCurrentUser, checkPermission } from "../lib/rbac"
 import { ConvexError } from "convex/values"
-import type { PaginationResult } from "convex/server"
 
 /**
  * List all servers for the current user's organization

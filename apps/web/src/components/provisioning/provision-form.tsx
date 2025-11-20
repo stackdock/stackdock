@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { AlertCircle, Loader2 } from "lucide-react"
-import { provisionResourceMachine, type ResourceType, type ResourceSpec } from "../../machines/provision-resource.machine"
+import { provisionResourceMachine, type ResourceType, type ResourceSpec, type ResourceId, type ProvisionResourceContext } from "../../machines/provision-resource.machine"
 import { ResourceSpecForm } from "./resource-spec-form"
 import { ProvisionProgressIndicator } from "./provision-progress-indicator"
 import type { Id } from "convex/_generated/dataModel"
@@ -28,7 +28,7 @@ export interface ProvisionFormProps
   resourceType: ResourceType
   provider: string
   defaultValues?: Partial<ResourceSpec>
-  onSubmit?: (result: { provisionId: string; resourceId: Id }) => void
+  onSubmit?: (result: { provisionId: string; resourceId: ResourceId }) => void
   onCancel?: () => void
   disabled?: boolean
 }
@@ -58,7 +58,7 @@ const ProvisionForm = React.forwardRef<
   const provisionResource = useMutation(api.docks.mutations.provisionResource)
 
   const [state, send] = useMachine(provisionResourceMachine, {
-    context: {
+    input: {
       dockId,
       provider,
       resourceType,
@@ -71,14 +71,14 @@ const ProvisionForm = React.forwardRef<
       formData: defaultValues || {},
     },
     services: {
-      validateSpec: async ({ context }) => {
+      validateSpec: async ({ context }: { context: ProvisionResourceContext }) => {
         // Client-side validation
         if (!context.spec || Object.keys(context.spec).length === 0) {
           throw new Error('Resource specification is required')
         }
         return context.spec
       },
-      provisionResource: async ({ context }) => {
+      provisionResource: async ({ context }: { context: ProvisionResourceContext }) => {
         if (!context.validatedSpec) {
           throw new Error('Validated specification is required')
         }
@@ -91,12 +91,12 @@ const ProvisionForm = React.forwardRef<
         
         return result
       },
-      monitorProvisionStatus: async ({ context }) => {
+      monitorProvisionStatus: async ({ context }: { context: ProvisionResourceContext }) => {
         // This will be handled by real-time Convex query subscription
         // For now, return success immediately
         return 'success' as const
       },
-      cancelProvision: async ({ context }) => {
+      cancelProvision: async ({ context }: { context: ProvisionResourceContext }) => {
         // TODO: Implement cancel mutation when available
         throw new Error('Cancel not yet implemented')
       },
@@ -168,9 +168,9 @@ const ProvisionForm = React.forwardRef<
               <ResourceSpecForm
                 provider={provider}
                 resourceType={resourceType}
-                defaultValues={state.context.spec || defaultValues}
+                {...(state.context.spec || defaultValues ? { defaultValues: state.context.spec || defaultValues } : {})}
                 onChange={handleSpecChange}
-                errors={hasError && state.context.error ? { root: state.context.error } : undefined}
+                {...(hasError && state.context.error ? { errors: { root: state.context.error } } : {})}
               />
 
               {hasError && state.context.error && (

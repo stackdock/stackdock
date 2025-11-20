@@ -45,7 +45,6 @@ function UserPage() {
   const createdAt = clerkUser.createdAt ? new Date(clerkUser.createdAt) : null
   const updatedAt = clerkUser.updatedAt ? new Date(clerkUser.updatedAt) : null
   const emailVerified = clerkUser.emailAddresses?.some(e => e.verification?.status === "verified") || false
-  const phoneVerified = clerkUser.phoneNumbers?.some(p => p.verification?.status === "verified") || false
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 md:p-6 lg:p-8">

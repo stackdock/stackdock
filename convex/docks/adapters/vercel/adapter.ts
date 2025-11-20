@@ -14,7 +14,6 @@
 import type { DockAdapter } from "../../_types"
 import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
-import type { WebService } from "../../../lib/universalTypes"
 import { decryptApiKey } from "../../../lib/encryption"
 import { VercelAPI } from "./api"
 import type { VercelProject } from "./types"
@@ -161,15 +160,17 @@ export const vercelAdapter: DockAdapter = {
         )
         .first()
 
+      const productionUrl = getProductionUrl(project)
+      const gitRepo = getGitRepo(project)
       const universalWebService = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "vercel",
         providerResourceId: project.id,
         name: project.name,
-        productionUrl: getProductionUrl(project),
+        ...(productionUrl ? { productionUrl } : {}),
         environment: getEnvironment(project),
-        gitRepo: getGitRepo(project),
+        ...(gitRepo ? { gitRepo } : {}),
         status: getStatus(project),
         fullApiData: project, // Store all Vercel-specific fields
         updatedAt: Date.now(),

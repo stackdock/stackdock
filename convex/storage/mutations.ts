@@ -39,7 +39,7 @@ export const generateUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
     // Verify user is authenticated
-    const user = await getCurrentUser(ctx)
+    await getCurrentUser(ctx)
     
     // Generate upload URL
     return await ctx.storage.generateUploadUrl()
@@ -136,8 +136,8 @@ export const uploadFile = mutation({
       contentType: args.contentType,
       size: args.size,
       category: args.category,
-      projectId: args.projectId,
-      dockId: args.dockId,
+      ...(args.projectId ? { projectId: args.projectId } : {}),
+      ...(args.dockId ? { dockId: args.dockId } : {}),
       uploadedAt: Date.now(),
     })
     

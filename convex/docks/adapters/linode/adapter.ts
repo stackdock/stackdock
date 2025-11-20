@@ -14,7 +14,6 @@
 import type { DockAdapter } from "../../_types"
 import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
-import type { Server, Bucket } from "../../../lib/universalTypes"
 import { decryptApiKey } from "../../../lib/encryption"
 import { LinodeAPI } from "./api"
 import type { LinodeInstance, LinodeBucket } from "./types"
@@ -121,7 +120,7 @@ export const linodeAdapter: DockAdapter = {
         )
         .first()
 
-      const serverData : Omit<Server, "_id" | "_creationTime"> = {
+      const serverData = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "linode",
@@ -214,18 +213,18 @@ export const linodeAdapter: DockAdapter = {
         )
         .first()
 
-      const bucketData : Omit<Bucket, "_id" | "_creationTime"> = {
+      const bucketData = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "linode",
         providerResourceId,
         name: bucket.label,
         region: bucket.region,
-        cluster: bucket.cluster || undefined,
-        hostname: bucket.hostname || undefined,
-        s3Endpoint: bucket.s3_endpoint || undefined,
-        sizeBytes: bucket.size || undefined,
-        objectCount: bucket.objects || undefined,
+        ...(bucket.cluster ? { cluster: bucket.cluster } : {}),
+        ...(bucket.hostname ? { hostname: bucket.hostname } : {}),
+        ...(bucket.s3_endpoint ? { s3Endpoint: bucket.s3_endpoint } : {}),
+        ...(bucket.size !== undefined ? { sizeBytes: bucket.size } : {}),
+        ...(bucket.objects !== undefined ? { objectCount: bucket.objects } : {}),
         status: "active", // Linode buckets don't have explicit status
         fullApiData: {
           // Store all Linode fields

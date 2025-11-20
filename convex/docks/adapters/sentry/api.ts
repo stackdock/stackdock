@@ -57,7 +57,7 @@ export class SentryAPI {
 
     // Find rel="next" link
     const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/i)
-    if (!nextMatch) return null
+    if (!nextMatch || !nextMatch[1]) return null
 
     const nextUrl = nextMatch[1]
     
@@ -340,8 +340,12 @@ export class SentryAPI {
         results.push({ project, issues })
       } else {
         // Project not in projects list, but has issues - create minimal project from issue data
-        const [orgSlug, projectSlug] = key.split("/")
+        const [orgSlug] = key.split("/")
         const firstIssue = issues[0]
+        if (!firstIssue) {
+          // No issues, skip this project
+          continue
+        }
         const issueIds = issues.map(i => i.id).join(", ")
         
         // Log warning for orphaned project

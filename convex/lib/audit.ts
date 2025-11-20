@@ -104,12 +104,12 @@ export async function auditLog(
       orgId: finalOrgId,
       userId: user._id,
       action,
-      resourceType: metadata?.resourceType,
-      resourceId: metadata?.resourceId ? String(metadata.resourceId) : undefined,
-      metadata: metadata || {},
       result,
-      errorMessage: result === "error" ? metadata?.errorMessage : undefined,
       timestamp: Date.now(),
+      ...(metadata?.resourceType ? { resourceType: metadata.resourceType } : {}),
+      ...(metadata?.resourceId ? { resourceId: String(metadata.resourceId) } : {}),
+      ...(metadata ? { metadata: metadata || {} } : {}),
+      ...(result === "error" && metadata?.errorMessage ? { errorMessage: metadata.errorMessage } : {}),
       // Note: ipAddress and userAgent are optional and not available in Convex context
       // They can be added if needed in the future via request headers
     }

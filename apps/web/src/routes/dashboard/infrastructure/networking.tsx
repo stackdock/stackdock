@@ -16,7 +16,7 @@ function NetworkingPage() {
   // Filter out canary and staging subdomains (only when data is loaded)
   const filteredDomainsList = domains === undefined
     ? undefined
-    : domains.filter(domain => {
+    : domains.filter((domain: { domainName: string }) => {
         const domainName = domain.domainName.toLowerCase()
         // Exclude domains that start with "canary." or "staging." or contain ".canary." or ".staging."
         return !domainName.startsWith('canary.') && 

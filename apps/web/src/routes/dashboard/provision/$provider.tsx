@@ -7,6 +7,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useQuery } from "convex/react"
 import { api } from "convex/_generated/api"
+import type { Doc } from "convex/_generated/dataModel"
 import { Link, useNavigate } from "@tanstack/react-router"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -29,7 +30,7 @@ function ProviderProvisionPage() {
   const docks = useQuery(api["docks/queries"].listDocks)
 
   // Find docks for this provider
-  const providerDocks = docks?.filter((dock) => dock.provider === provider) || []
+  const providerDocks = docks?.filter((dock: Doc<"docks">) => dock.provider === provider) || []
 
   if (docks === undefined) {
     return (
@@ -57,7 +58,7 @@ function ProviderProvisionPage() {
                 No docks configured for provider: {provider}
               </p>
               <Button asChild>
-                <Link to="/dashboard/settings/docks">
+                <Link to="/dashboard/docks/add">
                   Connect Provider
                 </Link>
               </Button>
@@ -115,7 +116,7 @@ function ProviderProvisionPage() {
       <div className="mt-8">
         <h3 className="text-xs font-medium mb-4">Available Docks</h3>
         <div className="space-y-2">
-          {providerDocks.map((dock) => (
+          {providerDocks.map((dock: Doc<"docks">) => (
             <Card key={dock._id}>
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">

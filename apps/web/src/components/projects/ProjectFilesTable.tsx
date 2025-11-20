@@ -6,7 +6,7 @@
 
 import { useMutation, useQuery } from "convex/react"
 import { api } from "convex/_generated/api"
-import type { Id } from "convex/_generated/dataModel"
+import type { Doc, Id } from "convex/_generated/dataModel"
 import {
   Table,
   TableBody,
@@ -91,7 +91,7 @@ export function ProjectFilesTable({ projectId }: ProjectFilesTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {files.map((file) => (
+          {files.map((file: Doc<"fileUploads">) => (
             <TableRow key={file._id}>
               <TableCell>
                 <div className="flex items-center justify-center">

@@ -14,7 +14,6 @@
 import type { DockAdapter } from "../../_types"
 import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
-import type { WebService } from "../../../lib/universalTypes"
 import { decryptApiKey } from "../../../lib/encryption"
 import { NetlifyAPI } from "./api"
 import type { NetlifySite } from "./types"
@@ -91,7 +90,7 @@ function getGitRepo(site: NetlifySite): string | undefined {
  * Get environment from Netlify site
  * For sites, always "production" (branch/preview deployments handled separately if needed)
  */
-function getEnvironment(site: NetlifySite): string {
+function getEnvironment(_site: NetlifySite): string {
   return "production"
 }
 
@@ -171,15 +170,17 @@ export const netlifyAdapter: DockAdapter = {
         )
         .first()
 
-      const universalWebService: Omit<WebService, "_id" | "_creationTime"> = {
+      const productionUrl = getProductionUrl(site)
+      const gitRepo = getGitRepo(site)
+      const universalWebService = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "netlify",
         providerResourceId: site.id, // Use id, not site_id
         name: site.name,
-        productionUrl: getProductionUrl(site),
+        ...(productionUrl ? { productionUrl } : {}),
         environment: getEnvironment(site),
-        gitRepo: getGitRepo(site),
+        ...(gitRepo ? { gitRepo } : {}),
         status: getStatus(site),
         fullApiData: site, // Store all Netlify-specific fields
         updatedAt: Date.now(),

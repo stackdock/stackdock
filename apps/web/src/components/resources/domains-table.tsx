@@ -105,18 +105,18 @@ import { deduplicateDomains, type DeduplicatedDomain } from "@/lib/resource-dedu
 
 type Domain = Doc<"domains">
 
-const domainFilterFn: FilterFn<Domain | DeduplicatedDomain> = (row, columnId, filterValue) => {
+const domainFilterFn: FilterFn<Domain | DeduplicatedDomain> = (row, _columnId, filterValue) => {
   const searchableContent = row.original.domainName.toLowerCase()
   const searchTerm = (filterValue ?? "").toLowerCase()
   return searchableContent.includes(searchTerm)
 }
 
-const statusFilterFn: FilterFn<Domain | DeduplicatedDomain> = (row, columnId, filterValue: string[]) => {
+const statusFilterFn: FilterFn<Domain | DeduplicatedDomain> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.status)
 }
 
-const providerFilterFn: FilterFn<Domain | DeduplicatedDomain> = (row, columnId, filterValue: string[]) => {
+const providerFilterFn: FilterFn<Domain | DeduplicatedDomain> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   
   // Handle deduplicated domains (has providers array)
@@ -126,11 +126,6 @@ const providerFilterFn: FilterFn<Domain | DeduplicatedDomain> = (row, columnId, 
   
   // Handle regular domains
   return filterValue.includes(row.original.provider)
-}
-
-const expiryFilterFn: FilterFn<Domain | DeduplicatedDomain> = (row, columnId, filterValue: boolean) => {
-  if (!filterValue) return true
-  return isExpiringSoon(row.original.expiresAt)
 }
 
 function DNSRecordsCell({ row }: { row: Row<Domain | DeduplicatedDomain> }) {
@@ -704,7 +699,7 @@ export function DomainsTable({ data, onDelete }: DomainsTableProps) {
   )
 }
 
-function RowActions({ row }: { row: Row<Domain> }) {
+function RowActions({ row: _row }: { row: Row<Domain> }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

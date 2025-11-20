@@ -23,7 +23,6 @@ import {
   VisibilityState,
 } from "@tanstack/react-table"
 import {
-  AlertCircle,
   ChevronDownIcon,
   ChevronFirstIcon,
   ChevronLastIcon,
@@ -83,14 +82,14 @@ interface Issue {
 }
 
 // Multi-column filter for number + title
-const multiColumnFilterFn: FilterFn<Issue> = (row, columnId, filterValue) => {
+const multiColumnFilterFn: FilterFn<Issue> = (row, _columnId, filterValue) => {
   const searchableContent = `#${row.original.number} ${row.original.title}`.toLowerCase()
   const searchTerm = (filterValue ?? "").toLowerCase()
   return searchableContent.includes(searchTerm)
 }
 
 // Status filter
-const statusFilterFn: FilterFn<Issue> = (row, columnId, filterValue: string[]) => {
+const statusFilterFn: FilterFn<Issue> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.state)
 }

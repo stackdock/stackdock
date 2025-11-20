@@ -7,6 +7,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useQuery } from "convex/react"
 import { api } from "convex/_generated/api"
+import type { Doc } from "convex/_generated/dataModel"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { Link } from "@tanstack/react-router"
@@ -23,7 +24,7 @@ function ResourceProvisionPage() {
   const docks = useQuery(api["docks/queries"].listDocks)
 
   // Find first dock for this provider (could be enhanced to let user select)
-  const dock = docks?.find((d) => d.provider === provider)
+  const dock = docks?.find((d: Doc<"docks">) => d.provider === provider)
 
   if (docks === undefined) {
     return (

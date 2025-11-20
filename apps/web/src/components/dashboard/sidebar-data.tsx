@@ -32,6 +32,7 @@ import { type SidebarData } from "./types"
 import { useUser } from "@clerk/clerk-react"
 import { useQuery } from "convex/react"
 import { api } from "convex/_generated/api"
+import type { Doc } from "convex/_generated/dataModel"
 
 // Helper hook to get user data from Clerk
 function useSidebarUser() {
@@ -59,7 +60,7 @@ function useSidebarTeams() {
     ]
   }
   
-  return organizations.map((org) => ({
+  return organizations.map((org: Doc<"organizations">) => ({
     name: org.name,
     logo: Building2,
     plan: "Active",

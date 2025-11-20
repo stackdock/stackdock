@@ -9,7 +9,7 @@
 import { useState } from "react"
 import { useQuery } from "convex/react"
 import { api } from "convex/_generated/api"
-import type { Id } from "convex/_generated/dataModel"
+import type { Doc, Id } from "convex/_generated/dataModel"
 import {
   Table,
   TableBody,
@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Calendar, CheckCircle2, XCircle, User, Clock } from "lucide-react"
+import { Calendar, CheckCircle2, XCircle, User } from "lucide-react"
 
 interface AuthActivityTableProps {
   orgId: Id<"organizations">
@@ -221,7 +221,7 @@ export function AuthActivityTable({ orgId }: AuthActivityTableProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {activityData.logs.map((log) => {
+                    {activityData.logs.map((log: Doc<"auditLogs"> & { userName: string; userEmail: string }) => {
                       const timestamp = formatTimestamp(log.timestamp)
                       return (
                         <TableRow key={log._id}>

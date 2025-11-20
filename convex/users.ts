@@ -56,7 +56,7 @@ export const ensureCurrentUser = mutation({
     if (existing) {
       // Log authentication event for existing user
       await auditLog(ctx, "user.login", "success", {
-        orgId: existing.defaultOrgId,
+        ...(existing.defaultOrgId ? { orgId: existing.defaultOrgId } : {}),
       })
       return existing._id
     }

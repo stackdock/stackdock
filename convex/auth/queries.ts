@@ -41,8 +41,12 @@ export const listAuthActivity = query({
     
     // Build query for auth events
     const limit = args.limit || 100
+    // Use a higher limit for initial query to account for filtering
+    // We'll filter to auth events after, so fetch more than needed
+    const queryLimit = Math.min(limit * 5, 1000) // Fetch up to 5x the limit, max 1000
     
     // Query logs with org filter and timestamp filter if provided
+    // Use by_org index with timestamp range for efficient querying
     let query = ctx.db
       .query("auditLogs")
       .withIndex("by_org", (q) => {
@@ -53,8 +57,8 @@ export const listAuthActivity = query({
       })
       .order("desc")
     
-    // Collect results
-    const allLogs = await query.collect()
+    // Limit documents read to avoid hitting Convex's 32k limit
+    const allLogs = await query.take(queryLimit)
     
     // Filter to authentication events and apply end date filter
     const authLogs = allLogs.filter(log => {
@@ -123,13 +127,17 @@ export const getAuthActivityStats = query({
     const days = args.days || 30
     const startDate = Date.now() - (days * 24 * 60 * 60 * 1000)
     
-    // Query logs
+    // Query logs with limit to avoid hitting Convex's 32k document limit
+    // For stats, we only need a sample - use a reasonable limit
+    const maxLogsForStats = 10000 // Reasonable limit for stats calculation
+    
     const logs = await ctx.db
       .query("auditLogs")
       .withIndex("by_org", (q) => 
         q.eq("orgId", args.orgId).gte("timestamp", startDate)
       )
-      .collect()
+      .order("desc")
+      .take(maxLogsForStats) // Limit documents read
     
     // Filter to auth events
     const authLogs = logs.filter(log => 

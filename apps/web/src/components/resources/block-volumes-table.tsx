@@ -39,7 +39,6 @@ import {
 } from "lucide-react"
 import type { Doc } from "convex/_generated/dataModel"
 import { cn } from "@/lib/utils"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -86,26 +85,26 @@ import { TableSkeleton } from "./shared/table-skeleton"
 type BlockVolume = Doc<"blockVolumes">
 
 // Multi-column filter for name
-const multiColumnFilterFn: FilterFn<BlockVolume> = (row, columnId, filterValue) => {
+const multiColumnFilterFn: FilterFn<BlockVolume> = (row, _columnId, filterValue) => {
   const searchableContent = row.original.name.toLowerCase()
   const searchTerm = (filterValue ?? "").toLowerCase()
   return searchableContent.includes(searchTerm)
 }
 
 // Status filter
-const statusFilterFn: FilterFn<BlockVolume> = (row, columnId, filterValue: string[]) => {
+const statusFilterFn: FilterFn<BlockVolume> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.status)
 }
 
 // Provider filter
-const providerFilterFn: FilterFn<BlockVolume> = (row, columnId, filterValue: string[]) => {
+const providerFilterFn: FilterFn<BlockVolume> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.provider)
 }
 
 // Region filter
-const regionFilterFn: FilterFn<BlockVolume> = (row, columnId, filterValue: string[]) => {
+const regionFilterFn: FilterFn<BlockVolume> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.region)
 }

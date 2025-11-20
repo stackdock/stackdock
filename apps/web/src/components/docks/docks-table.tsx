@@ -30,7 +30,6 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronUpIcon,
-  CircleAlertIcon,
   CircleXIcon,
   Columns3Icon,
   FilterIcon,
@@ -59,9 +58,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
@@ -106,26 +103,26 @@ type Dock = Doc<"docks"> & {
 }
 
 // Multi-column filter for name
-const nameFilterFn: FilterFn<Dock> = (row, columnId, filterValue) => {
+const nameFilterFn: FilterFn<Dock> = (row, _columnId, filterValue) => {
   const searchableContent = row.original.name.toLowerCase()
   const searchTerm = (filterValue ?? "").toLowerCase()
   return searchableContent.includes(searchTerm)
 }
 
 // Status filter
-const statusFilterFn: FilterFn<Dock> = (row, columnId, filterValue: string[]) => {
+const statusFilterFn: FilterFn<Dock> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.lastSyncStatus)
 }
 
 // Provider filter
-const providerFilterFn: FilterFn<Dock> = (row, columnId, filterValue: string[]) => {
+const providerFilterFn: FilterFn<Dock> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.provider)
 }
 
 // Category filter
-const categoryFilterFn: FilterFn<Dock> = (row, columnId, filterValue: string[]) => {
+const categoryFilterFn: FilterFn<Dock> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.category)
 }
@@ -351,7 +348,7 @@ export function DocksTable({ data, onDelete }: DocksTableProps) {
 
   // Get valid column IDs to filter out invalid visibility state
   const validColumnIds = useMemo(() => {
-    return new Set(columns.map(col => col.id || col.accessorKey).filter(Boolean))
+    return new Set(columns.map(col => col.id || (col as any).accessorKey).filter(Boolean))
   }, [])
 
   // Clean up columnVisibility to only include valid column IDs
@@ -359,7 +356,10 @@ export function DocksTable({ data, onDelete }: DocksTableProps) {
     const cleaned: VisibilityState = {}
     Object.keys(columnVisibility).forEach(key => {
       if (validColumnIds.has(key)) {
-        cleaned[key] = columnVisibility[key]
+        const value = columnVisibility[key]
+        if (value !== undefined) {
+          cleaned[key] = value
+        }
       }
     })
     return cleaned

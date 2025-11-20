@@ -38,10 +38,8 @@ import {
   FilterIcon,
   GitCommit,
   ListFilterIcon,
-  User,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -96,14 +94,14 @@ interface Commit {
 }
 
 // Multi-column filter for sha + message + author
-const multiColumnFilterFn: FilterFn<Commit> = (row, columnId, filterValue) => {
+const multiColumnFilterFn: FilterFn<Commit> = (row, _columnId, filterValue) => {
   const searchableContent = `${row.original.sha.substring(0, 7)} ${row.original.commit.message} ${row.original.commit.author.name}`.toLowerCase()
   const searchTerm = (filterValue ?? "").toLowerCase()
   return searchableContent.includes(searchTerm)
 }
 
 // Author filter
-const authorFilterFn: FilterFn<Commit> = (row, columnId, filterValue: string[]) => {
+const authorFilterFn: FilterFn<Commit> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   const author = row.original.commit.author.name || "unknown"
   return filterValue.includes(author)

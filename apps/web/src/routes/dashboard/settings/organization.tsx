@@ -3,6 +3,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useQuery } from "convex/react"
 import { api } from "convex/_generated/api"
+import type { Doc } from "convex/_generated/dataModel"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { CreateOrganizationDialog } from "@/components/dashboard/CreateOrganizationDialog"
 import { Badge } from "@/components/ui/badge"
@@ -46,7 +47,7 @@ function OrganizationPage() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {organizations.map((org) => (
+          {organizations.map((org: Doc<"organizations">) => (
             <Card key={org._id}>
               <CardHeader>
                 <div className="flex items-start justify-between">

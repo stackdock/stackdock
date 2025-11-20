@@ -64,11 +64,11 @@ export const createProject = mutation({
     const projectId = await ctx.db.insert("projects", {
       orgId: args.orgId,
       teamId: args.teamId,
-      clientId: args.clientId, // Can be undefined
       name: args.name,
       slug: finalSlug,
-      linearId: args.linearId,
-      githubRepo: args.githubRepo,
+      ...(args.clientId ? { clientId: args.clientId } : {}),
+      ...(args.linearId ? { linearId: args.linearId } : {}),
+      ...(args.githubRepo ? { githubRepo: args.githubRepo } : {}),
     })
 
     return projectId

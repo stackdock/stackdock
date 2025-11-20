@@ -49,10 +49,10 @@ export class SentryProvider implements MonitoringProvider {
       this.sentry.init({
         dsn: this.config.dsn,
         environment: this.config.environment || monitoringConfig.environment || 'development',
-        release: this.config.release || monitoringConfig.release,
         tracesSampleRate: this.config.tracesSampleRate ?? 1.0,
         debug: this.config.debug ?? monitoringConfig.debug ?? false,
-        integrations: this.config.integrations,
+        ...(this.config.release || monitoringConfig.release ? { release: this.config.release || monitoringConfig.release } : {}),
+        ...(this.config.integrations ? { integrations: this.config.integrations } : {}),
         beforeSend: (event) => {
           // Apply custom beforeSend from config
           if (this.config.beforeSend) {
@@ -76,10 +76,10 @@ export class SentryProvider implements MonitoringProvider {
           if (monitoringConfig.beforeBreadcrumb && breadcrumb.message) {
             const converted = monitoringConfig.beforeBreadcrumb({
               message: breadcrumb.message,
-              category: breadcrumb.category,
+              ...(breadcrumb.category ? { category: breadcrumb.category } : {}),
               level: breadcrumb.level as any,
-              data: breadcrumb.data,
-              timestamp: breadcrumb.timestamp,
+              ...(breadcrumb.data ? { data: breadcrumb.data } : {}),
+              ...(breadcrumb.timestamp ? { timestamp: breadcrumb.timestamp } : {}),
             })
             if (converted) {
               breadcrumb = { ...breadcrumb, ...converted }
@@ -119,10 +119,10 @@ export class SentryProvider implements MonitoringProvider {
 
     this.sentry.addBreadcrumb({
       message: breadcrumb.message,
-      category: breadcrumb.category,
+      ...(breadcrumb.category ? { category: breadcrumb.category } : {}),
       level: breadcrumb.level as any,
-      data: breadcrumb.data,
-      timestamp: breadcrumb.timestamp,
+      ...(breadcrumb.data ? { data: breadcrumb.data } : {}),
+      ...(breadcrumb.timestamp ? { timestamp: breadcrumb.timestamp } : {}),
     })
   }
 

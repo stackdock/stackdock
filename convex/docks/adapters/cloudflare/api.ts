@@ -21,11 +21,10 @@ import type {
 export class CloudflareAPI {
   private baseUrl: string = "https://api.cloudflare.com/client/v4"
   private apiToken: string
-  private accountId?: string // Optional, can be extracted from zones
 
-  constructor(apiToken: string, accountId?: string) {
+  constructor(apiToken: string, _accountId?: string) {
     this.apiToken = apiToken.trim() // Remove any whitespace
-    this.accountId = accountId
+    // Note: accountId parameter kept for API compatibility but not stored
   }
 
   /**

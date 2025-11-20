@@ -11,7 +11,6 @@
  * @see https://docs.convex.dev/client/react/optimistic-updates
  */
 
-import type { FunctionReference } from "convex/server"
 import type { Id } from "../_generated/dataModel"
 
 /**
@@ -92,12 +91,12 @@ export function createOptimisticProject(args: {
     _id: generateOptimisticId("projects") as Id<"projects">,
     orgId: args.orgId,
     teamId: args.teamId,
-    clientId: args.clientId,
     name: args.name,
     slug,
-    linearId: args.linearId,
-    githubRepo: args.githubRepo,
     _optimistic: true,
+    ...(args.clientId ? { clientId: args.clientId } : {}),
+    ...(args.linearId ? { linearId: args.linearId } : {}),
+    ...(args.githubRepo ? { githubRepo: args.githubRepo } : {}),
   }
 }
 

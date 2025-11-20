@@ -36,9 +36,6 @@ export function TableSkeleton({
   rowCount = 10,
   showCheckbox = false 
 }: TableSkeletonProps) {
-  // Calculate actual column count (add 1 for checkbox if needed)
-  const totalColumns = showCheckbox ? columnCount + 1 : columnCount
-
   return (
     <div className="overflow-hidden rounded-md border bg-background">
       <Table className="table-fixed">

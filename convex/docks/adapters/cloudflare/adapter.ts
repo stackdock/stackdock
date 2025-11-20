@@ -17,7 +17,6 @@
 import type { DockAdapter } from "../../_types"
 import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
-import type { WebService, Domain } from "../../../lib/universalTypes"
 import { decryptApiKey } from "../../../lib/encryption"
 import { CloudflareAPI } from "./api"
 import type {
@@ -152,7 +151,7 @@ export const cloudflareAdapter: DockAdapter = {
     }
 
     // Extract account ID from first zone (if not already stored)
-    if (zones.length > 0 && zones[0].account?.id && !dock.accountId) {
+    if (zones.length > 0 && zones[0]?.account?.id && !dock.accountId) {
       await ctx.db.patch(dock._id, {
         accountId: zones[0].account.id,
         updatedAt: Date.now(),
@@ -179,14 +178,14 @@ export const cloudflareAdapter: DockAdapter = {
       // If not present (e.g., direct adapter call), use empty array
       const dnsRecords = (zone as any).dnsRecords || []
 
-      const domainData : Omit<Domain, "_id" | "_creationTime"> = {
+      const domainData = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "cloudflare",
         providerResourceId,
         domainName: zone.name,
         status: mapCloudflareZoneStatus(zone.status),
-        expiresAt: undefined, // DNS zones don't expire (domain registrations do)
+        // DNS zones don't expire (domain registrations do) - omit expiresAt
         fullApiData: {
           ...zone,
           dnsRecords: dnsRecords, // Include DNS records in fullApiData
@@ -308,15 +307,17 @@ async function syncPages(
       )
       .first()
 
-    const webServiceData : Omit<WebService, "_id" | "_creationTime"> = {
+    const productionUrl = getPagesProductionUrl(page)
+    const gitRepo = getPagesGitRepo(page)
+    const webServiceData = {
       orgId: dock.orgId,
       dockId: dock._id,
       provider: "cloudflare",
       providerResourceId,
       name: page.name,
-      productionUrl: getPagesProductionUrl(page),
+      ...(productionUrl ? { productionUrl } : {}),
       environment: page.production_branch || "production",
-      gitRepo: getPagesGitRepo(page),
+      ...(gitRepo ? { gitRepo } : {}),
       status: mapCloudflarePagesStatus(page.canonical_deployment),
       fullApiData: {
         type: "pages",
@@ -405,13 +406,13 @@ async function syncWorkers(
       ? `https://${workerName}.workers.dev`
       : undefined
 
-    const webServiceData : Omit<WebService, "_id" | "_creationTime"> = {
+    const webServiceData = {
       orgId: dock.orgId,
       dockId: dock._id,
       provider: "cloudflare",
       providerResourceId: workerId,
       name: workerName,
-      productionUrl,
+      ...(productionUrl ? { productionUrl } : {}),
       environment: "production", // Workers are always production
       status: "running", // Workers are always running if deployed
       fullApiData: {

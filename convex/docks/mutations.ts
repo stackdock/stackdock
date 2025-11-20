@@ -13,7 +13,6 @@ import { getAdapter, listProviders } from "./registry"
 import { getRecommendedSyncInterval, validateSyncInterval } from "./syncIntervals"
 import { ConvexError } from "convex/values"
 import { internal } from "../_generated/api"
-import type { Id } from "../_generated/dataModel"
 
 /**
  * Create a new dock (provider connection)
@@ -326,14 +325,15 @@ export const syncDockResourcesMutation = internalMutation({
       }
       syncConfig.lastSyncAttempt = Date.now()
       syncConfig.consecutiveFailures = 0
-      syncConfig.backoffUntil = undefined
+      // Remove backoffUntil if it exists (don't set to undefined)
+      const { backoffUntil: _, ...syncConfigWithoutBackoff } = syncConfig
 
       await ctx.db.patch(args.dockId, {
         syncInProgress: false,
         lastSyncStatus: "success",
         lastSyncAt: Date.now(),
         lastSyncError: undefined,
-        syncConfig,
+        syncConfig: syncConfigWithoutBackoff,
         updatedAt: Date.now(),
       })
 
@@ -409,7 +409,9 @@ export const updateSyncStatus = internalMutation({
     if (args.status === "success") {
       syncConfig.lastSyncAttempt = Date.now()
       syncConfig.consecutiveFailures = 0
-      syncConfig.backoffUntil = undefined
+      // Remove backoffUntil if it exists (don't set to undefined)
+      const { backoffUntil: _, ...syncConfigWithoutBackoff } = syncConfig
+      Object.assign(syncConfig, syncConfigWithoutBackoff)
     } else if (args.status === "error") {
       syncConfig.lastSyncAttempt = Date.now()
       syncConfig.consecutiveFailures = (syncConfig.consecutiveFailures || 0) + 1
@@ -481,10 +483,10 @@ export const updateRateLimitInfo = internalMutation({
     const rateLimitInfo = {
       lastHeaders: headers,
       lastSeenAt: now,
-      limit,
-      remaining,
-      reset,
-      retryAfter,
+      ...(limit !== undefined ? { limit } : {}),
+      ...(remaining !== undefined ? { remaining } : {}),
+      ...(reset !== undefined ? { reset } : {}),
+      ...(retryAfter !== undefined ? { retryAfter } : {}),
       providerSpecific: headers.providerSpecific || {},
     }
 
@@ -504,10 +506,10 @@ export const updateRateLimitInfo = internalMutation({
         timestamp: Date.now(),
         headers: args.rateLimitHeaders.raw || {},
         extracted: {
-          limit,
-          remaining,
-          reset,
-          retryAfter,
+          ...(limit !== undefined ? { limit } : {}),
+          ...(remaining !== undefined ? { remaining } : {}),
+          ...(reset !== undefined ? { reset } : {}),
+          ...(retryAfter !== undefined ? { retryAfter } : {}),
         },
         _mvpTracking: true, // Explicit marker for cleanup
       })
@@ -644,8 +646,8 @@ export const enableSyncOnAllDocks = internalMutation({
             enabled: true,
             intervalSeconds: recommendedInterval,
             consecutiveFailures: syncConfig.consecutiveFailures || 0,
-            lastSyncAttempt: syncConfig.lastSyncAttempt,
-            backoffUntil: syncConfig.backoffUntil,
+            ...(syncConfig.lastSyncAttempt !== undefined ? { lastSyncAttempt: syncConfig.lastSyncAttempt } : {}),
+            ...(syncConfig.backoffUntil !== undefined ? { backoffUntil: syncConfig.backoffUntil } : {}),
           },
           updatedAt: Date.now(),
         })
@@ -849,13 +851,13 @@ export const provisionResource = mutation({
 
     try {
       // Decrypt provisioning credentials (with audit logging)
-      let provisioningCredentials: string | undefined
       if (dock.provisioningCredentials) {
         await auditLog(ctx, "credential.decrypt", "success", {
           dockId: dock._id,
           orgId: dock.orgId,
         })
-        provisioningCredentials = await decryptApiKey(
+        // Note: Credentials are decrypted by adapter when needed
+        await decryptApiKey(
           dock.provisioningCredentials,
           ctx,
           { dockId: dock._id, orgId: dock.orgId }
@@ -1296,9 +1298,6 @@ export const rotateProvisioningCredentials = mutation({
         "Permission denied: provisioning:full permission required"
       )
     }
-
-    // Store old credentials for rollback (if needed)
-    const oldCredentials = dock.provisioningCredentials
 
     try {
       // Get adapter for provider

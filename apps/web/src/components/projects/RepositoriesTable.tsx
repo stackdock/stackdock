@@ -18,6 +18,7 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   PaginationState,
+  Row,
   SortingState,
   useReactTable,
   VisibilityState,
@@ -99,21 +100,21 @@ import { TableSkeleton } from "@/components/resources/shared/table-skeleton"
 type Repository = Doc<"repositories">
 
 // Multi-column filter for name + description
-const multiColumnFilterFn: FilterFn<Repository> = (row, columnId, filterValue) => {
+const multiColumnFilterFn: FilterFn<Repository> = (row, _columnId, filterValue) => {
   const searchableContent = `${row.original.fullName || row.original.name} ${row.original.description || ""}`.toLowerCase()
   const searchTerm = (filterValue ?? "").toLowerCase()
   return searchableContent.includes(searchTerm)
 }
 
 // Language filter
-const languageFilterFn: FilterFn<Repository> = (row, columnId, filterValue: string[]) => {
+const languageFilterFn: FilterFn<Repository> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   const language = row.original.language || "N/A"
   return filterValue.includes(language)
 }
 
 // Host filter (for multi-provider support)
-const hostFilterFn: FilterFn<Repository> = (row, columnId, filterValue: string[]) => {
+const hostFilterFn: FilterFn<Repository> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   const host = row.original.provider || "unknown"
   return filterValue.includes(host)
@@ -334,10 +335,15 @@ function RepositoryDetailsCell({ row }: { row: Row<Repository> }) {
   
   // Find GitHub dock for fetching more commits
   const docks = useQuery(api["docks/queries"].listDocks)
-  const githubDock = docks?.find(d => d.provider === "github")
+  const githubDock = docks?.find((d: Doc<"docks">) => d.provider === "github")
   
   // Extract owner from fullName (format: "owner/repo-name")
-  const [owner, repoName] = repository.fullName?.split("/") || ["", repository.name]
+  const fullNameParts = repository.fullName?.split("/") || []
+  const owner = fullNameParts[0] || ""
+  const repoName = fullNameParts[1] || repository.name || ""
+  
+  // Only render CommitsTable if we have valid owner and repoName
+  const canFetchCommits = owner && repoName
   
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -459,20 +465,26 @@ function RepositoryDetailsCell({ row }: { row: Row<Repository> }) {
                 </span>
               )}
             </div>
-            {githubDock ? (
-              <CommitsTable 
-                commits={commits} 
-                dockId={githubDock._id}
-                owner={owner}
-                repo={repoName}
-              />
+            {canFetchCommits ? (
+              githubDock ? (
+                <CommitsTable 
+                  commits={commits} 
+                  dockId={githubDock._id}
+                  owner={owner}
+                  repo={repoName}
+                />
+              ) : (
+                <CommitsTable 
+                  commits={commits} 
+                  dockId={""}
+                  owner={owner}
+                  repo={repoName}
+                />
+              )
             ) : (
-              <CommitsTable 
-                commits={commits} 
-                dockId={""}
-                owner={owner}
-                repo={repoName}
-              />
+              <div className="text-sm text-muted-foreground p-4 border rounded-lg">
+                Unable to fetch commits: missing repository owner or name
+              </div>
             )}
           </div>
         </div>
@@ -492,13 +504,13 @@ export function RepositoriesTable({ projects }: RepositoriesTableProps) {
   // Get valid column IDs to filter out any stale/invalid column visibility state
   // Compute this once since columns is a constant
   const validColumnIds = useMemo(() => {
-    return columns.map(col => col.id || (typeof col.accessorKey === 'string' ? col.accessorKey : undefined)).filter(Boolean) as string[]
+    return columns.map(col => col.id || (typeof (col as any).accessorKey === 'string' ? (col as any).accessorKey : undefined)).filter(Boolean) as string[]
   }, [])
   
   // Initialize column visibility state, filtering out any invalid column IDs (like clientId)
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
     // Compute valid IDs for initial state
-    const validIds = columns.map(col => col.id || (typeof col.accessorKey === 'string' ? col.accessorKey : undefined)).filter(Boolean) as string[]
+    const validIds = columns.map(col => col.id || (typeof (col as any).accessorKey === 'string' ? (col as any).accessorKey : undefined)).filter(Boolean) as string[]
     
     // If there's any saved state, filter it to only include valid columns
     const saved = localStorage.getItem('repositories-table-column-visibility')

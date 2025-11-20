@@ -6,7 +6,7 @@
  */
 
 import { useState } from "react"
-import { useMutation, useQuery } from "convex/react"
+import { useMutation } from "convex/react"
 import { api } from "convex/_generated/api"
 import type { Id } from "convex/_generated/dataModel"
 import {
@@ -92,8 +92,8 @@ export function FileUploadDialog({ projectId, dockId, trigger }: FileUploadDialo
         contentType: file.type,
         size: file.size,
         category,
-        projectId,
-        dockId,
+        ...(projectId ? { projectId } : {}),
+        ...(dockId ? { dockId } : {}),
       })
 
       toast.success("File uploaded successfully")

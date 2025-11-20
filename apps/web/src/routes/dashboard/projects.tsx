@@ -1,4 +1,7 @@
-function ProjectsPage() {
+import { Link, Outlet, useRouterState } from "@tanstack/react-router"
+import { Code } from "lucide-react"
+
+export function ProjectsPage() {
   const router = useRouterState()
   const isIndexRoute = router.location.pathname === "/dashboard/projects"
   

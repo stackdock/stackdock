@@ -10,7 +10,6 @@ import type {
   GridPaneServer,
   GridPaneSite,
   GridPaneDomain,
-  GridPaneUser,
   GridPaneResponse,
   GridPanePaginatedResponse,
   GridPaneDomainResponse,
@@ -143,7 +142,6 @@ export class GridPaneAPI {
     const allItems: T[] = []
     let currentPage = 1
     let hasMorePages = true
-    let lastResponseHeaders: Record<string, string | undefined> = {}
     
     // Default delay between requests (ms) - can be adjusted based on rate limits
     let delayBetweenRequests = 500 // 500ms = 2 requests/second max
@@ -161,8 +159,6 @@ export class GridPaneAPI {
           pageEndpoint,
           options
         )
-        
-        lastResponseHeaders = headers
         
         // Extract items from response
         const items = Array.isArray(data) ? data : (data as any).data || []
@@ -212,7 +208,7 @@ export class GridPaneAPI {
         // Handle rate limit errors specifically
         if (error instanceof Error && error.message.includes("rate limit")) {
           const retryAfterMatch = error.message.match(/Retry after (\d+) seconds/)
-          const waitSeconds = retryAfterMatch ? parseInt(retryAfterMatch[1], 10) : 60
+          const waitSeconds = retryAfterMatch && retryAfterMatch[1] ? parseInt(retryAfterMatch[1], 10) : 60
           
           console.warn(
             `[GridPane API] Rate limit hit, waiting ${waitSeconds} seconds before retry...`
@@ -302,7 +298,11 @@ export class GridPaneAPI {
       `/server/${serverId}`
     )
     // Single server returns as array with one item
-    return response.data[0]
+    const server = response.data[0]
+    if (!server) {
+      throw new Error(`Server ${serverId} not found`)
+    }
+    return server
   }
 
   /**
@@ -322,7 +322,11 @@ export class GridPaneAPI {
       `/site/${siteId}`
     )
     // Single site returns as array with one item
-    return response.data[0]
+    const site = response.data[0]
+    if (!site) {
+      throw new Error(`Site ${siteId} not found`)
+    }
+    return site
   }
 
   /**
@@ -389,7 +393,11 @@ export class GridPaneAPI {
       `/domain/${domainId}`
     )
     // Single domain returns in domains array
-    return response.data.domains[0]
+    const domain = response.data.domains[0]
+    if (!domain) {
+      throw new Error(`Domain ${domainId} not found`)
+    }
+    return domain
   }
 
   /**
@@ -591,6 +599,9 @@ export class GridPaneAPI {
     
     // Should only be one site in the array
     const site = response.data[0]
+    if (!site) {
+      return [] // No site found, return empty array
+    }
     
     // Flatten schedules for this site
     const flattened: GridPaneBackupSchedule[] = []

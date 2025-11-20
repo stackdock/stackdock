@@ -62,7 +62,6 @@
   },
   "optionalDependencies": {
     "@sentry/browser": "^8.55.0",
-    "@sentry/node": "^8.55.0",
     "@sentry/react": "^8.55.0"
   }
 }

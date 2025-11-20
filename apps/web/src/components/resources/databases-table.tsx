@@ -96,23 +96,23 @@ import { TableSkeleton } from "./shared/table-skeleton"
 
 type Database = Doc<"databases">
 
-const nameFilterFn: FilterFn<Database> = (row, columnId, filterValue) => {
+const nameFilterFn: FilterFn<Database> = (row, _columnId, filterValue) => {
   const searchableContent = row.original.name.toLowerCase()
   const searchTerm = (filterValue ?? "").toLowerCase()
   return searchableContent.includes(searchTerm)
 }
 
-const statusFilterFn: FilterFn<Database> = (row, columnId, filterValue: string[]) => {
+const statusFilterFn: FilterFn<Database> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.status)
 }
 
-const providerFilterFn: FilterFn<Database> = (row, columnId, filterValue: string[]) => {
+const providerFilterFn: FilterFn<Database> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.provider)
 }
 
-const engineFilterFn: FilterFn<Database> = (row, columnId, filterValue: string[]) => {
+const engineFilterFn: FilterFn<Database> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   const engine = row.original.engine || "unknown"
   return filterValue.includes(engine)
@@ -624,7 +624,7 @@ export function DatabasesTable({ data, onDelete }: DatabasesTableProps) {
   )
 }
 
-function RowActions({ row }: { row: Row<Database> }) {
+function RowActions({ row: _row }: { row: Row<Database> }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

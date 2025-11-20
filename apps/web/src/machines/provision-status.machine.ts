@@ -13,19 +13,26 @@ import type { Id } from 'convex/_generated/dataModel'
 // Types
 export type ProvisionStatus = 'idle' | 'validating' | 'provisioning' | 'success' | 'error'
 
+// Union type for resource IDs (provisioning can create different resource types)
+export type ResourceId = Id<'servers'> | Id<'webServices'> | Id<'databases'> | Id<'domains'>
+
 export interface ProvisionStatusContext {
   provisionId: string
   status: ProvisionStatus | null
-  resourceId: Id | null
+  resourceId: ResourceId | null
   error: string | null
   progress?: number
   message?: string
 }
 
 export type ProvisionStatusEvent =
-  | { type: 'STATUS_UPDATE'; status: ProvisionStatus; progress?: number; message?: string; resourceId?: Id }
+  | { type: 'STATUS_UPDATE'; status: ProvisionStatus; progress?: number; message?: string; resourceId?: ResourceId }
   | { type: 'CANCEL' }
   | { type: 'RETRY' }
+  | { type: 'done.invoke.fetchStatus'; output: { status: ProvisionStatus; progress?: number; message?: string; resourceId?: ResourceId | null } }
+  | { type: 'done.invoke.subscribeToStatus'; output: ProvisionStatus }
+  | { type: 'done.invoke.cancelProvision'; output: void }
+  | { type: 'error.platform'; error: unknown }
 
 // Service implementations (will be provided when machine is used)
 export interface ProvisionStatusServices {
@@ -33,7 +40,7 @@ export interface ProvisionStatusServices {
     status: ProvisionStatus
     progress?: number
     message?: string
-    resourceId?: Id | null
+    resourceId?: ResourceId | null
   }>
   subscribeToStatus: (context: ProvisionStatusContext) => Promise<ProvisionStatus>
   cancelProvision: (context: ProvisionStatusContext) => Promise<void>
@@ -43,6 +50,11 @@ export const provisionStatusMachine = setup({
   types: {
     context: {} as ProvisionStatusContext,
     events: {} as ProvisionStatusEvent,
+  },
+  services: {
+    fetchStatus: {} as ProvisionStatusServices['fetchStatus'],
+    subscribeToStatus: {} as ProvisionStatusServices['subscribeToStatus'],
+    cancelProvision: {} as ProvisionStatusServices['cancelProvision'],
   },
   guards: {
     isSuccess: ({ context }) => context.status === 'success',
@@ -54,8 +66,13 @@ export const provisionStatusMachine = setup({
         if (event.type === 'STATUS_UPDATE') {
           return event.status
         }
-        if (event.type === 'done.invoke.fetchStatus' || event.type === 'done.invoke.subscribeToStatus') {
-          return (event.output as { status: ProvisionStatus }).status
+        if ('output' in event && 'type' in event) {
+          if (event.type === 'done.invoke.fetchStatus') {
+            return ((event as { type: 'done.invoke.fetchStatus'; output: { status: ProvisionStatus; progress?: number; message?: string; resourceId?: ResourceId | null } }).output).status
+          }
+          if (event.type === 'done.invoke.subscribeToStatus') {
+            return (event as { type: 'done.invoke.subscribeToStatus'; output: ProvisionStatus }).output
+          }
         }
         return null
       },
@@ -63,8 +80,8 @@ export const provisionStatusMachine = setup({
         if (event.type === 'STATUS_UPDATE') {
           return event.progress
         }
-        if (event.type === 'done.invoke.fetchStatus') {
-          return (event.output as { progress?: number }).progress
+        if ('output' in event && 'type' in event && event.type === 'done.invoke.fetchStatus') {
+          return ((event as { type: 'done.invoke.fetchStatus'; output: { status: ProvisionStatus; progress?: number; message?: string; resourceId?: ResourceId | null } }).output).progress
         }
         return undefined
       },
@@ -72,8 +89,8 @@ export const provisionStatusMachine = setup({
         if (event.type === 'STATUS_UPDATE') {
           return event.message
         }
-        if (event.type === 'done.invoke.fetchStatus') {
-          return (event.output as { message?: string }).message
+        if ('output' in event && 'type' in event && event.type === 'done.invoke.fetchStatus') {
+          return ((event as { type: 'done.invoke.fetchStatus'; output: { status: ProvisionStatus; progress?: number; message?: string; resourceId?: ResourceId | null } }).output).message
         }
         return undefined
       },
@@ -81,16 +98,18 @@ export const provisionStatusMachine = setup({
         if (event.type === 'STATUS_UPDATE' && event.resourceId) {
           return event.resourceId
         }
-        if (event.type === 'done.invoke.fetchStatus') {
-          return (event.output as { resourceId?: Id | null }).resourceId || null
+        if ('output' in event && 'type' in event && event.type === 'done.invoke.fetchStatus') {
+          return ((event as { type: 'done.invoke.fetchStatus'; output: { status: ProvisionStatus; progress?: number; message?: string; resourceId?: ResourceId | null } }).output).resourceId || null
         }
         return null
       },
     }),
     assignError: assign({
       error: ({ event }) => {
-        if (event.type === 'error.platform') {
-          return event.error instanceof Error ? event.error.message : String(event.error)
+        if ('error' in event && 'type' in event && event.type === 'error.platform') {
+          return (event as { type: 'error.platform'; error: unknown }).error instanceof Error 
+            ? (event as { type: 'error.platform'; error: Error }).error.message 
+            : String((event as { type: 'error.platform'; error: unknown }).error)
         }
         return null
       },

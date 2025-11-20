@@ -14,7 +14,6 @@
 import type { DockAdapter } from "../../_types"
 import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
-import type { Server, BlockVolume } from "../../../lib/universalTypes"
 import { decryptApiKey } from "../../../lib/encryption"
 import { VultrAPI } from "./api"
 import type { VultrInstance, VultrBlock } from "./types"
@@ -106,7 +105,7 @@ export const vultrAdapter: DockAdapter = {
         )
         .first()
 
-      const serverData : Omit<Server, "_id" | "_creationTime"> = {
+      const serverData = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "vultr",
@@ -196,7 +195,7 @@ export const vultrAdapter: DockAdapter = {
         )
         .first()
 
-      const volumeData : Omit<BlockVolume, "_id" | "_creationTime"> = {
+      const volumeData = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "vultr",
@@ -205,10 +204,10 @@ export const vultrAdapter: DockAdapter = {
         sizeGb: block.size_gb,
         region: block.region,
         status: block.status || "active",
-        attachedToInstance: block.attached_to_instance || undefined,
-        attachedToInstanceLabel: block.attached_to_instance_label || undefined,
-        mountId: block.mount_id || undefined,
-        blockType: block.block_type || undefined,
+        ...(block.attached_to_instance ? { attachedToInstance: block.attached_to_instance } : {}),
+        ...(block.attached_to_instance_label ? { attachedToInstanceLabel: block.attached_to_instance_label } : {}),
+        ...(block.mount_id ? { mountId: block.mount_id } : {}),
+        ...(block.block_type ? { blockType: block.block_type } : {}),
         fullApiData: {
           // Store all Vultr fields
           block: {

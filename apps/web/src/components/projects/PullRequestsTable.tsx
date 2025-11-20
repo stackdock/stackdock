@@ -33,7 +33,6 @@ import {
   Columns3Icon,
   ExternalLinkIcon,
   FilterIcon,
-  GitPullRequest,
   ListFilterIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -85,14 +84,14 @@ interface PullRequest {
 }
 
 // Multi-column filter for number + title
-const multiColumnFilterFn: FilterFn<PullRequest> = (row, columnId, filterValue) => {
+const multiColumnFilterFn: FilterFn<PullRequest> = (row, _columnId, filterValue) => {
   const searchableContent = `#${row.original.number} ${row.original.title}`.toLowerCase()
   const searchTerm = (filterValue ?? "").toLowerCase()
   return searchableContent.includes(searchTerm)
 }
 
 // Status filter
-const statusFilterFn: FilterFn<PullRequest> = (row, columnId, filterValue: string[]) => {
+const statusFilterFn: FilterFn<PullRequest> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.state)
 }

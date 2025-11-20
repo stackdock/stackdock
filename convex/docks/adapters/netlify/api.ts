@@ -8,7 +8,6 @@
 
 import type {
   NetlifySite,
-  NetlifyUser,
 } from "./types"
 
 export class NetlifyAPI {

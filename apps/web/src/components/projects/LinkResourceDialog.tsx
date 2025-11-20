@@ -9,7 +9,7 @@
 import { useState, useMemo } from "react"
 import { useMutation, useQuery } from "convex/react"
 import { api } from "convex/_generated/api"
-import type { Id } from "convex/_generated/dataModel"
+import type { Doc, Id } from "convex/_generated/dataModel"
 import {
   Dialog,
   DialogContent,
@@ -43,7 +43,6 @@ export function LinkResourceDialog({
   open,
   onOpenChange,
 }: LinkResourceDialogProps) {
-  const project = useQuery(api["projects/queries"].getProject, { projectId })
   const linkedResources = useQuery(api["projects/queries"].getProjectResources, { projectId })
 
   const [resourceType, setResourceType] = useState<ResourceTable | "">("")
@@ -64,8 +63,8 @@ export function LinkResourceDialog({
 
     const linkedIds = new Set(
       linkedResources
-        .filter((r) => r.resourceTable === resourceType)
-        .map((r) => r.link.resourceId)
+        .filter((r: Doc<"projectResources">) => r.resourceTable === resourceType)
+        .map((r: Doc<"projectResources">) => r.resourceId)
     )
 
     let allResources: any[] = []

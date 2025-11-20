@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as auth_queries from "../auth/queries.js";
 import type * as clients_queries from "../clients/queries.js";
 import type * as docks__types from "../docks/_types.js";
 import type * as docks_actions from "../docks/actions.js";
@@ -83,12 +84,14 @@ import type * as docks_syncIntervals from "../docks/syncIntervals.js";
 import type * as docks_types from "../docks/types.js";
 import type * as lib_audit from "../lib/audit.js";
 import type * as lib_encryption from "../lib/encryption.js";
+import type * as lib_monitoring from "../lib/monitoring.js";
 import type * as lib_optimistic from "../lib/optimistic.js";
 import type * as lib_rbac from "../lib/rbac.js";
 import type * as lib_slug from "../lib/slug.js";
+import type * as lib_universalTypes from "../lib/universalTypes.js";
 import type * as monitoring_queries from "../monitoring/queries.js";
-import type * as organizations_migrations from "../organizations/migrations.js";
 import type * as organizations from "../organizations.js";
+import type * as organizations_migrations from "../organizations/migrations.js";
 import type * as projects_mutations from "../projects/mutations.js";
 import type * as projects_queries from "../projects/queries.js";
 import type * as provisioning_queries from "../provisioning/queries.js";
@@ -105,15 +108,8 @@ import type {
   FunctionReference,
 } from "convex/server";
 
-/**
- * A utility for referencing Convex functions in your app's API.
- *
- * Usage:
- * ```js
- * const myFunctionReference = api.myModule.myFunction;
- * ```
- */
 declare const fullApi: ApiFromModules<{
+  "auth/queries": typeof auth_queries;
   "clients/queries": typeof clients_queries;
   "docks/_types": typeof docks__types;
   "docks/actions": typeof docks_actions;
@@ -189,12 +185,14 @@ declare const fullApi: ApiFromModules<{
   "docks/types": typeof docks_types;
   "lib/audit": typeof lib_audit;
   "lib/encryption": typeof lib_encryption;
+  "lib/monitoring": typeof lib_monitoring;
   "lib/optimistic": typeof lib_optimistic;
   "lib/rbac": typeof lib_rbac;
   "lib/slug": typeof lib_slug;
+  "lib/universalTypes": typeof lib_universalTypes;
   "monitoring/queries": typeof monitoring_queries;
-  "organizations/migrations": typeof organizations_migrations;
   organizations: typeof organizations;
+  "organizations/migrations": typeof organizations_migrations;
   "projects/mutations": typeof projects_mutations;
   "projects/queries": typeof projects_queries;
   "provisioning/queries": typeof provisioning_queries;
@@ -205,14 +203,30 @@ declare const fullApi: ApiFromModules<{
   test: typeof test;
   users: typeof users;
 }>;
-declare const fullApiWithMounts: typeof fullApi;
 
+/**
+ * A utility for referencing Convex functions in your app's public API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = api.myModule.myFunction;
+ * ```
+ */
 export declare const api: FilterApi<
-  typeof fullApiWithMounts,
+  typeof fullApi,
   FunctionReference<any, "public">
 >;
+
+/**
+ * A utility for referencing Convex functions in your app's internal API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = internal.myModule.myFunction;
+ * ```
+ */
 export declare const internal: FilterApi<
-  typeof fullApiWithMounts,
+  typeof fullApi,
   FunctionReference<any, "internal">
 >;
 

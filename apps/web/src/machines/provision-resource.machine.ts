@@ -15,6 +15,12 @@ export type ResourceType = 'server' | 'webService' | 'database' | 'domain'
 export type ProvisionStatus = 'idle' | 'validating' | 'provisioning' | 'success' | 'error'
 export type ResourceSpec = Record<string, any>
 
+// Union type for resource IDs (provisioning can create different resource types)
+export type ResourceId = Id<'servers'> | Id<'webServices'> | Id<'databases'> | Id<'domains'>
+
+// Re-export for use in components
+export type { ResourceId as ProvisionResourceId }
+
 export interface ProvisionResourceContext {
   dockId: Id<'docks'> | null
   provider: string
@@ -22,7 +28,7 @@ export interface ProvisionResourceContext {
   spec: ResourceSpec | null
   validatedSpec: ResourceSpec | null
   provisionId: string | null
-  resourceId: Id | null
+  resourceId: ResourceId | null
   status: ProvisionStatus | null
   error: string | null
   formData: Record<string, any>
@@ -33,13 +39,21 @@ export type ProvisionResourceEvent =
   | { type: 'SUBMIT' }
   | { type: 'RETRY' }
   | { type: 'EDIT_FORM' }
+  | { type: 'EDIT_AND_RETRY' }
+  | { type: 'RETRY_MONITORING' }
+  | { type: 'MANUAL_CHECK' }
   | { type: 'CANCEL' }
   | { type: 'STATUS_UPDATE'; status: ProvisionStatus }
+  | { type: 'done.invoke.validateSpec'; output: ResourceSpec }
+  | { type: 'done.invoke.provisionResource'; output: { provisionId: string; resourceId: ResourceId } }
+  | { type: 'done.invoke.monitorProvisionStatus'; output: ProvisionStatus }
+  | { type: 'done.invoke.cancelProvision'; output: void }
+  | { type: 'error.platform'; error: unknown }
 
 // Service implementations (will be provided when machine is used)
 export interface ProvisionResourceServices {
   validateSpec: (context: ProvisionResourceContext) => Promise<ResourceSpec>
-  provisionResource: (context: ProvisionResourceContext) => Promise<{ provisionId: string; resourceId: Id }>
+  provisionResource: (context: ProvisionResourceContext) => Promise<{ provisionId: string; resourceId: ResourceId }>
   monitorProvisionStatus: (context: ProvisionResourceContext) => Promise<ProvisionStatus>
   cancelProvision: (context: ProvisionResourceContext) => Promise<void>
 }
@@ -48,6 +62,13 @@ export const provisionResourceMachine = setup({
   types: {
     context: {} as ProvisionResourceContext,
     events: {} as ProvisionResourceEvent,
+    input: {} as Partial<ProvisionResourceContext>,
+  },
+  services: {
+    validateSpec: {} as ProvisionResourceServices['validateSpec'],
+    provisionResource: {} as ProvisionResourceServices['provisionResource'],
+    monitorProvisionStatus: {} as ProvisionResourceServices['monitorProvisionStatus'],
+    cancelProvision: {} as ProvisionResourceServices['cancelProvision'],
   },
   guards: {
     isFormValid: ({ context }) => {
@@ -88,22 +109,22 @@ export const provisionResourceMachine = setup({
     }),
     assignValidatedSpec: assign({
       validatedSpec: ({ event }) => {
-        if (event.type === 'done.invoke.validateSpec') {
-          return event.output as ResourceSpec
+        if ('output' in event && 'type' in event && event.type === 'done.invoke.validateSpec') {
+          return (event as { type: 'done.invoke.validateSpec'; output: ResourceSpec }).output
         }
         return null
       },
     }),
     assignProvisionId: assign({
       provisionId: ({ event }) => {
-        if (event.type === 'done.invoke.provisionResource') {
-          return (event.output as { provisionId: string }).provisionId
+        if ('output' in event && 'type' in event && event.type === 'done.invoke.provisionResource') {
+          return ((event as { type: 'done.invoke.provisionResource'; output: { provisionId: string; resourceId: ResourceId } }).output).provisionId
         }
         return null
       },
       resourceId: ({ event }) => {
-        if (event.type === 'done.invoke.provisionResource') {
-          return (event.output as { resourceId: Id }).resourceId
+        if ('output' in event && 'type' in event && event.type === 'done.invoke.provisionResource') {
+          return ((event as { type: 'done.invoke.provisionResource'; output: { provisionId: string; resourceId: ResourceId } }).output).resourceId
         }
         return null
       },
@@ -118,8 +139,10 @@ export const provisionResourceMachine = setup({
     }),
     assignError: assign({
       error: ({ event }) => {
-        if (event.type === 'error.platform') {
-          return event.error instanceof Error ? event.error.message : String(event.error)
+        if ('error' in event && 'type' in event && event.type === 'error.platform') {
+          return (event as { type: 'error.platform'; error: unknown }).error instanceof Error 
+            ? (event as { type: 'error.platform'; error: Error }).error.message 
+            : String((event as { type: 'error.platform'; error: unknown }).error)
         }
         return null
       },
@@ -131,18 +154,18 @@ export const provisionResourceMachine = setup({
 }).createMachine({
   id: 'provisionResource',
   initial: 'idle',
-  context: {
-    dockId: null,
-    provider: '',
-    resourceType: 'server',
-    spec: null,
-    validatedSpec: null,
-    provisionId: null,
-    resourceId: null,
-    status: null,
-    error: null,
-    formData: {},
-  },
+  context: ({ input }) => ({
+    dockId: input?.dockId ?? null,
+    provider: input?.provider ?? '',
+    resourceType: input?.resourceType ?? 'server',
+    spec: input?.spec ?? null,
+    validatedSpec: input?.validatedSpec ?? null,
+    provisionId: input?.provisionId ?? null,
+    resourceId: input?.resourceId ?? null,
+    status: input?.status ?? null,
+    error: input?.error ?? null,
+    formData: input?.formData ?? {},
+  }),
   states: {
     idle: {
       description: 'Initial state, form ready for input',

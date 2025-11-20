@@ -4,7 +4,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
 import { useMutation, useQuery, useConvex } from "convex/react"
 import { api } from "convex/_generated/api"
-import type { Id } from "convex/_generated/dataModel"
+import type { Doc, Id } from "convex/_generated/dataModel"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -153,7 +153,7 @@ function NewProjectPage() {
                     <SelectValue placeholder={teams ? "Select team" : "Loading teams..."} />
                   </SelectTrigger>
                   <SelectContent>
-                    {teams?.map((team) => (
+                    {teams?.map((team: Doc<"teams">) => (
                       <SelectItem key={team._id} value={team._id}>
                         {team.name}
                       </SelectItem>
@@ -169,13 +169,13 @@ function NewProjectPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="client">Client (Optional)</Label>
-                <Select value={clientId || undefined} onValueChange={(value) => setClientId(value === "none" ? "" : value)} disabled={!clients}>
+                <Select {...(clientId ? { value: clientId } : {})} onValueChange={(value) => setClientId(value === "none" ? "" : value)} disabled={!clients}>
                   <SelectTrigger id="client">
                     <SelectValue placeholder={clients ? "Select client (optional)" : "Loading clients..."} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
-                    {clients?.map((client) => (
+                    {clients?.map((client: Doc<"clients">) => (
                       <SelectItem key={client._id} value={client._id}>
                         {client.name}
                       </SelectItem>

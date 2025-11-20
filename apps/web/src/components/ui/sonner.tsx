@@ -11,11 +11,17 @@ import { Toaster as Sonner } from "sonner"
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
+  const { theme } = useTheme()
+  const resolvedTheme = (theme === "light" || theme === "dark" || theme === "system") ? theme : "system"
+
+  // Filter out undefined values from props for exactOptionalPropertyTypes
+  const filteredProps = Object.fromEntries(
+    Object.entries(props).filter(([_, value]) => value !== undefined)
+  ) as ToasterProps
 
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme={resolvedTheme}
       className="toaster group"
       icons={{
         success: <CircleCheck className="h-4 w-4" />,
@@ -35,7 +41,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
             "group-[.toast]:bg-slate-100 group-[.toast]:text-slate-500 dark:group-[.toast]:bg-slate-800 dark:group-[.toast]:text-slate-400",
         },
       }}
-      {...props}
+      {...filteredProps}
     />
   )
 }

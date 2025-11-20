@@ -10,7 +10,6 @@ import { getCurrentUser, checkPermission } from "../lib/rbac"
 import { ConvexError } from "convex/values"
 import { getProviderSyncConfig as getProviderSyncConfigFn } from "./syncIntervals"
 import { listProvidersWithMetadata } from "./registry"
-import type { Doc, Id } from "../_generated/dataModel"
 
 /**
  * List all docks for the current user's organization
@@ -110,7 +109,7 @@ export const getProviderSyncConfig = query({
   args: {
     provider: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     return getProviderSyncConfigFn(args.provider)
   },
 })
@@ -167,7 +166,7 @@ export const listGitHubRepositories = query({
  */
 export const listAvailableProviders = query({
   args: {},
-  handler: async (ctx) => {
+  handler: async (_ctx) => {
     // No permission check needed - this is just metadata
     return listProvidersWithMetadata()
   },

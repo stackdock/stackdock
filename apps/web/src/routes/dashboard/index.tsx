@@ -17,14 +17,15 @@ function InsightsPage() {
   const projects = useQuery(api["projects/queries"].listProjects)
   const blockVolumes = useQuery(api["resources/queries"].listBlockVolumes)
   const buckets = useQuery(api["resources/queries"].listBuckets)
+  const repositories = useQuery(api["docks/queries"].listGitHubRepositories)
   
-  const serversList = servers || []
   const webServicesList = webServices || []
   const domainsList = domains || []
   const databasesList = databases || []
   const projectsList = projects || []
   const blockVolumesList = blockVolumes || []
   const bucketsList = buckets || []
+  const repositoriesList = repositories || []
   
   // Deduplicate servers for accurate count (polymorphic resources)
   const deduplicatedServers = useMemo(() => {
@@ -33,7 +34,7 @@ function InsightsPage() {
   }, [servers])
   
   // Filter out canary and staging subdomains from domains count
-  const filteredDomainsList = domainsList.filter(domain => {
+  const filteredDomainsList = domainsList.filter((domain: { domainName: string }) => {
     const domainName = domain.domainName.toLowerCase()
     return !domainName.startsWith('canary.') && 
            !domainName.startsWith('staging.') &&
@@ -49,11 +50,9 @@ function InsightsPage() {
   
   const serversCount = deduplicatedServers.length
   const domainsCount = deduplicatedDomains.length
-  
-  // Filter GitHub projects for repositories count
-  const githubProjects = projectsList.filter(p => p.githubRepo && p.fullApiData) || []
+  const repositoriesCount = repositoriesList.length
 
-  if (servers === undefined || webServices === undefined || domains === undefined || databases === undefined || projects === undefined || blockVolumes === undefined || buckets === undefined) {
+  if (servers === undefined || webServices === undefined || domains === undefined || databases === undefined || projects === undefined || blockVolumes === undefined || buckets === undefined || repositories === undefined) {
     return (
       <main className="flex flex-1 flex-col gap-4 p-4 md:p-6 lg:p-8">
         <div className="space-y-0.5">
@@ -163,7 +162,7 @@ function InsightsPage() {
             </h3>
           </div>
           <p className="text-2xl font-bold text-foreground md:text-3xl">
-            {githubProjects.length}
+            {repositoriesCount}
           </p>
         </div>
       </div>

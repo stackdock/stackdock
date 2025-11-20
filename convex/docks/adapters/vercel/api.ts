@@ -9,7 +9,6 @@
 import type {
   VercelProjectsResponse,
   VercelProject,
-  VercelUser,
 } from "./types"
 
 export class VercelAPI {

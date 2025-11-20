@@ -19,7 +19,6 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   PaginationState,
-  Row,
   SortingState,
   useReactTable,
   VisibilityState,
@@ -92,7 +91,6 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { TableSkeleton } from "@/components/resources/shared/table-skeleton"
-import { formatDate } from "@/components/resources/shared/format-utils"
 import { Badge } from "@/components/ui/badge"
 
 function RowActions({ project }: { project: Project }) {
@@ -127,20 +125,20 @@ function RowActions({ project }: { project: Project }) {
 type Project = Doc<"projects">
 
 // Multi-column filter for name
-const multiColumnFilterFn: FilterFn<Project> = (row, columnId, filterValue) => {
+const multiColumnFilterFn: FilterFn<Project> = (row, _columnId, filterValue) => {
   const searchableContent = `${row.original.name} ${row.original.linearId || ""} ${row.original.githubRepo || ""}`.toLowerCase()
   const searchTerm = (filterValue ?? "").toLowerCase()
   return searchableContent.includes(searchTerm)
 }
 
 // Team filter
-const teamFilterFn: FilterFn<Project> = (row, columnId, filterValue: string[]) => {
+const teamFilterFn: FilterFn<Project> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.teamId)
 }
 
 // Client filter
-const clientFilterFn: FilterFn<Project> = (row, columnId, filterValue: string[]) => {
+const clientFilterFn: FilterFn<Project> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   const clientId = row.original.clientId
   if (!clientId) {
@@ -195,7 +193,7 @@ const columns: ColumnDef<Project>[] = [
     id: "team",
     header: "Team",
     accessorKey: "teamId",
-    cell: ({ row }) => {
+    cell: () => {
       // TODO: Fetch team name from teamId
       return <span className="text-muted-foreground">Team</span>
     },
@@ -268,7 +266,6 @@ interface ProjectsTableProps {
 
 export function ProjectsTable({ data, onDelete }: ProjectsTableProps) {
   const id = useId()
-  const navigate = useNavigate()
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [pagination, setPagination] = useState<PaginationState>({
@@ -279,7 +276,7 @@ export function ProjectsTable({ data, onDelete }: ProjectsTableProps) {
   const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }])
 
   // Get orgId from first project (all projects have same orgId)
-  const orgId = data && data.length > 0 ? data[0].orgId : undefined
+  const orgId = data && data.length > 0 ? data[0]?.orgId : undefined
   
   // Fetch teams and clients for filters
   const teams = useQuery(
@@ -307,21 +304,6 @@ export function ProjectsTable({ data, onDelete }: ProjectsTableProps) {
     enableColumnFilters: false,
     state: { sorting, pagination, columnFilters, columnVisibility },
   })
-
-  const uniqueTeamValues = useMemo(() => {
-    const teamColumn = table.getColumn("team")
-    if (!teamColumn) return []
-    return Array.from(teamColumn.getFacetedUniqueValues().keys()).filter(Boolean).sort()
-  }, [table.getColumn("team")?.getFacetedUniqueValues()])
-
-  const uniqueClientValues = useMemo(() => {
-    const clientColumn = table.getColumn("client")
-    if (!clientColumn) return []
-    const values = Array.from(clientColumn.getFacetedUniqueValues().keys())
-    // Include "none" for projects without clients
-    const hasNone = data?.some(p => !p.clientId)
-    return hasNone ? [...values, "none"].sort() : values.sort()
-  }, [table.getColumn("client")?.getFacetedUniqueValues(), data])
 
   const selectedTeams = useMemo(() => {
     return (table.getColumn("team")?.getFilterValue() as string[]) ?? []
@@ -408,7 +390,7 @@ export function ProjectsTable({ data, onDelete }: ProjectsTableProps) {
                   <div className="space-y-3">
                     <div className="text-xs font-medium text-muted-foreground">Filters</div>
                     <div className="space-y-3">
-                      {teams.map((team) => (
+                      {teams.map((team: Doc<"teams">) => (
                         <div key={team._id} className="flex items-center gap-2">
                           <Checkbox
                             id={`${id}-team-${team._id}`}
@@ -443,7 +425,7 @@ export function ProjectsTable({ data, onDelete }: ProjectsTableProps) {
                   <div className="space-y-3">
                     <div className="text-xs font-medium text-muted-foreground">Filters</div>
                     <div className="space-y-3">
-                      {clients?.map((client) => (
+                      {clients?.map((client: Doc<"clients">) => (
                         <div key={client._id} className="flex items-center gap-2">
                           <Checkbox
                             id={`${id}-client-${client._id}`}

@@ -98,23 +98,23 @@ import { TableSkeleton } from "./shared/table-skeleton"
 type WebService = Doc<"webServices">
 
 // Multi-column filter for name + URL
-const multiColumnFilterFn: FilterFn<WebService> = (row, columnId, filterValue) => {
+const multiColumnFilterFn: FilterFn<WebService> = (row, _columnId, filterValue) => {
   const searchableContent = `${row.original.name} ${row.original.productionUrl || ""}`.toLowerCase()
   const searchTerm = (filterValue ?? "").toLowerCase()
   return searchableContent.includes(searchTerm)
 }
 
-const statusFilterFn: FilterFn<WebService> = (row, columnId, filterValue: string[]) => {
+const statusFilterFn: FilterFn<WebService> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.status)
 }
 
-const providerFilterFn: FilterFn<WebService> = (row, columnId, filterValue: string[]) => {
+const providerFilterFn: FilterFn<WebService> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.provider)
 }
 
-const environmentFilterFn: FilterFn<WebService> = (row, columnId, filterValue: string[]) => {
+const environmentFilterFn: FilterFn<WebService> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   const env = row.original.environment || "unknown"
   return filterValue.includes(env)

@@ -97,12 +97,17 @@ export function parseRateLimitHeaders(response: Response): RateLimitHeaders {
     }
   }
   
+  const limit = extractHeader(response, ["x-ratelimit-limit", "ratelimit-limit"])
+  const remaining = extractHeader(response, ["x-ratelimit-remaining", "ratelimit-remaining"])
+  const reset = extractHeader(response, ["x-ratelimit-reset", "ratelimit-reset"])
+  const retryAfter = extractHeader(response, ["retry-after"])
+  
   return {
-    // Standard headers
-    limit: extractHeader(response, ["x-ratelimit-limit", "ratelimit-limit"]),
-    remaining: extractHeader(response, ["x-ratelimit-remaining", "ratelimit-remaining"]),
-    reset: extractHeader(response, ["x-ratelimit-reset", "ratelimit-reset"]),
-    retryAfter: extractHeader(response, ["retry-after"]),
+    // Standard headers (conditionally include only if defined)
+    ...(limit ? { limit } : {}),
+    ...(remaining ? { remaining } : {}),
+    ...(reset ? { reset } : {}),
+    ...(retryAfter ? { retryAfter } : {}),
     
     // Provider-specific headers (capture all)
     providerSpecific: extractAllRateLimitHeaders(response),

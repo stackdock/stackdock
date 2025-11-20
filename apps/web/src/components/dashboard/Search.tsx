@@ -74,7 +74,10 @@ export function Search({ className = "", placeholder = "Search" }: Props) {
       if (!groups[item.group]) {
         groups[item.group] = []
       }
-      groups[item.group].push(item)
+      const group = groups[item.group]
+      if (group) {
+        group.push(item)
+      }
     })
     return groups
   }, [allNavItems])

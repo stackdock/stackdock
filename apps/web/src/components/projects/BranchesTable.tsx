@@ -81,14 +81,14 @@ interface Branch {
 }
 
 // Name filter
-const nameFilterFn: FilterFn<Branch> = (row, columnId, filterValue) => {
+const nameFilterFn: FilterFn<Branch> = (row, _columnId, filterValue) => {
   const searchableContent = row.original.name.toLowerCase()
   const searchTerm = (filterValue ?? "").toLowerCase()
   return searchableContent.includes(searchTerm)
 }
 
 // Protected filter
-const protectedFilterFn: FilterFn<Branch> = (row, columnId, filterValue: boolean | undefined) => {
+const protectedFilterFn: FilterFn<Branch> = (row, _columnId, filterValue: boolean | undefined) => {
   if (filterValue === undefined) return true
   return row.original.protected === filterValue
 }

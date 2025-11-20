@@ -85,20 +85,20 @@ import { TableSkeleton } from "./shared/table-skeleton"
 type Bucket = Doc<"buckets">
 
 // Multi-column filter for name
-const multiColumnFilterFn: FilterFn<Bucket> = (row, columnId, filterValue) => {
+const multiColumnFilterFn: FilterFn<Bucket> = (row, _columnId, filterValue) => {
   const searchableContent = row.original.name.toLowerCase()
   const searchTerm = (filterValue ?? "").toLowerCase()
   return searchableContent.includes(searchTerm)
 }
 
 // Provider filter
-const providerFilterFn: FilterFn<Bucket> = (row, columnId, filterValue: string[]) => {
+const providerFilterFn: FilterFn<Bucket> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.provider)
 }
 
 // Region filter
-const regionFilterFn: FilterFn<Bucket> = (row, columnId, filterValue: string[]) => {
+const regionFilterFn: FilterFn<Bucket> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.region)
 }
@@ -149,7 +149,7 @@ const columns: ColumnDef<Bucket>[] = [
     cell: ({ row }) => {
       const region = row.getValue("region") as string
       const cluster = row.original.cluster
-      return <RegionClusterCell region={region} cluster={cluster} />
+      return <RegionClusterCell region={region} {...(cluster !== undefined && cluster !== null ? { cluster: cluster as string } : {})} />
     },
     size: 150,
     filterFn: regionFilterFn,

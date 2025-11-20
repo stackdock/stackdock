@@ -16,7 +16,6 @@
 import type { DockAdapter } from "../../_types"
 import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
-import type { Database, BackupSchedule } from "../../../lib/universalTypes"
 import { decryptApiKey } from "../../../lib/encryption"
 import { NeonAPI } from "./api"
 import type { NeonProject, NeonBranch, NeonDatabase, NeonSnapshot } from "./types"
@@ -30,9 +29,9 @@ import type { NeonProject, NeonBranch, NeonDatabase, NeonSnapshot } from "./type
  * 3. else → "active"
  */
 function mapNeonStatus(
-  project: NeonProject,
+  _project: NeonProject,
   branch: NeonBranch,
-  database: NeonDatabase
+  _database: NeonDatabase
 ): string {
   if (branch.current_state === "archived") {
     return "archived"
@@ -137,7 +136,7 @@ export const neonAdapter: DockAdapter = {
         )
         .first()
 
-      const databaseData : Omit<Database, "_id" | "_creationTime"> = {
+      const databaseData = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "neon",
@@ -280,7 +279,7 @@ export const neonAdapter: DockAdapter = {
 
       // Map Neon snapshot to universal backupSchedules schema
       // Note: backupSchedules has GridPane-specific fields, so we'll adapt them
-      const backupData : Omit<BackupSchedule, "_id" | "_creationTime"> = {
+      const backupData = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "neon",
@@ -293,11 +292,11 @@ export const neonAdapter: DockAdapter = {
         hour: "00",
         minute: "00",
         time: "00:00",
-        dayOfWeek: undefined, // Manual snapshots don't have schedule
-        serviceId: undefined, // No integration ID for Neon snapshots
+        // Manual snapshots don't have schedule - omit dayOfWeek and serviceId
         serviceName: "neon-snapshot",
         enabled: true, // Snapshots are always enabled once created
         remoteBackupsEnabled: true,
+        status: "active", // Snapshots are active once created
         fullApiData: {
           project: {
             id: project.id,
@@ -330,8 +329,6 @@ export const neonAdapter: DockAdapter = {
           hour: backupData.hour,
           minute: backupData.minute,
           time: backupData.time,
-          dayOfWeek: backupData.dayOfWeek,
-          serviceId: backupData.serviceId,
           serviceName: backupData.serviceName,
           enabled: backupData.enabled,
           remoteBackupsEnabled: backupData.remoteBackupsEnabled,

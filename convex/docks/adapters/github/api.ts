@@ -178,7 +178,7 @@ export class GitHubAPI {
       const linkHeader = headers.get("Link")
       if (linkHeader) {
         const nextMatch = linkHeader.match(/<([^>]+)>; rel="next"/)
-        if (nextMatch) {
+        if (nextMatch && nextMatch[1]) {
           const nextUrl = new URL(nextMatch[1])
           url = nextUrl.pathname + nextUrl.search
         } else {
@@ -214,7 +214,7 @@ export class GitHubAPI {
       const linkHeader = headers.get("Link")
       if (linkHeader) {
         const nextMatch = linkHeader.match(/<([^>]+)>; rel="next"/)
-        if (nextMatch) {
+        if (nextMatch && nextMatch[1]) {
           const nextUrl = new URL(nextMatch[1])
           url = nextUrl.pathname + nextUrl.search
         } else {
@@ -255,7 +255,7 @@ export class GitHubAPI {
       const linkHeader = headers.get("Link")
       if (linkHeader) {
         const nextMatch = linkHeader.match(/<([^>]+)>; rel="next"/)
-        if (nextMatch) {
+        if (nextMatch && nextMatch[1]) {
           const nextUrl = new URL(nextMatch[1])
           url = nextUrl.pathname + nextUrl.search
         } else {
@@ -325,7 +325,7 @@ export class GitHubAPI {
       const linkHeader = headers.get("Link")
       if (linkHeader) {
         const nextMatch = linkHeader.match(/<([^>]+)>; rel="next"/)
-        if (nextMatch) {
+        if (nextMatch && nextMatch[1]) {
           const nextUrl = new URL(nextMatch[1])
           url = nextUrl.pathname + nextUrl.search
         } else {

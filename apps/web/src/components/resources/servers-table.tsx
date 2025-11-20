@@ -30,7 +30,6 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronUpIcon,
-  CircleAlertIcon,
   CircleXIcon,
   Copy,
   Columns3Icon,
@@ -52,7 +51,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -101,20 +99,20 @@ import { deduplicateServers, type DeduplicatedServer } from "@/lib/resource-dedu
 type Server = Doc<"servers">
 
 // Multi-column filter for name + IP
-const multiColumnFilterFn: FilterFn<Server | DeduplicatedServer> = (row, columnId, filterValue) => {
+const multiColumnFilterFn: FilterFn<Server | DeduplicatedServer> = (row, _columnId, filterValue) => {
   const searchableContent = `${row.original.name} ${row.original.primaryIpAddress || ""}`.toLowerCase()
   const searchTerm = (filterValue ?? "").toLowerCase()
   return searchableContent.includes(searchTerm)
 }
 
 // Status filter
-const statusFilterFn: FilterFn<Server | DeduplicatedServer> = (row, columnId, filterValue: string[]) => {
+const statusFilterFn: FilterFn<Server | DeduplicatedServer> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   return filterValue.includes(row.original.status)
 }
 
 // Provider filter - works with both regular servers and deduplicated servers
-const providerFilterFn: FilterFn<Server | DeduplicatedServer> = (row, columnId, filterValue: string[]) => {
+const providerFilterFn: FilterFn<Server | DeduplicatedServer> = (row, _columnId, filterValue: string[]) => {
   if (!filterValue?.length) return true
   
   // Handle deduplicated servers (has providers array)
@@ -617,7 +615,7 @@ function IPAddressCell({ ipAddress }: { ipAddress: string | null | undefined }) 
   )
 }
 
-function RowActions({ row }: { row: Row<Server> }) {
+function RowActions({ row: _row }: { row: Row<Server> }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

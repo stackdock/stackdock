@@ -14,7 +14,6 @@
 import type { DockAdapter } from "../../_types"
 import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
-import type { Database } from "../../../lib/universalTypes"
 import { decryptApiKey } from "../../../lib/encryption"
 import { PlanetScaleAPI } from "./api"
 import type { PlanetScaleOrganization, PlanetScaleDatabase } from "./types"
@@ -123,7 +122,7 @@ export const planetscaleAdapter: DockAdapter = {
         )
         .first()
 
-      const databaseData : Omit<Database, "_id" | "_creationTime"> = {
+      const databaseData = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "planetscale",

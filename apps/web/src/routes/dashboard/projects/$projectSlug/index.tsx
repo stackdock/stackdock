@@ -4,9 +4,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
 import { useMutation, useQuery } from "convex/react"
 import { api } from "convex/_generated/api"
-import type { Id } from "convex/_generated/dataModel"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Edit, Link as LinkIcon, Unlink, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
@@ -30,7 +28,6 @@ export const Route = createFileRoute("/dashboard/projects/$projectSlug/")({
 
 function ProjectDetailPage() {
   const { projectSlug } = Route.useParams()
-  const navigate = useNavigate()
   
   const project = useQuery(api["projects/queries"].getProjectBySlug, { slug: projectSlug })
   const resources = useQuery(
@@ -74,8 +71,8 @@ function ProjectDetailPage() {
     }
   }
 
-  const teamName = teams?.find((t) => t._id === project?.teamId)?.name || "Unknown"
-  const clientName = clients?.find((c) => c._id === project?.clientId)?.name || "Unknown"
+  const teamName = teams?.find((t: { _id: string }) => t._id === project?.teamId)?.name || "Unknown"
+  const clientName = clients?.find((c: { _id: string }) => c._id === project?.clientId)?.name || "Unknown"
 
   if (project === undefined || resources === undefined) {
     return (

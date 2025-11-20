@@ -14,7 +14,6 @@
 import type { DockAdapter } from "../../_types"
 import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
-import type { Server, BlockVolume } from "../../../lib/universalTypes"
 import { decryptApiKey } from "../../../lib/encryption"
 import { DigitalOceanAPI } from "./api"
 import type { DigitalOceanDroplet, DigitalOceanVolume } from "./types"
@@ -115,7 +114,7 @@ export const digitaloceanAdapter: DockAdapter = {
         )
         .first()
 
-      const serverData : Omit<Server, "_id" | "_creationTime"> = {
+      const serverData = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "digitalocean",
@@ -206,7 +205,8 @@ export const digitaloceanAdapter: DockAdapter = {
         )
         .first()
 
-      const volumeData : Omit<BlockVolume, "_id" | "_creationTime"> = {
+      const attachedToInstance = volume.droplet_ids.length > 0 && volume.droplet_ids[0] ? volume.droplet_ids[0].toString() : undefined
+      const volumeData = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "digitalocean",
@@ -215,8 +215,8 @@ export const digitaloceanAdapter: DockAdapter = {
         sizeGb: volume.size_gigabytes,
         region: volume.region.slug || volume.region.name,
         status: "active", // DO volumes don't have explicit status
-        attachedToInstance: volume.droplet_ids.length > 0 ? volume.droplet_ids[0].toString() : undefined,
-        filesystemType: volume.filesystem_type || undefined,
+        ...(attachedToInstance ? { attachedToInstance } : {}),
+        ...(volume.filesystem_type ? { filesystemType: volume.filesystem_type } : {}),
         fullApiData: {
           // Store all DigitalOcean fields
           volume: {

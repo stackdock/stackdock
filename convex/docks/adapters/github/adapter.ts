@@ -18,7 +18,6 @@
 import type { DockAdapter } from "../../_types"
 import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
-import type { Repository } from "../../../lib/universalTypes"
 import { GitHubAPI } from "./api"
 import type { GitHubRepositoryWithDetails } from "./types"
 
@@ -89,11 +88,11 @@ export const githubAdapter: DockAdapter = {
           providerResourceId: repo.full_name,
           name: repo.name,
           fullName: repo.full_name,
-          description: repo.description || undefined,
-          language: repo.language || undefined,
+          ...(repo.description ? { description: repo.description } : {}),
+          ...(repo.language ? { language: repo.language } : {}),
           private: repo.private || false,
-          url: repo.html_url || undefined,
-          defaultBranch: repo.default_branch || undefined,
+          ...(repo.html_url ? { url: repo.html_url } : {}),
+          ...(repo.default_branch ? { defaultBranch: repo.default_branch } : {}),
           fullApiData: {
             repository: repo, // Complete repository object
             branches, // Type-safe

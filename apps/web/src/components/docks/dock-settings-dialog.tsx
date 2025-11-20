@@ -87,7 +87,6 @@ export function DockSettingsDialog({
   const recommendedInterval = getProviderSyncConfig.recommendedInterval || 120
   const absoluteMinimum = getProviderSyncConfig.absoluteMinimum || 60
   const reason = getProviderSyncConfig.reason || ""
-  const minutes = Math.round(intervalSeconds / 60)
   const recommendedMinutes = Math.round(recommendedInterval / 60)
   
   return (

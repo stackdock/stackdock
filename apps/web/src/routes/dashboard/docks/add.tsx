@@ -127,7 +127,7 @@ function AddDockPage() {
                     <SelectValue placeholder={availableProviders ? "Select provider" : "Loading providers..."} />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableProviders?.map((p) => (
+                    {availableProviders?.map((p: { id: string; displayName: string }) => (
                       <SelectItem key={p.id} value={p.id}>
                         {p.displayName}
                       </SelectItem>
@@ -140,7 +140,7 @@ function AddDockPage() {
                 <Label htmlFor="name">Name</Label>
                 <Input
                   id="name"
-                  placeholder={provider ? `e.g., Production ${availableProviders?.find(p => p.id === provider)?.displayName || ''}` : "e.g., Production Dock"}
+                  placeholder={provider ? `e.g., Production ${availableProviders?.find((p: { id: string; displayName: string }) => p.id === provider)?.displayName || ''}` : "e.g., Production Dock"}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required

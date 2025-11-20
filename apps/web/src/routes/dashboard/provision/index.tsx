@@ -8,6 +8,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useQuery } from "convex/react"
 import { api } from "convex/_generated/api"
+import type { Doc } from "convex/_generated/dataModel"
 import { Link } from "@tanstack/react-router"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -24,7 +25,7 @@ function ProvisionHubPage() {
   // Group docks by provider
   const providersMap = new Map<string, typeof docks>()
   if (docks) {
-    docks.forEach((dock) => {
+    docks.forEach((dock: Doc<"docks">) => {
       if (!providersMap.has(dock.provider)) {
         providersMap.set(dock.provider, [])
       }
@@ -58,7 +59,7 @@ function ProvisionHubPage() {
                 No docks configured. Connect a provider first to start provisioning.
               </p>
               <Button asChild>
-                <Link to="/dashboard/settings/docks">
+                <Link to="/dashboard/docks/add">
                   Connect Provider
                 </Link>
               </Button>
