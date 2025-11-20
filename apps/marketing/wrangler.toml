@@ -1,0 +1,25 @@
+# Cloudflare Pages configuration for StackDock Marketing Site
+# This file configures deployment to Cloudflare Pages
+
+name = "stackdock-marketing"
+compatibility_date = "2024-11-18"
+
+# Pages configuration
+# Next.js build output directory
+pages_build_output_dir = ".next"
+
+# Build configuration
+# Note: Automatic builds are disabled. See docs/deployment/cloudflare-pages.md
+# for instructions on manual deployment and disabling automatic builds.
+
+[build]
+command = "npm run build"
+watch_dirs = ["app", "components", "lib", "content", "public", "styles"]
+
+# Environment variables
+# These will be set in the Cloudflare Pages dashboard
+[env.production]
+NODE_VERSION = "18"
+
+[env.preview]
+NODE_VERSION = "18"

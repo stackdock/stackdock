@@ -16,11 +16,11 @@ function FileUploadComponent() {
   const convex = useConvex()
 
   const handleUpload = async (file: File) => {
-    // 1. Store the file in Convex storage
-    const storageId = await convex.mutation(api.storage.mutations.generateUploadUrl)
+    // 1. Get upload URL from Convex storage
+    const uploadUrl = await convex.mutation(api.storage.mutations.generateUploadUrl, {})
     
     // 2. Upload the file
-    const result = await fetch(storageId, {
+    const result = await fetch(uploadUrl, {
       method: "POST",
       headers: { "Content-Type": file.type },
       body: file,

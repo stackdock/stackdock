@@ -12,9 +12,10 @@ function sanitizeSlug(slug: string): string {
 // Configure gray-matter to use js-yaml 4 compatible parser
 const matterOptions = {
   engines: {
-    yaml: (s: string) => {
+    yaml: (s: string): object => {
       try {
-        return yaml.load(s, { schema: yaml.DEFAULT_SCHEMA })
+        const result = yaml.load(s, { schema: yaml.DEFAULT_SCHEMA })
+        return (result && typeof result === 'object') ? result as object : {}
       } catch (e) {
         return {}
       }

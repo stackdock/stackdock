@@ -17,6 +17,7 @@
 import type { DockAdapter } from "../../_types"
 import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
+import type { WebService, Domain } from "../../../lib/universalTypes"
 import { decryptApiKey } from "../../../lib/encryption"
 import { CloudflareAPI } from "./api"
 import type {
@@ -178,7 +179,7 @@ export const cloudflareAdapter: DockAdapter = {
       // If not present (e.g., direct adapter call), use empty array
       const dnsRecords = (zone as any).dnsRecords || []
 
-      const domainData = {
+      const domainData : Omit<Domain, "_id" | "_creationTime"> = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "cloudflare",
@@ -307,7 +308,7 @@ async function syncPages(
       )
       .first()
 
-    const webServiceData = {
+    const webServiceData : Omit<WebService, "_id" | "_creationTime"> = {
       orgId: dock.orgId,
       dockId: dock._id,
       provider: "cloudflare",
@@ -404,7 +405,7 @@ async function syncWorkers(
       ? `https://${workerName}.workers.dev`
       : undefined
 
-    const webServiceData = {
+    const webServiceData : Omit<WebService, "_id" | "_creationTime"> = {
       orgId: dock.orgId,
       dockId: dock._id,
       provider: "cloudflare",

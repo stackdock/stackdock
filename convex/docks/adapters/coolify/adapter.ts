@@ -15,6 +15,7 @@
 import type { DockAdapter } from "../../_types"
 import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
+import type { WebService, Server, Database } from "../../../lib/universalTypes"
 import { decryptApiKey } from "../../../lib/encryption"
 import { CoolifyAPI } from "./api"
 import type { CoolifyServer, CoolifyService, CoolifyDatabase } from "./types"
@@ -110,7 +111,7 @@ export const coolifyAdapter: DockAdapter = {
         )
         .first()
 
-      const serverData = {
+      const serverData : Omit<Server, "_id" | "_creationTime"> = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "coolify",
@@ -204,7 +205,7 @@ export const coolifyAdapter: DockAdapter = {
       // Use first application's FQDN as production URL
       const productionUrl = service.applications[0]?.fqdn || undefined
 
-      const webServiceData = {
+      const webServiceData : Omit<WebService, "_id" | "_creationTime"> = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "coolify",
@@ -321,7 +322,7 @@ export const coolifyAdapter: DockAdapter = {
       const engine = imageParts[0] || "unknown"
       const version = imageParts.length > 1 ? imageParts[1] : undefined
 
-      const databaseData = {
+      const databaseData : Omit<Database, "_id" | "_creationTime"> = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "coolify",

@@ -227,7 +227,7 @@ clientMemberships: defineTable({
 
 ```typescript
 // convex/lib/rbac.ts
-export function withRBAC(permission: string) {
+export function withRBAC(permission: Permission) {
   return (handler: any) => async (ctx: MutationCtx, args: any) => {
     // 1. Authenticate: Get current user
     const user = await getCurrentUser(ctx)
@@ -255,7 +255,31 @@ export function withRBAC(permission: string) {
 }
 ```
 
-**Usage**:
+**Usage (Type-Safe)**:
+
+```typescript
+import { Permissions } from "../lib/rbac"
+
+export const createProject = mutation({
+  args: {
+    orgId: v.id("organizations"),
+    name: v.string(),
+  },
+  handler: withRBAC(Permissions.PROJECTS_FULL)(async (ctx, args, user) => {
+    // User has been validated
+    // Permission has been checked
+    // Safe to proceed
+    
+    return await ctx.db.insert("projects", {
+      orgId: args.orgId,
+      name: args.name,
+      createdBy: user._id,
+    })
+  }),
+})
+```
+
+**Usage (Backward Compatible)**:
 
 ```typescript
 export const createProject = mutation({
@@ -264,10 +288,7 @@ export const createProject = mutation({
     name: v.string(),
   },
   handler: withRBAC("projects:full")(async (ctx, args, user) => {
-    // User has been validated
-    // Permission has been checked
-    // Safe to proceed
-    
+    // Still works with string literal
     return await ctx.db.insert("projects", {
       orgId: args.orgId,
       name: args.name,
@@ -826,16 +847,326 @@ describe('Project Creation', () => {
 
 ---
 
+## Type-Level Enforcement
+
+### Type-Safe Permissions
+
+StackDock uses **typed permissions** to prevent typos and enforce correct permission usage at compile time.
+
+#### Permission Type
+
+```typescript
+// convex/lib/rbac.ts
+
+/**
+ * Resource types in the RBAC system
+ */
+export type RBACResource = 
+  | "projects"
+  | "resources"
+  | "docks"
+  | "operations"
+  | "settings"
+  | "provisioning"
+  | "monitoring"
+
+/**
+ * Permission levels
+ */
+export type RBACLevel = "none" | "read" | "full"
+
+/**
+ * Permission string format: "resource:level"
+ */
+export type Permission = `${RBACResource}:${RBACLevel}`
+```
+
+#### Using Type-Safe Permissions
+
+**1. With Permission constants (recommended)**:
+```typescript
+import { Permissions } from "../lib/rbac"
+
+export const createDock = mutation({
+  handler: withRBAC(Permissions.DOCKS_FULL)(async (ctx, args, user) => {
+    // TypeScript ensures permission is valid
+    // IDE provides autocomplete
+  })
+})
+```
+
+**2. With typed string literals**:
+```typescript
+const permission: Permission = "docks:full" // OK
+const badPermission: Permission = "invalid:permission" // Type error!
+
+export const createDock = mutation({
+  handler: withRBAC(permission)(async (ctx, args, user) => {
+    // ...
+  })
+})
+```
+
+**3. Backward compatible (untyped)**:
+```typescript
+// Still works with plain strings
+export const createDock = mutation({
+  handler: withRBAC("docks:full")(async (ctx, args, user) => {
+    // ...
+  })
+})
+```
+
+#### Permission Constants
+
+Use predefined constants for consistency and autocomplete:
+
+```typescript
+// convex/lib/rbac.ts
+export const Permissions = {
+  PROJECTS_FULL: "projects:full" as const,
+  PROJECTS_READ: "projects:read" as const,
+  
+  RESOURCES_FULL: "resources:full" as const,
+  RESOURCES_READ: "resources:read" as const,
+  
+  DOCKS_FULL: "docks:full" as const,
+  DOCKS_READ: "docks:read" as const,
+  
+  OPERATIONS_FULL: "operations:full" as const,
+  OPERATIONS_READ: "operations:read" as const,
+  
+  SETTINGS_FULL: "settings:full" as const,
+  SETTINGS_READ: "settings:read" as const,
+  
+  PROVISIONING_FULL: "provisioning:full" as const,
+  PROVISIONING_READ: "provisioning:read" as const,
+  
+  MONITORING_FULL: "monitoring:full" as const,
+  MONITORING_READ: "monitoring:read" as const,
+}
+```
+
+#### Benefits of Type Enforcement
+
+1. **Autocomplete**: IDE suggests valid permission strings
+2. **Compile-time errors**: Catch typos before runtime
+3. **Refactoring**: Easy to find all usages of a permission
+4. **Self-documenting**: Permission format is clear
+5. **Type inference**: TypeScript infers permission type in functions
+
+#### Example: Type Error Prevention
+
+```typescript
+// ❌ Type error: invalid permission
+const badPermission: Permission = "doks:full" // Typo!
+
+// ❌ Type error: invalid level
+const badLevel: Permission = "docks:admin" // Not a valid level
+
+// ✅ OK: valid permission
+const goodPermission: Permission = "docks:full"
+
+// ✅ OK: using constant
+const bestPermission = Permissions.DOCKS_FULL
+```
+
+### How RBAC Must Be Used in Every Mutation
+
+**Rule**: Every mutation that modifies organization data MUST use RBAC enforcement.
+
+#### Step-by-Step Guide
+
+**Step 1: Identify required permission**
+
+Determine which permission is needed based on the resource being modified:
+
+| Resource | Permission |
+|----------|------------|
+| Projects | `Permissions.PROJECTS_FULL` |
+| Resources (servers, sites) | `Permissions.RESOURCES_FULL` |
+| Docks | `Permissions.DOCKS_FULL` |
+| Operations (backup/restore) | `Permissions.OPERATIONS_FULL` |
+| Settings (org/team/role) | `Permissions.SETTINGS_FULL` |
+| Provisioning | `Permissions.PROVISIONING_FULL` |
+| Monitoring | `Permissions.MONITORING_FULL` |
+
+**Step 2: Import RBAC utilities**
+
+```typescript
+import { getCurrentUser, checkPermission, withRBAC, Permissions } from "../lib/rbac"
+```
+
+**Step 3: Wrap mutation handler with withRBAC**
+
+```typescript
+export const createDock = mutation({
+  args: {
+    orgId: v.id("organizations"),
+    name: v.string(),
+    provider: v.string(),
+    apiKey: v.string(),
+  },
+  handler: withRBAC(Permissions.DOCKS_FULL)(async (ctx, args, user) => {
+    // User is authenticated and authorized
+    // Proceed with mutation logic
+    
+    const encrypted = await encryptApiKey(toPlaintextApiKey(args.apiKey))
+    
+    return await ctx.db.insert("docks", {
+      orgId: args.orgId,
+      name: args.name,
+      provider: args.provider,
+      encryptedApiKey: encrypted,
+    })
+  })
+})
+```
+
+**Step 4: Manual RBAC check (if not using withRBAC)**
+
+For complex mutations where `withRBAC` doesn't fit:
+
+```typescript
+export const complexMutation = mutation({
+  args: {
+    orgId: v.id("organizations"),
+    // ...
+  },
+  handler: async (ctx, args) => {
+    // Manual authentication
+    const user = await getCurrentUser(ctx)
+    
+    // Manual authorization
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      args.orgId,
+      Permissions.DOCKS_FULL
+    )
+    
+    if (!hasPermission) {
+      throw new ConvexError(`Permission denied: ${Permissions.DOCKS_FULL}`)
+    }
+    
+    // Proceed with mutation logic
+    // ...
+  }
+})
+```
+
+#### RBAC Enforcement Checklist
+
+When adding a new mutation:
+
+- [ ] Identify required permission level (read vs full)
+- [ ] Import RBAC utilities (`withRBAC`, `Permissions`)
+- [ ] Wrap handler with `withRBAC(permission)`
+- [ ] Verify mutation requires `orgId` in args (for permission check)
+- [ ] Test permission enforcement (unit test)
+- [ ] Test permission denial (integration test)
+- [ ] Document permission requirement in mutation docstring
+
+#### Common Mistakes to Avoid
+
+**❌ Forgetting RBAC check**:
+```typescript
+export const createDock = mutation({
+  handler: async (ctx, args) => {
+    // NO RBAC CHECK! Anyone can create docks!
+    return await ctx.db.insert("docks", { ... })
+  }
+})
+```
+
+**❌ Using wrong permission**:
+```typescript
+export const deleteDock = mutation({
+  handler: withRBAC(Permissions.DOCKS_READ)(async (ctx, args, user) => {
+    // Using READ permission for DELETE operation!
+    await ctx.db.delete(args.dockId)
+  })
+})
+```
+
+**❌ Skipping orgId validation**:
+```typescript
+export const getDock = query({
+  handler: async (ctx, args) => {
+    const dock = await ctx.db.get(args.dockId)
+    // No check that user belongs to dock's org!
+    return dock
+  }
+})
+```
+
+**✅ Correct implementation**:
+```typescript
+export const deleteDock = mutation({
+  args: {
+    dockId: v.id("docks"),
+  },
+  handler: async (ctx, args) => {
+    // Get dock to access orgId
+    const dock = await ctx.db.get(args.dockId)
+    if (!dock) throw new ConvexError("Dock not found")
+    
+    // Check permission with dock's orgId
+    const user = await getCurrentUser(ctx)
+    const hasPermission = await checkPermission(
+      ctx,
+      user._id,
+      dock.orgId,
+      Permissions.DOCKS_FULL
+    )
+    
+    if (!hasPermission) {
+      throw new ConvexError("Permission denied")
+    }
+    
+    // Proceed with deletion
+    await ctx.db.delete(args.dockId)
+  }
+})
+```
+
+### External Package: @stackdock/shared
+
+For non-Convex code (CLI, web app, etc.), use the `@stackdock/shared` package:
+
+```typescript
+// Install
+npm install @stackdock/shared
+
+// Import
+import {
+  Permission,
+  Permissions,
+  isValidPermission,
+  parsePermission,
+} from '@stackdock/shared'
+
+// Use
+const permission: Permission = Permissions.DOCKS_FULL
+if (isValidPermission(userInput)) {
+  const { resource, level } = parsePermission(userInput as Permission)
+}
+```
+
+---
+
 ## Best Practices
 
 1. **Always use withRBAC** on mutations
-2. **Check permissions** in queries (data leakage prevention)
-3. **Log RBAC decisions** (audit trail)
-4. **Test permission boundaries** (unit + integration tests)
-5. **Principle of least privilege** (default to minimal permissions)
-6. **Separate concerns** (org role vs team role vs client role)
-7. **Opt-in new permissions** (undefined = denied, ensures backward compatibility)
-8. **Update existing roles** when adding new permissions (migration scripts)
+2. **Use Permission type** for compile-time safety (use `Permissions` constants)
+3. **Check permissions** in queries (data leakage prevention)
+4. **Log RBAC decisions** (audit trail)
+5. **Test permission boundaries** (unit + integration tests)
+6. **Principle of least privilege** (default to minimal permissions)
+7. **Separate concerns** (org role vs team role vs client role)
+8. **Opt-in new permissions** (undefined = denied, ensures backward compatibility)
+9. **Update existing roles** when adding new permissions (migration scripts)
+10. **Document permission requirements** in mutation docstrings
 
 ---
 

@@ -14,6 +14,7 @@
 import type { DockAdapter } from "../../_types"
 import type { MutationCtx } from "../../../_generated/server"
 import type { Doc } from "../../../_generated/dataModel"
+import type { Server, BlockVolume } from "../../../lib/universalTypes"
 import { decryptApiKey } from "../../../lib/encryption"
 import { DigitalOceanAPI } from "./api"
 import type { DigitalOceanDroplet, DigitalOceanVolume } from "./types"
@@ -114,7 +115,7 @@ export const digitaloceanAdapter: DockAdapter = {
         )
         .first()
 
-      const serverData = {
+      const serverData : Omit<Server, "_id" | "_creationTime"> = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "digitalocean",
@@ -205,7 +206,7 @@ export const digitaloceanAdapter: DockAdapter = {
         )
         .first()
 
-      const volumeData = {
+      const volumeData : Omit<BlockVolume, "_id" | "_creationTime"> = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "digitalocean",

@@ -12,6 +12,13 @@ dist/
 build/
 .next/
 out/
+.vercel/
+
+# Cloudflare
+.wrangler/
+wrangler.toml.local
+.dev.vars
+.mf/
 
 # Environment files
 .env
@@ -49,6 +56,9 @@ Thumbs.db
 # Misc
 *.pem
 .cache/
+
+# Fumadocs
+.source/
 
 # Debug
 .pnpm-debug.log

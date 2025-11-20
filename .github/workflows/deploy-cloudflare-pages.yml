@@ -1,0 +1,53 @@
+name: Deploy to Cloudflare Pages
+
+# This workflow is DISABLED by default to prevent build failures
+# Enable by uncommenting the 'push' trigger or manually trigger via GitHub UI
+
+on:
+  workflow_dispatch:  # Manual trigger only - click "Run workflow" in Actions tab
+  # Uncomment below to enable automatic deployment on push to main
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'apps/marketing/**'
+  #     - '.github/workflows/deploy-cloudflare-pages.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy Marketing Site to Cloudflare Pages
+    
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build marketing site
+        run: npm run build:marketing
+        env:
+          NODE_ENV: production
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy apps/marketing/.next --project-name=stackdock-marketing
+          workingDirectory: .
+
+      - name: Deployment summary
+        run: |
+          echo "✅ Marketing site deployed to Cloudflare Pages"
+          echo "🔗 View deployment at: https://stackdock-marketing.pages.dev"

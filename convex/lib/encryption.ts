@@ -11,10 +11,82 @@
  * 
  * Note: Uses Web Crypto API (available globally in Convex)
  * 
+ * ## Type Safety (Branded Types)
+ * 
+ * This module uses branded types to prevent accidental misuse:
+ * - `PlaintextApiKey`: Unencrypted API key (must be encrypted before storage)
+ * - `EncryptedApiKey`: Encrypted API key (safe to store, must decrypt before use)
+ * 
+ * These types are defined here for Convex compatibility. For external packages,
+ * use types from @stackdock/shared package.
+ * 
  * @see docs/architecture/SECURITY.md for full security documentation
+ * @see packages/shared/src/encryption.ts for shared type definitions
  */
 
 import { auditLog } from "./audit"
+
+// ============================================================================
+// BRANDED TYPES FOR TYPE SAFETY
+// ============================================================================
+
+/**
+ * Plaintext API key (unencrypted)
+ * 
+ * **Security**: This type should only exist:
+ * - When receiving input from user
+ * - Before calling encryptApiKey()
+ * - After calling decryptApiKey()
+ * - NEVER stored in database
+ * - NEVER sent to client
+ * - NEVER logged
+ * 
+ * Note: This is a branded type (phantom type) for compile-time safety.
+ * At runtime, it's just a string.
+ * 
+ * @see packages/shared/src/encryption.ts for more details
+ */
+export type PlaintextApiKey = string & { readonly __brand: 'PlaintextApiKey' }
+
+/**
+ * Encrypted API key (ciphertext)
+ * 
+ * **Security**: This type should:
+ * - Be stored in database (v.bytes())
+ * - Be the result of encryptApiKey()
+ * - Be the input to decryptApiKey()
+ * - NEVER be sent to client
+ * - Safe to log (no plaintext revealed)
+ * 
+ * Note: In Convex, this is stored as ArrayBuffer (v.bytes())
+ * 
+ * @see packages/shared/src/encryption.ts for more details
+ */
+export type EncryptedApiKey = ArrayBuffer & { readonly __brand: 'EncryptedApiKey' }
+
+/**
+ * Convert a raw string to PlaintextApiKey
+ * 
+ * Use this when receiving API keys from user input.
+ * 
+ * @param apiKey - Raw API key string
+ * @returns Branded PlaintextApiKey
+ */
+export function toPlaintextApiKey(apiKey: string): PlaintextApiKey {
+  return apiKey as PlaintextApiKey
+}
+
+/**
+ * Convert an ArrayBuffer to EncryptedApiKey
+ * 
+ * Use this when reading encrypted data from the database.
+ * 
+ * @param encrypted - Encrypted ArrayBuffer from database
+ * @returns Branded EncryptedApiKey
+ */
+export function toEncryptedApiKey(encrypted: ArrayBuffer): EncryptedApiKey {
+  return encrypted as EncryptedApiKey
+}
 
 // Web Crypto API is available globally in Convex
 const webcrypto = crypto
@@ -62,15 +134,25 @@ function getMasterKey(): string {
  * 
  * Format: [IV (12 bytes)][Ciphertext (variable)]
  * 
- * @param plaintext - The API key to encrypt
- * @returns Encrypted bytes (ArrayBuffer) - IV + ciphertext (for Convex v.bytes())
+ * **Type Safety**: Accepts PlaintextApiKey and returns EncryptedApiKey.
+ * This prevents accidental storage of plaintext.
+ * 
+ * @param plaintext - The API key to encrypt (PlaintextApiKey)
+ * @returns Encrypted bytes (EncryptedApiKey) - IV + ciphertext (for Convex v.bytes())
  * 
  * @example
  * ```typescript
- * const encrypted = await encryptApiKey("my-api-key-123")
+ * // With type safety
+ * const plaintext = toPlaintextApiKey(args.apiKey)
+ * const encrypted = await encryptApiKey(plaintext)
  * await ctx.db.insert("docks", { encryptedApiKey: encrypted })
+ * 
+ * // Backward compatible (implicit conversion)
+ * const encrypted = await encryptApiKey("my-api-key-123" as PlaintextApiKey)
  * ```
  */
+export async function encryptApiKey(plaintext: PlaintextApiKey): Promise<EncryptedApiKey>
+export async function encryptApiKey(plaintext: string): Promise<ArrayBuffer>
 export async function encryptApiKey(plaintext: string): Promise<ArrayBuffer> {
   if (!plaintext || plaintext.length === 0) {
     throw new Error("Cannot encrypt empty string")
@@ -107,32 +189,46 @@ export async function encryptApiKey(plaintext: string): Promise<ArrayBuffer> {
   result.set(iv, 0)
   result.set(new Uint8Array(encrypted), iv.length)
   
-  // Return ArrayBuffer for Convex v.bytes()
-  return result.buffer
+  // Return ArrayBuffer for Convex v.bytes() with EncryptedApiKey brand
+  return result.buffer as EncryptedApiKey
 }
 
 /**
  * Decrypt an API key that was encrypted with encryptApiKey
  * 
- * @param encrypted - Encrypted bytes (ArrayBuffer) - IV + ciphertext (from Convex v.bytes())
+ * **Type Safety**: Accepts EncryptedApiKey and returns PlaintextApiKey.
+ * This ensures decryption is only called on encrypted data.
+ * 
+ * @param encrypted - Encrypted bytes (EncryptedApiKey) - IV + ciphertext (from Convex v.bytes())
  * @param ctx - Optional Convex context for audit logging
  * @param auditMetadata - Optional metadata for audit logging (dockId, orgId)
- * @returns Decrypted API key string
+ * @returns Decrypted API key (PlaintextApiKey)
  * 
  * @throws Error if decryption fails (wrong key, corrupted data, etc.)
  * 
  * @example
  * ```typescript
- * // Without audit logging (backward compatible)
- * const apiKey = await decryptApiKey(dock.encryptedApiKey)
- * 
- * // With audit logging (recommended)
- * const apiKey = await decryptApiKey(dock.encryptedApiKey, ctx, {
+ * // With type safety
+ * const encrypted = toEncryptedApiKey(dock.encryptedApiKey)
+ * const plaintext = await decryptApiKey(encrypted, ctx, {
  *   dockId: dock._id,
  *   orgId: dock.orgId,
  * })
+ * 
+ * // Backward compatible (implicit conversion)
+ * const apiKey = await decryptApiKey(dock.encryptedApiKey, ctx, { ... })
  * ```
  */
+export async function decryptApiKey(
+  encrypted: EncryptedApiKey,
+  ctx?: any, // MutationCtx | QueryCtx, but using any for backward compatibility
+  auditMetadata?: { dockId?: any; orgId?: any } // Id types, but using any for backward compatibility
+): Promise<PlaintextApiKey>
+export async function decryptApiKey(
+  encrypted: ArrayBuffer,
+  ctx?: any, // MutationCtx | QueryCtx, but using any for backward compatibility
+  auditMetadata?: { dockId?: any; orgId?: any } // Id types, but using any for backward compatibility
+): Promise<string>
 export async function decryptApiKey(
   encrypted: ArrayBuffer,
   ctx?: any, // MutationCtx | QueryCtx, but using any for backward compatibility
@@ -204,7 +300,7 @@ export async function decryptApiKey(
   }
   
   const decoder = new TextDecoder()
-  const decryptedKey = decoder.decode(decrypted)
+  const decryptedKey = decoder.decode(decrypted) as PlaintextApiKey
   
   // Log audit entry for successful decryption (if ctx provided)
   if (ctx) {
