@@ -6,9 +6,11 @@
     "dev": "vite dev --port 3000 --host 127.0.0.1",
     "build": "vite build",
     "serve": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@stackdock/monitoring": "*",
     "@stackdock/shared": "file:../../packages/shared",
     "@clerk/clerk-react": "^5.53.4",
     "@hookform/resolvers": "^5.2.2",
