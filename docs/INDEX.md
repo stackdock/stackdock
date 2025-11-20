@@ -18,6 +18,7 @@
 - [ARCHITECTURE.md](./architecture/ARCHITECTURE.md) - Complete system design
 - [The Three Registries](./architecture/ARCHITECTURE.md#the-three-registries)
 - [Universal Table Pattern](./architecture/ARCHITECTURE.md#universal-table-architecture)
+- [PROVIDERS.md](./architecture/PROVIDERS.md) - Provider capability matrix
 
 ### Security
 - [SECURITY.md](./architecture/SECURITY.md) - Security patterns
@@ -60,6 +61,7 @@ stackdock/
     │
     ├── architecture/          # System architecture (MID-LEVEL)
     │   ├── ARCHITECTURE.md    # System design
+    │   ├── PROVIDERS.md       # Provider capability matrix
     │   ├── SECURITY.md        # Security patterns
     │   ├── RBAC.md            # Permissions
     │   ├── SCHEMA_DESIGN.md   # Database schema
