@@ -1,6 +1,7 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { getCurrentUser } from "./lib/rbac"
+import { auditLog } from "./lib/audit"
 
 /**
  * Sync user from Clerk webhook
@@ -53,15 +54,24 @@ export const ensureCurrentUser = mutation({
       .first()
     
     if (existing) {
+      // Log authentication event for existing user
+      await auditLog(ctx, "user.login", "success", {
+        orgId: existing.defaultOrgId,
+      })
       return existing._id
     }
     
     // Create new user
-    return await ctx.db.insert("users", {
+    const userId = await ctx.db.insert("users", {
       clerkId: identity.subject,
       name: identity.name || identity.email || 'User',
       email: identity.email || '',
     })
+    
+    // Log first-time user creation (don't log as auth event since no org yet)
+    // Auth event will be logged on subsequent logins once user has an org
+    
+    return userId
   },
 })
 
