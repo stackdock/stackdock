@@ -25,6 +25,13 @@ import type {
   GridPaneBackupSchedule,
   GridPaneBackupIntegration,
 } from "./types"
+import type {
+  Server,
+  WebService,
+  Domain,
+  BackupSchedule,
+  BackupIntegration,
+} from "../../../lib/universalTypes"
 
 /**
  * Map GridPane server status to universal status
@@ -131,7 +138,7 @@ export const gridpaneAdapter: DockAdapter = {
         )
         .first()
 
-      const universalServer = {
+      const universalServer: Omit<Server, "_id" | "_creationTime"> = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "gridpane",
@@ -222,7 +229,7 @@ export const gridpaneAdapter: DockAdapter = {
         environment = "production"
       }
 
-      const universalWebService = {
+      const universalWebService: Omit<WebService, "_id" | "_creationTime"> = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "gridpane",
@@ -308,7 +315,7 @@ export const gridpaneAdapter: DockAdapter = {
         ? new Date(domain.updated_at).getTime() + 365 * 24 * 60 * 60 * 1000 // Assume 1 year from update
         : undefined
 
-      const universalDomain = {
+      const universalDomain: Omit<Domain, "_id" | "_creationTime"> = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "gridpane",
@@ -382,7 +389,7 @@ export const gridpaneAdapter: DockAdapter = {
         .first()
 
       // Map GridPane schedule to universal schema
-      const universalSchedule = {
+      const universalSchedule: Omit<BackupSchedule, "_id" | "_creationTime"> = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "gridpane",
@@ -463,7 +470,7 @@ export const gridpaneAdapter: DockAdapter = {
       // Map GridPane integration to universal schema
       // Note: Don't store tokens/secrets in fullApiData - they're sensitive
       const { token, secret_token, ...safeData } = integration
-      const universalIntegration = {
+      const universalIntegration: Omit<BackupIntegration, "_id" | "_creationTime"> = {
         orgId: dock.orgId,
         dockId: dock._id,
         provider: "gridpane",

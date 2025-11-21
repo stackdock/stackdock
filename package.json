@@ -34,7 +34,8 @@
     "pipeline:test": "bash scripts/pipeline/vitest-unit.sh",
     "pipeline:e2e": "bash scripts/pipeline/playwright-e2e.sh",
     "pipeline:security": "bash scripts/pipeline/security-scan.sh",
-    "pipeline:build": "bash scripts/pipeline/build-verify.sh"
+    "pipeline:build": "bash scripts/pipeline/build-verify.sh",
+    "sync:types": "node scripts/sync-universal-types.js"
   },
   "devDependencies": {
     "@octokit/rest": "^20.0.0",

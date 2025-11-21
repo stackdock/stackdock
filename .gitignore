@@ -63,6 +63,10 @@ Thumbs.db
 # Debug
 .pnpm-debug.log
 
+# Bun
+.bun/
+bun.lockb
+
 # NEVER COMMIT THESE (Security)
 ENCRYPTION_MASTER_KEY*
 *.key
