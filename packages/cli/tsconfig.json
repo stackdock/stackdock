@@ -3,7 +3,9 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "types": ["node"]
+    "types": ["node", "react", "react-dom"],
+    "jsx": "react-jsx",
+    "jsxImportSource": "@opentui/react"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "bin"]

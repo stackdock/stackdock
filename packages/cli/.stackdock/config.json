@@ -1,0 +1,8 @@
+{
+  "version": "1.0.0",
+  "projectName": "test-project",
+  "registries": {
+    "ui": "../../packages/ui/registry.json",
+    "docks": "../../packages/docks/registry.json"
+  }
+}
