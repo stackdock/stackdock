@@ -202,7 +202,7 @@ const columns: ColumnDef<Project>[] = [
     enableColumnFilter: false,
   },
   {
-    id: "client",
+    id: "clientId",
     header: "Client",
     accessorKey: "clientId",
     cell: ({ row }) => {
@@ -310,8 +310,9 @@ export function ProjectsTable({ data, onDelete }: ProjectsTableProps) {
   }, [table.getColumn("team")?.getFilterValue()])
 
   const selectedClients = useMemo(() => {
-    return (table.getColumn("client")?.getFilterValue() as string[]) ?? []
-  }, [table.getColumn("client")?.getFilterValue()])
+    const clientColumn = table.getColumn("clientId")
+    return (clientColumn?.getFilterValue() as string[]) ?? []
+  }, [table.getColumn("clientId")?.getFilterValue()])
 
   const handleTeamChange = (checked: boolean, value: string) => {
     const filterValue = selectedTeams
@@ -322,7 +323,7 @@ export function ProjectsTable({ data, onDelete }: ProjectsTableProps) {
   const handleClientChange = (checked: boolean, value: string) => {
     const filterValue = selectedClients
     const newFilterValue = checked ? [...filterValue, value] : filterValue.filter(v => v !== value)
-    table.getColumn("client")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
+    table.getColumn("clientId")?.setFilterValue(newFilterValue.length ? newFilterValue : undefined)
   }
 
   const handleDeleteRows = () => {

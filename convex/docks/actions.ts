@@ -520,11 +520,11 @@ export const syncDockResources = internalAction({
           const repos = await api.listRepositories()
           console.log(`[Dock Action] Found ${repos.length} repositories, processing in batches...`)
           
-          // Process repositories in batches to avoid payload size limits
-          // Each batch includes repository + branches + issues + commits + PRs
-          // Batch size reduced to 4 to keep payloads under 1 MiB
-          // Repos with many branches/issues/PRs can be very large, so smaller batches are safer
-          const BATCH_SIZE = 4
+          // Process repositories individually to avoid payload size limits
+          // Each repository includes repository + branches + issues + commits + PRs
+          // Some repos with many branches/issues/PRs can exceed 1 MiB even alone
+          // Process one at a time to ensure we stay under the limit
+          const BATCH_SIZE = 1
           const batches: typeof repos[] = []
           
           for (let i = 0; i < repos.length; i += BATCH_SIZE) {
@@ -551,11 +551,13 @@ export const syncDockResources = internalAction({
                   console.warn(`[Dock Action] Invalid repo full_name format: ${repo.full_name}`)
                   return repo
                 }
+                // Limit data fetched to avoid exceeding 1 MiB mutation limit
+                // For large repos, fetch only recent/essential data
                 const [branches, issues, commits, pullRequests] = await Promise.all([
-                  api.listBranches(owner, repoName).catch(() => []),
-                  api.listIssues(owner, repoName).catch(() => []),
-                  api.listCommits(owner, repoName, { limit: 10, page: 1 }).catch(() => []),
-                  api.listPullRequests(owner, repoName).catch(() => []),
+                  api.listBranches(owner, repoName).catch(() => []).then(bs => bs.slice(0, 50)), // Limit to 50 branches
+                  api.listIssues(owner, repoName, { state: "open" }).catch(() => []).then(iss => iss.slice(0, 50)), // Limit to 50 open issues
+                  api.listCommits(owner, repoName, { limit: 10, page: 1 }).catch(() => []), // Already limited to 10
+                  api.listPullRequests(owner, repoName, { state: "open" }).catch(() => []).then(prs => prs.slice(0, 50)), // Limit to 50 open PRs
                 ])
                 
                 // Track this repo name for orphan deletion
@@ -575,6 +577,21 @@ export const syncDockResources = internalAction({
             // This prevents the payload from getting too large
             // Only pass allSyncedRepoNames on the last batch to avoid payload bloat
             const isLastBatch = batchIdx === batches.length - 1
+            
+            // Estimate payload size (rough approximation: JSON string length)
+            const payloadEstimate = JSON.stringify({
+              dockId: args.dockId,
+              provider: args.provider,
+              fetchedData: { repositories: reposWithDetails },
+              ...(isLastBatch ? { allSyncedRepoNames: Array.from(allSyncedRepoNames) } : {}),
+            }).length
+            
+            // Warn if payload is getting large (1 MiB = ~1,048,576 bytes)
+            if (payloadEstimate > 900000) {
+              console.warn(`[Dock Action] ⚠️ Large payload detected: ${(payloadEstimate / 1024 / 1024).toFixed(2)} MiB for batch ${batchIdx + 1}`)
+              console.warn(`[Dock Action] Repos in batch: ${reposWithDetails.map(r => r.full_name).join(", ")}`)
+            }
+            
             await ctx.runMutation(internal.docks.mutations.syncDockResourcesMutation, {
               dockId: args.dockId,
               provider: args.provider,

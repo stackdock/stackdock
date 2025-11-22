@@ -167,34 +167,59 @@ export class GitHubAPI {
    */
   async listRepositories(): Promise<GitHubRepository[]> {
     const allRepos: GitHubRepository[] = []
-    let url = "/user/repos?per_page=100"
+    let url = "/user/repos?per_page=100&sort=updated"
+    let page = 1
     
     while (url) {
       // Use requestWithHeaders() to get both data and headers
       const { data: repos, headers } = await this.requestWithHeaders<GitHubRepository[]>(url)
       allRepos.push(...repos)
       
+      console.log(`[GitHub API] Page ${page}: Fetched ${repos.length} repos (total so far: ${allRepos.length})`)
+      
       // Parse Link header for next page
       const linkHeader = headers.get("Link")
       if (linkHeader) {
+        // Link header format: <url>; rel="next", <url>; rel="last"
         const nextMatch = linkHeader.match(/<([^>]+)>; rel="next"/)
         if (nextMatch && nextMatch[1]) {
-          const nextUrl = new URL(nextMatch[1])
-          url = nextUrl.pathname + nextUrl.search
+          const nextUrlFull = nextMatch[1]
+          // Extract pathname and search from full URL
+          try {
+            const nextUrl = new URL(nextUrlFull)
+            url = nextUrl.pathname + nextUrl.search
+            page++
+            console.log(`[GitHub API] Link header found, next page: ${url}`)
+          } catch (e) {
+            // If URL parsing fails, try extracting pathname/search manually
+            const pathMatch = nextUrlFull.match(/\/user\/repos[^"]*/)
+            if (pathMatch) {
+              url = pathMatch[0]
+              page++
+              console.log(`[GitHub API] Link header parsed manually, next page: ${url}`)
+            } else {
+              url = ""
+              console.log(`[GitHub API] Could not parse Link header, stopping pagination`)
+            }
+          }
         } else {
           url = "" // No more pages
+          console.log(`[GitHub API] No "next" link found in Link header, stopping pagination`)
         }
       } else {
         // Fallback: page-based pagination
         if (repos.length === 100) {
-          const currentPage = parseInt(new URL(url, this.baseURL).searchParams.get("page") || "1")
-          url = `/user/repos?per_page=100&page=${currentPage + 1}`
+          page++
+          url = `/user/repos?per_page=100&sort=updated&page=${page}`
+          console.log(`[GitHub API] No Link header, using fallback pagination. Next page: ${page}`)
         } else {
           url = "" // Last page
+          console.log(`[GitHub API] Last page reached (${repos.length} repos, less than 100)`)
         }
       }
     }
     
+    console.log(`[GitHub API] Total repositories fetched: ${allRepos.length}`)
     return allRepos
   }
 

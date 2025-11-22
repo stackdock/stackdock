@@ -207,6 +207,27 @@
       "scope": "Write blog posts, content strategy",
       "dependencies": ["mission-11"],
       "notes": "Create blog content for marketing site. Depends on Mission 11."
+    },
+    "mission-13": {
+      "id": "mission-13",
+      "title": "Theme System with Record Mode",
+      "status": "pending",
+      "priority": "medium",
+      "scope": "Theme switching (light/dark/record), data obfuscation for demo recordings",
+      "dependencies": [],
+      "notes": "Implement theme system with Record Mode that blurs/randomizes sensitive data. Easy to implement with shadcn. Allows users to record demos with real data while protecting sensitive information.",
+      "keyFeatures": [
+        "CSS blur filters for visual obfuscation",
+        "Text randomization utilities for realistic demo data",
+        "Works with existing data without requiring fake data setup",
+        "Easy toggle between normal and record modes"
+      ],
+      "files": [
+        "apps/web/src/components/dashboard/ThemeSwitch.tsx",
+        "apps/web/src/styles.css",
+        "apps/web/src/lib/record-mode.ts",
+        "apps/web/src/routes/dashboard/settings/theme.tsx"
+      ]
     }
   },
   "setup": {

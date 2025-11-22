@@ -1,8 +1,8 @@
 # StackDock Missions
 
-**Last Updated**: November 17, 2025  
+**Last Updated**: January 2025  
 **MVP Status**: ✅ COMPLETE  
-**Post-MVP Missions**: 12 missions defined
+**Post-MVP Missions**: 13 missions defined
 
 > **Note**: For machine-readable state, see [`.stackdock-state.json`](./.stackdock-state.json).
 
@@ -186,6 +186,38 @@ Missions 1-7 from the MVP phase have been archived. See `.stackdock-state.json` 
 
 ---
 
+### Mission 13: Theme System with Record Mode
+**Status**: 🔴 Pending  
+**Priority**: Medium
+
+**Goal**: Implement theme system with "Record Mode" for demo recordings
+
+**Scope**: 
+- Add theme switching (light/dark/record) using shadcn/next-themes
+- Implement "Record Mode" that blurs/randomizes sensitive data
+- Add data obfuscation utilities for emails, domains, IPs, names
+- Update table components with `data-sensitive` attributes
+- Add theme settings UI
+
+**Key Features**:
+- CSS blur filters for visual obfuscation
+- Text randomization utilities for realistic demo data
+- Works with existing data without requiring fake data setup
+- Easy toggle between normal and record modes
+
+**Files**:
+- `apps/web/src/components/dashboard/ThemeSwitch.tsx` - Add record option
+- `apps/web/src/styles.css` - Add `.record-mode` CSS rules
+- `apps/web/src/lib/record-mode.ts` - Obfuscation utilities (NEW)
+- `apps/web/src/routes/dashboard/settings/theme.tsx` - Theme settings UI
+- Table components - Add `data-sensitive` attributes
+
+**Dependencies**: None
+
+**Notes**: Easy to implement with shadcn. Record mode allows users to record demos with real data while protecting sensitive information through blur/randomization.
+
+---
+
 ## Mission Status Legend
 
 - 🔴 **Pending** - Not started
@@ -204,6 +236,9 @@ Mission 1 (Clear Issues)
 
 Mission 11 (New Marketing Site)
 └── Mission 12 (Fill Blog Backlog) depends on Mission 11
+
+Mission 13 (Theme System with Record Mode)
+└── No dependencies
 ```
 
 ---

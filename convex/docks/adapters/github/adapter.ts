@@ -116,19 +116,40 @@ export const githubAdapter: DockAdapter = {
     }
 
     // Delete orphaned repositories (exist in DB but not in API response)
+    // CRITICAL: Only run orphan deletion if allSyncedRepoNames is provided (last batch)
+    // If we run it on every batch, earlier batches will delete repos from later batches as orphans
     // Use allSyncedRepoNames if provided (for batch syncing), otherwise use batch set
     // Only delete discovered resources (provisioningSource === undefined)
     // Only delete orphans if we have synced repos (skip if this is just an orphan cleanup call)
-    const syncedRepoSet = allSyncedRepoNames || batchSyncedRepoFullNames
-    if (syncedRepoSet.size > 0) {
+    if (allSyncedRepoNames) {
+      // This is the last batch - safe to delete orphans using the complete set
+      const syncedRepoSet = allSyncedRepoNames
+      if (syncedRepoSet.size > 0) {
+        const existingRepos = await ctx.db
+          .query("repositories")
+          .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
+          .collect()
+
+        for (const existingRepo of existingRepos) {
+          if (!syncedRepoSet.has(existingRepo.providerResourceId)) {
+            // Only delete if not provisioned via SST (discovered resources)
+            if (!existingRepo.fullApiData?.provisioningSource) {
+              await ctx.db.delete(existingRepo._id)
+              console.log(`[GitHub] Deleted orphaned repository ${existingRepo.providerResourceId}`)
+            }
+          }
+        }
+      }
+    } else if (batchSyncedRepoFullNames.size > 0 && !preFetchedData) {
+      // Fallback: If no batch syncing and no preFetchedData, use batch set
+      // This handles the case where syncRepositories is called directly (not from action)
       const existingRepos = await ctx.db
         .query("repositories")
         .withIndex("by_dockId", (q) => q.eq("dockId", dock._id))
         .collect()
 
       for (const existingRepo of existingRepos) {
-        if (!syncedRepoSet.has(existingRepo.providerResourceId)) {
-          // Only delete if not provisioned via SST (discovered resources)
+        if (!batchSyncedRepoFullNames.has(existingRepo.providerResourceId)) {
           if (!existingRepo.fullApiData?.provisioningSource) {
             await ctx.db.delete(existingRepo._id)
             console.log(`[GitHub] Deleted orphaned repository ${existingRepo.providerResourceId}`)
