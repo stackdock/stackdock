@@ -8,10 +8,11 @@
 2. [Adapter Interface](#adapter-interface)
 3. [Step-by-Step Tutorial](#step-by-step-tutorial)
 4. [Universal Table Mapping](#universal-table-mapping)
-5. [Rate Limiting](#rate-limiting)
-6. [Error Handling](#error-handling)
-7. [Testing](#testing)
-8. [Publishing](#publishing)
+5. [Handling Large Payloads](#handling-large-payloads)
+6. [Rate Limiting](#rate-limiting)
+7. [Error Handling](#error-handling)
+8. [Testing](#testing)
+9. [Publishing](#publishing)
 
 ---
 
@@ -302,6 +303,62 @@ export function getAdapter(provider: string): DockAdapter | undefined {
 
 ---
 
+## Handling Large Payloads
+
+### Convex Mutation Size Limit
+
+Convex mutations have a **1 MiB size limit**. If your adapter syncs large resources (e.g., repositories with many branches/issues/PRs), you need to handle batching:
+
+**Example: GitHub Adapter**
+
+```typescript
+// In action (convex/docks/actions.ts)
+// Process repositories individually to avoid 1 MiB limit
+const BATCH_SIZE = 1
+
+// Limit data fetched per repository
+const [branches, issues, commits, pullRequests] = await Promise.all([
+  api.listBranches(owner, repoName).then(bs => bs.slice(0, 50)), // Limit to 50
+  api.listIssues(owner, repoName, { state: "open" }).then(iss => iss.slice(0, 50)),
+  api.listCommits(owner, repoName, { limit: 10, page: 1 }),
+  api.listPullRequests(owner, repoName, { state: "open" }).then(prs => prs.slice(0, 50)),
+])
+```
+
+**Key Strategies:**
+1. **Process resources individually** (batch size = 1) for very large resources
+2. **Limit data fetched** per resource (e.g., only recent commits, open issues)
+3. **Track all synced resources** across batches for orphan deletion
+4. **Only run orphan deletion on final batch** to prevent premature deletions
+
+**Orphan Deletion Pattern:**
+
+```typescript
+// In adapter sync method
+async syncRepositories(
+  ctx: MutationCtx,
+  dock: Doc<"docks">,
+  preFetchedData?: Resource[],
+  allSyncedResourceIds?: Set<string> // Only provided on last batch
+): Promise<void> {
+  // Sync resources...
+  
+  // CRITICAL: Only delete orphans if allSyncedResourceIds is provided (last batch)
+  if (allSyncedResourceIds) {
+    // Safe to delete orphans - we have complete list
+    const existing = await ctx.db.query("resources")...
+    for (const resource of existing) {
+      if (!allSyncedResourceIds.has(resource.providerResourceId)) {
+        await ctx.db.delete(resource._id)
+      }
+    }
+  }
+  // Otherwise skip orphan deletion (will run on final batch)
+}
+```
+
+---
+
 ## Rate Limiting
 
 ### Why Rate Limiting Matters
@@ -418,6 +475,11 @@ async syncWebServices(ctx: MutationCtx, dock: Doc<"docks">): Promise<void> {
 4. **Not Found Errors** (404):
    - Resource deleted on provider side
    - Action: Delete from StackDock database
+
+5. **Payload Size Errors** (Convex 1 MiB limit):
+   - Mutation payload exceeds 1 MiB
+   - Action: Reduce batch size, limit data fetched per resource
+   - See [Handling Large Payloads](#handling-large-payloads) section
 
 ```typescript
 async handleApiError(error: any, dock: Doc<"docks">, ctx: MutationCtx) {

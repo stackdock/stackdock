@@ -64,7 +64,7 @@
 - [x] Linode (servers, buckets)
 - [x] Hetzner (servers)
 - [x] Coolify (servers, web services, databases)
-- [x] GitHub (repositories, branches, issues, commits)
+- [x] GitHub (repositories, branches, issues, commits, pull requests)
 - [x] Sentry (issues/alerts)
 - [x] Better Stack (uptime monitors)
 

@@ -160,9 +160,14 @@ StackDock uses a universal table architecture to normalize resources across prov
 
 #### GitHub
 - **Type**: Version Control (DevOps)
-- **Supports**: Repositories
+- **Supports**: Repositories (with branches, issues, commits, pull requests)
 - **Adapter**: `convex/docks/adapters/github/`
 - **API Docs**: https://docs.github.com/en/rest
+- **Notes**: 
+  - Handles pagination automatically (fetches all repositories)
+  - Processes repositories individually to avoid Convex 1 MiB mutation limit
+  - Limits data per repository: 50 branches, 50 open issues, 10 commits, 50 open PRs
+  - Orphan deletion only runs on final batch to prevent premature deletions
 
 ### Monitoring & Observability
 

@@ -356,6 +356,72 @@ npm run dev -- --port 3001
 
 ---
 
+## GitHub Adapter Issues
+
+### Only Partial Repositories Synced
+
+**Symptom**: Only seeing 12 repositories instead of all 21+ repositories.
+
+**Cause**: Pagination not working correctly.
+
+**Solution**: 
+- Check Convex logs for pagination messages
+- Verify Link header parsing in `convex/docks/adapters/github/api.ts`
+- Ensure `listRepositories()` handles both Link headers and fallback pagination
+
+**Fixed**: Improved Link header parsing with better error handling and logging.
+
+---
+
+### Mutation Size Limit Exceeded
+
+**Symptom**: `Value is too large (1.78 MiB > maximum size 1 MiB)` error during GitHub sync.
+
+**Cause**: Repository data (branches, issues, commits, PRs) exceeds Convex's 1 MiB mutation limit.
+
+**Solution**:
+- Process repositories individually (batch size = 1)
+- Limit data fetched per repository:
+  - Branches: max 50
+  - Issues: max 50 open only
+  - Commits: max 10
+  - Pull Requests: max 50 open only
+
+**Fixed**: Reduced batch size to 1 and added data limits per repository.
+
+---
+
+### Repositories Deleted During Sync
+
+**Symptom**: Repositories disappear during batch syncing.
+
+**Cause**: Orphan deletion running on every batch instead of only the final batch.
+
+**Solution**:
+- Only run orphan deletion when `allSyncedRepoNames` is provided (last batch)
+- Early batches should skip orphan deletion to prevent premature deletions
+
+**Fixed**: Orphan deletion now only runs on final batch with complete repository list.
+
+---
+
+## Frontend Issues
+
+### TanStack Table Column Errors
+
+**Symptom**: `[Table] Column with id 'clientId' does not exist` error.
+
+**Cause**: Column `id` doesn't match `accessorKey` or code is accessing column by wrong ID.
+
+**Solution**:
+- Ensure column `id` matches what `getColumn()` is called with
+- If using `accessorKey`, column `id` should match it for consistency
+- Update all `getColumn()` calls to use correct column ID
+
+**Fixed**: Changed projects table client column `id` from `"client"` to `"clientId"` to match `accessorKey`.
+
+---
+
 ## When to Ask for Help
 
 If you see errors:
