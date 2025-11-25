@@ -9,6 +9,7 @@
   },
   "license": "MIT",
   "author": "StackDock Team",
+  "trademark": "StackDock™ is a trademark with an intent-to-use application filed in October 2025. See TRADEMARK.md for usage policy.",
   "workspaces": [
     "apps/*",
     "packages/*"

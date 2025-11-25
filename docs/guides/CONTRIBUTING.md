@@ -587,6 +587,18 @@ See [REGISTRY_GUIDE.md](./REGISTRY_GUIDE.md) for detailed instructions.
 
 ---
 
+## Trademark
+
+**StackDock™** is a trademark with an intent-to-use application filed in October 2025.
+
+When contributing:
+- You may reference StackDock™ in your contributions
+- Do not use StackDock in ways that suggest endorsement or affiliation without permission
+- The StackDock trademark is not included in the MIT License
+- Use the ™ symbol when referring to StackDock: StackDock™
+
+See [TRADEMARK.md](../../TRADEMARK.md) for complete trademark policy.
+
 ## Questions?
 
 - **Discord**: https://stackdock.dev/discord
@@ -595,4 +607,4 @@ See [REGISTRY_GUIDE.md](./REGISTRY_GUIDE.md) for detailed instructions.
 
 ---
 
-**Thank you for contributing to StackDock! 🚀**
+**Thank you for contributing to StackDock™! 🚀**

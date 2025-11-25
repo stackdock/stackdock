@@ -1,6 +1,8 @@
-# StackDock
+# StackDock™
 
 Open source developer multi-cloud infrastructure management platform.
+
+**Trademark Notice**: StackDock™ is a trademark with an intent-to-use application filed in October 2025. See [TRADEMARK.md](./TRADEMARK.md) for usage policy.
 
 ## What It Is
 
