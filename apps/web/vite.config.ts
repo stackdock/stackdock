@@ -24,6 +24,12 @@ const config = defineConfig({
       'convex/_generated': path.resolve(__dirname, '../../convex/_generated'),
     },
   },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.ts',
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+  },
 })
 
 export default config
