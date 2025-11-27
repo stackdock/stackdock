@@ -1,0 +1,87 @@
+{
+  "name": "@stackdock/plugins-ai-assistant",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI-powered infrastructure assistant plugin for StackDock",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./backend": {
+      "types": "./dist/backend.d.ts",
+      "default": "./dist/backend.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "default": "./dist/client.js"
+    },
+    "./schema": {
+      "types": "./dist/schema.d.ts",
+      "default": "./dist/schema.js"
+    },
+    "./components/ChatDialog": {
+      "types": "./dist/components/ChatDialog.d.ts",
+      "default": "./dist/components/ChatDialog.js"
+    },
+    "./components/ChatMessage": {
+      "types": "./dist/components/ChatMessage.d.ts",
+      "default": "./dist/components/ChatMessage.js"
+    },
+    "./components/ChatInput": {
+      "types": "./dist/components/ChatInput.d.ts",
+      "default": "./dist/components/ChatInput.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "stackdock",
+    "ai",
+    "assistant",
+    "plugin",
+    "openai",
+    "anthropic"
+  ],
+  "author": "StackDock Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stackdock/stackdock.git",
+    "directory": "packages/plugins/ai-assistant"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "convex": "^1.28.0"
+  },
+  "dependencies": {
+    "lucide-react": "^0.544.0",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.5",
+    "@testing-library/react": "^16.2.0",
+    "@testing-library/dom": "^10.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
