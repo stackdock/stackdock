@@ -236,19 +236,19 @@ PR Created → Valyent provisions environment → Isolated dev instance → PR c
 
 ### Should StackDock Integrate Valyent?
 
-**Short-term (2025)**: No direct integration yet.
+**Short-term (Now - Early 2026)**: No direct integration yet.
 
 - Focus on completing Mission 8 (Docker Support) with standard Docker/docker-compose
 - Monitor Valyent/Ravel project maturity and community growth
 - Document as future architecture reference
 
-**Medium-term (2025-2026)**: Evaluate for specific use cases.
+**Medium-term (2026)**: Evaluate for specific use cases.
 
 - Consider for secure code execution sandbox (if feature needed)
 - Evaluate if multi-tenant isolation becomes a requirement
 - Test integration in development/staging environment
 
-**Long-term (2026+)**: Potential dock adapter or integration.
+**Long-term (2027+)**: Potential dock adapter or integration.
 
 - If StackDock needs to run untrusted code (user adapters, automation)
 - If preview environments become a core feature
@@ -282,7 +282,7 @@ MicroVM technology context informed by:
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - StackDock system architecture
 - [PROVIDERS.md](./PROVIDERS.md) - Current provider integrations
-- [Mission 8: Docker Support](../MISSIONS.md) - Docker integration roadmap
+- [Mission 8: Docker Support](../MISSIONS.md#mission-8-docker-support) - Docker integration roadmap
 
 ---
 
