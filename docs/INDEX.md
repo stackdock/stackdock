@@ -20,6 +20,9 @@
 - [Universal Table Pattern](./architecture/ARCHITECTURE.md#universal-table-architecture)
 - [PROVIDERS.md](./architecture/PROVIDERS.md) - Provider capability matrix
 
+### Future Architecture
+- [VALYENT_MICROVM_RESEARCH.md](./architecture/VALYENT_MICROVM_RESEARCH.md) - MicroVM/Docker research
+
 ### Security
 - [SECURITY.md](./architecture/SECURITY.md) - Security patterns
 - [Encryption](./architecture/SECURITY.md#encryption)

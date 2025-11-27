@@ -43,6 +43,12 @@ Deep dive into system design, security, and permissions:
   - Component Patterns
   - Testing Requirements
 
+- **[VALYENT_MICROVM_RESEARCH.md](./architecture/VALYENT_MICROVM_RESEARCH.md)** - MicroVM Research (Future Architecture)
+  - Valyent/Ravel Platform Overview
+  - Potential Integration Points
+  - MicroVM vs Container Trade-offs
+  - Use Cases for StackDock
+
 ---
 
 ### Guides (`docs/guides/`)
