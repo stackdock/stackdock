@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 260" fill="none" stroke="#1c1c1c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+  <!-- head -->
+  <path d="M110 28 C 62 28, 48 78, 52 132 C 55 180, 82 218, 110 218 C 138 218, 165 180, 168 132 C 172 78, 158 28, 110 28 Z" fill="#fff"/>
+  <!-- cropped chud hairline -->
+  <path d="M58 72 C 62 42, 88 26, 110 26 C 132 26, 158 42, 162 72 C 148 58, 130 52, 110 52 C 90 52, 72 58, 58 72 Z" fill="#fff"/>
+  <!-- ears -->
+  <path d="M52 122 C 40 120, 40 144, 54 146" fill="#fff"/>
+  <path d="M168 122 C 180 120, 180 144, 166 146" fill="#fff"/>
+  <!-- furrowed brows -->
+  <path d="M74 104 C 82 99, 94 100, 100 107"/>
+  <path d="M120 107 C 126 100, 138 99, 146 104"/>
+  <!-- eyes -->
+  <ellipse cx="91" cy="117" rx="7" ry="6" fill="#fff"/>
+  <ellipse cx="129" cy="117" rx="7" ry="6" fill="#fff"/>
+  <circle cx="92" cy="118" r="2.6" fill="#1c1c1c" stroke="none"/>
+  <circle cx="128" cy="118" r="2.6" fill="#1c1c1c" stroke="none"/>
+  <!-- big nose -->
+  <path d="M109 118 C 106 136, 96 152, 103 163 C 107 169, 117 168, 121 160"/>
+  <!-- flat chud frown -->
+  <path d="M86 188 C 98 192, 122 192, 134 188"/>
+  <!-- stubble -->
+  <g fill="#1c1c1c" stroke="none">
+    <circle cx="84" cy="198" r="1.7"/><circle cx="96" cy="204" r="1.7"/>
+    <circle cx="108" cy="207" r="1.7"/><circle cx="120" cy="204" r="1.7"/>
+    <circle cx="132" cy="198" r="1.7"/><circle cx="90" cy="208" r="1.7"/>
+    <circle cx="102" cy="211" r="1.7"/><circle cx="114" cy="211" r="1.7"/>
+    <circle cx="126" cy="208" r="1.7"/><circle cx="78" cy="190" r="1.7"/>
+    <circle cx="142" cy="190" r="1.7"/><circle cx="97" cy="181" r="1.5"/>
+    <circle cx="110" cy="179" r="1.5"/><circle cx="123" cy="181" r="1.5"/>
+  </g>
+</svg>

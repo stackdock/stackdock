@@ -28,7 +28,9 @@ main { max-width: 880px; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
 .wordmark {
   font-family: var(--serif); font-weight: 700; font-size: 1.35rem;
   color: var(--ink); text-decoration: none; letter-spacing: -0.01em;
+  display: inline-flex; align-items: center; gap: 0.45rem;
 }
+.brand-chud { height: 1.6em; width: auto; display: block; }
 .masthead nav a {
   color: var(--ink-soft); text-decoration: none; margin-left: 1.25rem;
   font-family: var(--mono); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em;

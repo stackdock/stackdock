@@ -6,10 +6,11 @@
   <meta name="robots" content="noindex, nofollow">
   <title>{% block title %}{{ site_title }}{% endblock %}</title>
   <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" type="image/svg+xml" href="/static/chud.svg">
 </head>
 <body>
   <header class="masthead">
-    <a class="wordmark" href="/">{{ site_title }}</a>
+    <a class="wordmark" href="/"><img class="brand-chud" src="/static/chud.svg" alt="">{{ site_title }}</a>
     <nav>
       {% if user is defined and user %}
         <a href="/#articles">Articles</a>
