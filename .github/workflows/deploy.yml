@@ -51,3 +51,27 @@ jobs:
               [ "$state" = "true" ] || (echo "Service $svc is not running" && docker compose ps && exit 1)
             done
             echo "Deploy OK: all services running"
+
+  monitor:
+    needs: deploy        # confirm the droplet itself is healthy at DO's level
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check droplet health via DigitalOcean API
+        env:
+          DO_TOKEN: ${{ secrets.DO_API_TOKEN }}
+          DROPLET_ID: ${{ secrets.DO_DROPLET_ID }}
+        run: |
+          if [ -z "$DO_TOKEN" ] || [ -z "$DROPLET_ID" ]; then
+            echo "DO_API_TOKEN / DO_DROPLET_ID not set — skipping DigitalOcean monitoring."
+            exit 0
+          fi
+          api() { curl -fsS -H "Authorization: Bearer $DO_TOKEN" "https://api.digitalocean.com/v2$1"; }
+          status=$(api "/droplets/$DROPLET_ID" | jq -r '.droplet.status')
+          echo "Droplet status: $status"
+          [ "$status" = "active" ] || { echo "::error::Droplet is '$status', not active"; exit 1; }
+          # recent CPU/memory from DO monitoring (informational; never fails the build)
+          end=$(date +%s); start=$((end-900))
+          load=$(api "/monitoring/metrics/droplet/load_5?host_id=$DROPLET_ID&start=$start&end=$end" \
+                 | jq -r '.data.result[0].values[-1][1] // "n/a"')
+          echo "Droplet load_5 (latest): $load"
+          echo "DigitalOcean monitoring OK: droplet active"

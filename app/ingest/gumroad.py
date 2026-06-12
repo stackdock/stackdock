@@ -18,6 +18,7 @@ PODCAST_FEEDS instead — that path is far more stable.
 import json
 import logging
 import re
+from html import unescape
 
 import requests
 from bs4 import BeautifulSoup
@@ -38,6 +39,35 @@ def _session(cookie: str) -> requests.Session:
     s.headers["User-Agent"] = UA
     s.cookies.set("_gumroad_app_session", cookie, domain=".gumroad.com")
     return s
+
+
+def _extract_purchases(html_text: str) -> list[dict]:
+    """Return a normalised purchase list: [{"name", "download_url"}, ...].
+
+    Gumroad's library is now an Inertia.js page — every prop (including the
+    purchases) is JSON-encoded in `<div id="app" data-page="...">`. We parse
+    that and read `props.results[*].{product, purchase}`. Falls back to the
+    older embedded-React-props layout for custom storefronts / older accounts.
+    """
+    m = re.search(r'<div id="app"[^>]*\bdata-page="([^"]*)"', html_text)
+    if m:
+        try:
+            page = json.loads(unescape(m.group(1)))
+            out = []
+            for row in page.get("props", {}).get("results", []):
+                if not isinstance(row, dict):
+                    continue
+                product = row.get("product") or {}
+                purchase = row.get("purchase") or {}
+                dl = purchase.get("download_url")
+                if dl:
+                    out.append({"name": product.get("name") or "Gumroad purchase",
+                                "download_url": dl})
+            if out:
+                return out
+        except (json.JSONDecodeError, KeyError, TypeError, AttributeError):
+            pass
+    return _extract_react_json(html_text)
 
 
 def _extract_react_json(html: str) -> list[dict]:
@@ -70,22 +100,26 @@ def _extract_react_json(html: str) -> list[dict]:
     return purchases
 
 
-def _find_file_urls(s: requests.Session, purchase: dict) -> list[tuple[str, str, str]]:
-    """Return (file_id, display_name, url) for audio files on a purchase's content page."""
+def _find_file_urls(s: requests.Session, purchase: dict) -> tuple[list[tuple[str, str, str]], bool]:
+    """Return (files, cloudflare_blocked) where files is a list of
+    (file_id, display_name, url) for audio files on a purchase's content page."""
     content_url = (
         purchase.get("download_url")
         or purchase.get("content_url")
         or (purchase.get("product") or {}).get("download_url")
     )
     if not content_url:
-        return []
+        return [], False
     if content_url.startswith("/"):
         content_url = "https://app.gumroad.com" + content_url
 
     r = s.get(content_url, timeout=60)
+    if r.status_code == 403:
+        log.warning("Gumroad content page is Cloudflare-blocked (403): %s", content_url)
+        return [], True  # blocked
     if r.status_code != 200:
         log.warning("Could not open content page (%s): HTTP %s", content_url, r.status_code)
-        return []
+        return [], False
 
     files = []
     # Direct file links in the page
@@ -109,7 +143,7 @@ def _find_file_urls(s: requests.Session, purchase: dict) -> list[tuple[str, str,
         if url not in seen:
             seen.add(url)
             out.append((fid, name, url))
-    return out
+    return out, False
 
 
 def sync_account(account) -> tuple[int, str]:
@@ -120,11 +154,12 @@ def sync_account(account) -> tuple[int, str]:
         return 0, (f"STALE: cookie expired or invalid (HTTP {r.status_code}) — "
                    "reconnect on the Accounts page")
 
-    purchases = _extract_react_json(r.text)
+    purchases = _extract_purchases(r.text)
     log.info("[%s] Gumroad: %d purchases in library", account["label"], len(purchases))
 
     is_backfill = account["last_sync"] is None
     new_count = 0
+    blocked = False
     for p in purchases:
         product_name = (
             p.get("name")
@@ -132,7 +167,9 @@ def sync_account(account) -> tuple[int, str]:
             or "Gumroad purchase"
         )
         feed_name = f"Gumroad: {product_name}"
-        for fid, fname, url in _find_file_urls(s, p):
+        files, was_blocked = _find_file_urls(s, p)
+        blocked = blocked or was_blocked
+        for fid, fname, url in files:
             guid = f"gumroad:{url}"
             if db.episode_exists(guid):
                 continue
@@ -162,6 +199,10 @@ def sync_account(account) -> tuple[int, str]:
                 if not is_backfill:
                     notify.notify_episode(episode_id, feed_name, fname, storage.url_for(key))
 
+    if new_count == 0 and blocked:
+        return 0, (f"OK: {len(purchases)} purchase(s) found, but Gumroad now "
+                   "Cloudflare-blocks file downloads server-side. For audio "
+                   "products, add the product's RSS feed URL to PODCAST_FEEDS.")
     return new_count, f"OK: {len(purchases)} purchases, {new_count} new episode(s)"
 
 
