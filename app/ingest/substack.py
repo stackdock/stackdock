@@ -22,6 +22,7 @@ normally. These endpoints are unofficial; if Substack changes them, the JSON
 walking below is written defensively and is the place to fix.
 """
 import logging
+import random
 import time
 from urllib.parse import urlparse
 
@@ -33,9 +34,21 @@ from .podcast_rss import _download_to_storage, _slug
 
 log = logging.getLogger("stackdock.substack")
 
-UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"
+# Rotate a realistic desktop UA per session (a real browser keeps ONE UA for a
+# session, so we pick once at session creation rather than per request).
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:127.0) Gecko/20100101 Firefox/127.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36 Edg/125.0.0.0",
+]
 PAGE_SIZE = 25
-REQUEST_GAP_S = 0.6  # be polite; don't hammer the API
+# Jittered pacing so requests aren't perfectly periodic (that pattern is bot-like).
+REQUEST_GAP_MIN, REQUEST_GAP_MAX = 0.8, 2.2
+MAX_RETRIES = 4            # on 429/503
+BACKOFF_CAP_S = 90
 
 # Substack auto-subscribes every account to its own promo blog ("The Substack
 # Post", post.substack.com). It's noise — never ingest it.
@@ -44,15 +57,37 @@ SKIP_SUBDOMAINS = {"post"}
 
 def _session(cookie: str) -> requests.Session:
     s = requests.Session()
-    s.headers["User-Agent"] = UA
+    s.headers.update({
+        "User-Agent": random.choice(USER_AGENTS),
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "en-US,en;q=0.9",
+    })
     s.cookies.set("substack.sid", cookie, domain=".substack.com")
     return s
 
 
+def polite_get(s: requests.Session, url: str, **kwargs) -> requests.Response:
+    """GET with jittered pacing + exponential backoff on rate limits (429/503).
+    Honours Retry-After when present. Returns the last response either way."""
+    kwargs.setdefault("timeout", 30)
+    r = None
+    for attempt in range(MAX_RETRIES):
+        time.sleep(random.uniform(REQUEST_GAP_MIN, REQUEST_GAP_MAX))
+        r = s.get(url, **kwargs)
+        if r.status_code not in (429, 503):
+            return r
+        ra = r.headers.get("Retry-After", "")
+        wait = (int(ra) if ra.isdigit() else min(BACKOFF_CAP_S, 5 * 2 ** attempt))
+        wait += random.uniform(0, 3)
+        log.warning("rate limited (%s) on %s — backing off %.1fs (try %d/%d)",
+                    r.status_code, url, wait, attempt + 1, MAX_RETRIES)
+        time.sleep(wait)
+    return r
+
+
 def _get_json(s: requests.Session, url: str, params=None):
-    time.sleep(REQUEST_GAP_S)
-    r = s.get(url, params=params, timeout=30)
-    if r.status_code != 200:
+    r = polite_get(s, url, params=params)
+    if r is None or r.status_code != 200:
         return None
     try:
         return r.json()
@@ -92,7 +127,7 @@ def _effective_base(s: requests.Session, sub: str | None, custom: str | None) ->
         return f"https://{custom}"
     base = f"https://{sub}.substack.com"
     try:
-        r = s.get(base, timeout=15, allow_redirects=True)
+        r = polite_get(s, base, timeout=15, allow_redirects=True)
         host = urlparse(r.url).netloc
         if host and host != f"{sub}.substack.com":
             return f"https://{host}"
@@ -152,8 +187,7 @@ def get_publications(s: requests.Session) -> list[dict] | None:
     """
     data, failures = None, []
     for url, params in SUBSCRIPTION_REQUESTS:
-        time.sleep(REQUEST_GAP_S)
-        r = s.get(url, params=params, timeout=30)
+        r = polite_get(s, url, params=params)
         if r.status_code in (401, 403):
             return None  # stale/invalid cookie
         if r.status_code == 200:
@@ -321,11 +355,27 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
                 ext = audio_url.split("?")[0].rsplit(".", 1)
                 ext = ext[1].lower() if len(ext) == 2 and len(ext[1]) <= 4 else "mp3"
                 key = f"podcasts/{_slug(pub['name'])}/{_slug(title)}.{ext}"
-                try:
-                    size, mime = _download_to_storage(
-                        audio_url, key, headers={"Cookie": f"substack.sid={account['cookie']}"})
-                except Exception as e:
-                    log.warning("Podcast download failed (%s): %s", title, e)
+                dl_headers = {"Cookie": f"substack.sid={account['cookie']}",
+                              "User-Agent": s.headers["User-Agent"]}
+                size = mime = None
+                for attempt in range(MAX_RETRIES):
+                    try:
+                        size, mime = _download_to_storage(audio_url, key, headers=dl_headers)
+                        break
+                    except requests.HTTPError as e:
+                        code = getattr(e.response, "status_code", None)
+                        if code in (429, 503) and attempt < MAX_RETRIES - 1:
+                            wait = min(BACKOFF_CAP_S, 5 * 2 ** attempt) + random.uniform(0, 3)
+                            log.warning("Podcast download rate-limited (%s) %s — backoff %.1fs",
+                                        code, title, wait)
+                            time.sleep(wait)
+                            continue
+                        log.warning("Podcast download failed (%s): %s", title, e)
+                        break
+                    except Exception as e:
+                        log.warning("Podcast download failed (%s): %s", title, e)
+                        break
+                if mime is None:   # all attempts failed (size can legitimately be 0)
                     continue
                 dur = full.get("podcast_duration") or post.get("podcast_duration")
                 episode_id = db.insert_episode(
@@ -409,7 +459,8 @@ def sync_orphan_tracked_pubs(covered_user_ids: set[int]) -> int:
     if not orphans:
         return 0
     s = requests.Session()
-    s.headers["User-Agent"] = UA
+    s.headers.update({"User-Agent": random.choice(USER_AGENTS),
+                      "Accept-Language": "en-US,en;q=0.9"})
     new_count = 0
     for m in orphans:
         archive = fetch_archive(s, m["base_url"], config.SUBSTACK_BACKFILL_POSTS)
