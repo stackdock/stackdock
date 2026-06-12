@@ -1,8 +1,8 @@
 """Poll podcast RSS feeds and mirror new episodes into object storage.
 
 Works with:
-  * Substack private podcast feeds (paid subs get a per-subscriber feed URL)
-  * Gumroad product RSS feeds (creators can enable these per product)
+  * Substack private podcast feeds (paid subs get a per-subscriber feed URL —
+    publication page -> ... -> "Private RSS feed", or /account/settings)
   * Any other standard podcast RSS feed
 """
 import logging
@@ -35,13 +35,25 @@ def _download_to_storage(audio_url: str, key: str, headers: dict | None = None) 
         return size, mime
 
 
+def _entry_image(entry, parsed) -> str | None:
+    """Best-effort episode thumbnail: itunes per-episode image, else feed image."""
+    img = entry.get("image")
+    if isinstance(img, dict) and img.get("href"):
+        return img["href"]
+    feed_img = parsed.feed.get("image")
+    if isinstance(feed_img, dict) and feed_img.get("href"):
+        return feed_img["href"]
+    return parsed.feed.get("itunes_image", {}).get("href") if isinstance(
+        parsed.feed.get("itunes_image"), dict) else None
+
+
 def run() -> int:
     """Poll all configured feeds once. Returns number of new episodes."""
     if not config.PODCAST_FEEDS:
         log.info("No podcast feeds configured; skipping.")
         return 0
 
-    new_count = 0
+    new_count, items = 0, []
     for feed_name, feed_url in config.PODCAST_FEEDS.items():
         try:
             parsed = feedparser.parse(feed_url)
@@ -85,9 +97,18 @@ def run() -> int:
                 audio_mime=mime,
                 duration=entry.get("itunes_duration", ""),
                 published_at=entry.get("published", ""),
+                image_url=_entry_image(entry, parsed),
             )
             if episode_id:
                 new_count += 1
-                notify.notify_episode(episode_id, feed_name, title, storage.url_for(key))
+                items.append({
+                    "type": "episode",
+                    "source": feed_name,
+                    "title": title,
+                    "url": f"{config.PUBLIC_BASE_URL}/listen/{db.get_episode(episode_id)['slug']}",
+                    "original_url": entry.get("link"),
+                    "published_at": entry.get("published", ""),
+                })
 
+    notify.push_new_items(items)  # one digest + one outbound POST per run
     return new_count

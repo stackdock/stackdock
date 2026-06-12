@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import auth, config, db, feedgen, metrics, notify, storage
-from .ingest import email_ingest, gumroad, podcast_rss, substack
+from .ingest import email_ingest, podcast_rss, substack
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger("stackdock")
@@ -54,8 +54,6 @@ async def lifespan(app: FastAPI):
                       minutes=config.EMAIL_POLL_MINUTES, id="email", max_instances=1, coalesce=True)
     scheduler.add_job(_tracked("podcasts", podcast_rss.run), "interval",
                       minutes=config.PODCAST_POLL_MINUTES, id="podcasts", max_instances=1, coalesce=True)
-    scheduler.add_job(_tracked("gumroad", gumroad.run), "interval",
-                      minutes=config.GUMROAD_POLL_MINUTES, id="gumroad", max_instances=1, coalesce=True)
     scheduler.add_job(_tracked("substack", substack.run), "interval",
                       minutes=config.SUBSTACK_POLL_MINUTES, id="substack", max_instances=1, coalesce=True)
     scheduler.start()
@@ -217,13 +215,13 @@ def admin_reset_link(request: Request, user=Depends(auth.current_admin), user_id
 @app.post("/admin/sync/{job}")
 def manual_sync(job: str, user=Depends(auth.current_admin)):
     jobs = {"email": email_ingest.run, "podcasts": podcast_rss.run,
-            "gumroad": gumroad.run, "substack": substack.run}
+            "substack": substack.run}
     if job not in jobs:
         raise HTTPException(404)
     return {"job": job, "new_items": jobs[job]()}
 
 
-# ---------------- connected accounts (substack + gumroad) ----------------
+# ---------------- connected accounts (substack) ----------------
 
 @app.get("/accounts", response_class=HTMLResponse)
 def accounts_page(request: Request, user=Depends(auth.current_user)):
@@ -258,8 +256,8 @@ def accounts_delete(request: Request, user=Depends(auth.current_user),
 
 @app.post("/accounts/sync")
 def accounts_sync(request: Request, user=Depends(auth.current_user)):
-    """Any member can trigger a sync of all connected accounts (both services)."""
-    count = substack.run() + gumroad.run()
+    """Any member can trigger a sync of all connected Substack accounts."""
+    count = substack.run()
     return render(request, "accounts.html", user=user,
                   accounts=db.list_accounts(user_id=user["id"]),
                   error=None, message=f"Sync finished: {count} new item(s).")
@@ -268,29 +266,53 @@ def accounts_sync(request: Request, user=Depends(auth.current_user)):
 # ---------------- content ----------------
 
 @app.get("/", response_class=HTMLResponse)
-def index(request: Request, user=Depends(auth.current_user), pub: str | None = None):
+def index(request: Request, user=Depends(auth.current_user),
+          pub: str | None = None, tab: str = "text"):
     return render(request, "index.html", user=user,
                   articles=db.list_articles(publication=pub),
                   publications=db.list_publications(),
                   active_pub=pub,
+                  active_tab="audio" if tab == "audio" else "text",
                   episodes=db.list_episodes(limit=100),
-                  feed_url=f"{config.PUBLIC_BASE_URL}/feed/{config.FEED_TOKEN}/all.xml")
+                  feed_base=f"{config.PUBLIC_BASE_URL}/feed/{config.FEED_TOKEN}")
 
 
-@app.get("/article/{article_id}", response_class=HTMLResponse)
-def article(request: Request, article_id: int, user=Depends(auth.current_user)):
-    a = db.get_article(article_id)
+@app.get("/read/{slug}", response_class=HTMLResponse)
+def read_article(request: Request, slug: str, user=Depends(auth.current_user)):
+    a = db.get_article_by_slug(slug)
     if not a:
         raise HTTPException(404)
     return render(request, "article.html", user=user, a=a)
 
 
+@app.get("/listen/{slug}", response_class=HTMLResponse)
+def listen_episode(request: Request, slug: str, user=Depends(auth.current_user)):
+    e = db.get_episode_by_slug(slug)
+    if not e:
+        raise HTTPException(404)
+    try:
+        audio_url = storage.url_for(e["audio_key"])
+    except Exception:  # storage not configured (local dev) — page still renders
+        audio_url = None
+    return render(request, "episode.html", user=user, e=e, audio_url=audio_url)
+
+
+# Old numeric URLs keep working: redirect to the slug versions.
+
+@app.get("/article/{article_id}")
+def article_legacy(article_id: int, user=Depends(auth.current_user)):
+    a = db.get_article(article_id)
+    if not a:
+        raise HTTPException(404)
+    return RedirectResponse(f"/read/{a['slug']}", status_code=301)
+
+
 @app.get("/episode/{episode_id}")
-def episode(episode_id: int, user=Depends(auth.current_user)):
+def episode_legacy(episode_id: int, user=Depends(auth.current_user)):
     e = db.get_episode(episode_id)
     if not e:
         raise HTTPException(404)
-    return RedirectResponse(storage.url_for(e["audio_key"]))
+    return RedirectResponse(f"/listen/{e['slug']}", status_code=301)
 
 
 @app.get("/status", response_class=HTMLResponse)
@@ -337,6 +359,22 @@ def feed_all(token: str):
     if not pysecrets.compare_digest(token, config.FEED_TOKEN):
         raise HTTPException(404)
     return Response(content=feedgen.build_feed(), media_type="application/rss+xml")
+
+
+@app.get("/feed/{token}/articles.xml")
+def feed_articles(token: str):
+    """Unified RSS of all mirrored article text, across every member's accounts."""
+    if not pysecrets.compare_digest(token, config.FEED_TOKEN):
+        raise HTTPException(404)
+    return Response(content=feedgen.build_articles_feed(), media_type="application/rss+xml")
+
+
+@app.get("/feed/{token}/everything.xml")
+def feed_everything(token: str):
+    """Articles + episodes merged into one feed, newest first."""
+    if not pysecrets.compare_digest(token, config.FEED_TOKEN):
+        raise HTTPException(404)
+    return Response(content=feedgen.build_combined_feed(), media_type="application/rss+xml")
 
 
 @app.get("/feed/{token}/show.xml")

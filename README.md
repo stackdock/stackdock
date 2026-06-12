@@ -1,6 +1,6 @@
 # Stackdock
 
-A private, self-hosted mirror of your Substack subscriptions (across any number of accounts) and your Gumroad podcast purchases, shared as a dashboard with a small invite-only group. Articles get a clean reading site behind real user logins; audio is mirrored to cheap object storage and served back through a single private podcast RSS feed. New items are announced to a Discord channel.
+A private, self-hosted mirror of your Substack subscriptions (across any number of accounts) — articles and podcast audio — shared as a dashboard with a small invite-only group. Articles get a clean reading site behind real user logins; audio is mirrored to cheap object storage. Everything from everyone aggregates into three private token-protected feeds — `all.xml` (audio, podcast apps), `articles.xml` (full-text RSS), `everything.xml` (merged) — and each sync announces all new items in a single Discord digest (plus an optional `OUTBOUND_WEBHOOK_URL` that receives one combined JSON payload).
 
 **For a small private group sharing content it pays for. Keep it invite-only and never share links publicly.**
 
@@ -10,7 +10,7 @@ A private, self-hosted mirror of your Substack subscriptions (across any number 
 - Admin → `/admin` → **Create invite link** → send the single-use link to a friend → they pick their own username/password at `/signup`.
 - Everyone can change their password at `/account`.
 - Forgotten password: admin → `/admin` → **Generate reset link** next to the user → DM them the one-time link (valid 1 hour).
-- The `/admin` page also has buttons to trigger email/podcast/Gumroad syncs manually.
+- The `/admin` page also has buttons to trigger email/podcast/Substack syncs manually.
 
 Deployment model: code lives on GitHub → every push to `main` triggers GitHub Actions → it SSHes into your DigitalOcean droplet, pulls the latest code, and rebuilds the Docker stack. Secrets (`.env`) live only on the droplet, never in the repo.
 
@@ -46,9 +46,6 @@ After deploy, each member logs in → **Accounts** page → pastes the value of 
 ### E. Substack private podcast feeds
 While logged in as a paying subscriber, open the publication's podcast tab → look for **"Add to podcast app"** / private feed link → copy the RSS URL into `PODCAST_FEEDS`.
 
-### F. Gumroad (in-app, no env needed)
-- Preferred: open the product from **Library** → if the content page shows an RSS / "listen in your podcast app" link, put that URL in `PODCAST_FEEDS` and you're done.
-- Otherwise each member connects their own Gumroad account on the **Accounts** page after deploy: logged into gumroad.com → **F12** → **Application** tab → **Storage → Cookies → https://app.gumroad.com** → copy the **Value** of `_gumroad_app_session` and paste it into the Connect Gumroad form. (Firefox: F12 → **Storage** tab.) Purchased audio backfills silently on first sync, then new files notify Discord. Cookies last weeks–months; reconnect when the account status says it's invalid.
 
 ### G. Discord webhook
 In your server: click the server name (top left) → **Server Settings** → **Integrations** → **Webhooks** → **New Webhook** → set the channel → **Copy Webhook URL** → that's `DISCORD_WEBHOOK_URL`.
@@ -120,7 +117,7 @@ What the workflow does (`.github/workflows/deploy.yml`): SSH to the droplet → 
 | Single show feed | `https://yourdomain.com/feed/<FEED_TOKEN>/show.xml?name=<feed name>` |
 | Discord | new articles/episodes post automatically with links |
 
-Schedules: email every 10 min, podcast feeds every 30 min, Gumroad every 6 h (all tunable in `.env`).
+Schedules: email every 10 min, podcast feeds every 30 min, Substack cookie sync every 60 min (all tunable in `.env`).
 
 ## Monitoring
 
@@ -129,7 +126,6 @@ Schedules: email every 10 min, podcast feeds every 30 min, Gumroad every 6 h (al
 
 ## Maintenance
 
-- **Gumroad parser**: best-effort HTML scraping; if Gumroad redesigns, see the docstring in `app/ingest/gumroad.py` for the one-line fix. Prefer RSS wherever a creator offers it.
 - **Backups**: `docker compose cp stackdock:/data/stackdock.db ./backup.db` (the audio itself is already safe in R2).
 - **Logs**: `docker compose logs -f stackdock`
 - **Cost**: ~$6/mo droplet + ~$1.50/mo per 100 GB in R2 (egress free).

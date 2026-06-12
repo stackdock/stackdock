@@ -79,27 +79,65 @@ def alert_if_stale(account, new_status: str, service: str, get_user, set_alert) 
         set_alert(account["id"], now.isoformat())
 
 
-def notify_article(article_id: int, publication: str, title: str) -> None:
-    link = f"{config.PUBLIC_BASE_URL}/article/{article_id}"
+# ---- Unified push: one digest per sync run, across all users & publications ----
+
+DIGEST_MAX_LINES = 15
+
+
+def _item_line(item: dict) -> str:
+    icon = "🎧" if item["type"] == "episode" else "📰"
+    return f"{icon} **{item['source'][:60]}** — [{item['title'][:120]}]({item['url']})"
+
+
+def notify_digest(items: list[dict]) -> None:
+    """ONE Discord embed listing every new item from a sync run."""
+    if not items:
+        return
+    n_art = sum(1 for i in items if i["type"] == "article")
+    n_ep = len(items) - n_art
+    lines = [_item_line(i) for i in items[:DIGEST_MAX_LINES]]
+    if len(items) > DIGEST_MAX_LINES:
+        lines.append(f"…and **{len(items) - DIGEST_MAX_LINES} more** on the site")
+    parts = []
+    if n_art:
+        parts.append(f"{n_art} article{'s' if n_art != 1 else ''}")
+    if n_ep:
+        parts.append(f"{n_ep} episode{'s' if n_ep != 1 else ''}")
     _post({
         "embeds": [{
-            "title": title[:256],
-            "url": link,
-            "description": f"New article from **{publication}**",
+            "title": f"New on Stackdock: {' + '.join(parts)}",
+            "url": config.PUBLIC_BASE_URL,
+            "description": "\n".join(lines)[:4000],
             "color": 0x2E6E4E,
-            "footer": {"text": "Stackdock · article"},
+            "footer": {"text": "Stackdock · sync digest"},
         }]
     })
 
 
-def notify_episode(episode_id: int, feed_name: str, title: str, listen_url: str) -> None:
-    page = f"{config.PUBLIC_BASE_URL}/episode/{episode_id}"
-    _post({
-        "embeds": [{
-            "title": title[:256],
-            "url": page,
-            "description": f"New episode from **{feed_name}**\n[Direct audio link]({listen_url})",
-            "color": 0x6E2E4E,
-            "footer": {"text": "Stackdock · podcast"},
-        }]
-    })
+def push_outbound(items: list[dict]) -> None:
+    """POST one combined JSON payload of everything new to OUTBOUND_WEBHOOK_URL."""
+    if not items or not config.OUTBOUND_WEBHOOK_URL:
+        return
+    payload = {
+        "source": "stackdock",
+        "site": config.PUBLIC_BASE_URL,
+        "new_articles": [i for i in items if i["type"] == "article"],
+        "new_episodes": [i for i in items if i["type"] == "episode"],
+    }
+    try:
+        r = requests.post(config.OUTBOUND_WEBHOOK_URL, json=payload, timeout=15)
+        if r.status_code >= 400:
+            log.warning("Outbound webhook failed: %s %s", r.status_code, r.text[:300])
+    except requests.RequestException as e:
+        log.warning("Outbound webhook error: %s", e)
+
+
+def push_new_items(items: list[dict]) -> None:
+    """Single entry point for ingesters: one Discord digest + one outbound POST.
+
+    Each item: {"type": "article"|"episode", "source": publication or feed name,
+                "title": ..., "url": .../read/{slug} or .../listen/{slug},
+                "original_url": ..., "published_at": ...}
+    """
+    notify_digest(items)
+    push_outbound(items)

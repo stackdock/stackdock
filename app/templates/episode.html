@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ e.title }} · {{ site_title }}{% endblock %}
+{% block content %}
+<article class="reader">
+  <p class="spine">{{ e.feed_name }}</p>
+  <h1>{{ e.title }}</h1>
+  <p class="meta">{{ (e.published_at or e.created_at)[:16] }}{% if e.duration %} · {{ e.duration }}{% endif %}</p>
+
+  {% if e.image_url %}<img class="episode-art" src="{{ e.image_url }}" alt="">{% endif %}
+
+  {% if audio_url %}
+  <audio class="player" controls preload="none" src="{{ audio_url }}"></audio>
+  <p class="meta"><a href="{{ audio_url }}" download>Download audio</a></p>
+  {% else %}
+  <p class="empty">Audio storage isn't configured, so this episode can't be streamed right now.</p>
+  {% endif %}
+
+  {% if e.description %}<div class="body">{{ e.description | safe }}</div>{% endif %}
+</article>
+{% endblock %}

@@ -45,11 +45,10 @@ def test_reset_token_expiry(fresh_db):
 def test_connected_accounts_crud(fresh_db):
     uid = db.create_user("dave", "hash")
     aid = db.add_account(uid, "substack", "My Sub", "sid-cookie")
-    db.add_account(uid, "gumroad", "My Gum", "gum-cookie")
+    db.add_account(uid, "substack", "Friend's Sub", "sid-cookie-2")
 
     assert len(db.list_accounts(user_id=uid)) == 2
-    assert len(db.list_accounts(service="substack")) == 1
-    assert len(db.list_accounts(service="gumroad")) == 1
+    assert len(db.list_accounts(service="substack")) == 2
 
     # delete is scoped to the owner
     assert db.delete_account(aid, user_id=99999) is False
@@ -113,4 +112,28 @@ def test_migration_from_legacy_substack_accounts(tmp_path, monkeypatch):
 
 
 def test_services_constant():
-    assert db.SERVICES == ("substack", "gumroad")
+    assert db.SERVICES == ("substack",)
+
+
+def test_slugs_generated_and_unique(fresh_db):
+    a1 = db.insert_article("m1", "Pub", "Hello World!", "a", "http://x", "<p>x</p>", None)
+    a2 = db.insert_article("m2", "Pub", "Hello World!", "a", "http://x", "<p>y</p>", None)
+    assert db.get_article(a1)["slug"] == "hello-world"
+    assert db.get_article(a2)["slug"] == "hello-world-2"
+    assert db.get_article_by_slug("hello-world")["id"] == a1
+
+    e1 = db.insert_episode("g1", "Feed", "Ep One", "", "k1", 1, "audio/mpeg", "", None)
+    assert db.get_episode_by_slug("ep-one")["id"] == e1
+    # duplicate guid is a no-op and must not burn a slug suffix
+    assert db.insert_episode("g1", "Feed", "Ep One", "", "k1", 1, "audio/mpeg", "", None) == 0
+    assert db.insert_episode("g2", "Feed", "Ep One", "", "k2", 1, "audio/mpeg", "", None) != 0
+    assert db.get_episode_by_slug("ep-one-2")["guid"] == "g2"
+
+
+def test_cover_image_and_image_url_stored(fresh_db):
+    aid = db.insert_article("m9", "Pub", "T", "a", None, "<p>x</p>", None,
+                            cover_image="https://cdn/x.png")
+    assert db.get_article(aid)["cover_image"] == "https://cdn/x.png"
+    eid = db.insert_episode("g9", "Feed", "T", "", "k", 1, "audio/mpeg", "", None,
+                            image_url="https://cdn/y.png")
+    assert db.get_episode(eid)["image_url"] == "https://cdn/y.png"

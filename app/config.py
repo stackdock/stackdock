@@ -34,7 +34,7 @@ IMAP_ALLOWED_SENDER_DOMAINS = [
     if d.strip()
 ]
 
-# ---- Podcast feeds (Substack private feeds, Gumroad product feeds, anything RSS) ----
+# ---- Podcast feeds (Substack private per-subscriber feeds, anything RSS) ----
 # JSON object: {"Feed display name": "https://...rss-url..."}
 try:
     PODCAST_FEEDS: dict[str, str] = json.loads(os.getenv("PODCAST_FEEDS", "{}"))
@@ -71,7 +71,12 @@ DO_DROPLET_ID = os.getenv("DO_DROPLET_ID", "")
 # ---- Discord ----
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
 
+# ---- Generic outbound webhook (optional) ----
+# If set, every sync that finds new content POSTs ONE combined JSON payload here:
+# {"source": "stackdock", "new_articles": [...], "new_episodes": [...]}.
+# Use it to push the aggregated firehose into anything (n8n, Zapier, your own bot).
+OUTBOUND_WEBHOOK_URL = os.getenv("OUTBOUND_WEBHOOK_URL", "")
+
 # ---- Scheduler intervals (minutes) ----
 EMAIL_POLL_MINUTES = int(os.getenv("EMAIL_POLL_MINUTES", "10"))
 PODCAST_POLL_MINUTES = int(os.getenv("PODCAST_POLL_MINUTES", "30"))
-GUMROAD_POLL_MINUTES = int(os.getenv("GUMROAD_POLL_MINUTES", "360"))

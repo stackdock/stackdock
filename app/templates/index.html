@@ -2,20 +2,32 @@
 {% block content %}
 
 <section class="feed-box">
-  <span class="label">Podcast feed</span>
-  <code id="feedurl">{{ feed_url }}</code>
-  <button onclick="navigator.clipboard.writeText(document.getElementById('feedurl').textContent)">Copy</button>
-  <p class="hint">Paste this URL into any podcast app to get every mirrored episode. Keep it private.</p>
+  <span class="label">Unified feeds — everything from everyone, one URL each</span>
+  <div class="feed-row"><span class="feed-name">🎧 Podcast apps</span>
+    <code id="feed-audio">{{ feed_base }}/all.xml</code>
+    <button onclick="copyFeed('feed-audio')">Copy</button></div>
+  <div class="feed-row"><span class="feed-name">📰 Articles (RSS readers)</span>
+    <code id="feed-articles">{{ feed_base }}/articles.xml</code>
+    <button onclick="copyFeed('feed-articles')">Copy</button></div>
+  <div class="feed-row"><span class="feed-name">🗞 Everything combined</span>
+    <code id="feed-everything">{{ feed_base }}/everything.xml</code>
+    <button onclick="copyFeed('feed-everything')">Copy</button></div>
+  <p class="hint">Each URL aggregates all blogs from all members. Keep them private.</p>
+  <script>function copyFeed(id){navigator.clipboard.writeText(document.getElementById(id).textContent)}</script>
 </section>
 
-<section id="articles">
-  <h2>Articles <span class="count">{{ articles|length }}</span></h2>
+<nav class="tabs">
+  <a href="/" class="tab {{ 'active' if active_tab == 'text' }}">Text <span class="count">{{ articles|length }}</span></a>
+  <a href="/?tab=audio" class="tab {{ 'active' if active_tab == 'audio' }}">Audio <span class="count">{{ episodes|length }}</span></a>
+</nav>
 
+{% if active_tab == 'text' %}
+<section id="articles">
   {% if publications %}
   <p class="pub-filter">
     <a href="/" class="{{ 'active' if not active_pub }}">All</a>
     {% for p in publications %}
-      <a href="/?pub={{ p | urlencode }}" class="{{ 'active' if active_pub == p }}">{{ p }}</a>
+      <a href="/?pub={{ p.publication | urlencode }}" class="{{ 'active' if active_pub == p.publication }}">{{ p.publication }} <span class="count">{{ p.n }}</span></a>
     {% endfor %}
   </p>
   {% endif %}
@@ -23,34 +35,56 @@
   {% if not articles %}
     <p class="empty">No articles yet. <a href="/accounts">Connect a Substack account</a> and the archives of everything it subscribes to will be pulled in.</p>
   {% endif %}
-  <ul class="rows">
+  <ul class="cards">
     {% for a in articles %}
-    <li>
-      <span class="spine">{{ a.publication }}</span>
-      <a class="row-title" href="/article/{{ a.id }}">{{ a.title }}</a>
-      <span class="row-meta">
-        {% if a.added_by %}<span class="added-by">{{ a.added_by }}</span>{% endif %}
-        <time>{{ (a.published_at or a.created_at)[:10] }}</time>
-      </span>
+    <li class="card">
+      <a href="/read/{{ a.slug }}" class="card-link">
+        {% if a.cover_image %}
+          <img class="thumb" src="{{ a.cover_image }}" alt="" loading="lazy">
+        {% else %}
+          <span class="thumb thumb-fallback">{{ (a.publication or a.title)[:1] | upper }}</span>
+        {% endif %}
+        <span class="card-body">
+          <span class="spine">{{ a.publication }}</span>
+          <span class="card-title">{{ a.title }}</span>
+          <span class="row-meta">
+            {% if a.added_by %}<span class="added-by">{{ a.added_by }}</span> · {% endif %}
+            <time>{{ (a.published_at or a.created_at)[:10] }}</time>
+          </span>
+        </span>
+      </a>
     </li>
     {% endfor %}
   </ul>
 </section>
 
-<section id="podcasts">
-  <h2>Episodes <span class="count">{{ episodes|length }}</span></h2>
+{% else %}
+<section id="audio">
   {% if not episodes %}
-    <p class="empty">No episodes yet. Add feed URLs to <code>PODCAST_FEEDS</code> or set your Gumroad cookie, then wait for the next sync.</p>
+    <p class="empty">No episodes yet. Add your Substack private podcast feed URLs to <code>PODCAST_FEEDS</code>, then wait for the next sync (or trigger one from <a href="/admin">/admin</a>).</p>
   {% endif %}
-  <ul class="rows">
+  <ul class="cards">
     {% for e in episodes %}
-    <li>
-      <span class="spine">{{ e.feed_name }}</span>
-      <a class="row-title" href="/episode/{{ e.id }}">{{ e.title }}</a>
-      <time>{{ (e.published_at or e.created_at)[:16] }}</time>
+    <li class="card">
+      <a href="/listen/{{ e.slug }}" class="card-link">
+        {% if e.image_url %}
+          <img class="thumb" src="{{ e.image_url }}" alt="" loading="lazy">
+        {% else %}
+          <span class="thumb thumb-fallback">▶</span>
+        {% endif %}
+        <span class="card-body">
+          <span class="spine">{{ e.feed_name }}</span>
+          <span class="card-title">{{ e.title }}</span>
+          <span class="row-meta">
+            {% if e.duration %}<span class="added-by">{{ e.duration }}</span> · {% endif %}
+            <time>{{ (e.published_at or e.created_at)[:16] }}</time>
+          </span>
+        </span>
+      </a>
     </li>
     {% endfor %}
   </ul>
 </section>
+{% endif %}
 
 {% endblock %}

@@ -73,7 +73,7 @@ def run() -> int:
         log.info("IMAP not configured; skipping email ingest.")
         return 0
 
-    new_count = 0
+    new_count, items = 0, []
     M = imaplib.IMAP4_SSL(config.IMAP_HOST, config.IMAP_PORT)
     try:
         M.login(config.IMAP_USER, config.IMAP_PASS)
@@ -123,8 +123,16 @@ def run() -> int:
             if article_id:
                 new_count += 1
                 log.info("New article: [%s] %s", publication, title)
-                notify.notify_article(article_id, publication, title)
+                items.append({
+                    "type": "article",
+                    "source": publication,
+                    "title": title,
+                    "url": f"{config.PUBLIC_BASE_URL}/read/{db.get_article(article_id)['slug']}",
+                    "original_url": original_url,
+                    "published_at": published_at,
+                })
 
+        notify.push_new_items(items)
         return new_count
     finally:
         try:

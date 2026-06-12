@@ -1,6 +1,6 @@
 # CLAUDE.md — Agent handoff for Stackdock setup
 
-You are helping the user deploy **Stackdock**: a private FastAPI app that mirrors their paid Substack newsletters (via a collector email inbox over IMAP) and their Gumroad/Substack podcast purchases (via RSS feeds + an optional Gumroad session cookie) to a DigitalOcean droplet, with audio stored in Cloudflare R2, a private podcast RSS feed, Discord webhook notifications, and **multi-user session auth** (invite-only signup, bcrypt passwords, admin-generated one-time reset links — see `app/auth.py`). Deploys run via GitHub Actions on push to `main`.
+You are helping the user deploy **Stackdock**: a private FastAPI app that mirrors their paid Substack newsletters (via per-user substack.sid cookies, with an optional IMAP fallback) and their Substack podcast subscriptions (via private per-subscriber RSS feeds in PODCAST_FEEDS) to a DigitalOcean droplet, with audio stored in Cloudflare R2, a private podcast RSS feed, Discord webhook notifications, and **multi-user session auth** (invite-only signup, bcrypt passwords, admin-generated one-time reset links — see `app/auth.py`). Deploys run via GitHub Actions on push to `main`.
 
 Auth model: first admin is seeded from `BASIC_AUTH_USER`/`BASIC_AUTH_PASS` on an empty DB; `SECRET_KEY` signs session cookies (generate with `openssl rand -hex 32`); invites and reset links are created at `/admin`. The podcast feed stays token-protected (no session) because podcast apps need plain URLs.
 
@@ -21,7 +21,6 @@ Read `README.md` for the full architecture and click-by-click UI instructions. T
 - Cloudflare R2 bucket + API token (dash.cloudflare.com → R2)
 - Collector Gmail account, Substack email changes/forwarding, Gmail app password
 - Copy Substack private podcast feed URLs from each publication
-- Gumroad session cookie from browser DevTools (Application → Cookies → app.gumroad.com → `_gumroad_app_session`)
 - Discord webhook URL (Server Settings → Integrations → Webhooks)
 - GitHub repo creation + the three Actions secrets: `DROPLET_HOST`, `DROPLET_USER`, `DROPLET_SSH_KEY`
 
@@ -47,8 +46,9 @@ Read `README.md` for the full architecture and click-by-click UI instructions. T
 5. **Verify**:
    - `docker compose logs -f stackdock` shows "Stackdock started"
    - `https://<domain>/healthz` returns ok; `/` prompts for basic auth
-   - Trigger each ingester: `use the buttons on /admin (or POST /admin/sync/email as a logged-in admin)` (also `/podcasts`, `/gumroad`) and check `new_items` + Discord channel
-   - Subscribe to `https://<domain>/feed/<FEED_TOKEN>/all.xml` in a podcast app
+   - Trigger each ingester: use the buttons on /admin (or POST /admin/sync/email as a logged-in admin; also `/podcasts`, `/substack`) and check `new_items` + Discord channel
+   - Subscribe to `https://<domain>/feed/<FEED_TOKEN>/all.xml` in a podcast app;
+     `/feed/<FEED_TOKEN>/articles.xml` and `/everything.xml` work in any RSS reader
 6. **Test CI/CD**: make a trivial commit to `main`, watch repo → Actions tab → deploy job → health check passes.
 
 ## Architecture quick map
@@ -62,13 +62,16 @@ app/storage.py           S3-compatible client (R2); url_for() = presigned or pub
 app/metrics.py           optional Cloudflare R2 + DigitalOcean metrics for /status
                          (read-only tokens: CLOUDFLARE_API_TOKEN/_ACCOUNT_ID, DO_API_TOKEN/_DROPLET_ID;
                          cached 5 min; soft-fails to "not configured")
-app/feedgen.py           private RSS feed XML
-app/notify.py            Discord webhook embeds
+app/feedgen.py           private RSS feeds: all.xml (audio, for podcast apps),
+                         articles.xml (full-text articles), everything.xml (both merged)
+app/notify.py            ONE Discord digest embed per sync run (notify_digest) listing all
+                         new items across every member, plus an optional generic outbound
+                         JSON webhook (OUTBOUND_WEBHOOK_URL) that gets one combined payload
 app/ingest/substack.py       PRIMARY article source: per-user substack.sid cookies (added at /accounts)
                              → subscriptions → archive backfill → full post bodies
 app/ingest/email_ingest.py   optional fallback: IMAP poll → parse Substack emails → articles
-app/ingest/podcast_rss.py    poll PODCAST_FEEDS → stream audio to R2 → episodes
-app/ingest/gumroad.py        per-user _gumroad_app_session cookies (added at /accounts); library scrape is fragile — see its docstring. First sync per account is a silent backfill.
+app/ingest/podcast_rss.py    poll PODCAST_FEEDS (Substack private podcast feeds, or any RSS)
+                             → stream audio to R2 → episodes (with feed thumbnails)
 .github/workflows/deploy.yml SSH deploy: reset to origin/main, compose up, health check
 docker-compose.yml       stackdock (internal :8000) + caddy (80/443, auto-HTTPS) + uptime-kuma (status.<domain>, external healthz monitor — first visit creates its admin; point a monitor at /healthz and wire the Discord webhook in its UI)
 ```
@@ -78,9 +81,13 @@ docker-compose.yml       stackdock (internal :8000) + caddy (80/443, auto-HTTPS)
 - Port 8000 is `expose`d, not published — health checks from the droplet host must go through the compose network (the workflow already does: `docker compose exec -T caddy wget -qO- http://stackdock:8000/healthz`).
 - Caddy needs the DNS A record live and port 80/443 open before it can issue a cert. DO droplets have no firewall by default; if the human enabled one, allow 22/80/443.
 - Gmail IMAP requires an **app password** (2FA on). Auth failures usually mean a normal password was used.
-- The Gumroad scraper reads the library from Gumroad's Inertia.js page (`<div id="app" data-page="...">` → `props.results`). If it returns 0 purchases, the cookie expired or the frontend changed — `_extract_purchases` in app/ingest/gumroad.py explains the fix. NOTE: Gumroad now Cloudflare-bot-blocks the per-product `/d/<token>` content pages (403) for headless requests, so audio can't be downloaded server-side — the sync still *lists* purchases but, for audio products, you must grab the product's private RSS feed URL and add it to `PODCAST_FEEDS`. Prefer RSS feeds.
-- Substack cookie sync uses unofficial endpoints (api/v1/subscriptions, /archive, /posts/{slug}); written defensively in app/ingest/substack.py. First sync per account is a silent backfill (no Discord spam); later syncs notify. Custom-domain publications may come back link-only (the substack.com cookie doesn't apply there) — that's expected, posts still list with links to the original.
-- Members' substack.sid and _gumroad_app_session cookies are stored in SQLite on the server. There is NO env var for the Gumroad cookie anymore — accounts are connected in the UI at /accounts. Treat the droplet and DB backups as sensitive.
+- Substack has NO official public API; public /feed RSS only carries free posts and truncated paid previews, which is why article sync uses the substack.sid cookie against unofficial endpoints (api/v1/subscriptions, /archive, /posts/{slug}); written defensively in app/ingest/substack.py. Podcast audio uses Substack's private per-subscriber RSS feeds (real RSS, no cookie) via PODCAST_FEEDS. First sync per account is a silent backfill (no Discord spam); later syncs notify. Custom-domain publications may come back link-only (the substack.com cookie doesn't apply there) — that's expected, posts still list with links to the original.
+- Members' substack.sid cookies are stored in SQLite on the server. Accounts are connected in the UI at /accounts. Treat the droplet and DB backups as sensitive.
 - Email ingest only processes UNSEEN messages from `IMAP_ALLOWED_SENDER_DOMAINS`. If testing with old mail, mark messages unread first.
 - Deploys do a `git reset --hard origin/main` in `/opt/stackdock` — never store uncommitted changes or secrets in tracked files there. `.env` is untracked and survives deploys.
 - SQLite + audio DB live in the `stackdock-data` Docker volume; `docker compose down -v` would destroy it. Audio itself is safe in R2.
+
+- Content URLs are slugs: articles at `/read/{slug}`, episodes (in-browser player page) at `/listen/{slug}`. Slugs are generated at insert (db._unique_slug, collisions get -2/-3 suffixes) and backfilled for old rows on startup (db.init). Old `/article/{id}` and `/episode/{id}` URLs 301-redirect to the slug versions.
+- Thumbnails: articles store Substack's `cover_image` URL; episodes store the RSS feed/episode image URL. Both are remote hotlinked URLs with a CSS fallback tile — nothing is downloaded or generated server-side.
+- Aggregation model: every member's connected Substack account contributes all of its subscriptions; posts dedupe globally by `substack:{post_id}` (two members subscribed to the same blog never create duplicates). The index, the three /feed/<token>/ URLs, the Discord digest, and OUTBOUND_WEBHOOK_URL all operate on this single merged pool.
+- Notifications are batched: ingesters collect new items and call notify.push_new_items once per run (one Discord embed + one outbound JSON POST), instead of one message per article.

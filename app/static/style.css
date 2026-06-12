@@ -70,6 +70,8 @@ h2 {
   padding: 0.25rem 0.6rem; cursor: pointer;
 }
 .feed-box .hint { font-size: 0.75rem; color: var(--ink-soft); margin: 0.4rem 0 0; }
+.feed-row { display: flex; align-items: center; gap: 0.5rem; margin: 0.3rem 0; flex-wrap: wrap; }
+.feed-name { font-family: var(--mono); font-size: 0.72rem; min-width: 12.5rem; color: var(--ink-soft); }
 
 .rows { list-style: none; margin: 0; padding: 0; }
 .rows li {
@@ -86,6 +88,44 @@ h2 {
 .row-title:hover { color: var(--shelf); }
 .rows time { font-family: var(--mono); font-size: 0.7rem; color: var(--ink-soft); }
 .empty { color: var(--ink-soft); font-size: 0.85rem; }
+
+/* Tabs (Text / Audio) */
+.tabs { display: flex; gap: 0.25rem; margin-top: 2rem; border-bottom: 3px solid var(--ink); }
+.tab {
+  font-family: var(--mono); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--ink-soft); text-decoration: none;
+  padding: 0.45rem 1rem; border: 1px solid transparent; border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+}
+.tab:hover { color: var(--shelf); }
+.tab.active {
+  color: var(--ink); background: #fff;
+  border-color: var(--ink); position: relative; top: 0;
+}
+
+/* Thumbnail cards */
+.cards { list-style: none; margin: 1rem 0 0; padding: 0; }
+.card { border-bottom: 1px solid var(--rule); }
+.card-link {
+  display: grid; grid-template-columns: 84px 1fr; gap: 0.9rem; align-items: center;
+  padding: 0.6rem 0; text-decoration: none; color: inherit;
+}
+.card-link:hover .card-title { color: var(--shelf); }
+.thumb {
+  width: 84px; height: 56px; object-fit: cover; display: block;
+  border: 1px solid var(--rule); border-radius: 4px; background: var(--shelf-soft);
+}
+.thumb-fallback {
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--serif); font-size: 1.5rem; color: var(--shelf);
+}
+.card-body { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+.card-title { font-family: var(--serif); font-size: 1rem; line-height: 1.3; }
+.card .row-meta, .card time { font-family: var(--mono); font-size: 0.7rem; color: var(--ink-soft); }
+
+/* Episode player */
+.episode-art { max-width: 280px; border: 1px solid var(--rule); border-radius: 6px; margin-top: 1rem; }
+.player { width: 100%; margin-top: 1.25rem; }
 
 /* Reader */
 .reader { max-width: 680px; margin: 2rem auto 0; }

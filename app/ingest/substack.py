@@ -122,17 +122,18 @@ def _stub_html(url: str) -> str:
             f'<a href="{url}" rel="noopener">Read it on the original site →</a></p>')
 
 
-def sync_account(account) -> tuple[int, str]:
-    """Sync one connected account. Returns (new_articles, status_message)."""
+def sync_account(account) -> tuple[int, str, list[dict]]:
+    """Sync one connected account. Returns (new_articles, status_message, notify_items)."""
     s = _session(account["cookie"])
     pubs = get_publications(s)
     if pubs is None:
-        return 0, "STALE: cookie expired or invalid — reconnect on the Accounts page"
+        return 0, "STALE: cookie expired or invalid — reconnect on the Accounts page", []
     if not pubs:
-        return 0, "OK: no subscriptions found on this account"
+        return 0, "OK: no subscriptions found on this account", []
 
     is_backfill = account["last_sync"] is None
     new_count, mirrored, link_only = 0, 0, 0
+    items: list[dict] = []  # collected for the unified digest (one push per run)
 
     for pub in pubs:
         archive = fetch_archive(s, pub["base_url"], config.SUBSTACK_BACKFILL_POSTS)
@@ -163,14 +164,22 @@ def sync_account(account) -> tuple[int, str]:
                 html=body,
                 published_at=post.get("post_date"),
                 added_by=account["label"],
+                cover_image=post.get("cover_image"),
             )
             if article_id:
                 new_count += 1
                 if not is_backfill:
-                    notify.notify_article(article_id, pub["name"], post.get("title") or "(untitled)")
+                    items.append({
+                        "type": "article",
+                        "source": pub["name"],
+                        "title": post.get("title") or "(untitled)",
+                        "url": f"{config.PUBLIC_BASE_URL}/read/{db.get_article(article_id)['slug']}",
+                        "original_url": url,
+                        "published_at": post.get("post_date"),
+                    })
 
     status = f"OK: {len(pubs)} publications, {new_count} new ({mirrored} mirrored, {link_only} link-only)"
-    return new_count, status
+    return new_count, status, items
 
 
 def run() -> int:
@@ -180,11 +189,12 @@ def run() -> int:
         log.info("No Substack accounts connected; skipping.")
         return 0
 
-    total = 0
+    total, all_items = 0, []
     for account in accounts:
         try:
-            count, status = sync_account(account)
+            count, status, items = sync_account(account)
             total += count
+            all_items.extend(items)
             notify.alert_if_stale(account, status, "substack", db.get_user, db.set_account_alert)
             # a STALE result keeps last_sync unchanged so the next fix triggers a fresh backfill check
             db.update_account(account["id"],
@@ -194,4 +204,6 @@ def run() -> int:
         except Exception as e:
             db.update_account(account["id"], None, f"Error: {e}")
             log.warning("Sync failed for %s: %s", account["label"], e)
+    # ONE unified push for everything new across every member's subscriptions
+    notify.push_new_items(all_items)
     return total

@@ -1,6 +1,8 @@
 """SQLite storage for articles and podcast episodes."""
+import re
 import sqlite3
 import threading
+import unicodedata
 from contextlib import contextmanager
 from datetime import datetime, timezone
 
@@ -18,7 +20,9 @@ CREATE TABLE IF NOT EXISTS articles (
     original_url TEXT,
     html TEXT NOT NULL,
     published_at TEXT,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    cover_image TEXT,                  -- remote thumbnail URL (Substack cover_image)
+    slug TEXT                          -- pretty URL: /read/{slug}
 );
 
 CREATE TABLE IF NOT EXISTS users (
@@ -45,7 +49,7 @@ CREATE TABLE IF NOT EXISTS reset_tokens (
 CREATE TABLE IF NOT EXISTS connected_accounts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    service TEXT NOT NULL,             -- 'substack' | 'gumroad'
+    service TEXT NOT NULL,             -- 'substack'
     label TEXT NOT NULL,               -- e.g. "Sam's account"
     cookie TEXT NOT NULL,              -- session cookie value for the service
     last_alert TEXT,                   -- when we last alerted about this account being stale
@@ -56,8 +60,8 @@ CREATE TABLE IF NOT EXISTS connected_accounts (
 
 CREATE TABLE IF NOT EXISTS episodes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    guid TEXT UNIQUE,                  -- RSS guid or gumroad file id, dedupe key
-    feed_name TEXT NOT NULL,           -- e.g. "Some Podcast (Substack)" or "Gumroad: Product"
+    guid TEXT UNIQUE,                  -- RSS guid, dedupe key
+    feed_name TEXT NOT NULL,           -- e.g. "Some Podcast (Substack)"
     title TEXT NOT NULL,
     description TEXT,
     audio_key TEXT NOT NULL,           -- object storage key
@@ -65,13 +69,32 @@ CREATE TABLE IF NOT EXISTS episodes (
     audio_mime TEXT,
     duration TEXT,
     published_at TEXT,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    image_url TEXT,                    -- remote thumbnail URL from the RSS feed
+    slug TEXT                          -- pretty URL: /listen/{slug}
 );
 """
 
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def slugify(text: str) -> str:
+    """'My Great Post!' -> 'my-great-post'. ASCII-ish, max 80 chars."""
+    s = unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode()
+    s = re.sub(r"[^A-Za-z0-9]+", "-", s).strip("-").lower()
+    return s[:80] or "untitled"
+
+
+def _unique_slug(c, table: str, title: str) -> str:
+    """Return a slug unique within `table`, appending -2, -3, ... on collision."""
+    base = slugify(title)
+    slug, n = base, 1
+    while c.execute(f"SELECT 1 FROM {table} WHERE slug = ?", (slug,)).fetchone():
+        n += 1
+        slug = f"{base}-{n}"
+    return slug
 
 
 @contextmanager
@@ -91,14 +114,16 @@ def init():
     with conn() as c:
         c.executescript(SCHEMA)
         # lightweight migrations for existing databases
-        try:
-            c.execute("ALTER TABLE articles ADD COLUMN added_by TEXT")
-        except sqlite3.OperationalError:
-            pass  # column already exists
-        try:
-            c.execute("ALTER TABLE connected_accounts ADD COLUMN last_alert TEXT")
-        except sqlite3.OperationalError:
-            pass  # column already exists
+        for table, col in [("articles", "added_by TEXT"),
+                           ("articles", "cover_image TEXT"),
+                           ("articles", "slug TEXT"),
+                           ("episodes", "image_url TEXT"),
+                           ("episodes", "slug TEXT"),
+                           ("connected_accounts", "last_alert TEXT")]:
+            try:
+                c.execute(f"ALTER TABLE {table} ADD COLUMN {col}")
+            except sqlite3.OperationalError:
+                pass  # column already exists
         try:
             c.execute(
                 "INSERT INTO connected_accounts (user_id, service, label, cookie, last_sync, status, created_at) "
@@ -107,6 +132,13 @@ def init():
             c.execute("DROP TABLE substack_accounts")
         except sqlite3.OperationalError:
             pass  # old table doesn't exist
+        # gumroad was removed: drop its connected accounts (mirrored content stays)
+        c.execute("DELETE FROM connected_accounts WHERE service != 'substack'")
+        # backfill slugs for rows created before slugs existed
+        for table in ("articles", "episodes"):
+            for row in c.execute(f"SELECT id, title FROM {table} WHERE slug IS NULL").fetchall():
+                c.execute(f"UPDATE {table} SET slug = ? WHERE id = ?",
+                          (_unique_slug(c, table, row["title"]), row["id"]))
 
 
 # ---------- articles ----------
@@ -118,15 +150,17 @@ def article_exists(message_id: str) -> bool:
 
 
 def insert_article(message_id, publication, title, author, original_url, html,
-                   published_at, added_by=None) -> int:
+                   published_at, added_by=None, cover_image=None) -> int:
     with conn() as c:
+        if c.execute("SELECT 1 FROM articles WHERE message_id = ?", (message_id,)).fetchone():
+            return 0
         cur = c.execute(
             """INSERT OR IGNORE INTO articles
                (message_id, publication, title, author, original_url, html, published_at,
-                created_at, added_by)
-               VALUES (?,?,?,?,?,?,?,?,?)""",
+                created_at, added_by, cover_image, slug)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
             (message_id, publication, title, author, original_url, html, published_at,
-             now_iso(), added_by),
+             now_iso(), added_by, cover_image, _unique_slug(c, "articles", title)),
         )
         return cur.lastrowid or 0
 
@@ -135,28 +169,43 @@ def list_articles(limit=1000, publication=None):
     with conn() as c:
         if publication:
             return c.execute(
-                "SELECT id, publication, title, author, original_url, published_at, created_at, added_by "
+                "SELECT id, publication, title, author, original_url, published_at, created_at, added_by, cover_image, slug "
                 "FROM articles WHERE publication = ? "
                 "ORDER BY COALESCE(published_at, created_at) DESC LIMIT ?",
                 (publication, limit),
             ).fetchall()
         return c.execute(
-            "SELECT id, publication, title, author, original_url, published_at, created_at, added_by "
+            "SELECT id, publication, title, author, original_url, published_at, created_at, added_by, cover_image, slug "
             "FROM articles ORDER BY COALESCE(published_at, created_at) DESC LIMIT ?",
             (limit,),
         ).fetchall()
 
 
 def list_publications():
+    """[{'publication': name, 'n': count}], busiest first — the aggregate across all users."""
     with conn() as c:
-        return [r["publication"] for r in c.execute(
+        return c.execute(
             "SELECT publication, COUNT(*) AS n FROM articles GROUP BY publication ORDER BY n DESC"
-        ).fetchall()]
+        ).fetchall()
+
+
+def list_articles_with_html(limit=200):
+    """Newest articles including full bodies — used to build the unified RSS feeds."""
+    with conn() as c:
+        return c.execute(
+            "SELECT * FROM articles ORDER BY COALESCE(published_at, created_at) DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
 
 
 def get_article(article_id: int):
     with conn() as c:
         return c.execute("SELECT * FROM articles WHERE id = ?", (article_id,)).fetchone()
+
+
+def get_article_by_slug(slug: str):
+    with conn() as c:
+        return c.execute("SELECT * FROM articles WHERE slug = ?", (slug,)).fetchone()
 
 
 # ---------- episodes ----------
@@ -168,15 +217,18 @@ def episode_exists(guid: str) -> bool:
 
 
 def insert_episode(guid, feed_name, title, description, audio_key,
-                   audio_bytes, audio_mime, duration, published_at) -> int:
+                   audio_bytes, audio_mime, duration, published_at, image_url=None) -> int:
     with conn() as c:
+        if c.execute("SELECT 1 FROM episodes WHERE guid = ?", (guid,)).fetchone():
+            return 0
         cur = c.execute(
             """INSERT OR IGNORE INTO episodes
                (guid, feed_name, title, description, audio_key, audio_bytes,
-                audio_mime, duration, published_at, created_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                audio_mime, duration, published_at, created_at, image_url, slug)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
             (guid, feed_name, title, description, audio_key, audio_bytes,
-             audio_mime, duration, published_at, now_iso()),
+             audio_mime, duration, published_at, now_iso(), image_url,
+             _unique_slug(c, "episodes", title)),
         )
         return cur.lastrowid or 0
 
@@ -191,6 +243,11 @@ def list_episodes(limit=500):
 def get_episode(episode_id: int):
     with conn() as c:
         return c.execute("SELECT * FROM episodes WHERE id = ?", (episode_id,)).fetchone()
+
+
+def get_episode_by_slug(slug: str):
+    with conn() as c:
+        return c.execute("SELECT * FROM episodes WHERE slug = ?", (slug,)).fetchone()
 
 
 # ---------- users / invites / resets ----------
@@ -270,9 +327,9 @@ def consume_reset_token(token_hash: str):
         return row["user_id"]
 
 
-# ---------- connected accounts (substack, gumroad) ----------
+# ---------- connected accounts (substack) ----------
 
-SERVICES = ("substack", "gumroad")
+SERVICES = ("substack",)
 
 
 def add_account(user_id: int, service: str, label: str, cookie: str) -> int:
