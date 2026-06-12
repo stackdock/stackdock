@@ -21,16 +21,28 @@ body {
 main { max-width: 880px; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
 
 .masthead {
-  display: flex; align-items: baseline; justify-content: space-between;
-  max-width: 880px; margin: 0 auto; padding: 1.25rem;
-  border-bottom: 2px solid var(--ink);
+  display: flex; align-items: center; justify-content: space-between;
+  max-width: 880px; margin: 0 auto; padding: 1.1rem 1.25rem;
+  border-bottom: 3px solid var(--ink);
 }
 .wordmark {
-  font-family: var(--serif); font-weight: 700; font-size: 1.35rem;
-  color: var(--ink); text-decoration: none; letter-spacing: -0.01em;
-  display: inline-flex; align-items: center; gap: 0.45rem;
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", "Arial Black", var(--sans);
+  font-weight: 900; font-size: 2.3rem; line-height: 0.9;
+  text-transform: uppercase; letter-spacing: -0.01em;
+  color: #fff; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  transform: rotate(-2.5deg);
+  /* chunky impact-meme outline + hard offset shadow */
+  -webkit-text-stroke: 2.5px #000;
+  paint-order: stroke fill;
+  text-shadow: 3px 3px 0 #000, 4px 4px 0 var(--shelf);
 }
-.brand-chud { height: 1.6em; width: auto; display: block; }
+.wordmark:hover { color: #fff; transform: rotate(-2.5deg) scale(1.03); }
+.brand-chud {
+  height: 2.6em; width: auto; display: block;
+  transform: rotate(5deg);
+  filter: drop-shadow(2px 2px 0 #000);
+}
 .masthead nav a {
   color: var(--ink-soft); text-decoration: none; margin-left: 1.25rem;
   font-family: var(--mono); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em;

@@ -4,7 +4,7 @@
 <div class="meme-stage">
   <img class="jak flip" src="/static/soyjak.svg" alt="">
   <div class="meme-card">
-    <h2>This login page</h2>
+    <h2>Login</h2>
     <p class="greentext" id="greentext">&gt;fuck my stupid chud life</p>
     {% if error %}<p class="form-error">&gt;tfw wrong credentials. try again, anon</p>{% endif %}
     <form method="post" action="/login">
@@ -46,9 +46,8 @@
       el.appendChild(span);
     });
   }
-  var i = Math.floor(Math.random() * lines.length);  // fresh on each visit
+  var i = Math.floor(Math.random() * lines.length);  // fresh on each refresh, no auto-cycle
   render(lines[i]);
-  setInterval(function () { i = (i + 1) % lines.length; render(lines[i]); }, 3500);
 })();
 </script>
 {% endblock %}
