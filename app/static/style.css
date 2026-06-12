@@ -208,6 +208,16 @@ footer {
   filter: drop-shadow(2px 3px 0 rgba(0,0,0,0.12));
 }
 .meme-stage .jak.flip { transform: scaleX(-1); }
+
+/* TempleOS chuds: just spinning */
+.meme-stage .jak.templeos { animation: temple-spin 2.6s linear infinite; }
+@keyframes temple-spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .meme-stage .jak.templeos { animation: none; }
+}
+
+/* TempleOS footer credit */
+.footer-temple { color: var(--shelf); }
 .meme-card {
   flex: 0 1 380px; background: #fff; border: 3px solid #1c1c1c; border-radius: 4px;
   box-shadow: 6px 6px 0 #1c1c1c; padding: 1.5rem; z-index: 1;
