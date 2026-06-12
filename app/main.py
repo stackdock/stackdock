@@ -202,6 +202,18 @@ def admin_invite(request: Request, user=Depends(auth.current_admin)):
                   new_invite=invite_link, reset_link=None)
 
 
+@app.post("/admin/invite/delete")
+def admin_invite_delete(user=Depends(auth.current_admin), code: str = Form(...)):
+    db.delete_invite(code.strip())
+    return RedirectResponse("/admin", status_code=303)
+
+
+@app.post("/admin/invites/clear-used")
+def admin_invites_clear_used(user=Depends(auth.current_admin)):
+    db.clear_invites(only_used=True)
+    return RedirectResponse("/admin", status_code=303)
+
+
 @app.post("/admin/reset-link")
 def admin_reset_link(request: Request, user=Depends(auth.current_admin), user_id: int = Form(...)):
     target = db.get_user(user_id)

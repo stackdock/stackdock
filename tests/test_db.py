@@ -160,3 +160,13 @@ def test_paid_flags_present_in_both_list_branches(fresh_db):
     db.insert_article("m1", "P", "T", "a", None, "<p>x</p>", None, is_paid=1, is_locked=1)
     for rows in (db.list_articles(), db.list_articles(publication="P")):
         assert (rows[0]["is_paid"], rows[0]["is_locked"]) == (1, 1)
+
+
+def test_delete_and_clear_invites(fresh_db):
+    db.create_invite("A"); db.create_invite("B"); db.create_invite("C")
+    db.consume_invite("B", "bob")          # B is now used
+    db.delete_invite("A")                   # remove one unused
+    assert {i["code"] for i in db.list_invites()} == {"B", "C"}
+    removed = db.clear_invites(only_used=True)   # clears B
+    assert removed == 1
+    assert {i["code"] for i in db.list_invites()} == {"C"}

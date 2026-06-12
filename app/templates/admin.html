@@ -39,11 +39,20 @@
     {% for i in invites %}
     <li>
       <span class="spine">{{ "used by " + i.used_by if i.used_by else "unused" }}</span>
-      <span class="row-title"><code>{{ i.code }}</code></span>
-      <time>{{ i.created_at[:10] }}</time>
+      <span class="row-title"><code>{{ i.code }}</code> <time>{{ i.created_at[:10] }}</time></span>
+      <form method="post" action="/admin/invite/delete" class="inline-form">
+        <input type="hidden" name="code" value="{{ i.code }}">
+        <button type="submit">Remove</button>
+      </form>
     </li>
     {% endfor %}
   </ul>
+  {% if invites %}
+  <form method="post" action="/admin/invites/clear-used" class="inline-form"
+        onsubmit="return confirm('Delete all used (consumed) invite links?')">
+    <button type="submit">Clear used invites</button>
+  </form>
+  {% endif %}
 </section>
 
 <section>

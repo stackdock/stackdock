@@ -371,6 +371,18 @@ def consume_invite(code: str, username: str) -> bool:
         return cur.rowcount == 1
 
 
+def delete_invite(code: str) -> None:
+    with conn() as c:
+        c.execute("DELETE FROM invites WHERE code = ?", (code,))
+
+
+def clear_invites(only_used: bool = False) -> int:
+    """Delete invites; only the consumed ones when only_used=True. Returns count removed."""
+    with conn() as c:
+        sql = "DELETE FROM invites" + (" WHERE used_by IS NOT NULL" if only_used else "")
+        return c.execute(sql).rowcount
+
+
 def create_reset_token(token_hash: str, user_id: int, expires_at: str) -> None:
     with conn() as c:
         c.execute(
