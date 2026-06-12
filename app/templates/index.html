@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="feed-box">
+  <span class="label">Podcast feed</span>
+  <code id="feedurl">{{ feed_url }}</code>
+  <button onclick="navigator.clipboard.writeText(document.getElementById('feedurl').textContent)">Copy</button>
+  <p class="hint">Paste this URL into any podcast app to get every mirrored episode. Keep it private.</p>
+</section>
+
+<section id="articles">
+  <h2>Articles <span class="count">{{ articles|length }}</span></h2>
+  {% if not articles %}
+    <p class="empty">No articles yet. Once your inbox starts receiving Substack posts, they'll appear here within {{ 10 }} minutes — or trigger a sync: <code>curl -u user:pass -X POST {{ feed_url.rsplit('/feed', 1)[0] }}/admin/sync/email</code></p>
+  {% endif %}
+  <ul class="rows">
+    {% for a in articles %}
+    <li>
+      <span class="spine">{{ a.publication }}</span>
+      <a class="row-title" href="/article/{{ a.id }}">{{ a.title }}</a>
+      <time>{{ (a.published_at or a.created_at)[:10] }}</time>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section id="podcasts">
+  <h2>Episodes <span class="count">{{ episodes|length }}</span></h2>
+  {% if not episodes %}
+    <p class="empty">No episodes yet. Add feed URLs to <code>PODCAST_FEEDS</code> or set your Gumroad cookie, then wait for the next sync.</p>
+  {% endif %}
+  <ul class="rows">
+    {% for e in episodes %}
+    <li>
+      <span class="spine">{{ e.feed_name }}</span>
+      <a class="row-title" href="/episode/{{ e.id }}">{{ e.title }}</a>
+      <time>{{ (e.published_at or e.created_at)[:16] }}</time>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+
+{% endblock %}

@@ -1,0 +1,25 @@
+services:
+  stackdock:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - stackdock-data:/data
+    expose:
+      - "8000"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  stackdock-data:
+  caddy-data:
+  caddy-config:
