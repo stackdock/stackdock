@@ -469,6 +469,11 @@ def set_account_alert(account_id: int, ts: str) -> None:
         c.execute("UPDATE connected_accounts SET last_alert = ? WHERE id = ?", (ts, account_id))
 
 
+def set_account_handle(account_id: int, handle: str) -> None:
+    with conn() as c:
+        c.execute("UPDATE connected_accounts SET handle = ? WHERE id = ?", (handle, account_id))
+
+
 def update_account(account_id: int, last_sync: str | None, status: str) -> None:
     with conn() as c:
         if last_sync:

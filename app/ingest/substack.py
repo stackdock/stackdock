@@ -116,6 +116,12 @@ SUBSCRIPTION_REQUESTS = [
 ]
 
 
+def _self_handle(s: requests.Session) -> str | None:
+    """The logged-in account's own Substack handle (drives public-profile discovery)."""
+    data = _get_json(s, "https://substack.com/api/v1/user/profile/self")
+    return data.get("handle") if isinstance(data, dict) else None
+
+
 def get_publications_via_profile(s: requests.Session, handle: str) -> list[dict]:
     """Discovery fallback used by the community substack-api library: the PUBLIC
     profile endpoint lists a user's subscriptions with no auth at all.
@@ -264,25 +270,27 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
     manual = [{"name": m["name"], "base_url": m["base_url"]}
               for m in db.list_tracked_publications(user_id=account["user_id"])]
     try:
-        pubs = get_publications(s)
+        pubs = get_publications(s)   # cookie subscriptions endpoint — only a partial set
     except SubscriptionsApiError as e:
-        # cookie-based discovery is down — try the public-profile route if we
-        # have a handle, then fall back to manually tracked publications
-        pubs = get_publications_via_profile(s, account["handle"]) if account["handle"] else []
-        if pubs:
-            log.info("[%s] cookie discovery broken; public profile found %d pubs",
-                     account["label"], len(pubs))
-        elif not manual:
-            hint = ("" if account["handle"] else " (no handle set — add your Substack "
-                    "username on /accounts to enable public-profile discovery)")
-            return 0, f"ERROR: {e}{hint}", []
-        else:
-            log.warning("[%s] discovery broken, falling back to %d tracked pubs: %s",
-                        account["label"], len(manual), e)
+        log.warning("[%s] subscriptions API unavailable: %s", account["label"], e)
+        pubs = []
     if pubs is None:
         return 0, "STALE: cookie expired or invalid — reconnect on the Accounts page", []
-    known = {p["base_url"] for p in pubs}
-    pubs += [m for m in manual if m["base_url"] not in known]
+
+    # The subscriptions API returns only a curated handful; the member's public
+    # profile lists EVERY subscription (free + paid). Auto-detect the handle and
+    # always merge the full list in.
+    handle = account["handle"] or _self_handle(s)
+    if handle and not account["handle"]:
+        db.set_account_handle(account["id"], handle)
+    have = {p["base_url"] for p in pubs}
+    if handle:
+        for p in get_publications_via_profile(s, handle):
+            if p["base_url"] not in have:
+                have.add(p["base_url"]); pubs.append(p)
+        log.info("[%s] discovery: %d publications (profile=%s)", account["label"], len(pubs), handle)
+
+    pubs += [m for m in manual if m["base_url"] not in have]
     if not pubs:
         return 0, "OK: no subscriptions found on this account", []
 
