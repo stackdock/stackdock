@@ -1,36 +1,40 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 260" fill="none" stroke="#1c1c1c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-  <g>
-    <!-- spin the whole chud around its centre -->
-    <animateTransform attributeName="transform" attributeType="XML" type="rotate"
-                      from="0 110 123" to="360 110 123" dur="3s" repeatCount="indefinite"/>
-    <!-- head -->
-    <path d="M110 28 C 62 28, 48 78, 52 132 C 55 180, 82 218, 110 218 C 138 218, 165 180, 168 132 C 172 78, 158 28, 110 28 Z" fill="#fff"/>
-    <!-- cropped chud hairline -->
-    <path d="M58 72 C 62 42, 88 26, 110 26 C 132 26, 158 42, 162 72 C 148 58, 130 52, 110 52 C 90 52, 72 58, 58 72 Z" fill="#fff"/>
-    <!-- ears -->
-    <path d="M52 122 C 40 120, 40 144, 54 146" fill="#fff"/>
-    <path d="M168 122 C 180 120, 180 144, 166 146" fill="#fff"/>
-    <!-- furrowed brows -->
-    <path d="M74 104 C 82 99, 94 100, 100 107"/>
-    <path d="M120 107 C 126 100, 138 99, 146 104"/>
-    <!-- eyes -->
-    <ellipse cx="91" cy="117" rx="7" ry="6" fill="#fff"/>
-    <ellipse cx="129" cy="117" rx="7" ry="6" fill="#fff"/>
-    <circle cx="92" cy="118" r="2.6" fill="#1c1c1c" stroke="none"/>
-    <circle cx="128" cy="118" r="2.6" fill="#1c1c1c" stroke="none"/>
-    <!-- big nose -->
-    <path d="M109 118 C 106 136, 96 152, 103 163 C 107 169, 117 168, 121 160"/>
-    <!-- flat chud frown -->
-    <path d="M86 188 C 98 192, 122 192, 134 188"/>
-    <!-- stubble -->
-    <g fill="#1c1c1c" stroke="none">
-      <circle cx="84" cy="198" r="1.7"/><circle cx="96" cy="204" r="1.7"/>
-      <circle cx="108" cy="207" r="1.7"/><circle cx="120" cy="204" r="1.7"/>
-      <circle cx="132" cy="198" r="1.7"/><circle cx="90" cy="208" r="1.7"/>
-      <circle cx="102" cy="211" r="1.7"/><circle cx="114" cy="211" r="1.7"/>
-      <circle cx="126" cy="208" r="1.7"/><circle cx="78" cy="190" r="1.7"/>
-      <circle cx="142" cy="190" r="1.7"/><circle cx="97" cy="181" r="1.5"/>
-      <circle cx="110" cy="179" r="1.5"/><circle cx="123" cy="181" r="1.5"/>
-    </g>
-  </g>
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 16.0.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 width="500px" height="500px" viewBox="0 0 500 500" enable-background="new 0 0 500 500" xml:space="preserve">
+<path id="outmost_ring" fill="none" stroke="#000000" stroke-width="18" d="M188.554,20.677
+	C315.205-13.257,445.383,61.902,479.32,188.553c33.939,126.651-41.223,256.83-167.873,290.767
+	c-126.65,33.936-256.831-41.223-290.769-167.873C-13.255,184.794,61.905,54.613,188.554,20.677z"/>
+<g id="inner_circle">
+	<path d="M250,176.264c-40.724,0-73.736,33.013-73.736,73.736s33.013,73.736,73.736,73.736s73.736-33.013,73.736-73.736
+		S290.724,176.264,250,176.264L250,176.264z"/>
+</g>
+<circle id="middle_ring" fill="none" stroke="#000000" stroke-width="18" cx="250" cy="250" r="90.268"/>
+<g id="rays">
+	<path fill="none" stroke="#000000" stroke-width="18" d="M250,250.001l-48.504-181.02c16.25-4.354,32.573-6.434,48.633-6.433
+		L250,12.53"/>
+	<path fill="none" stroke="#000000" stroke-width="18" d="M250,250.001l48.499-181.022c16.251,4.354,31.427,10.715,45.335,18.744
+		l24.895-43.382"/>
+	<path fill="none" stroke="#000000" stroke-width="18" d="M250,250.001l132.508-132.525c11.896,11.896,21.859,24.992,29.89,38.899
+		l43.25-25.124"/>
+	<path fill="none" stroke="#000000" stroke-width="18" d="M250,250.001l181.017-48.522c4.355,16.25,6.436,32.573,6.437,48.633
+		l50.018-0.135"/>
+	<path fill="none" stroke="#000000" stroke-width="18" d="M250,250.001l181.028,48.481c-4.353,16.25-10.712,31.428-18.74,45.336
+		l43.384,24.891"/>
+	<path fill="none" stroke="#000000" stroke-width="18" d="M250,250.001l132.539,132.495c-11.895,11.897-24.99,21.863-38.896,29.894
+		l25.127,43.247"/>
+	<path fill="none" stroke="#000000" stroke-width="18" d="M250,250.001l48.54,181.012c-16.249,4.356-32.573,6.44-48.631,6.442
+		l0.138,50.016"/>
+	<path fill="none" stroke="#000000" stroke-width="18" d="M250,250.001l-48.464,181.032c-16.25-4.352-31.43-10.709-45.338-18.735
+		l-24.887,43.385"/>
+	<path fill="none" stroke="#000000" stroke-width="18" d="M250,250.001l-132.483,132.55c-11.898-11.893-21.865-24.988-29.897-38.893
+		l-43.244,25.131"/>
+	<path fill="none" stroke="#000000" stroke-width="18" d="M250,250.001L68.993,298.557c-4.357-16.248-6.442-32.573-6.447-48.631
+		l-50.016,0.144"/>
+	<path fill="none" stroke="#000000" stroke-width="18" d="M250,250.001L68.964,201.553c4.35-16.25,10.706-31.431,18.731-45.339
+		l-43.388-24.882"/>
+	<path fill="none" stroke="#000000" stroke-width="18" d="M250,250.001L117.438,117.529c11.892-11.898,24.986-21.867,38.89-29.9
+		l-25.135-43.241"/>
+</g>
 </svg>
