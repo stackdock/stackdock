@@ -223,26 +223,32 @@ def manual_sync(job: str, user=Depends(auth.current_admin)):
 
 # ---------------- connected accounts (substack) ----------------
 
+def _accounts_ctx(user, error=None, message=None):
+    return dict(user=user, accounts=db.list_accounts(user_id=user["id"]),
+                tracked=db.list_tracked_publications(user_id=user["id"]),
+                error=error, message=message)
+
+
 @app.get("/accounts", response_class=HTMLResponse)
 def accounts_page(request: Request, user=Depends(auth.current_user)):
-    return render(request, "accounts.html", user=user,
-                  accounts=db.list_accounts(user_id=user["id"]), error=None, message=None)
+    return render(request, "accounts.html", **_accounts_ctx(user))
 
 
 @app.post("/accounts/add")
 def accounts_add(request: Request, user=Depends(auth.current_user),
-                 service: str = Form(...), label: str = Form(...), cookie: str = Form(...)):
+                 service: str = Form(...), label: str = Form(...), cookie: str = Form(...),
+                 handle: str = Form("")):
     service, label, cookie = service.strip(), label.strip(), cookie.strip()
+    handle = handle.strip().lstrip("@") or None
     def page(error=None, message=None):
-        return render(request, "accounts.html", user=user,
-                      accounts=db.list_accounts(user_id=user["id"]), error=error, message=message)
+        return render(request, "accounts.html", **_accounts_ctx(user, error, message))
     if service not in db.SERVICES:
         return page(error="Unknown service.")
     if not label or not cookie:
         return page(error="Both a label and the cookie value are required.")
     if len(cookie) < 20:
         return page(error="That doesn't look like a session cookie value.")
-    db.add_account(user["id"], service, label, cookie)
+    db.add_account(user["id"], service, label, cookie, handle)
     return page(message=f"{service.capitalize()} account connected. It will backfill on the "
                         "next sync (or press Sync now below).")
 
@@ -258,22 +264,47 @@ def accounts_delete(request: Request, user=Depends(auth.current_user),
 def accounts_sync(request: Request, user=Depends(auth.current_user)):
     """Any member can trigger a sync of all connected Substack accounts."""
     count = substack.run()
-    return render(request, "accounts.html", user=user,
-                  accounts=db.list_accounts(user_id=user["id"]),
-                  error=None, message=f"Sync finished: {count} new item(s).")
+    return render(request, "accounts.html",
+                  **_accounts_ctx(user, message=f"Sync finished: {count} new item(s)."))
+
+
+@app.post("/publications/add")
+def publications_add(request: Request, user=Depends(auth.current_user),
+                     name: str = Form(...), base_url: str = Form(...)):
+    name, base_url = name.strip(), base_url.strip().rstrip("/")
+    if not base_url.startswith("https://") or " " in base_url:
+        return render(request, "accounts.html",
+                      **_accounts_ctx(user, error="Publication URL must start with https://"))
+    if not name:
+        return render(request, "accounts.html",
+                      **_accounts_ctx(user, error="Give the publication a display name."))
+    if not db.add_tracked_publication(user["id"], name, base_url):
+        return render(request, "accounts.html",
+                      **_accounts_ctx(user, error="That publication URL is already tracked."))
+    return render(request, "accounts.html",
+                  **_accounts_ctx(user, message=f"Tracking {name}. It will pull in on the next sync."))
+
+
+@app.post("/publications/delete")
+def publications_delete(request: Request, user=Depends(auth.current_user),
+                        pub_id: int = Form(...)):
+    db.delete_tracked_publication(pub_id, user["id"])
+    return RedirectResponse("/accounts", status_code=303)
 
 
 # ---------------- content ----------------
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, user=Depends(auth.current_user),
-          pub: str | None = None, tab: str = "text"):
+          pub: str | None = None, show: str | None = None, tab: str = "text"):
     return render(request, "index.html", user=user,
                   articles=db.list_articles(publication=pub),
                   publications=db.list_publications(),
                   active_pub=pub,
                   active_tab="audio" if tab == "audio" else "text",
-                  episodes=db.list_episodes(limit=100),
+                  episodes=db.list_episodes(limit=200, feed=show),
+                  episode_feeds=db.list_episode_feeds(),
+                  active_show=show,
                   feed_base=f"{config.PUBLIC_BASE_URL}/feed/{config.FEED_TOKEN}")
 
 

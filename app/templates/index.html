@@ -17,8 +17,8 @@
 </section>
 
 <nav class="tabs">
-  <a href="/" class="tab {{ 'active' if active_tab == 'text' }}">Text <span class="count">{{ articles|length }}</span></a>
-  <a href="/?tab=audio" class="tab {{ 'active' if active_tab == 'audio' }}">Audio <span class="count">{{ episodes|length }}</span></a>
+  <a href="/" class="tab {{ 'active' if active_tab == 'text' }}">Articles <span class="count">{{ articles|length }}</span></a>
+  <a href="/?tab=audio" class="tab {{ 'active' if active_tab == 'audio' }}">Podcasts <span class="count">{{ episodes|length }}</span></a>
 </nav>
 
 {% if active_tab == 'text' %}
@@ -60,8 +60,17 @@
 
 {% else %}
 <section id="audio">
+  {% if episode_feeds %}
+  <p class="pub-filter">
+    <a href="/?tab=audio" class="{{ 'active' if not active_show }}">All</a>
+    {% for f in episode_feeds %}
+      <a href="/?tab=audio&show={{ f.feed_name | urlencode }}" class="{{ 'active' if active_show == f.feed_name }}">{{ f.feed_name }} <span class="count">{{ f.n }}</span></a>
+    {% endfor %}
+  </p>
+  {% endif %}
+
   {% if not episodes %}
-    <p class="empty">No episodes yet. Add your Substack private podcast feed URLs to <code>PODCAST_FEEDS</code>, then wait for the next sync (or trigger one from <a href="/admin">/admin</a>).</p>
+    <p class="empty">No episodes yet. Connect a Substack account with paid podcast subscriptions, add a podcast via <a href="/accounts">Accounts</a>, or set <code>PODCAST_FEEDS</code> — then sync from <a href="/admin">/admin</a>.</p>
   {% endif %}
   <ul class="cards">
     {% for e in episodes %}

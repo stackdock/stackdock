@@ -137,3 +137,26 @@ def test_cover_image_and_image_url_stored(fresh_db):
     eid = db.insert_episode("g9", "Feed", "T", "", "k", 1, "audio/mpeg", "", None,
                             image_url="https://cdn/y.png")
     assert db.get_episode(eid)["image_url"] == "https://cdn/y.png"
+
+
+def test_account_handle_stored_and_migrated(fresh_db):
+    uid = db.create_user("erin", "hash")
+    db.add_account(uid, "substack", "Erin's", "cookie-value-long-enough", handle="erinreads")
+    assert db.list_accounts(user_id=uid)[0]["handle"] == "erinreads"
+    db.add_account(uid, "substack", "No handle", "cookie-value-long-enough-2")
+    assert db.list_accounts(user_id=uid)[1]["handle"] is None
+
+
+def test_tracked_publications_crud(fresh_db):
+    uid = db.create_user("frank", "hash")
+    pid = db.add_tracked_publication(uid, "Blog X", "https://x.substack.com")
+    assert pid and db.add_tracked_publication(uid, "Dup", "https://x.substack.com") == 0
+    assert len(db.list_tracked_publications(user_id=uid)) == 1
+    assert db.delete_tracked_publication(pid, user_id=99999) is False
+    assert db.delete_tracked_publication(pid, user_id=uid) is True
+
+
+def test_paid_flags_present_in_both_list_branches(fresh_db):
+    db.insert_article("m1", "P", "T", "a", None, "<p>x</p>", None, is_paid=1, is_locked=1)
+    for rows in (db.list_articles(), db.list_articles(publication="P")):
+        assert (rows[0]["is_paid"], rows[0]["is_locked"]) == (1, 1)

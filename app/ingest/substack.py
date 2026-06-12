@@ -97,25 +97,68 @@ def _effective_base(s: requests.Session, sub: str | None, custom: str | None) ->
     return base
 
 
+class SubscriptionsApiError(RuntimeError):
+    """The subscriptions endpoint rejected every request shape we know."""
+
+
+# Substack changes what api/v1/subscriptions expects (June 2026: it started
+# requiring ?tvOnly=false, returning 400 otherwise — which previously looked
+# like "no subscriptions"). Shapes are tried in order; when Substack breaks
+# this again, capture the 400 body (it names the param) and add a shape here.
+SUBSCRIPTION_REQUESTS = [
+    ("https://substack.com/api/v1/subscriptions", {"tvOnly": "false"}),
+    ("https://substack.com/api/v1/subscriptions", None),
+    ("https://substack.com/api/v1/reader/subscriptions", None),
+]
+
+
+def get_publications_via_profile(s: requests.Session, handle: str) -> list[dict]:
+    """Discovery fallback used by the community substack-api library: the PUBLIC
+    profile endpoint lists a user's subscriptions with no auth at all.
+    Requires the member's reading list to be visible on their profile."""
+    data = _get_json(s, f"https://substack.com/api/v1/user/{handle}/public_profile")
+    if not isinstance(data, dict):
+        return []
+    pubs, seen = [], set()
+    for sub in data.get("subscriptions") or []:
+        pub = (sub or {}).get("publication") or {}
+        name, subdomain, custom = pub.get("name"), pub.get("subdomain"), pub.get("custom_domain")
+        if not name or not (subdomain or custom) or subdomain in SKIP_SUBDOMAINS:
+            continue
+        key = custom or subdomain
+        if key not in seen:
+            seen.add(key)
+            pubs.append({"name": name, "base_url": _effective_base(s, subdomain, custom)})
+    return pubs
+
+
 def get_publications(s: requests.Session) -> list[dict] | None:
     """Return [{'name':..., 'base_url':...}] for everything the account subscribes to.
 
     Returns None when the cookie is stale (auth rejected), [] when the account
-    simply has no subscriptions.
+    simply has no subscriptions. Raises SubscriptionsApiError when the endpoint
+    rejects every known request shape, with Substack's own error message so it
+    shows up verbatim in the account status on /accounts.
     """
-    time.sleep(REQUEST_GAP_S)
-    # Substack now requires the tvOnly query param on this endpoint; without it
-    # the API returns 400 (which used to look like "no subscriptions").
-    r = s.get("https://substack.com/api/v1/subscriptions",
-              params={"tvOnly": "false"}, timeout=30)
-    if r.status_code in (401, 403):
-        return None  # stale/invalid cookie
-    if r.status_code != 200:
-        return []
-    try:
-        data = r.json()
-    except ValueError:
-        return []
+    data, failures = None, []
+    for url, params in SUBSCRIPTION_REQUESTS:
+        time.sleep(REQUEST_GAP_S)
+        r = s.get(url, params=params, timeout=30)
+        if r.status_code in (401, 403):
+            return None  # stale/invalid cookie
+        if r.status_code == 200:
+            try:
+                data = r.json()
+                break
+            except ValueError:
+                failures.append(f"{url} -> 200 but not JSON")
+                continue
+        failures.append(f"{url}{'?' + str(params) if params else ''} -> "
+                        f"HTTP {r.status_code}: {r.text[:200]}")
+    if data is None:
+        raise SubscriptionsApiError(
+            "subscriptions endpoint rejected all known request shapes — "
+            + " | ".join(failures))
 
     raw, seen = [], set()
 
@@ -184,9 +227,28 @@ def _stub_html(url: str) -> str:
 def sync_account(account) -> tuple[int, str, list[dict]]:
     """Sync one connected account. Returns (new_articles, status_message, notify_items)."""
     s = _session(account["cookie"])
-    pubs = get_publications(s)
+    manual = [{"name": m["name"], "base_url": m["base_url"]}
+              for m in db.list_tracked_publications(user_id=account["user_id"])]
+    try:
+        pubs = get_publications(s)
+    except SubscriptionsApiError as e:
+        # cookie-based discovery is down — try the public-profile route if we
+        # have a handle, then fall back to manually tracked publications
+        pubs = get_publications_via_profile(s, account["handle"]) if account["handle"] else []
+        if pubs:
+            log.info("[%s] cookie discovery broken; public profile found %d pubs",
+                     account["label"], len(pubs))
+        elif not manual:
+            hint = ("" if account["handle"] else " (no handle set — add your Substack "
+                    "username on /accounts to enable public-profile discovery)")
+            return 0, f"ERROR: {e}{hint}", []
+        else:
+            log.warning("[%s] discovery broken, falling back to %d tracked pubs: %s",
+                        account["label"], len(manual), e)
     if pubs is None:
         return 0, "STALE: cookie expired or invalid — reconnect on the Accounts page", []
+    known = {p["base_url"] for p in pubs}
+    pubs += [m for m in manual if m["base_url"] not in known]
     if not pubs:
         return 0, "OK: no subscriptions found on this account", []
 
@@ -285,11 +347,41 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
     return new_count, status, items
 
 
+def sync_orphan_tracked_pubs(covered_user_ids: set[int]) -> int:
+    """Tracked publications whose owner has no connected account still sync
+    anonymously: full archive listing + free post bodies; paid posts go link-only."""
+    orphans = [m for m in db.list_tracked_publications()
+               if m["user_id"] not in covered_user_ids]
+    if not orphans:
+        return 0
+    s = requests.Session()
+    s.headers["User-Agent"] = UA
+    new_count = 0
+    for m in orphans:
+        archive = fetch_archive(s, m["base_url"], config.SUBSTACK_BACKFILL_POSTS)
+        for post in archive:
+            post_id, slug = post.get("id"), post.get("slug")
+            if not post_id or not slug or post.get("type") == "podcast"                     or db.article_exists(f"substack:{post_id}"):
+                continue
+            url = post.get("canonical_url") or f"{m['base_url']}/p/{slug}"
+            body = fetch_body(s, m["base_url"], slug) or _stub_html(url)
+            is_paid = post.get("audience") == "only_paid"
+            if db.insert_article(
+                    message_id=f"substack:{post_id}", publication=m["name"],
+                    title=post.get("title") or "(untitled)",
+                    author=(post.get("publishedBylines") or [{}])[0].get("name") or m["name"],
+                    original_url=url, html=body, published_at=post.get("post_date"),
+                    added_by=f"tracked:{m['name']}", cover_image=post.get("cover_image"),
+                    is_paid=is_paid, is_locked=is_paid):
+                new_count += 1
+    return new_count  # silent (treated like backfill); digest covers account syncs
+
+
 def run() -> int:
-    """Sync every connected account. Returns total new articles."""
+    """Sync every connected account + manually tracked publications."""
     accounts = db.list_accounts(service='substack')
-    if not accounts:
-        log.info("No Substack accounts connected; skipping.")
+    if not accounts and not db.list_tracked_publications():
+        log.info("No Substack accounts or tracked publications; skipping.")
         return 0
 
     total, all_items = 0, []
@@ -307,6 +399,11 @@ def run() -> int:
         except Exception as e:
             db.update_account(account["id"], None, f"Error: {e}")
             log.warning("Sync failed for %s: %s", account["label"], e)
+    covered = {a["user_id"] for a in accounts}
+    try:
+        total += sync_orphan_tracked_pubs(covered)
+    except Exception as e:
+        log.warning("Tracked-publication sync failed: %s", e)
     # ONE unified push for everything new across every member's subscriptions
     notify.push_new_items(all_items)
     return total

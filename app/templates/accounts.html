@@ -38,13 +38,49 @@
       <input type="hidden" name="service" value="substack">
       <label>Label (shown next to articles) <input name="label" placeholder="e.g. Sam's account" required></label>
       <label>substack.sid cookie value <input name="cookie" required autocomplete="off"></label>
+      <label>Substack username (optional, recommended)
+        <input name="handle" placeholder="e.g. yourhandle" autocomplete="off"></label>
       <button type="submit">Connect Substack</button>
     </form>
     <p class="hint" style="margin-top:1rem">
       <strong>How to get it:</strong> log in at substack.com →
       <code>F12</code> → <strong>Application</strong> tab (Firefox: <strong>Storage</strong>) →
       Cookies → <code>https://substack.com</code> → copy the <em>Value</em> of <code>substack.sid</code>.
+      Your <strong>username</strong> is in your profile URL (substack.com/@<em>yourhandle</em>) — adding it
+      lets discovery fall back to your public profile if Substack changes their private API
+      (your reading list must be visible on your profile for this to work).
     </p>
+  </div>
+</section>
+
+<section>
+  <h2>Track publications by URL</h2>
+  <p class="hint">Doesn't depend on Substack's subscriptions API — if discovery breaks or you
+    just want one extra blog, add it here. Synced with your cookie when you have one connected
+    (full paid posts); otherwise anonymously (free posts in full, paid posts as links).</p>
+
+  {% if tracked %}
+  <ul class="rows">
+    {% for t in tracked %}
+    <li>
+      <span class="spine">tracked</span>
+      <span class="row-title">{{ t.name }} <small class="hint">— {{ t.base_url }}</small></span>
+      <form method="post" action="/publications/delete" class="inline-form"
+            onsubmit="return confirm('Stop tracking? Already-mirrored posts stay.')">
+        <input type="hidden" name="pub_id" value="{{ t.id }}">
+        <button type="submit">Remove</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  <div class="auth-card" style="margin:1rem 0 0; max-width:560px">
+    <form method="post" action="/publications/add">
+      <label>Display name <input name="name" placeholder="e.g. Astral Codex Ten" required></label>
+      <label>Publication URL <input name="base_url" placeholder="https://example.substack.com" required></label>
+      <button type="submit">Track publication</button>
+    </form>
   </div>
 </section>
 

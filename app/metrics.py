@@ -37,12 +37,12 @@ def _cached(key: str, fn):
 # ---------------- Cloudflare R2 ----------------
 
 _R2_QUERY = """
-query($account: String!, $bucket: String!) {
+query($account: String!, $bucket: String!, $since: Time!) {
   viewer {
     accounts(filter: {accountTag: $account}) {
       r2StorageAdaptiveGroups(
         limit: 1
-        filter: {bucketName: $bucket}
+        filter: {bucketName: $bucket, datetime_geq: $since}
         orderBy: [datetime_DESC]
       ) {
         max { payloadSize metadataSize objectCount }
@@ -58,11 +58,14 @@ def _fetch_r2() -> dict:
     if not (config.CLOUDFLARE_API_TOKEN and config.CLOUDFLARE_ACCOUNT_ID):
         return {"configured": False}
     try:
+        # Cloudflare caps the storage-analytics window at ~33 days; ask for the
+        # most recent sample in the last 2 days.
+        since = (datetime.now(timezone.utc) - timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
         r = requests.post(
             "https://api.cloudflare.com/client/v4/graphql",
             json={"query": _R2_QUERY,
                   "variables": {"account": config.CLOUDFLARE_ACCOUNT_ID,
-                                "bucket": config.S3_BUCKET}},
+                                "bucket": config.S3_BUCKET, "since": since}},
             headers={"Authorization": f"Bearer {config.CLOUDFLARE_API_TOKEN}"},
             timeout=15,
         )

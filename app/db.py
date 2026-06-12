@@ -54,9 +54,18 @@ CREATE TABLE IF NOT EXISTS connected_accounts (
     service TEXT NOT NULL,             -- 'substack'
     label TEXT NOT NULL,               -- e.g. "Sam's account"
     cookie TEXT NOT NULL,              -- session cookie value for the service
+    handle TEXT,                       -- optional Substack username, enables public-profile discovery
     last_alert TEXT,                   -- when we last alerted about this account being stale
     last_sync TEXT,                    -- NULL until first (backfill) sync completes
     status TEXT,                       -- last sync result message
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS tracked_publications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    base_url TEXT NOT NULL UNIQUE,     -- e.g. https://example.substack.com (one global mirror)
     created_at TEXT NOT NULL
 );
 
@@ -123,7 +132,8 @@ def init():
                            ("articles", "is_locked INTEGER DEFAULT 0"),
                            ("episodes", "image_url TEXT"),
                            ("episodes", "slug TEXT"),
-                           ("connected_accounts", "last_alert TEXT")]:
+                           ("connected_accounts", "last_alert TEXT"),
+                           ("connected_accounts", "handle TEXT")]:
             try:
                 c.execute(f"ALTER TABLE {table} ADD COLUMN {col}")
             except sqlite3.OperationalError:
@@ -180,7 +190,7 @@ def list_articles(limit=1000, publication=None):
                 (publication, limit),
             ).fetchall()
         return c.execute(
-            "SELECT id, publication, title, author, original_url, published_at, created_at, added_by, cover_image, slug "
+            "SELECT id, publication, title, author, original_url, published_at, created_at, added_by, cover_image, slug, is_paid, is_locked "
             "FROM articles ORDER BY COALESCE(published_at, created_at) DESC LIMIT ?",
             (limit,),
         ).fetchall()
@@ -238,10 +248,22 @@ def insert_episode(guid, feed_name, title, description, audio_key,
         return cur.lastrowid or 0
 
 
-def list_episodes(limit=500):
+def list_episodes(limit=500, feed=None):
     with conn() as c:
+        if feed:
+            return c.execute(
+                "SELECT * FROM episodes WHERE feed_name = ? ORDER BY id DESC LIMIT ?",
+                (feed, limit)).fetchall()
         return c.execute(
             "SELECT * FROM episodes ORDER BY id DESC LIMIT ?", (limit,)
+        ).fetchall()
+
+
+def list_episode_feeds():
+    """[{'feed_name': name, 'n': count}], busiest first — podcast shows for the filter bar."""
+    with conn() as c:
+        return c.execute(
+            "SELECT feed_name, COUNT(*) AS n FROM episodes GROUP BY feed_name ORDER BY n DESC"
         ).fetchall()
 
 
@@ -337,11 +359,12 @@ def consume_reset_token(token_hash: str):
 SERVICES = ("substack",)
 
 
-def add_account(user_id: int, service: str, label: str, cookie: str) -> int:
+def add_account(user_id: int, service: str, label: str, cookie: str, handle: str | None = None) -> int:
     with conn() as c:
         cur = c.execute(
-            "INSERT INTO connected_accounts (user_id, service, label, cookie, created_at) VALUES (?,?,?,?,?)",
-            (user_id, service, label, cookie, now_iso()),
+            "INSERT INTO connected_accounts (user_id, service, label, cookie, handle, created_at) "
+            "VALUES (?,?,?,?,?,?)",
+            (user_id, service, label, cookie, handle, now_iso()),
         )
         return cur.lastrowid
 
@@ -364,6 +387,30 @@ def delete_account(account_id: int, user_id: int) -> bool:
             "DELETE FROM connected_accounts WHERE id = ? AND user_id = ?",
             (account_id, user_id),
         )
+        return cur.rowcount == 1
+
+
+def add_tracked_publication(user_id: int, name: str, base_url: str) -> int:
+    """Track a publication by URL; returns 0 if the URL is already tracked by anyone."""
+    with conn() as c:
+        cur = c.execute(
+            "INSERT OR IGNORE INTO tracked_publications (user_id, name, base_url, created_at) "
+            "VALUES (?,?,?,?)", (user_id, name, base_url, now_iso()))
+        return cur.lastrowid if cur.rowcount else 0
+
+
+def list_tracked_publications(user_id: int | None = None):
+    q, args = "SELECT * FROM tracked_publications", []
+    if user_id is not None:
+        q += " WHERE user_id = ?"; args.append(user_id)
+    with conn() as c:
+        return c.execute(q + " ORDER BY id", args).fetchall()
+
+
+def delete_tracked_publication(pub_id: int, user_id: int) -> bool:
+    with conn() as c:
+        cur = c.execute("DELETE FROM tracked_publications WHERE id = ? AND user_id = ?",
+                        (pub_id, user_id))
         return cur.rowcount == 1
 
 
