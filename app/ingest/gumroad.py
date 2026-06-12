@@ -117,8 +117,8 @@ def sync_account(account) -> tuple[int, str]:
     s = _session(account["cookie"])
     r = s.get(LIBRARY_URL, timeout=60)
     if r.status_code != 200 or "library" not in r.url:
-        return 0, ("Cookie invalid/expired (HTTP %s) — reconnect with a fresh "
-                   "_gumroad_app_session value" % r.status_code)
+        return 0, (f"STALE: cookie expired or invalid (HTTP {r.status_code}) — "
+                   "reconnect on the Accounts page")
 
     purchases = _extract_react_json(r.text)
     log.info("[%s] Gumroad: %d purchases in library", account["label"], len(purchases))
@@ -177,7 +177,11 @@ def run() -> int:
         try:
             count, status = sync_account(account)
             total += count
-            db.update_account(account["id"], db.now_iso(), status)
+            notify.alert_if_stale(account, status, "gumroad", db.get_user, db.set_account_alert)
+            # a STALE result keeps last_sync unchanged so the next fix triggers a fresh backfill check
+            db.update_account(account["id"],
+                              None if status.startswith("STALE") else db.now_iso(),
+                              status)
             log.info("[%s] %s", account["label"], status)
         except Exception as e:
             db.update_account(account["id"], None, f"Error: {e}")

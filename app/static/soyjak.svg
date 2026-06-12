@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 260" fill="none" stroke="#1c1c1c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+  <!-- head -->
+  <path d="M70 40 C 100 18, 150 22, 162 60 C 172 92, 168 130, 150 158 C 134 182, 96 186, 78 162 C 58 136, 52 70, 70 40 Z" fill="#fff"/>
+  <!-- ear -->
+  <path d="M64 100 C 52 96, 50 116, 62 122" fill="#fff"/>
+  <!-- hairline wisps -->
+  <path d="M78 38 C 84 30, 92 28, 98 32 M104 28 C 112 22, 122 22, 128 28 M136 28 C 144 26, 152 30, 156 38"/>
+  <!-- raised eyebrows -->
+  <path d="M84 70 C 92 62, 104 62, 110 68"/>
+  <path d="M124 66 C 132 60, 144 62, 150 70"/>
+  <!-- glasses -->
+  <circle cx="98" cy="88" r="16" fill="#fff"/>
+  <circle cx="140" cy="86" r="16" fill="#fff"/>
+  <path d="M114 87 L124 86 M82 86 L72 84 M156 84 L164 80"/>
+  <!-- eyes -->
+  <circle cx="98" cy="88" r="2.5" fill="#1c1c1c"/>
+  <circle cx="140" cy="86" r="2.5" fill="#1c1c1c"/>
+  <!-- nose -->
+  <path d="M118 96 C 116 106, 114 112, 118 116 C 121 119, 126 118, 128 114"/>
+  <!-- wide open soy mouth -->
+  <path d="M96 130 C 100 124, 138 122, 146 130 C 150 146, 142 164, 120 166 C 102 167, 92 150, 96 130 Z" fill="#fff"/>
+  <path d="M98 134 L143 132"/>
+  <path d="M104 133 L104 126 M114 132 L114 125 M124 131 L124 124 M134 131 L134 125"/>
+  <!-- stubble -->
+  <g stroke-width="2">
+    <path d="M80 140 l3 3 M76 150 l3 3 M84 158 l3 3 M92 170 l3 3 M104 176 l3 3 M118 178 l3 3 M132 174 l3 3 M142 166 l3 3 M150 154 l3 3 M154 142 l3 3"/>
+  </g>
+  <!-- neck + shoulder -->
+  <path d="M96 182 C 96 196, 94 204, 88 210 L150 210 C 140 202, 138 192, 140 180" fill="#fff"/>
+  <path d="M40 258 C 48 228, 70 212, 110 210 C 152 208, 176 224, 186 256" fill="#fff"/>
+  <!-- pointing arm -->
+  <path d="M150 222 C 166 215, 182 207, 196 199 L 201 208 C 188 215, 172 223, 158 230 Z" fill="#fff"/>
+  <!-- pointing finger + curled fingers -->
+  <path d="M196 199 l18 -8 c4 -2, 8 3, 4 6 l-17 8" fill="#fff"/>
+  <path d="M201 208 c5 -1, 9 1, 8 5 c-1 3, -5 4, -9 3 l-4 -2" fill="#fff"/>
+</svg>

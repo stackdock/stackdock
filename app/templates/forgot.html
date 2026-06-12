@@ -1,17 +1,22 @@
 {% extends "base.html" %}
 {% block title %}Forgot password · {{ site_title }}{% endblock %}
 {% block content %}
-<div class="auth-card">
-  <h2>Forgot password</h2>
-  {% if done %}
-    <p class="form-ok">Request sent. The admin has been pinged in Discord and will DM you a one-time reset link.</p>
-    <p class="hint"><a href="/login">Back to log in</a></p>
-  {% else %}
-    <form method="post" action="/forgot">
-      <label>Your username <input name="username" required autofocus></label>
-      <button type="submit">Request reset</button>
-    </form>
-    <p class="hint">This pings the group's Discord channel so the admin can send you a private reset link. The link itself is never posted to the channel.</p>
-  {% endif %}
+<div class="meme-stage">
+  <img class="jak flip" src="/static/soyjak.svg" alt="">
+  <div class="meme-card">
+    <h2>Skill issue</h2>
+    {% if done %}
+      <p class="form-ok">&gt;request sent. the admin got pinged in discord and will DM you a one-time reset link. go touch grass meanwhile</p>
+      <p class="hint"><a href="/login">Back to log in</a></p>
+    {% else %}
+      <p class="greentext">&gt;forgot password<br>&gt;it happens to the best of us<br>&gt;summon the admin</p>
+      <form method="post" action="/forgot">
+        <label>Your username <input name="username" required autofocus></label>
+        <button type="submit">Summon admin</button>
+      </form>
+      <p class="hint">This pings the group Discord so the admin can DM you a private reset link. The link itself never gets posted in the channel.</p>
+    {% endif %}
+  </div>
+  <img class="jak" src="/static/soyjak.svg" alt="">
 </div>
 {% endblock %}

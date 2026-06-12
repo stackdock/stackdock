@@ -8,6 +8,14 @@ services:
     expose:
       - "8000"
 
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    restart: unless-stopped
+    volumes:
+      - kuma-data:/app/data
+    expose:
+      - "3001"
+
   caddy:
     image: caddy:2
     restart: unless-stopped
@@ -21,5 +29,6 @@ services:
 
 volumes:
   stackdock-data:
+  kuma-data:
   caddy-data:
   caddy-config:

@@ -122,6 +122,11 @@ What the workflow does (`.github/workflows/deploy.yml`): SSH to the droplet → 
 
 Schedules: email every 10 min, podcast feeds every 30 min, Gumroad every 6 h (all tunable in `.env`).
 
+## Monitoring
+
+- **In-app:** `/status` (logged in) shows uptime, object-storage reachability, disk usage, library counts, every sync job's last result and next run, and each connected account's cookie health.
+- **External (Uptime Kuma, open source):** ships in `docker-compose.yml`. Add a DNS A record for `status.yourdomain.com` → droplet IP, set the subdomain in `Caddyfile`, then visit it once to create the Kuma admin account. Add a monitor: type **HTTP(s)**, URL `https://yourdomain.com/healthz`, interval 60s. Then **Settings → Notifications → Discord** and paste the same webhook URL — you'll get pinged if the whole site goes down, which the app itself can't tell you. Kuma also gives you a shareable status page if you want one (keep it private or password-protect it).
+
 ## Maintenance
 
 - **Gumroad parser**: best-effort HTML scraping; if Gumroad redesigns, see the docstring in `app/ingest/gumroad.py` for the one-line fix. Prefer RSS wherever a creator offers it.

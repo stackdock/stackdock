@@ -53,10 +53,21 @@ def _get_json(s: requests.Session, url: str, params=None):
         return None
 
 
-def get_publications(s: requests.Session) -> list[dict]:
-    """Return [{'name':..., 'base_url':...}] for everything the account subscribes to."""
-    data = _get_json(s, "https://substack.com/api/v1/subscriptions")
-    if data is None:
+def get_publications(s: requests.Session) -> list[dict] | None:
+    """Return [{'name':..., 'base_url':...}] for everything the account subscribes to.
+
+    Returns None when the cookie is stale (auth rejected), [] when the account
+    simply has no subscriptions.
+    """
+    time.sleep(REQUEST_GAP_S)
+    r = s.get("https://substack.com/api/v1/subscriptions", timeout=30)
+    if r.status_code in (401, 403):
+        return None  # stale/invalid cookie
+    if r.status_code != 200:
+        return []
+    try:
+        data = r.json()
+    except ValueError:
         return []
 
     pubs, seen = [], set()
@@ -115,8 +126,10 @@ def sync_account(account) -> tuple[int, str]:
     """Sync one connected account. Returns (new_articles, status_message)."""
     s = _session(account["cookie"])
     pubs = get_publications(s)
+    if pubs is None:
+        return 0, "STALE: cookie expired or invalid — reconnect on the Accounts page"
     if not pubs:
-        return 0, "Cookie invalid/expired or no subscriptions found"
+        return 0, "OK: no subscriptions found on this account"
 
     is_backfill = account["last_sync"] is None
     new_count, mirrored, link_only = 0, 0, 0
@@ -172,7 +185,11 @@ def run() -> int:
         try:
             count, status = sync_account(account)
             total += count
-            db.update_account(account["id"], db.now_iso(), status)
+            notify.alert_if_stale(account, status, "substack", db.get_user, db.set_account_alert)
+            # a STALE result keeps last_sync unchanged so the next fix triggers a fresh backfill check
+            db.update_account(account["id"],
+                              None if status.startswith("STALE") else db.now_iso(),
+                              status)
             log.info("[%s] %s", account["label"], status)
         except Exception as e:
             db.update_account(account["id"], None, f"Error: {e}")

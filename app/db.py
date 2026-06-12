@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS connected_accounts (
     service TEXT NOT NULL,             -- 'substack' | 'gumroad'
     label TEXT NOT NULL,               -- e.g. "Sam's account"
     cookie TEXT NOT NULL,              -- session cookie value for the service
+    last_alert TEXT,                   -- when we last alerted about this account being stale
     last_sync TEXT,                    -- NULL until first (backfill) sync completes
     status TEXT,                       -- last sync result message
     created_at TEXT NOT NULL
@@ -92,6 +93,10 @@ def init():
         # lightweight migrations for existing databases
         try:
             c.execute("ALTER TABLE articles ADD COLUMN added_by TEXT")
+        except sqlite3.OperationalError:
+            pass  # column already exists
+        try:
+            c.execute("ALTER TABLE connected_accounts ADD COLUMN last_alert TEXT")
         except sqlite3.OperationalError:
             pass  # column already exists
         try:
@@ -298,6 +303,11 @@ def delete_account(account_id: int, user_id: int) -> bool:
             (account_id, user_id),
         )
         return cur.rowcount == 1
+
+
+def set_account_alert(account_id: int, ts: str) -> None:
+    with conn() as c:
+        c.execute("UPDATE connected_accounts SET last_alert = ? WHERE id = ?", (ts, account_id))
 
 
 def update_account(account_id: int, last_sync: str | None, status: str) -> None:

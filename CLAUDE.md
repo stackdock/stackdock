@@ -67,7 +67,7 @@ app/ingest/email_ingest.py   optional fallback: IMAP poll → parse Substack ema
 app/ingest/podcast_rss.py    poll PODCAST_FEEDS → stream audio to R2 → episodes
 app/ingest/gumroad.py        per-user _gumroad_app_session cookies (added at /accounts); library scrape is fragile — see its docstring. First sync per account is a silent backfill.
 .github/workflows/deploy.yml SSH deploy: reset to origin/main, compose up, health check
-docker-compose.yml       stackdock (internal :8000) + caddy (80/443, auto-HTTPS)
+docker-compose.yml       stackdock (internal :8000) + caddy (80/443, auto-HTTPS) + uptime-kuma (status.<domain>, external healthz monitor — first visit creates its admin; point a monitor at /healthz and wire the Discord webhook in its UI)
 ```
 
 ## Known gotchas

@@ -1,16 +1,21 @@
 {% extends "base.html" %}
 {% block title %}Sign up · {{ site_title }}{% endblock %}
 {% block content %}
-<div class="auth-card">
-  <h2>Create account</h2>
-  {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
-  <form method="post" action="/signup">
-    <label>Invite code <input name="invite" value="{{ invite }}" required></label>
-    <label>Username <input name="username" required autocomplete="username"></label>
-    <label>Password <input name="password" type="password" required minlength="8" autocomplete="new-password"></label>
-    <label>Password (again) <input name="password2" type="password" required minlength="8" autocomplete="new-password"></label>
-    <button type="submit">Sign up</button>
-  </form>
-  <p class="hint">Already have an account? <a href="/login">Log in</a>.</p>
+<div class="meme-stage">
+  <img class="jak flip" src="/static/soyjak.svg" alt="">
+  <div class="meme-card">
+    <h2>Join the council</h2>
+    <p class="greentext">&gt;invite link acquired<br>&gt;pick a name and password<br>&gt;ascend</p>
+    {% if error %}<p class="form-error">&gt;{{ error }}</p>{% endif %}
+    <form method="post" action="/signup">
+      <label>Invite code <input name="invite" value="{{ invite }}" required></label>
+      <label>Username <input name="username" required autocomplete="username"></label>
+      <label>Password (8+ chars) <input name="password" type="password" required minlength="8" autocomplete="new-password"></label>
+      <label>Password (again) <input name="password2" type="password" required minlength="8" autocomplete="new-password"></label>
+      <button type="submit">Create account</button>
+    </form>
+    <p class="hint">Already in? <a href="/login">Log in</a>.</p>
+  </div>
+  <img class="jak" src="/static/soyjak.svg" alt="">
 </div>
 {% endblock %}

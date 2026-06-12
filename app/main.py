@@ -1,6 +1,8 @@
 """Stackdock — personal newsletter & podcast mirror (multi-user)."""
 import logging
 import secrets as pysecrets
+import shutil
+from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -19,6 +21,23 @@ log = logging.getLogger("stackdock")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 scheduler = BackgroundScheduler()
 
+START_TIME = datetime.now(timezone.utc)
+JOB_STATE: dict[str, dict] = {}   # job_id -> {last_run, result, ok}
+
+
+def _tracked(job_id: str, fn):
+    """Wrap an ingest job so /status can show its last outcome."""
+    def runner():
+        started = datetime.now(timezone.utc)
+        try:
+            n = fn()
+            JOB_STATE[job_id] = {"last_run": started, "result": f"{n} new item(s)", "ok": True}
+        except Exception as e:  # job errors are recorded, never crash the scheduler
+            JOB_STATE[job_id] = {"last_run": started, "result": f"{type(e).__name__}: {e}", "ok": False}
+            log.exception("Job %s failed", job_id)
+    runner.__name__ = f"{job_id}_job"
+    return runner
+
 
 def _safe_next(next_url: str | None) -> str:
     """Only allow same-site relative redirect targets."""
@@ -31,14 +50,14 @@ def _safe_next(next_url: str | None) -> str:
 async def lifespan(app: FastAPI):
     db.init()
     auth.ensure_admin_user()
-    scheduler.add_job(email_ingest.run, "interval", minutes=config.EMAIL_POLL_MINUTES,
-                      id="email", max_instances=1, coalesce=True)
-    scheduler.add_job(podcast_rss.run, "interval", minutes=config.PODCAST_POLL_MINUTES,
-                      id="podcasts", max_instances=1, coalesce=True)
-    scheduler.add_job(gumroad.run, "interval", minutes=config.GUMROAD_POLL_MINUTES,
-                      id="gumroad", max_instances=1, coalesce=True)
-    scheduler.add_job(substack.run, "interval", minutes=config.SUBSTACK_POLL_MINUTES,
-                      id="substack", max_instances=1, coalesce=True)
+    scheduler.add_job(_tracked("email", email_ingest.run), "interval",
+                      minutes=config.EMAIL_POLL_MINUTES, id="email", max_instances=1, coalesce=True)
+    scheduler.add_job(_tracked("podcasts", podcast_rss.run), "interval",
+                      minutes=config.PODCAST_POLL_MINUTES, id="podcasts", max_instances=1, coalesce=True)
+    scheduler.add_job(_tracked("gumroad", gumroad.run), "interval",
+                      minutes=config.GUMROAD_POLL_MINUTES, id="gumroad", max_instances=1, coalesce=True)
+    scheduler.add_job(_tracked("substack", substack.run), "interval",
+                      minutes=config.SUBSTACK_POLL_MINUTES, id="substack", max_instances=1, coalesce=True)
     scheduler.start()
     log.info("Stackdock started. Feed: %s/feed/%s/all.xml", config.PUBLIC_BASE_URL, config.FEED_TOKEN)
     yield
@@ -272,6 +291,41 @@ def episode(episode_id: int, user=Depends(auth.current_user)):
     if not e:
         raise HTTPException(404)
     return RedirectResponse(storage.url_for(e["audio_key"]))
+
+
+@app.get("/status", response_class=HTMLResponse)
+def status_page(request: Request, user=Depends(auth.current_user)):
+    now = datetime.now(timezone.utc)
+
+    jobs = []
+    for j in scheduler.get_jobs():
+        state = JOB_STATE.get(j.id, {})
+        jobs.append({
+            "id": j.id,
+            "next_run": j.next_run_time.strftime("%H:%M UTC") if j.next_run_time else "—",
+            "last_run": state.get("last_run").strftime("%Y-%m-%d %H:%M UTC") if state.get("last_run") else "not yet this boot",
+            "result": state.get("result", "—"),
+            "ok": state.get("ok", True),
+        })
+
+    # soft storage check — never let it break the page
+    try:
+        storage.client().head_bucket(Bucket=config.S3_BUCKET)
+        storage_ok, storage_msg = True, f"bucket '{config.S3_BUCKET}' reachable"
+    except Exception as e:
+        storage_ok, storage_msg = False, f"{type(e).__name__}: {e}"
+
+    du = shutil.disk_usage(config.DATA_DIR)
+    accounts = db.list_accounts()
+    return render(request, "status.html", user=user,
+                  uptime=str(now - START_TIME).split(".")[0],
+                  jobs=jobs,
+                  storage_ok=storage_ok, storage_msg=storage_msg,
+                  disk_used_pct=round(du.used / du.total * 100),
+                  disk_free_gb=round(du.free / 1e9, 1),
+                  accounts=accounts,
+                  n_articles=len(db.list_articles()),
+                  n_episodes=len(db.list_episodes()))
 
 
 # ---- Token-protected podcast feed (no session: podcast apps need plain URLs) ----

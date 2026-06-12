@@ -4,3 +4,5 @@ __pycache__/
 *.pyc
 backup.db
 .claude/
+.venv*/
+.pytest_cache/

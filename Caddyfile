@@ -1,5 +1,11 @@
 # Replace example.com with your domain (DNS A record must point at the server).
 # Caddy obtains and renews the TLS certificate automatically.
-example.com {
+chudcrushers.com {
     reverse_proxy stackdock:8000
+}
+
+# Uptime Kuma (open-source uptime monitor). Add a DNS A record for this
+# subdomain pointing at the same droplet IP.
+status.chudcrushers.com {
+    reverse_proxy uptime-kuma:3001
 }

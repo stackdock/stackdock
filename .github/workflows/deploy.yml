@@ -10,7 +10,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Run tests
+        run: pytest
+
   deploy:
+    needs: test          # never deploy a red build to the droplet
     runs-on: ubuntu-latest
     steps:
       - name: Deploy over SSH
@@ -31,3 +45,9 @@ jobs:
             sleep 5
             docker compose exec -T caddy wget -qO- http://stackdock:8000/healthz \
               || (echo "Health check failed" && docker compose logs --tail=50 stackdock && exit 1)
+            # smoke test: every expected service must be running
+            for svc in stackdock caddy uptime-kuma; do
+              state=$(docker compose ps -q "$svc" | xargs -r docker inspect -f '{{.State.Running}}')
+              [ "$state" = "true" ] || (echo "Service $svc is not running" && docker compose ps && exit 1)
+            done
+            echo "Deploy OK: all services running"

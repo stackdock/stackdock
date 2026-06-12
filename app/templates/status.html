@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Status · {{ site_title }}{% endblock %}
+{% block content %}
+
+<section>
+  <h2>System</h2>
+  <ul class="rows">
+    <li><span class="spine">uptime</span><span class="row-title">{{ uptime }}</span><span></span></li>
+    <li>
+      <span class="spine">storage</span>
+      <span class="row-title">{{ "✅" if storage_ok else "❌" }} {{ storage_msg }}</span><span></span>
+    </li>
+    <li>
+      <span class="spine">disk</span>
+      <span class="row-title">{{ "✅" if disk_used_pct < 85 else "⚠️" }} {{ disk_used_pct }}% used · {{ disk_free_gb }} GB free</span><span></span>
+    </li>
+    <li><span class="spine">library</span><span class="row-title">{{ n_articles }} articles · {{ n_episodes }} episodes</span><span></span></li>
+  </ul>
+</section>
+
+<section>
+  <h2>Sync jobs</h2>
+  <ul class="rows">
+    {% for j in jobs %}
+    <li>
+      <span class="spine">{{ j.id }}</span>
+      <span class="row-title">{{ "✅" if j.ok else "❌" }} last: {{ j.last_run }} — {{ j.result }}</span>
+      <time>next {{ j.next_run }}</time>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section>
+  <h2>Connected accounts</h2>
+  {% if not accounts %}<p class="empty">None connected.</p>{% endif %}
+  <ul class="rows">
+    {% for a in accounts %}
+    <li>
+      <span class="spine">{{ a.service }}</span>
+      <span class="row-title">
+        {{ "❌" if a.status and a.status.startswith("STALE") else "✅" }}
+        {{ a.label }} — {{ a.status or "pending first sync" }}
+      </span>
+      <time>{{ a.last_sync[:16] if a.last_sync else "—" }}</time>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+
+{% endblock %}

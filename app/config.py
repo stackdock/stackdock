@@ -46,6 +46,10 @@ except json.JSONDecodeError:
 SUBSTACK_BACKFILL_POSTS = int(os.getenv("SUBSTACK_BACKFILL_POSTS", "50"))
 SUBSTACK_POLL_MINUTES = int(os.getenv("SUBSTACK_POLL_MINUTES", "60"))
 
+# ---- Stale-cookie reminders ----
+# Re-alert this often (hours) while a cookie stays stale. 0 = alert once only.
+STALE_REMINDER_HOURS = int(os.getenv("STALE_REMINDER_HOURS", "24"))
+
 # ---- Object storage (Cloudflare R2 / Backblaze B2 / any S3-compatible) ----
 S3_ENDPOINT_URL = os.getenv("S3_ENDPOINT_URL", "")
 S3_ACCESS_KEY_ID = os.getenv("S3_ACCESS_KEY_ID", "")
