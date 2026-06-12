@@ -401,19 +401,33 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
             # Content is deduped across members. If we already have this post,
             # just credit this account too — and if ours is a locked preview but
             # this account can read the full post, upgrade it in place.
-            existing = db.get_article_by_message_id(guid)
+            is_paid = post.get("audience") == "only_paid"
+            # Same post may already exist from ANY source: this guid, an email
+            # ingest (different message_id), or an anonymous tracked-pub sync.
+            existing = (db.get_article_by_message_id(guid)
+                        or db.find_article_match(url, pub["name"], title))
             if existing:
-                db.add_article_source(existing["id"], account["label"])
-                if existing["is_locked"]:
+                # body needs upgrading if it's a locked preview, an empty/stub
+                # link-only row, and this account might have full access
+                needs_body = bool(existing["is_locked"] or not existing["html"]
+                                  or 'class="stub"' in (existing["html"] or ""))
+                new_body = None
+                if needs_body:
                     full = _post_by_id(s, post_id)
                     if full and full.get("body_html") and not _is_locked(full):
-                        db.upgrade_article_body(existing["id"], _clean_body(full["body_html"]), account["label"])
-                        log.info("[%s] unlocked previously-preview post: %s", account["label"], title)
+                        new_body = _clean_body(full["body_html"])
+                        log.info("[%s] upgraded existing post to full body: %s",
+                                 account["label"], title)
+                db.absorb_article(
+                    existing["id"], message_id=guid, html=new_body,
+                    cover_image=post.get("cover_image"),
+                    author=(post.get("publishedBylines") or [{}])[0].get("name"),
+                    published_at=post.get("post_date"), original_url=url,
+                    is_paid=is_paid, source_label=account["label"])
                 continue
 
             full = _post_by_id(s, post_id)
             body = _clean_body((full or {}).get("body_html"))
-            is_paid = post.get("audience") == "only_paid"
             locked = bool(is_paid and (_is_locked(full) if full else True))
             if body:
                 mirrored += 1

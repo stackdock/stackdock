@@ -26,6 +26,11 @@
       <button id="pp-speed" class="pp-speed" title="Playback speed">1×</button>
     </div>
 
+    <div class="pp-volume">
+      <button id="pp-mute" title="Mute">🔊</button>
+      <input type="range" id="pp-vol" min="0" max="100" value="100" aria-label="Volume">
+    </div>
+
     <p class="pp-note" id="pp-resume" hidden></p>
     <p class="meta pp-actions">
       <a href="{{ download_url or audio_url }}">⬇ Download</a>
@@ -62,6 +67,9 @@
   };
 
   // ---- resume position ----
+  // `engaged` guards every save: a visit where you never pressed play must not
+  // overwrite the stored position with 0 on the way out.
+  let engaged = false;
   const saved = parseFloat(store.get(K_POS) || "0");
   if (saved > 10 && !store.get(K_DONE)) {
     const note = $("pp-resume");
@@ -69,29 +77,38 @@
     note.hidden = false;
     setTimeout(() => { note.hidden = true; }, 5000);
   }
-  a.addEventListener("loadedmetadata", () => {
+  const restore = () => {
     $("pp-dur").textContent = fmt(a.duration);
     store.set(K_DUR, String(a.duration || 0));
     if (saved > 10 && saved < a.duration - 20 && !store.get(K_DONE)) a.currentTime = saved;
-  });
+  };
+  if (a.readyState >= 1) restore();           // metadata beat us to it
+  else a.addEventListener("loadedmetadata", restore, { once: true });
 
+  const save = () => {
+    if (!engaged) return;                      // never played this visit
+    const t = a.currentTime || 0;
+    if (t > 5) store.set(K_POS, String(t));    // never stomp a real position with ~0
+    else if (t === 0 && saved <= 5) store.del(K_POS);
+  };
   let lastSave = 0;
   a.addEventListener("timeupdate", () => {
     $("pp-cur").textContent = fmt(a.currentTime);
     if (a.duration) $("pp-seek").value = Math.round(1000 * a.currentTime / a.duration);
     const now = Date.now();
-    if (now - lastSave > 4000) { lastSave = now; store.set(K_POS, String(a.currentTime)); }
+    if (now - lastSave > 4000) { lastSave = now; save(); }
   });
-  const flush = () => store.set(K_POS, String(a.currentTime || 0));
-  a.addEventListener("pause", flush);
-  window.addEventListener("pagehide", flush);
-  document.addEventListener("visibilitychange", () => { if (document.hidden) flush(); });
+  a.addEventListener("pause", save);
+  a.addEventListener("seeked", save);
+  window.addEventListener("pagehide", save);
+  window.addEventListener("beforeunload", save);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) save(); });
   a.addEventListener("ended", () => { store.set(K_DONE, "1"); store.del(K_POS); setPlayIcon(); });
 
   // ---- controls ----
   const setPlayIcon = () => { $("pp-play").textContent = a.paused ? "▶" : "❚❚"; };
   $("pp-play").onclick = () => { a.paused ? a.play() : a.pause(); };
-  a.addEventListener("play", () => { store.del(K_DONE); setPlayIcon(); });
+  a.addEventListener("play", () => { engaged = true; store.del(K_DONE); setPlayIcon(); });
   a.addEventListener("pause", setPlayIcon);
   $("pp-back").onclick = () => { a.currentTime = Math.max(0, a.currentTime - 15); };
   $("pp-fwd").onclick = () => { a.currentTime = Math.min(a.duration || 1e9, a.currentTime + 30); };
@@ -114,12 +131,39 @@
     applyRate();
   };
 
+  // ---- volume (persisted; iOS routes volume to hardware buttons and will
+  //      ignore this slider — everything else honours it) ----
+  const K_VOL = "vol:global", K_MUTE = "mute:global";
+  const volEl = $("pp-vol"), muteBtn = $("pp-mute");
+  const applyVolUi = () => {
+    volEl.value = Math.round(a.volume * 100);
+    muteBtn.textContent = (a.muted || a.volume === 0) ? "🔇" : (a.volume < 0.5 ? "🔉" : "🔊");
+  };
+  a.volume = Math.min(1, Math.max(0, parseFloat(store.get(K_VOL) ?? "1")));
+  a.muted = store.get(K_MUTE) === "1";
+  applyVolUi();
+  volEl.addEventListener("input", () => {
+    a.volume = volEl.value / 100;
+    a.muted = a.volume === 0;
+    store.set(K_VOL, String(a.volume));
+    store.set(K_MUTE, a.muted ? "1" : "0");
+    applyVolUi();
+  });
+  muteBtn.onclick = () => {
+    a.muted = !a.muted;
+    store.set(K_MUTE, a.muted ? "1" : "0");
+    applyVolUi();
+  };
+  a.addEventListener("volumechange", applyVolUi);
+
   // ---- keyboard: space, arrows ----
   document.addEventListener("keydown", (e) => {
     if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
     if (e.code === "Space") { e.preventDefault(); $("pp-play").click(); }
     if (e.code === "ArrowLeft") $("pp-back").click();
     if (e.code === "ArrowRight") $("pp-fwd").click();
+    if (e.code === "ArrowUp") { e.preventDefault(); volEl.value = Math.min(100, +volEl.value + 5); volEl.dispatchEvent(new Event("input")); }
+    if (e.code === "ArrowDown") { e.preventDefault(); volEl.value = Math.max(0, +volEl.value - 5); volEl.dispatchEvent(new Event("input")); }
   });
 
   // ---- lock screen / media keys (Media Session API) ----

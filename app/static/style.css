@@ -338,3 +338,6 @@ footer {
   display: flex; align-items: center; justify-content: center;
 }
 .card.played .card-title { color: var(--ink-soft); }
+.pp-volume { display: flex; align-items: center; gap: 0.5rem; justify-content: center; margin-top: 0.6rem; }
+.pp-volume button { border: 0; background: none; font-size: 1rem; cursor: pointer; }
+.pp-volume input[type="range"] { width: 9rem; accent-color: var(--shelf); height: 4px; }

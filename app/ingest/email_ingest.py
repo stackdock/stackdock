@@ -111,6 +111,19 @@ def run() -> int:
                 published_at = None
 
             publication = display_name or from_addr.split("@")[0]
+
+            # Cookie sync may already have this post under substack:{id} — merge
+            # instead of duplicating. Email bodies are full text, so they can
+            # also upgrade a locked/stub row.
+            match = db.find_article_match(original_url, publication, title)
+            if match:
+                needs_body = bool(match["is_locked"] or not match["html"]
+                                  or 'class="stub"' in (match["html"] or ""))
+                db.absorb_article(match["id"], html=clean if needs_body else None,
+                                  published_at=published_at, original_url=original_url,
+                                  source_label="email")
+                continue
+
             article_id = db.insert_article(
                 message_id=message_id,
                 publication=publication,

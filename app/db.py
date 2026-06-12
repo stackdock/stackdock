@@ -184,6 +184,75 @@ def article_exists(message_id: str) -> bool:
         return r is not None
 
 
+def _norm_url(u: str | None) -> str | None:
+    """host + path, no scheme/query/fragment/trailing slash — utm params and
+    http/https differences must not defeat dedupe."""
+    if not u:
+        return None
+    from urllib.parse import urlparse
+    p = urlparse(u)
+    return f"{p.netloc.lower()}{p.path.rstrip('/')}" or None
+
+
+def find_article_match(original_url: str | None = None, publication: str | None = None,
+                       title: str | None = None):
+    """Find an already-mirrored article that is the SAME POST arriving from a
+    different source (email vs cookie sync vs orphan sync), which therefore has
+    a different message_id. Match by canonical URL first, then (pub, title)."""
+    with conn() as c:
+        target = _norm_url(original_url)
+        if target:
+            seg = target.rsplit("/", 1)[-1]
+            if seg:
+                for r in c.execute(
+                        "SELECT * FROM articles WHERE original_url LIKE ?",
+                        (f"%/{seg}%",)).fetchall():
+                    if _norm_url(r["original_url"]) == target:
+                        return r
+        if publication and title:
+            return c.execute(
+                "SELECT * FROM articles WHERE lower(publication) = lower(?) "
+                "AND lower(title) = lower(?) LIMIT 1",
+                (publication, title)).fetchone()
+    return None
+
+
+def absorb_article(article_id: int, *, message_id=None, html=None, cover_image=None,
+                   author=None, published_at=None, original_url=None, is_paid=None,
+                   source_label=None) -> None:
+    """Merge a duplicate sighting of an article into the existing row:
+    fill in metadata the existing row is missing, upgrade the body when the new
+    source has full access (html given -> also clears is_locked), and adopt the
+    canonical substack:{id} message_id so future syncs dedupe on the fast path."""
+    with conn() as c:
+        row = c.execute("SELECT * FROM articles WHERE id = ?", (article_id,)).fetchone()
+        if not row:
+            return
+        updates, args = [], []
+
+        def fill(col, val):
+            if val and not row[col]:
+                updates.append(f"{col} = ?"); args.append(val)
+
+        if (message_id and message_id.startswith("substack:")
+                and not (row["message_id"] or "").startswith("substack:")):
+            updates.append("message_id = ?"); args.append(message_id)
+        if html:
+            updates.append("html = ?"); args.append(html)
+            updates.append("is_locked = 0")
+        fill("cover_image", cover_image)
+        fill("author", author)
+        fill("published_at", published_at)
+        fill("original_url", original_url)
+        if is_paid is not None and not row["is_paid"]:
+            updates.append("is_paid = ?"); args.append(1 if is_paid else 0)
+        if updates:
+            args.append(article_id)
+            c.execute(f"UPDATE articles SET {', '.join(updates)} WHERE id = ?", args)
+    if source_label:
+        add_article_source(article_id, source_label)
+
+
 def get_article_by_message_id(message_id: str):
     with conn() as c:
         return c.execute("SELECT * FROM articles WHERE message_id = ?", (message_id,)).fetchone()
