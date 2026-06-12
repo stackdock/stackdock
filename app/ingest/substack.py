@@ -60,7 +60,10 @@ def get_publications(s: requests.Session) -> list[dict] | None:
     simply has no subscriptions.
     """
     time.sleep(REQUEST_GAP_S)
-    r = s.get("https://substack.com/api/v1/subscriptions", timeout=30)
+    # Substack now requires the tvOnly query param on this endpoint; without it
+    # the API returns 400 (which used to look like "no subscriptions").
+    r = s.get("https://substack.com/api/v1/subscriptions",
+              params={"tvOnly": "false"}, timeout=30)
     if r.status_code in (401, 403):
         return None  # stale/invalid cookie
     if r.status_code != 200:
