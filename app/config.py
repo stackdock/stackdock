@@ -13,6 +13,9 @@ DB_PATH = DATA_DIR / "stackdock.db"
 # ---- Site / auth ----
 SITE_TITLE = os.getenv("SITE_TITLE", "Stackdock")
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "http://localhost:8000").rstrip("/")
+# Signs session cookies. Generate with: openssl rand -hex 32
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-change-me")
+# Used once, to seed the first admin account on an empty database
 BASIC_AUTH_USER = os.getenv("BASIC_AUTH_USER", "admin")
 BASIC_AUTH_PASS = os.getenv("BASIC_AUTH_PASS", "change-me")
 # Long random token that protects the podcast RSS feed URL (podcast apps can't do basic auth well)
@@ -38,8 +41,10 @@ try:
 except json.JSONDecodeError:
     PODCAST_FEEDS = {}
 
-# ---- Gumroad (cookie-based library sync) ----
-GUMROAD_SESSION_COOKIE = os.getenv("GUMROAD_SESSION_COOKIE", "")
+# ---- Substack cookie sync ----
+# Max posts to backfill per publication on an account's first sync
+SUBSTACK_BACKFILL_POSTS = int(os.getenv("SUBSTACK_BACKFILL_POSTS", "50"))
+SUBSTACK_POLL_MINUTES = int(os.getenv("SUBSTACK_POLL_MINUTES", "60"))
 
 # ---- Object storage (Cloudflare R2 / Backblaze B2 / any S3-compatible) ----
 S3_ENDPOINT_URL = os.getenv("S3_ENDPOINT_URL", "")

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Connected accounts · {{ site_title }}{% endblock %}
+{% block content %}
+
+<section>
+  <h2>Your connected accounts</h2>
+  {% if message %}<p class="form-ok">{{ message }}</p>{% endif %}
+  {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
+
+  {% if not accounts %}
+    <p class="empty">Nothing connected yet — connect your Substack and/or Gumroad account below. Substack pulls the article archive of every publication you subscribe to; Gumroad mirrors your purchased podcasts into the shared feed.</p>
+  {% endif %}
+  <ul class="rows">
+    {% for acc in accounts %}
+    <li>
+      <span class="spine">{{ acc.service }} · {{ "synced " + acc.last_sync[:16] if acc.last_sync else "pending first sync" }}</span>
+      <span class="row-title">{{ acc.label }}
+        {% if acc.status %}<small class="hint"> — {{ acc.status }}</small>{% endif %}
+      </span>
+      <form method="post" action="/accounts/delete" class="inline-form"
+            onsubmit="return confirm('Remove this account? Already-mirrored content stays.')">
+        <input type="hidden" name="account_id" value="{{ acc.id }}">
+        <button type="submit">Remove</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+
+  <form method="post" action="/accounts/sync" class="inline-form" style="margin-top:0.75rem">
+    <button type="submit">Sync now (all accounts, all members)</button>
+  </form>
+</section>
+
+<section>
+  <h2>Connect Substack</h2>
+  <div class="auth-card" style="margin:1rem 0 0; max-width:560px">
+    <form method="post" action="/accounts/add">
+      <input type="hidden" name="service" value="substack">
+      <label>Label (shown next to articles) <input name="label" placeholder="e.g. Sam's account" required></label>
+      <label>substack.sid cookie value <input name="cookie" required autocomplete="off"></label>
+      <button type="submit">Connect Substack</button>
+    </form>
+    <p class="hint" style="margin-top:1rem">
+      <strong>How to get it:</strong> log in at substack.com →
+      <code>F12</code> → <strong>Application</strong> tab (Firefox: <strong>Storage</strong>) →
+      Cookies → <code>https://substack.com</code> → copy the <em>Value</em> of <code>substack.sid</code>.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>Connect Gumroad</h2>
+  <div class="auth-card" style="margin:1rem 0 0; max-width:560px">
+    <form method="post" action="/accounts/add">
+      <input type="hidden" name="service" value="gumroad">
+      <label>Label (shown in sync status) <input name="label" placeholder="e.g. Sam's Gumroad" required></label>
+      <label>_gumroad_app_session cookie value <input name="cookie" required autocomplete="off"></label>
+      <button type="submit">Connect Gumroad</button>
+    </form>
+    <p class="hint" style="margin-top:1rem">
+      <strong>How to get it:</strong> log in at gumroad.com →
+      <code>F12</code> → <strong>Application</strong> tab (Firefox: <strong>Storage</strong>) →
+      Cookies → <code>https://app.gumroad.com</code> → copy the <em>Value</em> of
+      <code>_gumroad_app_session</code>. Purchased audio files land in the shared podcast feed.
+      Tip: if a creator offers a podcast RSS link on the product page, that's more reliable —
+      ask the admin to add it to <code>PODCAST_FEEDS</code> instead.
+    </p>
+  </div>
+</section>
+
+<section>
+  <p class="hint">
+    ⚠️ Session cookies grant full access to your accounts and are stored in this server's
+    database — only connect accounts on a server run by someone you trust. Cookies expire
+    after weeks–months; reconnect here when the status above says a cookie is invalid.
+  </p>
+</section>
+
+{% endblock %}

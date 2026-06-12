@@ -19,6 +19,20 @@ def _post(payload: dict) -> None:
         log.warning("Discord webhook error: %s", e)
 
 
+def notify_reset_request(username: str) -> None:
+    """Ping the shared channel that someone needs a reset — never the link itself."""
+    _post({
+        "embeds": [{
+            "title": "Password reset requested",
+            "description": (f"**{username[:80]}** forgot their password.\n"
+                            f"Admin: generate a one-time link at {config.PUBLIC_BASE_URL}/admin "
+                            f"and **DM it to them privately** (never post it here)."),
+            "color": 0xB8860B,
+            "footer": {"text": "Stackdock · account"},
+        }]
+    })
+
+
 def notify_article(article_id: int, publication: str, title: str) -> None:
     link = f"{config.PUBLIC_BASE_URL}/article/{article_id}"
     _post({

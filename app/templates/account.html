@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Account · {{ site_title }}{% endblock %}
+{% block content %}
+<div class="auth-card">
+  <h2>Account — {{ user.username }}</h2>
+  {% if message %}<p class="form-ok">{{ message }}</p>{% endif %}
+  {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
+  <form method="post" action="/account/password">
+    <label>Current password <input name="current" type="password" required autocomplete="current-password"></label>
+    <label>New password <input name="new" type="password" required minlength="8" autocomplete="new-password"></label>
+    <label>New password (again) <input name="new2" type="password" required minlength="8" autocomplete="new-password"></label>
+    <button type="submit">Change password</button>
+  </form>
+</div>
+{% endblock %}

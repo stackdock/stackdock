@@ -10,15 +10,28 @@
 
 <section id="articles">
   <h2>Articles <span class="count">{{ articles|length }}</span></h2>
+
+  {% if publications %}
+  <p class="pub-filter">
+    <a href="/" class="{{ 'active' if not active_pub }}">All</a>
+    {% for p in publications %}
+      <a href="/?pub={{ p | urlencode }}" class="{{ 'active' if active_pub == p }}">{{ p }}</a>
+    {% endfor %}
+  </p>
+  {% endif %}
+
   {% if not articles %}
-    <p class="empty">No articles yet. Once your inbox starts receiving Substack posts, they'll appear here within {{ 10 }} minutes — or trigger a sync: <code>curl -u user:pass -X POST {{ feed_url.rsplit('/feed', 1)[0] }}/admin/sync/email</code></p>
+    <p class="empty">No articles yet. <a href="/accounts">Connect a Substack account</a> and the archives of everything it subscribes to will be pulled in.</p>
   {% endif %}
   <ul class="rows">
     {% for a in articles %}
     <li>
       <span class="spine">{{ a.publication }}</span>
       <a class="row-title" href="/article/{{ a.id }}">{{ a.title }}</a>
-      <time>{{ (a.published_at or a.created_at)[:10] }}</time>
+      <span class="row-meta">
+        {% if a.added_by %}<span class="added-by">{{ a.added_by }}</span>{% endif %}
+        <time>{{ (a.published_at or a.created_at)[:10] }}</time>
+      </span>
     </li>
     {% endfor %}
   </ul>

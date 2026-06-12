@@ -11,8 +11,14 @@
   <header class="masthead">
     <a class="wordmark" href="/">{{ site_title }}</a>
     <nav>
-      <a href="/#articles">Articles</a>
-      <a href="/#podcasts">Podcasts</a>
+      {% if user is defined and user %}
+        <a href="/#articles">Articles</a>
+        <a href="/#podcasts">Podcasts</a>
+        <a href="/accounts">Accounts</a>
+        <a href="/account">Account</a>
+        {% if user.is_admin %}<a href="/admin">Admin</a>{% endif %}
+        <a href="/logout">Log out</a>
+      {% endif %}
     </nav>
   </header>
   <main>

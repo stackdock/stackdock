@@ -1,5 +1,5 @@
 # Replace example.com with your domain (DNS A record must point at the server).
 # Caddy obtains and renews the TLS certificate automatically.
-chudcrushers.com {
+example.com {
     reverse_proxy stackdock:8000
 }

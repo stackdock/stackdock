@@ -3,5 +3,4 @@ data/
 __pycache__/
 *.pyc
 backup.db
-CLAUDE.md
 .claude/

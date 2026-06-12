@@ -1,8 +1,9 @@
-"""Sync purchased audio files from your Gumroad library.
+"""Sync purchased audio files from members' Gumroad libraries.
 
-Gumroad has no buyer-side API, so this uses your logged-in session cookie
-(the `_gumroad_app_session` cookie from your browser) to read your library
-page and pull download links for audio files you've purchased.
+Gumroad has no buyer-side API, so each member connects their account on the
+/accounts page by pasting their `_gumroad_app_session` cookie. We read each
+library page and pull download links for purchased audio files. The first
+sync per account is a silent backfill (no Discord notifications).
 
 NOTE: Gumroad's frontend changes from time to time. The library page embeds
 its data as JSON in a `script[data-component-name="LibraryPage"]` (or similar
@@ -21,7 +22,7 @@ import re
 import requests
 from bs4 import BeautifulSoup
 
-from .. import config, db, notify, storage
+from .. import db, notify, storage
 from .podcast_rss import _download_to_storage, _slug
 
 log = logging.getLogger("stackdock.gumroad")
@@ -32,10 +33,10 @@ UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chr
 AUDIO_EXTS = (".mp3", ".m4a", ".m4b", ".wav", ".aac", ".ogg", ".flac")
 
 
-def _session() -> requests.Session:
+def _session(cookie: str) -> requests.Session:
     s = requests.Session()
     s.headers["User-Agent"] = UA
-    s.cookies.set("_gumroad_app_session", config.GUMROAD_SESSION_COOKIE, domain=".gumroad.com")
+    s.cookies.set("_gumroad_app_session", cookie, domain=".gumroad.com")
     return s
 
 
@@ -111,21 +112,18 @@ def _find_file_urls(s: requests.Session, purchase: dict) -> list[tuple[str, str,
     return out
 
 
-def run() -> int:
-    if not config.GUMROAD_SESSION_COOKIE:
-        log.info("Gumroad cookie not configured; skipping.")
-        return 0
-
-    s = _session()
+def sync_account(account) -> tuple[int, str]:
+    """Sync one connected Gumroad account. Returns (new_episodes, status_message)."""
+    s = _session(account["cookie"])
     r = s.get(LIBRARY_URL, timeout=60)
     if r.status_code != 200 or "library" not in r.url:
-        log.warning("Gumroad library fetch failed (HTTP %s). Cookie likely expired — "
-                    "grab a fresh _gumroad_app_session value from your browser.", r.status_code)
-        return 0
+        return 0, ("Cookie invalid/expired (HTTP %s) — reconnect with a fresh "
+                   "_gumroad_app_session value" % r.status_code)
 
     purchases = _extract_react_json(r.text)
-    log.info("Gumroad: found %d purchases in library", len(purchases))
+    log.info("[%s] Gumroad: %d purchases in library", account["label"], len(purchases))
 
+    is_backfill = account["last_sync"] is None
     new_count = 0
     for p in purchases:
         product_name = (
@@ -145,7 +143,7 @@ def run() -> int:
             try:
                 log.info("Downloading Gumroad file: [%s] %s", product_name, fname)
                 size, mime = _download_to_storage(url, key, headers=dict(s.headers) | {
-                    "Cookie": f"_gumroad_app_session={config.GUMROAD_SESSION_COOKIE}"
+                    "Cookie": f"_gumroad_app_session={account['cookie']}"
                 })
                 if not mime.startswith("audio"):
                     # Skip PDFs/zips etc. — this tool only mirrors audio
@@ -161,5 +159,27 @@ def run() -> int:
             )
             if episode_id:
                 new_count += 1
-                notify.notify_episode(episode_id, feed_name, fname, storage.url_for(key))
-    return new_count
+                if not is_backfill:
+                    notify.notify_episode(episode_id, feed_name, fname, storage.url_for(key))
+
+    return new_count, f"OK: {len(purchases)} purchases, {new_count} new episode(s)"
+
+
+def run() -> int:
+    """Sync every connected Gumroad account. Returns total new episodes."""
+    accounts = db.list_accounts(service="gumroad")
+    if not accounts:
+        log.info("No Gumroad accounts connected; skipping.")
+        return 0
+
+    total = 0
+    for account in accounts:
+        try:
+            count, status = sync_account(account)
+            total += count
+            db.update_account(account["id"], db.now_iso(), status)
+            log.info("[%s] %s", account["label"], status)
+        except Exception as e:
+            db.update_account(account["id"], None, f"Error: {e}")
+            log.warning("Gumroad sync failed for %s: %s", account["label"], e)
+    return total

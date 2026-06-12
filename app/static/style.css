@@ -90,3 +90,47 @@ footer {
 @media (max-width: 640px) {
   .rows li { grid-template-columns: 1fr; gap: 0.1rem; }
 }
+
+/* Auth forms */
+.auth-card {
+  max-width: 380px; margin: 3rem auto 0; padding: 1.5rem;
+  background: #fff; border: 1px solid var(--rule); border-radius: 8px;
+}
+.auth-card h2 { margin-top: 0; border: 0; }
+.auth-card label {
+  display: block; font-family: var(--mono); font-size: 0.7rem;
+  text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft);
+  margin: 0.9rem 0 0;
+}
+.auth-card input {
+  display: block; width: 100%; margin-top: 0.3rem; padding: 0.5rem 0.6rem;
+  font-size: 0.95rem; border: 1px solid var(--rule); border-radius: 5px;
+  background: var(--paper); font-family: var(--sans);
+}
+.auth-card input:focus { outline: 2px solid var(--shelf); border-color: var(--shelf); }
+.auth-card button, .inline-form button, .sync-row button, section > form > button {
+  margin-top: 1.1rem; font-family: var(--mono); font-size: 0.75rem;
+  background: var(--shelf); color: #fff; border: 0; border-radius: 5px;
+  padding: 0.5rem 1rem; cursor: pointer;
+}
+.inline-form { display: inline; }
+.inline-form button, .sync-row button { margin-top: 0; padding: 0.25rem 0.7rem; font-size: 0.68rem; }
+.sync-row { display: flex; gap: 0.5rem; align-items: center; }
+.form-error { color: #a33; font-size: 0.85rem; }
+.form-ok { color: var(--shelf); font-size: 0.85rem; }
+
+/* Publication filter + added-by */
+.pub-filter { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.5rem 0 0.75rem; }
+.pub-filter a {
+  font-family: var(--mono); font-size: 0.68rem; text-decoration: none;
+  color: var(--ink-soft); border: 1px solid var(--rule); border-radius: 99px;
+  padding: 0.15rem 0.6rem; background: #fff;
+}
+.pub-filter a.active { background: var(--shelf); color: #fff; border-color: var(--shelf); }
+.row-meta { display: flex; gap: 0.6rem; align-items: baseline; justify-content: flex-end; }
+.added-by {
+  font-family: var(--mono); font-size: 0.62rem; color: var(--ink-soft);
+  background: var(--shelf-soft); border-radius: 99px; padding: 0.1rem 0.45rem;
+  white-space: nowrap;
+}
+.stub { background: var(--shelf-soft); padding: 0.75rem 1rem; border-radius: 6px; }

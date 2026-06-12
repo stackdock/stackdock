@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Admin · {{ site_title }}{% endblock %}
+{% block content %}
+<section>
+  <h2>Members</h2>
+  <ul class="rows">
+    {% for u in users %}
+    <li>
+      <span class="spine">{{ "admin" if u.is_admin else "member" }}</span>
+      <span class="row-title">{{ u.username }}</span>
+      <form method="post" action="/admin/reset-link" class="inline-form">
+        <input type="hidden" name="user_id" value="{{ u.id }}">
+        <button type="submit">Generate reset link</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% if reset_link %}
+  <div class="feed-box">
+    <span class="label">One-time reset link for {{ reset_link.username }} (valid 1 hour)</span>
+    <code>{{ reset_link.url }}</code>
+    <p class="hint">Send this to them privately (DM, not a shared channel). It works once.</p>
+  </div>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Invites</h2>
+  <form method="post" action="/admin/invite">
+    <button type="submit">Create invite link</button>
+  </form>
+  {% if new_invite %}
+  <div class="feed-box">
+    <span class="label">New invite link (single use)</span>
+    <code>{{ new_invite }}</code>
+  </div>
+  {% endif %}
+  <ul class="rows">
+    {% for i in invites %}
+    <li>
+      <span class="spine">{{ "used by " + i.used_by if i.used_by else "unused" }}</span>
+      <span class="row-title"><code>{{ i.code }}</code></span>
+      <time>{{ i.created_at[:10] }}</time>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section>
+  <h2>Sync</h2>
+  <p class="hint">Manual triggers (also available via <code>POST /admin/sync/&lt;job&gt;</code>):</p>
+  <div class="sync-row">
+    <button onclick="sync('email')">Email</button>
+    <button onclick="sync('podcasts')">Podcast feeds</button>
+    <button onclick="sync('gumroad')">Gumroad</button>
+    <span id="sync-result" class="hint"></span>
+  </div>
+  <script>
+    async function sync(job) {
+      document.getElementById('sync-result').textContent = 'Running ' + job + '…';
+      const r = await fetch('/admin/sync/' + job, {method: 'POST'});
+      const d = await r.json();
+      document.getElementById('sync-result').textContent = job + ': ' + d.new_items + ' new item(s)';
+    }
+  </script>
+</section>
+{% endblock %}

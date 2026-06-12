@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Forgot password · {{ site_title }}{% endblock %}
+{% block content %}
+<div class="auth-card">
+  <h2>Forgot password</h2>
+  {% if done %}
+    <p class="form-ok">Request sent. The admin has been pinged in Discord and will DM you a one-time reset link.</p>
+    <p class="hint"><a href="/login">Back to log in</a></p>
+  {% else %}
+    <form method="post" action="/forgot">
+      <label>Your username <input name="username" required autofocus></label>
+      <button type="submit">Request reset</button>
+    </form>
+    <p class="hint">This pings the group's Discord channel so the admin can send you a private reset link. The link itself is never posted to the channel.</p>
+  {% endif %}
+</div>
+{% endblock %}
