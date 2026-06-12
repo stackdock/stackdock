@@ -26,6 +26,7 @@ import time
 from urllib.parse import urlparse
 
 import requests
+from bs4 import BeautifulSoup
 
 from .. import config, db, notify, storage
 from .podcast_rss import _download_to_storage, _slug
@@ -222,6 +223,36 @@ def fetch_body(s: requests.Session, base_url: str, slug: str) -> str | None:
     return None
 
 
+_SUBSCRIBE_SELECTORS = (
+    ".subscription-widget-wrap", ".subscription-widget", ".subscribe-widget",
+    ".subscribe-dialog", ".subscription-widget-wrap-editor",
+)
+
+
+def _clean_body(html: str | None) -> str | None:
+    """Strip Substack's injected subscribe widgets — the 'X is a reader-supported
+    publication… become a free or paid subscriber' CTA and the email box under it
+    (which looks like a search bar)."""
+    if not html:
+        return html
+    try:
+        soup = BeautifulSoup(html, "html.parser")
+    except Exception:
+        return html
+    changed = False
+    for sel in _SUBSCRIBE_SELECTORS:
+        for el in soup.select(sel):
+            el.decompose()
+            changed = True
+    # fallback: any stray CTA paragraph the widget classes missed
+    for el in soup.find_all(["p", "div"]):
+        txt = el.get_text(" ", strip=True).lower()
+        if "reader-supported publication" in txt and "subscriber" in txt:
+            el.decompose()
+            changed = True
+    return str(soup) if changed else html
+
+
 def _stub_html(url: str) -> str:
     return (f'<p class="stub">Full text couldn\'t be mirrored for this post. '
             f'<a href="{url}" rel="noopener">Read it on the original site →</a></p>')
@@ -317,12 +348,12 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
                 if existing["is_locked"]:
                     full = _post_by_id(s, post_id)
                     if full and full.get("body_html") and not _is_locked(full):
-                        db.upgrade_article_body(existing["id"], full["body_html"], account["label"])
+                        db.upgrade_article_body(existing["id"], _clean_body(full["body_html"]), account["label"])
                         log.info("[%s] unlocked previously-preview post: %s", account["label"], title)
                 continue
 
             full = _post_by_id(s, post_id)
-            body = (full or {}).get("body_html")
+            body = _clean_body((full or {}).get("body_html"))
             is_paid = post.get("audience") == "only_paid"
             locked = bool(is_paid and (_is_locked(full) if full else True))
             if body:

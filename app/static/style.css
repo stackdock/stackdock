@@ -209,17 +209,23 @@ footer {
 }
 .meme-stage .jak.flip { transform: scaleX(-1); }
 
-/* login side wojaks: tumble end-over-end with a little bounce */
-.meme-stage .jak.tumble { animation: tumble 2.8s ease-in-out infinite; transform-origin: 50% 55%; }
+/* login side wojaks: real 3D tumble (perspective on parent, rotate child on all axes) */
+.meme-stage .scene { perspective: 700px; filter: none; }
+.meme-stage .scene .tumbler {
+  transform-style: preserve-3d;
+  backface-visibility: visible;     /* show the (mirrored) back past edge-on */
+  animation: tumble 5s linear infinite;
+}
+.meme-stage .scene .tumbler img {
+  display: block; width: 100%;
+  filter: drop-shadow(2px 3px 0 rgba(0,0,0,0.12));
+}
 @keyframes tumble {
-  0%   { transform: rotate(0deg)   translateY(0); }
-  25%  { transform: rotate(160deg) translateY(-14px); }
-  50%  { transform: rotate(180deg) translateY(0); }
-  75%  { transform: rotate(340deg) translateY(-14px); }
-  100% { transform: rotate(360deg) translateY(0); }
+  from { transform: rotateX(0deg)   rotateY(0deg)   rotateZ(0deg); }
+  to   { transform: rotateX(360deg) rotateY(720deg) rotateZ(360deg); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .meme-stage .jak.tumble { animation: none; }
+  .meme-stage .scene .tumbler { animation: none; }
 }
 
 /* TempleOS footer credit */
