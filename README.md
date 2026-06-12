@@ -1,131 +1,109 @@
 # Stackdock
 
-A private, self-hosted mirror of your Substack subscriptions (across any number of accounts) — articles and podcast audio — shared as a dashboard with a small invite-only group. Articles get a clean reading site behind real user logins; audio is mirrored to cheap object storage. Everything from everyone aggregates into three private token-protected feeds — `all.xml` (audio, podcast apps), `articles.xml` (full-text RSS), `everything.xml` (merged) — and each sync announces all new items in a single Discord digest (plus an optional `OUTBOUND_WEBHOOK_URL` that receives one combined JSON payload).
+A small self-hosted, multi-user content service. It ingests articles and audio
+from configured feeds/sources into one private reading site plus a set of
+token-protected RSS feeds, stores media in S3-compatible object storage, and
+posts new-item notifications to a webhook. It runs as a Docker stack behind
+Caddy (automatic HTTPS) and deploys from GitHub via Actions.
 
-**For a small private group sharing content it pays for. Keep it invite-only and never share links publicly.**
+## Stack
 
-## Accounts & logins
+- **App:** FastAPI (Python), server-rendered HTML, APScheduler for periodic jobs.
+- **Auth:** session cookies (itsdangerous), bcrypt passwords, invite-only signup,
+  admin-generated one-time reset links. First admin seeded from env on first boot.
+- **Data:** SQLite for metadata (`$DATA_DIR/stackdock.db`); S3-compatible object
+  storage (e.g. Cloudflare R2) for audio. RSS output: `all.xml` (audio),
+  `articles.xml` (full-text), `everything.xml` (merged) — each behind a feed token.
+- **Edge:** Caddy reverse proxy with auto-HTTPS.
+- **Notify:** one digest per sync to a Discord webhook; optional generic outbound
+  JSON webhook (`OUTBOUND_WEBHOOK_URL`).
+- **Deploy:** push to `main` → GitHub Actions → SSH to host → `docker compose up`.
+  Secrets live in `.env` on the host, never in the repo.
 
-- The first admin account is seeded from `BASIC_AUTH_USER`/`BASIC_AUTH_PASS` in `.env` on first boot.
-- Admin → `/admin` → **Create invite link** → send the single-use link to a friend → they pick their own username/password at `/signup`.
-- Everyone can change their password at `/account`.
-- Forgotten password: admin → `/admin` → **Generate reset link** next to the user → DM them the one-time link (valid 1 hour).
-- The `/admin` page also has buttons to trigger email/podcast/Substack syncs manually.
+## Configuration (`.env`)
 
-Deployment model: code lives on GitHub → every push to `main` triggers GitHub Actions → it SSHes into your DigitalOcean droplet, pulls the latest code, and rebuilds the Docker stack. Secrets (`.env`) live only on the droplet, never in the repo.
+Copy `.env.example` to `.env` and fill it in. Key variables:
 
----
+| Var | Purpose |
+|---|---|
+| `PUBLIC_BASE_URL` | Public URL of the app |
+| `SECRET_KEY` | Signs session cookies (`openssl rand -hex 32`) |
+| `BASIC_AUTH_USER` / `BASIC_AUTH_PASS` | Seeds the first admin on an empty DB |
+| `FEED_TOKEN` | Protects the RSS feed URLs (`openssl rand -hex 24`) |
+| `S3_ENDPOINT_URL` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` / `S3_BUCKET` | Object storage |
+| `DISCORD_WEBHOOK_URL` | New-item notifications (optional) |
+| `*_POLL_MINUTES` | Per-job scheduler intervals |
+| `CLOUDFLARE_*` / `DO_*` | Optional read-only tokens for the `/status` metrics panels |
 
-## Part 1 — Accounts & credentials (where everything is in each UI)
+Secrets go only into `.env` on the server (or GitHub Actions secrets). Never
+commit them or paste them into issues/chats.
 
-> ⚠️ Tokens, cookies, and keys go straight into the `.env` file on your server or into GitHub Secrets. Never commit them, and never paste them into chats or issues.
+## Infrastructure
 
-### A. DigitalOcean droplet
-1. Sign in at cloud.digitalocean.com.
-2. Top-right green **Create** button → **Droplets**.
-3. Choose a region near you → **Ubuntu 24.04 LTS** → Droplet Type: **Basic** → CPU options: **Regular / 1 GB ($6/mo)** is plenty.
-4. Under **Choose Authentication Method** pick **SSH Key** → **New SSH Key**. On your computer run `ssh-keygen -t ed25519 -f ~/.ssh/stackdock` and paste the contents of `stackdock.pub` (the public key) into the box.
-5. Create the droplet and note its **IPv4 address** (shown on the droplet's page).
+- **Host:** any Linux box with Docker (e.g. a $6/mo VPS, 1 GB RAM is enough).
+- **DNS:** an A record for your domain → host IP (DNS-only, not proxied, so Caddy
+  can issue its certificate). Optional A record for `status.<domain>` if you use
+  the bundled Uptime Kuma.
+- **Object storage:** an S3-compatible bucket + a read/write API token scoped to it.
 
-### B. Domain
-At your DNS provider, create an **A record** pointing your domain (e.g. `stack.example.com`) at the droplet's IP. If your domain is on Cloudflare: dashboard → your domain → **DNS** → **Add record** → Type A, name `stack`, the droplet IP. Set the proxy cloud to **DNS only (grey)** so Caddy can issue its own certificate.
-
-### C. Cloudflare R2 (storage)
-1. dash.cloudflare.com → left sidebar **R2 Object Storage** → **Create bucket** → name it `stackdock`.
-2. Back on the R2 overview page → right side **Manage R2 API Tokens** → **Create API token** → Permissions: **Object Read & Write** → scope it to the `stackdock` bucket → Create.
-3. Copy the **Access Key ID** and **Secret Access Key** (shown once) → these are `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`.
-4. Your endpoint is `https://<account_id>.r2.cloudflarestorage.com` — the account ID is shown on the same token page and on the bucket's **Settings** tab.
-
-### D. Substack accounts (primary article source — in-app, no env needed)
-After deploy, each member logs in → **Accounts** page → pastes the value of their `substack.sid` cookie (substack.com logged in → F12 → **Application**/Storage → Cookies → `https://substack.com` → copy the **Value** of `substack.sid`). The app pulls each account's subscription list and backfills up to `SUBSTACK_BACKFILL_POSTS` past posts per publication (first sync is silent; new posts after that go to Discord). Articles show who contributed them, and the home page filters by publication. Cookies are stored in the server's database — only connect accounts on a server run by someone you trust.
-
-### D2. Collector inbox (optional fallback — Substack articles via email)
-1. Make a fresh Gmail account. In each Substack account: substack.com → click your avatar (top right) → **Settings** → **Account** → change the email to the collector address — or instead add a forwarding rule from each existing inbox (Gmail: ⚙️ → **See all settings** → **Forwarding and POP/IMAP**).
-2. In the collector Gmail: enable 2-Step Verification (myaccount.google.com → **Security**), then in the Security page search box type **App passwords** → create one named `stackdock`. The 16-character code is `IMAP_PASS`.
-
-### E. Substack private podcast feeds
-While logged in as a paying subscriber, open the publication's podcast tab → look for **"Add to podcast app"** / private feed link → copy the RSS URL into `PODCAST_FEEDS`.
-
-
-### G. Discord webhook
-In your server: click the server name (top left) → **Server Settings** → **Integrations** → **Webhooks** → **New Webhook** → set the channel → **Copy Webhook URL** → that's `DISCORD_WEBHOOK_URL`.
-
----
-
-## Part 2 — One-time server setup
-
-SSH in and prepare the droplet:
+## One-time server setup
 
 ```bash
-ssh -i ~/.ssh/stackdock root@YOUR_DROPLET_IP
-
-# install docker
+ssh root@YOUR_HOST_IP
 curl -fsSL https://get.docker.com | sh
-
-# clone your repo (after you've pushed this code to GitHub — see Part 3)
-git clone https://github.com/YOURNAME/stackdock.git /opt/stackdock
-cd /opt/stackdock
-
-# secrets live only here
-cp .env.example .env
-nano .env                      # fill everything in (Part 1 credentials)
-openssl rand -hex 24           # paste output as FEED_TOKEN in .env
-openssl rand -hex 32           # paste output as SECRET_KEY in .env
-nano Caddyfile                 # replace example.com with your domain
-
+git clone <your-repo> /opt/stackdock && cd /opt/stackdock
+cp .env.example .env && nano .env        # fill in config
+nano Caddyfile                           # set your domain
 docker compose up -d --build
 ```
 
-Visit `https://yourdomain.com` — Caddy provisions HTTPS automatically (give DNS a few minutes). Log in with your `BASIC_AUTH_USER`/`PASS`.
+Visit `https://yourdomain.com` (Caddy provisions HTTPS automatically) and log in
+with the seeded admin credentials. If the repo is private, add a read-only deploy
+key on the host so it can pull.
 
-> If your repo is **private**, the droplet needs read access to pull: GitHub → repo → **Settings** → **Deploy keys** → **Add deploy key** → paste a public key generated on the droplet (`ssh-keygen -t ed25519` there, read-only is fine).
+## Auto-deploy (GitHub Actions)
 
----
+Add three repository secrets under **Settings → Secrets and variables → Actions**:
 
-## Part 3 — GitHub repo + Actions auto-deploy
+| Secret | Value |
+|---|---|
+| `DROPLET_HOST` | host IP |
+| `DROPLET_USER` | `root` (or a sudo user) |
+| `DROPLET_SSH_KEY` | the **private** SSH key for that user |
 
-1. Create a repo: github.com → **+** (top right) → **New repository** → name `stackdock` → **Private**.
-2. Push this code:
-   ```bash
-   cd stackdock
-   git init && git add . && git commit -m "initial"
-   git branch -M main
-   git remote add origin git@github.com:YOURNAME/stackdock.git
-   git push -u origin main
-   ```
-3. Add the three deploy secrets: repo page → **Settings** tab → left sidebar **Secrets and variables → Actions** → **New repository secret**, three times:
+Every push to `main` then runs the test suite and, on green, SSHes to the host,
+`git reset --hard origin/main`, rebuilds the compose stack, and health-checks it.
+`.env` on the host is untouched by deploys. You can also run it manually from the
+**Actions** tab.
 
-   | Secret name | Value |
-   |---|---|
-   | `DROPLET_HOST` | the droplet's IP address |
-   | `DROPLET_USER` | `root` (or your sudo user) |
-   | `DROPLET_SSH_KEY` | the **private** key — entire contents of `~/.ssh/stackdock` (the file *without* `.pub`), including the BEGIN/END lines |
-
-4. Done. Every push to `main` now redeploys. You can also deploy manually: repo → **Actions** tab → **Deploy to DigitalOcean** → **Run workflow**. Each run ends with a health check and prints container logs if it fails.
-
-What the workflow does (`.github/workflows/deploy.yml`): SSH to the droplet → `git reset --hard origin/main` in `/opt/stackdock` → `docker compose up -d --build` → health check. Your `.env` on the droplet is untouched by deploys.
-
----
-
-## Part 4 — Using it
+## Usage
 
 | What | Where |
 |---|---|
 | Reading site | `https://yourdomain.com/` (login) |
-| Invite a friend / reset a password / manual sync | `https://yourdomain.com/admin` (admin only) |
-| Podcast feed (everything) | `https://yourdomain.com/feed/<FEED_TOKEN>/all.xml` — paste into any podcast app |
-| Single show feed | `https://yourdomain.com/feed/<FEED_TOKEN>/show.xml?name=<feed name>` |
-| Discord | new articles/episodes post automatically with links |
+| Admin (invites, password resets, manual syncs) | `/admin` |
+| Account settings | `/account` |
+| Status / health | `/status` (logged in), `/healthz` (public JSON) |
+| RSS feeds | `/feed/<FEED_TOKEN>/all.xml`, `/articles.xml`, `/everything.xml` |
 
-Schedules: email every 10 min, podcast feeds every 30 min, Substack cookie sync every 60 min (all tunable in `.env`).
+- Admins create single-use invite links at `/admin`; invitees set their own
+  credentials at `/signup`. Password resets are one-time admin-generated links.
+- The listing supports search, newest/oldest sort, per-publication/show filters,
+  and hiding items.
+- Scheduler intervals are configured per job in `.env`.
 
 ## Monitoring
 
-- **In-app:** `/status` (logged in) shows uptime, object-storage reachability, disk usage, library counts, every sync job's last result and next run, and each connected account's cookie health.
-- **External (Uptime Kuma, open source):** ships in `docker-compose.yml`. Add a DNS A record for `status.yourdomain.com` → droplet IP, set the subdomain in `Caddyfile`, then visit it once to create the Kuma admin account. Add a monitor: type **HTTP(s)**, URL `https://yourdomain.com/healthz`, interval 60s. Then **Settings → Notifications → Discord** and paste the same webhook URL — you'll get pinged if the whole site goes down, which the app itself can't tell you. Kuma also gives you a shareable status page if you want one (keep it private or password-protect it).
+- **In-app:** `/status` shows uptime, object-storage reachability, disk usage,
+  per-job last result + next run, and (with optional Cloudflare/DigitalOcean
+  read-only tokens) storage and host metrics.
+- **External:** an Uptime Kuma container ships in `docker-compose.yml`. Point a
+  DNS A record for `status.<domain>` at the host, set it in `Caddyfile`, then add
+  an HTTP monitor against `/healthz` and wire a Discord notification.
 
 ## Maintenance
 
-- **Backups**: `docker compose cp stackdock:/data/stackdock.db ./backup.db` (the audio itself is already safe in R2).
-- **Logs**: `docker compose logs -f stackdock`
-- **Cost**: ~$6/mo droplet + ~$1.50/mo per 100 GB in R2 (egress free).
+- **Backup:** `docker compose cp stackdock:/data/stackdock.db ./backup.db`
+  (media already lives in object storage).
+- **Logs:** `docker compose logs -f stackdock`
+- **Cost:** ~$6/mo host + a few cents/GB of object storage (egress free on R2).
