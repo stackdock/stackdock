@@ -5,7 +5,7 @@
   <img class="jak flip" src="/static/soyjak.svg" alt="">
   <div class="meme-card">
     <h2>This login page</h2>
-    <p class="greentext">&gt;be you<br>&gt;arrive at the library<br>&gt;log in or lurk forever</p>
+    <p class="greentext" id="greentext">&gt;be you<br>&gt;arrive at the library<br>&gt;log in or lurk forever</p>
     {% if error %}<p class="form-error">&gt;tfw wrong credentials. try again, anon</p>{% endif %}
     <form method="post" action="/login">
       <input type="hidden" name="next" value="{{ next }}">
@@ -21,4 +21,33 @@
   </div>
   <img class="jak" src="/static/soyjak.svg" alt="">
 </div>
+<script>
+(function () {
+  // Each entry is one greentext story; "\n" splits it into ">" lines.
+  var lines = [
+    "be you\narrive at the library\nlog in or lurk forever",
+    "fuck my stupid chud life",
+    "gay sex no latex",
+    "be me",
+    "be wills pancreas",
+    "nikki kittens was here",
+    "another day in the 4hl",
+    "you like zis?"
+  ];
+  var el = document.getElementById("greentext");
+  if (!el) return;
+  function render(story) {
+    el.innerHTML = "";
+    story.split("\n").forEach(function (s, idx) {
+      if (idx) el.appendChild(document.createElement("br"));
+      var span = document.createElement("span");
+      span.textContent = ">" + s;   // textContent => safe, no HTML injection
+      el.appendChild(span);
+    });
+  }
+  var i = Math.floor(Math.random() * lines.length);  // fresh on each visit
+  render(lines[i]);
+  setInterval(function () { i = (i + 1) % lines.length; render(lines[i]); }, 3500);
+})();
+</script>
 {% endblock %}
