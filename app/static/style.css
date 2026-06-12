@@ -189,6 +189,15 @@ footer {
 }
 .stub { background: var(--shelf-soft); padding: 0.75rem 1rem; border-radius: 6px; }
 
+/* paid badge: green = paid & full access, red = paid but preview-only */
+.badge {
+  font-family: var(--mono); font-size: 0.6rem; text-transform: uppercase;
+  letter-spacing: 0.06em; padding: 0.05rem 0.4rem; border-radius: 99px;
+  vertical-align: middle; white-space: nowrap;
+}
+.badge.paid-open { background: #1f7a44; color: #fff; }
+.badge.paid-locked { background: #b23b3b; color: #fff; }
+
 /* ---------- meme auth pages ---------- */
 .meme-stage {
   position: relative; max-width: 760px; margin: 2rem auto 0;

@@ -67,8 +67,12 @@ app/feedgen.py           private RSS feeds: all.xml (audio, for podcast apps),
 app/notify.py            ONE Discord digest embed per sync run (notify_digest) listing all
                          new items across every member, plus an optional generic outbound
                          JSON webhook (OUTBOUND_WEBHOOK_URL) that gets one combined payload
-app/ingest/substack.py       PRIMARY article source: per-user substack.sid cookies (added at /accounts)
-                             → subscriptions → archive backfill → full post bodies
+app/ingest/substack.py       PRIMARY source: per-user substack.sid cookies (added at /accounts)
+                             → subscriptions (api/v1/subscriptions?tvOnly=false) + SUBSTACK_EXTRA_PUBS
+                             → archive → per-post via substack.com/api/v1/posts/by-id/{id} (cross-domain,
+                             cookie always applies). TEXT posts → articles (full body if the account pays,
+                             else preview marked is_locked); PODCAST posts → download full podcast_url audio
+                             to R2 → episodes. Custom-domain pubs auto-resolved via redirect.
 app/ingest/email_ingest.py   optional fallback: IMAP poll → parse Substack emails → articles
 app/ingest/podcast_rss.py    poll PODCAST_FEEDS (Substack private podcast feeds, or any RSS)
                              → stream audio to R2 → episodes (with feed thumbnails)
@@ -81,7 +85,14 @@ docker-compose.yml       stackdock (internal :8000) + caddy (80/443, auto-HTTPS)
 - Port 8000 is `expose`d, not published — health checks from the droplet host must go through the compose network (the workflow already does: `docker compose exec -T caddy wget -qO- http://stackdock:8000/healthz`).
 - Caddy needs the DNS A record live and port 80/443 open before it can issue a cert. DO droplets have no firewall by default; if the human enabled one, allow 22/80/443.
 - Gmail IMAP requires an **app password** (2FA on). Auth failures usually mean a normal password was used.
-- Substack has NO official public API; public /feed RSS only carries free posts and truncated paid previews, which is why article sync uses the substack.sid cookie against unofficial endpoints (api/v1/subscriptions, /archive, /posts/{slug}); written defensively in app/ingest/substack.py. Podcast audio uses Substack's private per-subscriber RSS feeds (real RSS, no cookie) via PODCAST_FEEDS. First sync per account is a silent backfill (no Discord spam); later syncs notify. Custom-domain publications may come back link-only (the substack.com cookie doesn't apply there) — that's expected, posts still list with links to the original.
+- Substack has NO official public API; sync uses the substack.sid cookie against unofficial endpoints (written defensively in app/ingest/substack.py). Hard-won details:
+  - `api/v1/subscriptions` now REQUIRES `?tvOnly=false` or it 400s ("param tvOnly invalid value"), which used to look like "no subscriptions".
+  - That endpoint only returns a partial follow list and OMITS some paid/podcast subs — there is no complete-subscriptions endpoint. Add the missing ones to `SUBSTACK_EXTRA_PUBS` (JSON list of {name, base_url}), synced for every account.
+  - Post bodies/audio are fetched via `substack.com/api/v1/posts/by-id/{id}` (the substack.com cookie applies cross-domain, so it returns FULL paid content + the full podcast_url for pubs the account actually pays for — unlike `{custom-domain}/api/v1/posts/{slug}`, which only previews).
+  - "The Substack Post" (subdomain `post`) is Substack's auto-subscribed promo blog and is skipped (`SKIP_SUBDOMAINS`).
+  - Paid detection: a post is paid if `audience == "only_paid"`; it's LOCKED (preview only) when `len(body_html) ≈ len(truncated_body_text)` (unlocked bodies are vastly longer). Stored as `articles.is_paid` / `articles.is_locked`; UI shows a green "paid" badge (full access) or red "paid 🔒" (preview). `truncated_body_text` is present on both, so it is NOT itself the lock signal.
+  - PODCAST-type posts: the full episode audio (podcast_url from posts/by-id) is downloaded to R2 and stored as an episode — the cookie path gets full paid audio even when the post TEXT is a locked preview. PODCAST_FEEDS (private per-subscriber RSS) still works too for non-cookie podcasts.
+  - First sync per account is a silent backfill (no Discord spam); later syncs notify. Reset an account's `last_sync` to NULL to force a fresh silent backfill.
 - Members' substack.sid cookies are stored in SQLite on the server. Accounts are connected in the UI at /accounts. Treat the droplet and DB backups as sensitive.
 - Email ingest only processes UNSEEN messages from `IMAP_ALLOWED_SENDER_DOMAINS`. If testing with old mail, mark messages unread first.
 - Deploys do a `git reset --hard origin/main` in `/opt/stackdock` — never store uncommitted changes or secrets in tracked files there. `.env` is untracked and survives deploys.

@@ -23,16 +23,22 @@ walking below is written defensively and is the place to fix.
 """
 import logging
 import time
+from urllib.parse import urlparse
 
 import requests
 
-from .. import config, db, notify
+from .. import config, db, notify, storage
+from .podcast_rss import _download_to_storage, _slug
 
 log = logging.getLogger("stackdock.substack")
 
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"
 PAGE_SIZE = 25
 REQUEST_GAP_S = 0.6  # be polite; don't hammer the API
+
+# Substack auto-subscribes every account to its own promo blog ("The Substack
+# Post", post.substack.com). It's noise — never ingest it.
+SKIP_SUBDOMAINS = {"post"}
 
 
 def _session(cookie: str) -> requests.Session:
@@ -51,6 +57,44 @@ def _get_json(s: requests.Session, url: str, params=None):
         return r.json()
     except ValueError:
         return None
+
+
+def _post_by_id(s: requests.Session, post_id) -> dict | None:
+    """Full post JSON via substack.com's cross-domain reader endpoint. The
+    substack.com cookie ALWAYS applies here, so this returns full body_html and
+    the full (paid) podcast_url for pubs the account actually pays for — even on
+    custom domains, where {custom}/api/v1/posts/{slug} would only give a preview."""
+    data = _get_json(s, f"https://substack.com/api/v1/posts/by-id/{post_id}")
+    if isinstance(data, dict):
+        return data.get("post", data)
+    return None
+
+
+def _is_locked(post: dict) -> bool:
+    """A paid post is locked (no full access) when its body_html is essentially
+    just the free-preview teaser. Unlocked bodies are far longer than the
+    truncated preview text (ratio ~1.0 locked vs hundreds unlocked)."""
+    bh = post.get("body_html") or ""
+    tt = post.get("truncated_body_text") or ""
+    if not tt:
+        return False
+    return len(bh) <= len(tt) * 1.4 + 100
+
+
+def _effective_base(s: requests.Session, sub: str | None, custom: str | None) -> str:
+    """Custom-domain pubs publish from their own domain; their {sub}.substack.com
+    archive is empty. Follow the subdomain's redirect to find the real host."""
+    if custom:
+        return f"https://{custom}"
+    base = f"https://{sub}.substack.com"
+    try:
+        r = s.get(base, timeout=15, allow_redirects=True)
+        host = urlparse(r.url).netloc
+        if host and host != f"{sub}.substack.com":
+            return f"https://{host}"
+    except requests.RequestException:
+        pass
+    return base
 
 
 def get_publications(s: requests.Session) -> list[dict] | None:
@@ -73,7 +117,7 @@ def get_publications(s: requests.Session) -> list[dict] | None:
     except ValueError:
         return []
 
-    pubs, seen = [], set()
+    raw, seen = [], set()
 
     def consider(node: dict):
         sub = node.get("subdomain")
@@ -81,10 +125,12 @@ def get_publications(s: requests.Session) -> list[dict] | None:
         name = node.get("name")
         if not name or not (sub or custom):
             return
-        base = f"https://{custom}" if custom else f"https://{sub}.substack.com"
-        if base not in seen:
-            seen.add(base)
-            pubs.append({"name": name, "base_url": base})
+        if sub in SKIP_SUBDOMAINS:
+            return
+        key = custom or sub
+        if key not in seen:
+            seen.add(key)
+            raw.append((name, sub, custom))
 
     def walk(node):
         if isinstance(node, dict):
@@ -96,6 +142,16 @@ def get_publications(s: requests.Session) -> list[dict] | None:
                 walk(x)
 
     walk(data)
+
+    # resolve each pub's real host (custom domains publish off their own domain)
+    pubs = [{"name": name, "base_url": _effective_base(s, sub, custom)}
+            for name, sub, custom in raw]
+    # add manually-listed pubs the subscriptions API omits (some paid / podcast subs)
+    have = {p["base_url"] for p in pubs}
+    for extra in config.SUBSTACK_EXTRA_PUBS:
+        base = (extra.get("base_url") or "").rstrip("/")
+        if base and base not in have:
+            pubs.append({"name": extra.get("name") or base, "base_url": base})
     return pubs
 
 
@@ -135,7 +191,7 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
         return 0, "OK: no subscriptions found on this account", []
 
     is_backfill = account["last_sync"] is None
-    new_count, mirrored, link_only = 0, 0, 0
+    new_count, mirrored, link_only, episodes = 0, 0, 0, 0
     items: list[dict] = []  # collected for the unified digest (one push per run)
 
     for pub in pubs:
@@ -147,11 +203,52 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
             if not post_id or not slug:
                 continue
             guid = f"substack:{post_id}"
-            if db.article_exists(guid):
+            url = post.get("canonical_url") or f"{pub['base_url']}/p/{slug}"
+            title = post.get("title") or "(untitled)"
+
+            # ---- podcast episodes: pull the FULL audio via the cookie ----
+            if post.get("type") == "podcast":
+                if db.episode_exists(guid):
+                    continue
+                full = _post_by_id(s, post_id) or {}
+                audio_url = full.get("podcast_url") or post.get("podcast_url")
+                if not audio_url:
+                    continue
+                ext = audio_url.split("?")[0].rsplit(".", 1)
+                ext = ext[1].lower() if len(ext) == 2 and len(ext[1]) <= 4 else "mp3"
+                key = f"podcasts/{_slug(pub['name'])}/{_slug(title)}.{ext}"
+                try:
+                    size, mime = _download_to_storage(
+                        audio_url, key, headers={"Cookie": f"substack.sid={account['cookie']}"})
+                except Exception as e:
+                    log.warning("Podcast download failed (%s): %s", title, e)
+                    continue
+                dur = full.get("podcast_duration") or post.get("podcast_duration")
+                episode_id = db.insert_episode(
+                    guid=guid, feed_name=pub["name"], title=title,
+                    description=full.get("subtitle") or "",
+                    audio_key=key, audio_bytes=size, audio_mime=mime,
+                    duration=str(round(dur)) if dur else "",
+                    published_at=post.get("post_date"),
+                    image_url=(full.get("podcast_episode_image_url")
+                               or post.get("podcast_episode_image_url") or post.get("cover_image")),
+                )
+                if episode_id:
+                    new_count += 1
+                    episodes += 1
+                    if not is_backfill:
+                        items.append({"type": "episode", "source": pub["name"], "title": title,
+                                      "url": f"{config.PUBLIC_BASE_URL}/listen/{db.get_episode(episode_id)['slug']}",
+                                      "original_url": url, "published_at": post.get("post_date")})
                 continue
 
-            url = post.get("canonical_url") or f"{pub['base_url']}/p/{slug}"
-            body = fetch_body(s, pub["base_url"], slug)
+            # ---- text articles (full body if accessible, preview/link otherwise) ----
+            if db.article_exists(guid):
+                continue
+            full = _post_by_id(s, post_id)
+            body = (full or {}).get("body_html")
+            is_paid = post.get("audience") == "only_paid"
+            locked = bool(is_paid and (_is_locked(full) if full else True))
             if body:
                 mirrored += 1
             else:
@@ -161,13 +258,15 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
             article_id = db.insert_article(
                 message_id=guid,
                 publication=pub["name"],
-                title=post.get("title") or "(untitled)",
+                title=title,
                 author=(post.get("publishedBylines") or [{}])[0].get("name") or pub["name"],
                 original_url=url,
                 html=body,
                 published_at=post.get("post_date"),
                 added_by=account["label"],
                 cover_image=post.get("cover_image"),
+                is_paid=is_paid,
+                is_locked=locked,
             )
             if article_id:
                 new_count += 1
@@ -175,13 +274,14 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
                     items.append({
                         "type": "article",
                         "source": pub["name"],
-                        "title": post.get("title") or "(untitled)",
+                        "title": title,
                         "url": f"{config.PUBLIC_BASE_URL}/read/{db.get_article(article_id)['slug']}",
                         "original_url": url,
                         "published_at": post.get("post_date"),
                     })
 
-    status = f"OK: {len(pubs)} publications, {new_count} new ({mirrored} mirrored, {link_only} link-only)"
+    status = (f"OK: {len(pubs)} publications, {new_count} new "
+              f"({mirrored} mirrored, {link_only} link-only, {episodes} episodes)")
     return new_count, status, items
 
 

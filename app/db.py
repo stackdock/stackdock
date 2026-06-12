@@ -22,7 +22,9 @@ CREATE TABLE IF NOT EXISTS articles (
     published_at TEXT,
     created_at TEXT NOT NULL,
     cover_image TEXT,                  -- remote thumbnail URL (Substack cover_image)
-    slug TEXT                          -- pretty URL: /read/{slug}
+    slug TEXT,                         -- pretty URL: /read/{slug}
+    is_paid INTEGER DEFAULT 0,         -- 1 if the source post is paid-subscriber-only
+    is_locked INTEGER DEFAULT 0        -- 1 if paid but we only got a preview (no full access)
 );
 
 CREATE TABLE IF NOT EXISTS users (
@@ -117,6 +119,8 @@ def init():
         for table, col in [("articles", "added_by TEXT"),
                            ("articles", "cover_image TEXT"),
                            ("articles", "slug TEXT"),
+                           ("articles", "is_paid INTEGER DEFAULT 0"),
+                           ("articles", "is_locked INTEGER DEFAULT 0"),
                            ("episodes", "image_url TEXT"),
                            ("episodes", "slug TEXT"),
                            ("connected_accounts", "last_alert TEXT")]:
@@ -150,17 +154,18 @@ def article_exists(message_id: str) -> bool:
 
 
 def insert_article(message_id, publication, title, author, original_url, html,
-                   published_at, added_by=None, cover_image=None) -> int:
+                   published_at, added_by=None, cover_image=None, is_paid=0, is_locked=0) -> int:
     with conn() as c:
         if c.execute("SELECT 1 FROM articles WHERE message_id = ?", (message_id,)).fetchone():
             return 0
         cur = c.execute(
             """INSERT OR IGNORE INTO articles
                (message_id, publication, title, author, original_url, html, published_at,
-                created_at, added_by, cover_image, slug)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                created_at, added_by, cover_image, slug, is_paid, is_locked)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (message_id, publication, title, author, original_url, html, published_at,
-             now_iso(), added_by, cover_image, _unique_slug(c, "articles", title)),
+             now_iso(), added_by, cover_image, _unique_slug(c, "articles", title),
+             1 if is_paid else 0, 1 if is_locked else 0),
         )
         return cur.lastrowid or 0
 
@@ -169,7 +174,7 @@ def list_articles(limit=1000, publication=None):
     with conn() as c:
         if publication:
             return c.execute(
-                "SELECT id, publication, title, author, original_url, published_at, created_at, added_by, cover_image, slug "
+                "SELECT id, publication, title, author, original_url, published_at, created_at, added_by, cover_image, slug, is_paid, is_locked "
                 "FROM articles WHERE publication = ? "
                 "ORDER BY COALESCE(published_at, created_at) DESC LIMIT ?",
                 (publication, limit),
