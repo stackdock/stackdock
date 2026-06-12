@@ -60,6 +60,14 @@ S3_BUCKET = os.getenv("S3_BUCKET", "stackdock")
 S3_PUBLIC_BASE_URL = os.getenv("S3_PUBLIC_BASE_URL", "").rstrip("/")
 PRESIGN_EXPIRY_SECONDS = int(os.getenv("PRESIGN_EXPIRY_SECONDS", str(7 * 24 * 3600)))
 
+# ---- Cloud provider metrics (optional, for /status) ----
+# Cloudflare: read-only token with Account Analytics:Read. Account ID is on the R2 page.
+CLOUDFLARE_API_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN", "")
+CLOUDFLARE_ACCOUNT_ID = os.getenv("CLOUDFLARE_ACCOUNT_ID", "")
+# DigitalOcean: read-only token; droplet ID is the number in the droplet's dashboard URL.
+DO_API_TOKEN = os.getenv("DO_API_TOKEN", "")
+DO_DROPLET_ID = os.getenv("DO_DROPLET_ID", "")
+
 # ---- Discord ----
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
 

@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import auth, config, db, feedgen, notify, storage
+from . import auth, config, db, feedgen, metrics, notify, storage
 from .ingest import email_ingest, gumroad, podcast_rss, substack
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -318,6 +318,8 @@ def status_page(request: Request, user=Depends(auth.current_user)):
     du = shutil.disk_usage(config.DATA_DIR)
     accounts = db.list_accounts()
     return render(request, "status.html", user=user,
+                  r2=metrics.r2_metrics(),
+                  do=metrics.do_metrics(),
                   uptime=str(now - START_TIME).split(".")[0],
                   jobs=jobs,
                   storage_ok=storage_ok, storage_msg=storage_msg,

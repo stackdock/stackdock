@@ -59,6 +59,9 @@ app/auth.py              bcrypt, signed session cookies, invites, reset links
 app/config.py            all env vars
 app/db.py                SQLite (articles, episodes) at $DATA_DIR/stackdock.db
 app/storage.py           S3-compatible client (R2); url_for() = presigned or public URL
+app/metrics.py           optional Cloudflare R2 + DigitalOcean metrics for /status
+                         (read-only tokens: CLOUDFLARE_API_TOKEN/_ACCOUNT_ID, DO_API_TOKEN/_DROPLET_ID;
+                         cached 5 min; soft-fails to "not configured")
 app/feedgen.py           private RSS feed XML
 app/notify.py            Discord webhook embeds
 app/ingest/substack.py       PRIMARY article source: per-user substack.sid cookies (added at /accounts)

@@ -19,6 +19,35 @@
 </section>
 
 <section>
+  <h2>Cloudflare R2</h2>
+  <ul class="rows">
+    {% if not r2.configured %}
+      <li><span class="spine">r2</span><span class="row-title">Not configured — set <code>CLOUDFLARE_API_TOKEN</code> + <code>CLOUDFLARE_ACCOUNT_ID</code> in .env</span><span></span></li>
+    {% elif not r2.ok %}
+      <li><span class="spine">r2</span><span class="row-title">❌ {{ r2.error }}</span><span></span></li>
+    {% else %}
+      <li><span class="spine">stored</span><span class="row-title">✅ {{ r2.size_gb }} GB · {{ r2.objects }} objects · ≈${{ r2.est_cost_month }}/mo</span><time>as of {{ r2.as_of }}</time></li>
+    {% endif %}
+  </ul>
+</section>
+
+<section>
+  <h2>DigitalOcean droplet</h2>
+  <ul class="rows">
+    {% if not do.configured %}
+      <li><span class="spine">droplet</span><span class="row-title">Not configured — set <code>DO_API_TOKEN</code> + <code>DO_DROPLET_ID</code> in .env</span><span></span></li>
+    {% elif not do.ok %}
+      <li><span class="spine">droplet</span><span class="row-title">❌ {{ do.error }}</span><span></span></li>
+    {% else %}
+      <li><span class="spine">droplet</span><span class="row-title">{{ "✅" if do.status == "active" else "❌" }} {{ do.status }} · {{ do.size }} · {{ do.region }}</span><span></span></li>
+      <li><span class="spine">load (5m)</span><span class="row-title">{{ "⚠️" if do.load_5 is not none and do.load_5 > 1.5 else "✅" }} {{ do.load_5 if do.load_5 is not none else "no agent data" }}</span><span></span></li>
+      <li><span class="spine">memory</span><span class="row-title">{{ "⚠️" if do.mem_used_pct is not none and do.mem_used_pct > 90 else "✅" }} {{ (do.mem_used_pct ~ "% used") if do.mem_used_pct is not none else "no agent data" }}</span><span></span></li>
+    {% endif %}
+  </ul>
+  <p class="hint">Metrics cached 5 min. Load/memory need DO's metrics agent (on by default on new droplets).</p>
+</section>
+
+<section>
   <h2>Sync jobs</h2>
   <ul class="rows">
     {% for j in jobs %}
