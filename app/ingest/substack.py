@@ -70,15 +70,18 @@ def _post_by_id(s: requests.Session, post_id) -> dict | None:
     return None
 
 
+_PAYWALL_MARKERS = ("paywall-jump", "paywalltodom", 'class="paywall')
+
+
 def _is_locked(post: dict) -> bool:
-    """A paid post is locked (no full access) when its body_html is essentially
-    just the free-preview teaser. Unlocked bodies are far longer than the
-    truncated preview text (ratio ~1.0 locked vs hundreds unlocked)."""
-    bh = post.get("body_html") or ""
-    tt = post.get("truncated_body_text") or ""
-    if not tt:
-        return False
-    return len(bh) <= len(tt) * 1.4 + 100
+    """For a paid post, Substack injects a paywall-jump marker into body_html
+    ONLY when the account can read past the paywall (full access). A no-access
+    preview is just the truncated teaser and omits the marker entirely. (Length
+    ratios are unreliable — some previews run several paragraphs.)"""
+    bh = (post.get("body_html") or "").lower()
+    if not bh:
+        return True
+    return not any(m in bh for m in _PAYWALL_MARKERS)
 
 
 def _effective_base(s: requests.Session, sub: str | None, custom: str | None) -> str:
@@ -305,8 +308,19 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
                 continue
 
             # ---- text articles (full body if accessible, preview/link otherwise) ----
-            if db.article_exists(guid):
+            # Content is deduped across members. If we already have this post,
+            # just credit this account too — and if ours is a locked preview but
+            # this account can read the full post, upgrade it in place.
+            existing = db.get_article_by_message_id(guid)
+            if existing:
+                db.add_article_source(existing["id"], account["label"])
+                if existing["is_locked"]:
+                    full = _post_by_id(s, post_id)
+                    if full and full.get("body_html") and not _is_locked(full):
+                        db.upgrade_article_body(existing["id"], full["body_html"], account["label"])
+                        log.info("[%s] unlocked previously-preview post: %s", account["label"], title)
                 continue
+
             full = _post_by_id(s, post_id)
             body = (full or {}).get("body_html")
             is_paid = post.get("audience") == "only_paid"
@@ -331,6 +345,7 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
                 is_locked=locked,
             )
             if article_id:
+                db.add_article_source(article_id, account["label"])
                 new_count += 1
                 if not is_backfill:
                     items.append({

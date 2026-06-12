@@ -69,6 +69,12 @@ CREATE TABLE IF NOT EXISTS tracked_publications (
     created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS article_sources (
+    article_id INTEGER NOT NULL,       -- content is deduped; this maps it to every
+    label TEXT NOT NULL,               -- connected account that also has it (shown as badges)
+    UNIQUE(article_id, label)
+);
+
 CREATE TABLE IF NOT EXISTS episodes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     guid TEXT UNIQUE,                  -- RSS guid, dedupe key
@@ -153,6 +159,9 @@ def init():
             for row in c.execute(f"SELECT id, title FROM {table} WHERE slug IS NULL").fetchall():
                 c.execute(f"UPDATE {table} SET slug = ? WHERE id = ?",
                           (_unique_slug(c, table, row["title"]), row["id"]))
+        # seed article_sources from each article's original contributor
+        c.execute("INSERT OR IGNORE INTO article_sources (article_id, label) "
+                  "SELECT id, added_by FROM articles WHERE added_by IS NOT NULL AND added_by != ''")
 
 
 # ---------- articles ----------
@@ -161,6 +170,34 @@ def article_exists(message_id: str) -> bool:
     with conn() as c:
         r = c.execute("SELECT 1 FROM articles WHERE message_id = ?", (message_id,)).fetchone()
         return r is not None
+
+
+def get_article_by_message_id(message_id: str):
+    with conn() as c:
+        return c.execute("SELECT * FROM articles WHERE message_id = ?", (message_id,)).fetchone()
+
+
+def add_article_source(article_id: int, label: str) -> None:
+    """Credit a connected account as also having this (deduped) article."""
+    if not label:
+        return
+    with conn() as c:
+        c.execute("INSERT OR IGNORE INTO article_sources (article_id, label) VALUES (?,?)",
+                  (article_id, label))
+
+
+def list_article_sources(article_id: int) -> list[str]:
+    with conn() as c:
+        return [r["label"] for r in c.execute(
+            "SELECT label FROM article_sources WHERE article_id = ? ORDER BY label",
+            (article_id,)).fetchall()]
+
+
+def upgrade_article_body(article_id: int, html: str, added_by: str) -> None:
+    """A paying account unlocked a post we previously stored as a preview."""
+    with conn() as c:
+        c.execute("UPDATE articles SET html = ?, is_locked = 0, added_by = ? WHERE id = ?",
+                  (html, added_by, article_id))
 
 
 def insert_article(message_id, publication, title, author, original_url, html,
@@ -184,7 +221,8 @@ def list_articles(limit=1000, publication=None):
     with conn() as c:
         if publication:
             return c.execute(
-                "SELECT id, publication, title, author, original_url, published_at, created_at, added_by, cover_image, slug, is_paid, is_locked "
+                "SELECT id, publication, title, author, original_url, published_at, created_at, added_by, cover_image, slug, is_paid, is_locked, "
+                "(SELECT GROUP_CONCAT(label, ',') FROM article_sources s WHERE s.article_id = articles.id) AS sources "
                 "FROM articles WHERE publication = ? "
                 "ORDER BY COALESCE(published_at, created_at) DESC LIMIT ?",
                 (publication, limit),

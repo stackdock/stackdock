@@ -313,7 +313,8 @@ def read_article(request: Request, slug: str, user=Depends(auth.current_user)):
     a = db.get_article_by_slug(slug)
     if not a:
         raise HTTPException(404)
-    return render(request, "article.html", user=user, a=a)
+    return render(request, "article.html", user=user, a=a,
+                  sources=db.list_article_sources(a["id"]))
 
 
 @app.get("/listen/{slug}", response_class=HTMLResponse)

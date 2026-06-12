@@ -48,7 +48,7 @@
           <span class="spine">{{ a.publication }}{% if a.is_paid %} <span class="badge {{ 'paid-locked' if a.is_locked else 'paid-open' }}">paid{{ ' 🔒' if a.is_locked else '' }}</span>{% endif %}</span>
           <span class="card-title">{{ a.title }}</span>
           <span class="row-meta">
-            {% if a.added_by %}<span class="added-by">{{ a.added_by }}</span> · {% endif %}
+            {% for src in (a.sources or a.added_by or '').split(',') if src %}<span class="added-by">{{ src }}</span> {% endfor %}
             <time>{{ (a.published_at or a.created_at)[:10] }}</time>
           </span>
         </span>
