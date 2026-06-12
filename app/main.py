@@ -8,7 +8,7 @@ from pathlib import Path
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import Depends, FastAPI, Form, HTTPException, Request, Response
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -63,7 +63,15 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title=config.SITE_TITLE, lifespan=lifespan)
-app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
+STATIC_DIR = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+@app.get("/sw.js", include_in_schema=False)
+def service_worker():
+    """Service worker must be served from / so its scope can cover the whole app."""
+    return FileResponse(STATIC_DIR / "sw.js", media_type="application/javascript",
+                        headers={"Cache-Control": "no-cache"})
 
 
 def render(request, template, **ctx):
@@ -346,9 +354,12 @@ def listen_episode(request: Request, slug: str, user=Depends(auth.current_user))
         raise HTTPException(404)
     try:
         audio_url = storage.url_for(e["audio_key"])
+        ext = e["audio_key"].rsplit(".", 1)[-1] if "." in e["audio_key"] else "mp3"
+        download_url = storage.url_for(e["audio_key"], download_name=f"{e['slug']}.{ext}")
     except Exception:  # storage not configured (local dev) — page still renders
-        audio_url = None
-    return render(request, "episode.html", user=user, e=e, audio_url=audio_url)
+        audio_url = download_url = None
+    return render(request, "episode.html", user=user, e=e,
+                  audio_url=audio_url, download_url=download_url)
 
 
 # Old numeric URLs keep working: redirect to the slug versions.

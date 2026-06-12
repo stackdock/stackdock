@@ -300,3 +300,41 @@ footer {
   .meme-stage .jak.flip { display: none; }
   .meme-card { flex-basis: auto; width: 100%; }
 }
+
+/* ---------- podcast player ---------- */
+.pod-player {
+  margin-top: 1.25rem; padding: 1rem 1.1rem; max-width: 560px;
+  background: #fff; border: 1px solid var(--rule); border-radius: 10px;
+}
+.pp-progress input[type="range"] {
+  width: 100%; accent-color: var(--shelf); height: 6px; cursor: pointer;
+}
+.pp-times {
+  display: flex; justify-content: space-between;
+  font-family: var(--mono); font-size: 0.72rem; color: var(--ink-soft);
+}
+.pp-controls { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 0.4rem; }
+.pp-controls button {
+  border: 1px solid var(--rule); background: var(--paper); color: var(--ink);
+  border-radius: 99px; cursor: pointer; font-family: var(--mono);
+}
+.pp-main { width: 3.4rem; height: 3.4rem; font-size: 1.2rem; background: var(--shelf); color: #fff; border: 0; }
+.pp-skip { width: 2.7rem; height: 2.7rem; font-size: 0.78rem; }
+.pp-speed { padding: 0.45rem 0.8rem; font-size: 0.8rem; }
+.pp-controls button:active { transform: scale(0.96); }
+.pp-note { font-family: var(--mono); font-size: 0.75rem; color: var(--shelf); text-align: center; margin: 0.5rem 0 0; }
+.pp-actions { text-align: center; margin-top: 0.6rem; }
+
+/* listen progress on cards */
+.thumb-wrap { position: relative; display: block; width: 84px; }
+.ep-progress {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 4px;
+  background: rgba(0,0,0,0.25); border-radius: 0 0 4px 4px; overflow: hidden;
+}
+.ep-progress-fill { display: block; height: 100%; width: 0; background: var(--shelf); }
+.ep-played {
+  position: absolute; top: 3px; right: 3px; background: var(--shelf); color: #fff;
+  font-size: 0.65rem; width: 1.1rem; height: 1.1rem; border-radius: 99px;
+  display: flex; align-items: center; justify-content: center;
+}
+.card.played .card-title { color: var(--ink-soft); }

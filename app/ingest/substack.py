@@ -22,6 +22,7 @@ normally. These endpoints are unofficial; if Substack changes them, the JSON
 walking below is written defensively and is the place to fix.
 """
 import logging
+import threading
 import random
 import time
 from urllib.parse import urlparse
@@ -482,7 +483,20 @@ def sync_orphan_tracked_pubs(covered_user_ids: set[int]) -> int:
     return new_count  # silent (treated like backfill); digest covers account syncs
 
 
+_RUN_LOCK = threading.Lock()
+
+
 def run() -> int:
+    if not _RUN_LOCK.acquire(blocking=False):
+        log.info("%s sync already running; skipping overlapping run.", __name__)
+        return 0
+    try:
+        return _run()
+    finally:
+        _RUN_LOCK.release()
+
+
+def _run() -> int:
     """Sync every connected account + manually tracked publications."""
     accounts = db.list_accounts(service='substack')
     if not accounts and not db.list_tracked_publications():

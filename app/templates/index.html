@@ -100,13 +100,17 @@
   {% endif %}
   <ul class="cards">
     {% for e in episodes %}
-    <li class="card">
+    <li class="card" data-ep-slug="{{ e.slug }}">
       <a href="/listen/{{ e.slug }}" class="card-link">
-        {% if e.image_url %}
-          <img class="thumb" src="{{ e.image_url }}" alt="" loading="lazy">
-        {% else %}
-          <span class="thumb thumb-fallback">▶</span>
-        {% endif %}
+        <span class="thumb-wrap">
+          {% if e.image_url %}
+            <img class="thumb" src="{{ e.image_url }}" alt="" loading="lazy">
+          {% else %}
+            <span class="thumb thumb-fallback">▶</span>
+          {% endif %}
+          <span class="ep-progress"><span class="ep-progress-fill"></span></span>
+          <span class="ep-played" hidden>✓</span>
+        </span>
         <span class="card-body">
           <span class="spine">{{ e.feed_name }}</span>
           <span class="card-title">{{ e.title }}</span>
@@ -122,4 +126,23 @@
 </section>
 {% endif %}
 
+<script>
+/* paint listen progress on podcast cards from the player's localStorage */
+document.querySelectorAll("[data-ep-slug]").forEach((card) => {
+  const slug = card.dataset.epSlug;
+  let pos = 0, dur = 0, done = false;
+  try {
+    pos = parseFloat(localStorage.getItem("pos:" + slug) || "0");
+    dur = parseFloat(localStorage.getItem("dur:" + slug) || "0");
+    done = !!localStorage.getItem("done:" + slug);
+  } catch {}
+  if (done) {
+    card.querySelector(".ep-played").hidden = false;
+    card.classList.add("played");
+  } else if (pos > 10 && dur > 0) {
+    card.querySelector(".ep-progress-fill").style.width =
+      Math.min(100, 100 * pos / dur) + "%";
+  }
+});
+</script>
 {% endblock %}

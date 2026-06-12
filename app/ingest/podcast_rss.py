@@ -6,6 +6,8 @@ Works with:
   * Any other standard podcast RSS feed
 """
 import logging
+import threading
+from email.utils import parsedate_to_datetime
 import re
 from urllib.parse import urlparse
 
@@ -35,6 +37,18 @@ def _download_to_storage(audio_url: str, key: str, headers: dict | None = None) 
         return size, mime
 
 
+def _iso_date(entry) -> str:
+    """Normalize RSS pubDates (RFC 822, e.g. 'Wed, 04 Jun 2025 ...') to ISO so
+    they string-sort correctly next to Substack's ISO post_date values."""
+    raw = entry.get("published", "")
+    if not raw:
+        return ""
+    try:
+        return parsedate_to_datetime(raw).isoformat()
+    except (TypeError, ValueError):
+        return raw
+
+
 def _entry_image(entry, parsed) -> str | None:
     """Best-effort episode thumbnail: itunes per-episode image, else feed image."""
     img = entry.get("image")
@@ -47,7 +61,20 @@ def _entry_image(entry, parsed) -> str | None:
         parsed.feed.get("itunes_image"), dict) else None
 
 
+_RUN_LOCK = threading.Lock()
+
+
 def run() -> int:
+    if not _RUN_LOCK.acquire(blocking=False):
+        log.info("%s sync already running; skipping overlapping run.", __name__)
+        return 0
+    try:
+        return _run()
+    finally:
+        _RUN_LOCK.release()
+
+
+def _run() -> int:
     """Poll all configured feeds once. Returns number of new episodes."""
     if not config.PODCAST_FEEDS:
         log.info("No podcast feeds configured; skipping.")
@@ -96,7 +123,7 @@ def run() -> int:
                 audio_bytes=size,
                 audio_mime=mime,
                 duration=entry.get("itunes_duration", ""),
-                published_at=entry.get("published", ""),
+                published_at=_iso_date(entry),
                 image_url=_entry_image(entry, parsed),
             )
             if episode_id:

@@ -6,15 +6,138 @@
   <h1>{{ e.title }}</h1>
   <p class="meta">{{ (e.published_at or e.created_at)[:16] }}{% if e.duration %} · {{ e.duration }}{% endif %}</p>
 
-  {% if e.image_url %}<img class="episode-art" src="{{ e.image_url }}" alt="">{% endif %}
+  {% if e.image_url %}<img class="episode-art" id="ep-art" src="{{ e.image_url }}" alt="">{% endif %}
 
   {% if audio_url %}
-  <audio class="player" controls preload="none" src="{{ audio_url }}"></audio>
-  <p class="meta"><a href="{{ audio_url }}" download>Download audio</a></p>
+  <div class="pod-player" id="pod"
+       data-slug="{{ e.slug }}" data-title="{{ e.title }}" data-show="{{ e.feed_name }}"
+       data-art="{{ e.image_url or '' }}">
+    <audio id="pp-audio" preload="metadata" src="{{ audio_url }}"></audio>
+
+    <div class="pp-progress">
+      <input type="range" id="pp-seek" min="0" max="1000" value="0" step="1" aria-label="Seek">
+      <div class="pp-times"><span id="pp-cur">0:00</span><span id="pp-dur">–:––</span></div>
+    </div>
+
+    <div class="pp-controls">
+      <button id="pp-back" class="pp-skip" title="Back 15s">↺15</button>
+      <button id="pp-play" class="pp-main" title="Play/Pause">▶</button>
+      <button id="pp-fwd" class="pp-skip" title="Forward 30s">30↻</button>
+      <button id="pp-speed" class="pp-speed" title="Playback speed">1×</button>
+    </div>
+
+    <p class="pp-note" id="pp-resume" hidden></p>
+    <p class="meta pp-actions">
+      <a href="{{ download_url or audio_url }}">⬇ Download</a>
+      · <a href="#" id="pp-restart">Restart episode</a>
+      · <a href="#" id="pp-done">Mark played</a>
+    </p>
+  </div>
   {% else %}
   <p class="empty">Audio storage isn't configured, so this episode can't be streamed right now.</p>
   {% endif %}
 
   {% if e.description %}<div class="body">{{ e.description | safe }}</div>{% endif %}
 </article>
+
+{% if audio_url %}
+<script>
+(() => {
+  const box = document.getElementById("pod");
+  const a = document.getElementById("pp-audio");
+  const slug = box.dataset.slug;
+  const K_POS = "pos:" + slug, K_DUR = "dur:" + slug, K_DONE = "done:" + slug;
+  const K_RATE = "rate:global";
+  const $ = (id) => document.getElementById(id);
+  const fmt = (s) => {
+    if (!isFinite(s)) return "–:––";
+    s = Math.max(0, Math.round(s));
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(sec).padStart(2, "0");
+  };
+  const store = {
+    get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
+    set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
+    del: (k) => { try { localStorage.removeItem(k); } catch {} },
+  };
+
+  // ---- resume position ----
+  const saved = parseFloat(store.get(K_POS) || "0");
+  if (saved > 10 && !store.get(K_DONE)) {
+    const note = $("pp-resume");
+    note.textContent = "Resuming from " + fmt(saved);
+    note.hidden = false;
+    setTimeout(() => { note.hidden = true; }, 5000);
+  }
+  a.addEventListener("loadedmetadata", () => {
+    $("pp-dur").textContent = fmt(a.duration);
+    store.set(K_DUR, String(a.duration || 0));
+    if (saved > 10 && saved < a.duration - 20 && !store.get(K_DONE)) a.currentTime = saved;
+  });
+
+  let lastSave = 0;
+  a.addEventListener("timeupdate", () => {
+    $("pp-cur").textContent = fmt(a.currentTime);
+    if (a.duration) $("pp-seek").value = Math.round(1000 * a.currentTime / a.duration);
+    const now = Date.now();
+    if (now - lastSave > 4000) { lastSave = now; store.set(K_POS, String(a.currentTime)); }
+  });
+  const flush = () => store.set(K_POS, String(a.currentTime || 0));
+  a.addEventListener("pause", flush);
+  window.addEventListener("pagehide", flush);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) flush(); });
+  a.addEventListener("ended", () => { store.set(K_DONE, "1"); store.del(K_POS); setPlayIcon(); });
+
+  // ---- controls ----
+  const setPlayIcon = () => { $("pp-play").textContent = a.paused ? "▶" : "❚❚"; };
+  $("pp-play").onclick = () => { a.paused ? a.play() : a.pause(); };
+  a.addEventListener("play", () => { store.del(K_DONE); setPlayIcon(); });
+  a.addEventListener("pause", setPlayIcon);
+  $("pp-back").onclick = () => { a.currentTime = Math.max(0, a.currentTime - 15); };
+  $("pp-fwd").onclick = () => { a.currentTime = Math.min(a.duration || 1e9, a.currentTime + 30); };
+  $("pp-seek").addEventListener("input", (e) => {
+    if (a.duration) a.currentTime = a.duration * e.target.value / 1000;
+  });
+  $("pp-restart").onclick = (e) => { e.preventDefault(); a.currentTime = 0; store.del(K_DONE); a.play(); };
+  $("pp-done").onclick = (e) => { e.preventDefault(); store.set(K_DONE, "1"); store.del(K_POS); a.pause(); };
+
+  // ---- playback speed (persisted globally) ----
+  const SPEEDS = [1, 1.25, 1.5, 1.75, 2];
+  let rate = parseFloat(store.get(K_RATE) || "1");
+  if (!SPEEDS.includes(rate)) rate = 1;
+  const applyRate = () => { a.playbackRate = rate; $("pp-speed").textContent = rate + "×"; };
+  applyRate();
+  a.addEventListener("loadedmetadata", applyRate);
+  $("pp-speed").onclick = () => {
+    rate = SPEEDS[(SPEEDS.indexOf(rate) + 1) % SPEEDS.length];
+    store.set(K_RATE, String(rate));
+    applyRate();
+  };
+
+  // ---- keyboard: space, arrows ----
+  document.addEventListener("keydown", (e) => {
+    if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+    if (e.code === "Space") { e.preventDefault(); $("pp-play").click(); }
+    if (e.code === "ArrowLeft") $("pp-back").click();
+    if (e.code === "ArrowRight") $("pp-fwd").click();
+  });
+
+  // ---- lock screen / media keys (Media Session API) ----
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: box.dataset.title,
+      artist: box.dataset.show,
+      artwork: box.dataset.art ? [{ src: box.dataset.art, sizes: "512x512" }] : [],
+    });
+    navigator.mediaSession.setActionHandler("play", () => a.play());
+    navigator.mediaSession.setActionHandler("pause", () => a.pause());
+    navigator.mediaSession.setActionHandler("seekbackward", () => $("pp-back").click());
+    navigator.mediaSession.setActionHandler("seekforward", () => $("pp-fwd").click());
+    try {
+      navigator.mediaSession.setActionHandler("seekto", (d) => { a.currentTime = d.seekTime; });
+    } catch {}
+  }
+})();
+</script>
+{% endif %}
 {% endblock %}

@@ -6,6 +6,12 @@
   <meta name="robots" content="noindex, nofollow">
   <title>{% block title %}{{ site_title }}{% endblock %}</title>
   <link rel="stylesheet" href="/static/style.css">
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <meta name="theme-color" content="#2e6e4e">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Stackdock">
   <link rel="icon" type="image/svg+xml" href="/static/rss.svg">
 </head>
 <body>
@@ -28,5 +34,8 @@
   </main>
   <footer>Chud Use ONLY | Enforced by Sovereign Citizen Maritime Law<br>
     <span class="footer-temple">✝ running on TempleOS v5.03</span></footer>
+<script>
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
+</script>
 </body>
 </html>

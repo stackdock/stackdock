@@ -30,12 +30,17 @@ def upload_stream(fileobj, key: str, content_type: str) -> None:
     )
 
 
-def url_for(key: str) -> str:
-    """Return a URL a podcast app or browser can fetch the object from."""
+def url_for(key: str, download_name: str | None = None) -> str:
+    """Return a URL a podcast app or browser can fetch the object from.
+
+    With download_name, presigned URLs carry Content-Disposition: attachment so
+    browsers SAVE the file instead of playing it (the HTML download attribute is
+    ignored for cross-origin URLs, so this is the only reliable way)."""
     if config.S3_PUBLIC_BASE_URL:
         return f"{config.S3_PUBLIC_BASE_URL}/{key}"
+    params = {"Bucket": config.S3_BUCKET, "Key": key}
+    if download_name:
+        safe = "".join(ch for ch in download_name if ch.isalnum() or ch in " ._-").strip() or "episode"
+        params["ResponseContentDisposition"] = f'attachment; filename="{safe}"'
     return client().generate_presigned_url(
-        "get_object",
-        Params={"Bucket": config.S3_BUCKET, "Key": key},
-        ExpiresIn=config.PRESIGN_EXPIRY_SECONDS,
-    )
+        "get_object", Params=params, ExpiresIn=config.PRESIGN_EXPIRY_SECONDS)

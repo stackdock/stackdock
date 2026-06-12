@@ -161,6 +161,16 @@ def init():
             for row in c.execute(f"SELECT id, title FROM {table} WHERE slug IS NULL").fetchall():
                 c.execute(f"UPDATE {table} SET slug = ? WHERE id = ?",
                           (_unique_slug(c, table, row["title"]), row["id"]))
+        # normalize legacy RFC-822 episode dates ("Wed, 04 Jun ...") to ISO so
+        # date sorting works; new inserts are normalized at ingest
+        from email.utils import parsedate_to_datetime
+        for row in c.execute(
+                "SELECT id, published_at FROM episodes WHERE published_at LIKE '%,%'").fetchall():
+            try:
+                iso = parsedate_to_datetime(row["published_at"]).isoformat()
+            except (TypeError, ValueError):
+                continue
+            c.execute("UPDATE episodes SET published_at = ? WHERE id = ?", (iso, row["id"]))
         # seed article_sources from each article's original contributor
         c.execute("INSERT OR IGNORE INTO article_sources (article_id, label) "
                   "SELECT id, added_by FROM articles WHERE added_by IS NOT NULL AND added_by != ''")

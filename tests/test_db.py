@@ -200,3 +200,15 @@ def test_rename_feed_consolidates_episodes(fresh_db):
     db.rename_feed("Mystery Grove", "The Conundrum Cluster")
     feeds = {f["feed_name"]: f["n"] for f in db.list_episode_feeds()}
     assert feeds == {"The Conundrum Cluster": 2}
+
+
+def test_episode_rfc822_dates_normalized_on_init(fresh_db):
+    with db.conn() as c:
+        c.execute("INSERT INTO episodes (guid, feed_name, title, audio_key, created_at, "
+                  "published_at, description, audio_bytes, audio_mime, duration, slug) "
+                  "VALUES ('gx','F','T','k','2026-01-01',"
+                  "'Wed, 04 Jun 2025 10:00:00 +0000','',0,'','','t-x')")
+    db.init()
+    with db.conn() as c:
+        row = c.execute("SELECT published_at FROM episodes WHERE guid='gx'").fetchone()
+    assert row["published_at"].startswith("2025-06-04T10")
