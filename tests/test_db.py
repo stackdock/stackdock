@@ -170,3 +170,33 @@ def test_delete_and_clear_invites(fresh_db):
     removed = db.clear_invites(only_used=True)   # clears B
     assert removed == 1
     assert {i["code"] for i in db.list_invites()} == {"C"}
+
+
+def test_article_search_sort_and_hide(fresh_db):
+    db.insert_article("m1", "Pub A", "Alpha about cats", "x", None, "<p>1</p>", "2026-01-01T00:00:00+00:00")
+    db.insert_article("m2", "Pub B", "Beta about dogs", "x", None, "<p>2</p>", "2026-01-03T00:00:00+00:00")
+    db.insert_article("m3", "Pub A", "Gamma cats again", "x", None, "<p>3</p>", "2026-01-02T00:00:00+00:00")
+
+    # search by title
+    assert {a["title"] for a in db.list_articles(q="cats")} == {"Alpha about cats", "Gamma cats again"}
+    # sort newest-first vs oldest-first
+    assert [a["title"] for a in db.list_articles(sort="new")][0] == "Beta about dogs"
+    assert [a["title"] for a in db.list_articles(sort="old")][0] == "Alpha about cats"
+
+    # hide one -> excluded by default, included with include_hidden
+    aid = db.list_articles(q="dogs")[0]["id"]
+    db.set_article_hidden(aid, True)
+    assert "Beta about dogs" not in {a["title"] for a in db.list_articles()}
+    assert db.count_hidden_articles() == 1
+    assert "Beta about dogs" in {a["title"] for a in db.list_articles(include_hidden=True)}
+    db.set_article_hidden(aid, False)
+    assert db.count_hidden_articles() == 0
+
+
+def test_rename_feed_consolidates_episodes(fresh_db):
+    db.insert_episode("g1", "Mystery Grove (conundrumcluster)", "Ep1", "", "k1", 1, "audio/mpeg", "", None)
+    db.insert_episode("g2", "Mystery Grove", "Ep2", "", "k2", 1, "audio/mpeg", "", None)
+    db.rename_feed("Mystery Grove (conundrumcluster)", "The Conundrum Cluster")
+    db.rename_feed("Mystery Grove", "The Conundrum Cluster")
+    feeds = {f["feed_name"]: f["n"] for f in db.list_episode_feeds()}
+    assert feeds == {"The Conundrum Cluster": 2}

@@ -24,7 +24,8 @@ CREATE TABLE IF NOT EXISTS articles (
     cover_image TEXT,                  -- remote thumbnail URL (Substack cover_image)
     slug TEXT,                         -- pretty URL: /read/{slug}
     is_paid INTEGER DEFAULT 0,         -- 1 if the source post is paid-subscriber-only
-    is_locked INTEGER DEFAULT 0        -- 1 if paid but we only got a preview (no full access)
+    is_locked INTEGER DEFAULT 0,       -- 1 if paid but we only got a preview (no full access)
+    hidden INTEGER DEFAULT 0           -- 1 = manually hidden from the listing
 );
 
 CREATE TABLE IF NOT EXISTS users (
@@ -136,6 +137,7 @@ def init():
                            ("articles", "slug TEXT"),
                            ("articles", "is_paid INTEGER DEFAULT 0"),
                            ("articles", "is_locked INTEGER DEFAULT 0"),
+                           ("articles", "hidden INTEGER DEFAULT 0"),
                            ("episodes", "image_url TEXT"),
                            ("episodes", "slug TEXT"),
                            ("connected_accounts", "last_alert TEXT"),
@@ -217,21 +219,39 @@ def insert_article(message_id, publication, title, author, original_url, html,
         return cur.lastrowid or 0
 
 
-def list_articles(limit=1000, publication=None):
+_ARTICLE_COLS = (
+    "id, publication, title, author, original_url, published_at, created_at, "
+    "added_by, cover_image, slug, is_paid, is_locked, hidden, "
+    "(SELECT GROUP_CONCAT(label, ',') FROM article_sources s WHERE s.article_id = articles.id) AS sources"
+)
+
+
+def list_articles(limit=1000, publication=None, q=None, sort="new", include_hidden=False):
+    where, args = [], []
+    if not include_hidden:
+        where.append("hidden = 0")
+    if publication:
+        where.append("publication = ?"); args.append(publication)
+    if q:
+        where.append("(title LIKE ? OR publication LIKE ? OR author LIKE ?)")
+        args += [f"%{q}%", f"%{q}%", f"%{q}%"]
+    wsql = (" WHERE " + " AND ".join(where)) if where else ""
+    order = "ASC" if sort == "old" else "DESC"
+    args.append(limit)
     with conn() as c:
-        if publication:
-            return c.execute(
-                "SELECT id, publication, title, author, original_url, published_at, created_at, added_by, cover_image, slug, is_paid, is_locked, "
-                "(SELECT GROUP_CONCAT(label, ',') FROM article_sources s WHERE s.article_id = articles.id) AS sources "
-                "FROM articles WHERE publication = ? "
-                "ORDER BY COALESCE(published_at, created_at) DESC LIMIT ?",
-                (publication, limit),
-            ).fetchall()
         return c.execute(
-            "SELECT id, publication, title, author, original_url, published_at, created_at, added_by, cover_image, slug, is_paid, is_locked "
-            "FROM articles ORDER BY COALESCE(published_at, created_at) DESC LIMIT ?",
-            (limit,),
-        ).fetchall()
+            f"SELECT {_ARTICLE_COLS} FROM articles{wsql} "
+            f"ORDER BY COALESCE(published_at, created_at) {order} LIMIT ?", args).fetchall()
+
+
+def set_article_hidden(article_id: int, hidden: bool) -> None:
+    with conn() as c:
+        c.execute("UPDATE articles SET hidden = ? WHERE id = ?", (1 if hidden else 0, article_id))
+
+
+def count_hidden_articles() -> int:
+    with conn() as c:
+        return c.execute("SELECT COUNT(*) AS n FROM articles WHERE hidden = 1").fetchone()["n"]
 
 
 def list_publications():
@@ -286,15 +306,24 @@ def insert_episode(guid, feed_name, title, description, audio_key,
         return cur.lastrowid or 0
 
 
-def list_episodes(limit=500, feed=None):
+def list_episodes(limit=500, feed=None, sort="new"):
+    order = "ASC" if sort == "old" else "DESC"
+    where, args = [], []
+    if feed:
+        where.append("feed_name = ?"); args.append(feed)
+    wsql = (" WHERE " + " AND ".join(where)) if where else ""
+    args.append(limit)
     with conn() as c:
-        if feed:
-            return c.execute(
-                "SELECT * FROM episodes WHERE feed_name = ? ORDER BY id DESC LIMIT ?",
-                (feed, limit)).fetchall()
         return c.execute(
-            "SELECT * FROM episodes ORDER BY id DESC LIMIT ?", (limit,)
-        ).fetchall()
+            f"SELECT * FROM episodes{wsql} "
+            f"ORDER BY COALESCE(published_at, created_at) {order} LIMIT ?", args).fetchall()
+
+
+def rename_feed(old_name: str, new_name: str) -> int:
+    """Consolidate episodes stored under different display names for the same show."""
+    with conn() as c:
+        return c.execute("UPDATE episodes SET feed_name = ? WHERE feed_name = ?",
+                         (new_name, old_name)).rowcount
 
 
 def list_episode_feeds():

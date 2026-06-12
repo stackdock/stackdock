@@ -22,22 +22,38 @@
 </nav>
 
 {% if active_tab == 'text' %}
+{% set q_part = ('&q=' ~ (q | urlencode)) if q else '' %}
+{% set sort_part = '&sort=old' if sort == 'old' else '' %}
+{% set pub_part = ('&pub=' ~ (active_pub | urlencode)) if active_pub else '' %}
 <section id="articles">
   {% if publications %}
   <p class="pub-filter">
-    <a href="/" class="{{ 'active' if not active_pub }}">All</a>
+    <a href="/?tab=text{{ q_part }}{{ sort_part }}" class="{{ 'active' if not active_pub }}">All</a>
     {% for p in publications %}
-      <a href="/?pub={{ p.publication | urlencode }}" class="{{ 'active' if active_pub == p.publication }}">{{ p.publication }} <span class="count">{{ p.n }}</span></a>
+      <a href="/?tab=text&pub={{ p.publication | urlencode }}{{ q_part }}{{ sort_part }}" class="{{ 'active' if active_pub == p.publication }}">{{ p.publication }} <span class="count">{{ p.n }}</span></a>
     {% endfor %}
   </p>
   {% endif %}
 
+  <div class="list-controls">
+    <form method="get" action="/" class="search-form">
+      <input type="hidden" name="tab" value="text">
+      {% if active_pub %}<input type="hidden" name="pub" value="{{ active_pub }}">{% endif %}
+      {% if sort == 'old' %}<input type="hidden" name="sort" value="old">{% endif %}
+      <input type="search" name="q" value="{{ q }}" placeholder="Search articles…" autocomplete="off">
+      <button type="submit">Search</button>
+      {% if q %}<a class="hint" href="/?tab=text{{ pub_part }}{{ sort_part }}">clear</a>{% endif %}
+    </form>
+    <a class="sort-toggle" href="/?tab=text{{ pub_part }}{{ q_part }}&sort={{ 'old' if sort == 'new' else 'new' }}">{{ 'Oldest first ↑' if sort == 'new' else 'Newest first ↓' }}</a>
+    {% if n_hidden %}<a class="hint" href="/?tab=text&hidden={{ 0 if show_hidden else 1 }}">{{ 'back to visible' if show_hidden else (n_hidden ~ ' hidden') }}</a>{% endif %}
+  </div>
+
   {% if not articles %}
-    <p class="empty">No articles yet. <a href="/accounts">Connect a Substack account</a> and the archives of everything it subscribes to will be pulled in.</p>
+    <p class="empty">{% if q %}No articles match “{{ q }}”.{% else %}No articles yet. <a href="/accounts">Connect a Substack account</a> and its subscriptions will be pulled in.{% endif %}</p>
   {% endif %}
   <ul class="cards">
     {% for a in articles %}
-    <li class="card">
+    <li class="card{{ ' is-hidden' if a.hidden }}">
       <a href="/read/{{ a.slug }}" class="card-link">
         {% if a.cover_image %}
           <img class="thumb" src="{{ a.cover_image }}" alt="" loading="lazy">
@@ -53,21 +69,31 @@
           </span>
         </span>
       </a>
+      <form method="post" action="/article/{{ a.id }}/hide" class="card-hide">
+        {% if a.hidden %}<input type="hidden" name="unhide" value="1"><button type="submit" title="Unhide">↩</button>
+        {% else %}<button type="submit" title="Hide this article">✕</button>{% endif %}
+      </form>
     </li>
     {% endfor %}
   </ul>
 </section>
 
 {% else %}
+{% set psort_part = '&sort=old' if sort == 'old' else '' %}
+{% set show_part = ('&show=' ~ (active_show | urlencode)) if active_show else '' %}
 <section id="audio">
   {% if episode_feeds %}
   <p class="pub-filter">
-    <a href="/?tab=audio" class="{{ 'active' if not active_show }}">All</a>
+    <a href="/?tab=audio{{ psort_part }}" class="{{ 'active' if not active_show }}">All</a>
     {% for f in episode_feeds %}
-      <a href="/?tab=audio&show={{ f.feed_name | urlencode }}" class="{{ 'active' if active_show == f.feed_name }}">{{ f.feed_name }} <span class="count">{{ f.n }}</span></a>
+      <a href="/?tab=audio&show={{ f.feed_name | urlencode }}{{ psort_part }}" class="{{ 'active' if active_show == f.feed_name }}">{{ f.feed_name }} <span class="count">{{ f.n }}</span></a>
     {% endfor %}
   </p>
   {% endif %}
+
+  <div class="list-controls">
+    <a class="sort-toggle" href="/?tab=audio{{ show_part }}&sort={{ 'old' if sort == 'new' else 'new' }}">{{ 'Oldest first ↑' if sort == 'new' else 'Newest first ↓' }}</a>
+  </div>
 
   {% if not episodes %}
     <p class="empty">No episodes yet. Connect a Substack account with paid podcast subscriptions, add a podcast via <a href="/accounts">Accounts</a>, or set <code>PODCAST_FEEDS</code> — then sync from <a href="/admin">/admin</a>.</p>

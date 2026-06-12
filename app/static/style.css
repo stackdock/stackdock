@@ -105,7 +105,29 @@ h2 {
 
 /* Thumbnail cards */
 .cards { list-style: none; margin: 1rem 0 0; padding: 0; }
-.card { border-bottom: 1px solid var(--rule); }
+.card { display: flex; align-items: center; border-bottom: 1px solid var(--rule); }
+.card-link { flex: 1; min-width: 0; }
+.card.is-hidden { opacity: 0.5; }
+.card-hide button {
+  background: none; border: 0; color: var(--ink-soft); cursor: pointer;
+  font-size: 0.95rem; line-height: 1; padding: 0 0.6rem;
+}
+.card-hide button:hover { color: #b23b3b; }
+.list-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin: 0.5rem 0 0.75rem; }
+.search-form { display: flex; align-items: center; gap: 0.4rem; }
+.search-form input[type=search] {
+  padding: 0.35rem 0.6rem; border: 1px solid var(--rule); border-radius: 5px;
+  background: #fff; font-family: var(--sans); font-size: 0.85rem; min-width: 12rem;
+}
+.search-form button {
+  font-family: var(--mono); font-size: 0.7rem; background: var(--shelf); color: #fff;
+  border: 0; border-radius: 5px; padding: 0.35rem 0.7rem; cursor: pointer;
+}
+.sort-toggle {
+  font-family: var(--mono); font-size: 0.7rem; text-decoration: none; color: var(--ink-soft);
+  border: 1px solid var(--rule); border-radius: 99px; padding: 0.25rem 0.7rem; background: #fff;
+}
+.sort-toggle:hover { color: var(--shelf); border-color: var(--shelf); }
 .card-link {
   display: grid; grid-template-columns: 84px 1fr; gap: 0.9rem; align-items: center;
   padding: 0.6rem 0; text-decoration: none; color: inherit;

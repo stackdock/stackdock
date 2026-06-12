@@ -308,16 +308,26 @@ def publications_delete(request: Request, user=Depends(auth.current_user),
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, user=Depends(auth.current_user),
-          pub: str | None = None, show: str | None = None, tab: str = "text"):
+          pub: str | None = None, show: str | None = None, tab: str = "text",
+          q: str | None = None, sort: str = "new", hidden: int = 0):
+    q = (q or "").strip() or None
+    sort = "old" if sort == "old" else "new"
     return render(request, "index.html", user=user,
-                  articles=db.list_articles(publication=pub),
+                  articles=db.list_articles(publication=pub, q=q, sort=sort, include_hidden=bool(hidden)),
                   publications=db.list_publications(),
-                  active_pub=pub,
+                  active_pub=pub, q=q or "", sort=sort, show_hidden=bool(hidden),
+                  n_hidden=db.count_hidden_articles(),
                   active_tab="audio" if tab == "audio" else "text",
-                  episodes=db.list_episodes(limit=200, feed=show),
+                  episodes=db.list_episodes(limit=200, feed=show, sort=sort),
                   episode_feeds=db.list_episode_feeds(),
                   active_show=show,
                   feed_base=f"{config.PUBLIC_BASE_URL}/feed/{config.FEED_TOKEN}")
+
+
+@app.post("/article/{article_id}/hide")
+def hide_article(article_id: int, user=Depends(auth.current_user), unhide: int = Form(0)):
+    db.set_article_hidden(article_id, not unhide)
+    return RedirectResponse(f"/?tab=text{'&hidden=1' if unhide else ''}", status_code=303)
 
 
 @app.get("/read/{slug}", response_class=HTMLResponse)
