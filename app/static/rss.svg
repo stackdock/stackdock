@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- B/W RSS feed icon — solid tile so it stays legible at favicon size -->
+  <rect width="256" height="256" rx="48" fill="#000000"/>
+  <g fill="#ffffff">
+    <!-- broadcast dot -->
+    <circle cx="60" cy="196" r="28"/>
+    <!-- inner wave -->
+    <path d="M48 112 A96 96 0 0 1 144 208 H112 A64 64 0 0 0 48 144 Z"/>
+    <!-- outer wave -->
+    <path d="M48 48 A160 160 0 0 1 208 208 H176 A128 128 0 0 0 48 80 Z"/>
+  </g>
+</svg>

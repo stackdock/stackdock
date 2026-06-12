@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Transparent (no background) variant of chud-spin.svg — used for the on-page logo. -->
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 width="500px" height="500px" viewBox="0 0 500 500" enable-background="new 0 0 500 500" xml:space="preserve">
+<g>
+<animateTransform attributeName="transform" attributeType="XML" type="rotate"
+                  from="0 250 250" to="360 250 250" dur="3s" repeatCount="indefinite"/>
+<path id="outmost_ring" fill="none" stroke="#000000" stroke-width="18" d="M188.554,20.677
+	C315.205-13.257,445.383,61.902,479.32,188.553c33.939,126.651-41.223,256.83-167.873,290.767
+	c-126.65,33.936-256.831-41.223-290.769-167.873C-13.255,184.794,61.905,54.613,188.554,20.677z"/>
+<g id="inner_circle">
+	<path d="M250,176.264c-40.724,0-73.736,33.013-73.736,73.736s33.013,73.736,73.736,73.736s73.736-33.013,73.736-73.736
+		S290.724,176.264,250,176.264L250,176.264z"/>
+</g>
+<circle id="middle_ring" fill="none" stroke="#000000" stroke-width="18" cx="250" cy="250" r="90.268"/>
+<g id="rays">
+	<path fill="none" stroke="#000000" stroke-width="18" d="M250,250.001l-48.504-181.02c16.25-4.354,32.573-6.434,48.633-6.433
+		L250,12.53"/>
+	<path fill="none" stroke="#000000" stroke-width="18" d="M250,250.001l48.499-181.022c16.251,4.354,31.427,10.715,45.335,18.744
+		l24.895-43.382"/>
+	<path fill="none" stroke="#000000" stroke-width="18" d="M250,250.001l132.508-132.525c11.896,11.896,21.859,24.992,29.89,38.899
+		l43.25-25.124"/>
+	<path fill="none" stroke="#000000" stroke-width="18" d="M250,250.001l181.017-48.522c4.355,16.25,6.436,32.573,6.437,48.633
+		l50.018-0.135"/>
+	<path fill="none" stroke="#000000" stroke-width="18" d="M250,250.001l181.028,48.481c-4.353,16.25-10.712,31.428-18.74,45.336
+		l43.384,24.891"/>
+	<path fill="none" stroke="#000000" stroke-width="18" d="M250,250.001l132.539,132.495c-11.895,11.897-24.99,21.863-38.896,29.894
+		l25.127,43.247"/>
+	<path fill="none" stroke="#000000" stroke-width="18" d="M250,250.001l48.54,181.012c-16.249,4.356-32.573,6.44-48.631,6.442
+		l0.138,50.016"/>
+	<path fill="none" stroke="#000000" stroke-width="18" d="M250,250.001l-48.464,181.032c-16.25-4.352-31.43-10.709-45.338-18.735
+		l-24.887,43.385"/>
+	<path fill="none" stroke="#000000" stroke-width="18" d="M250,250.001l-132.483,132.55c-11.898-11.893-21.865-24.988-29.897-38.893
+		l-43.244,25.131"/>
+	<path fill="none" stroke="#000000" stroke-width="18" d="M250,250.001L68.993,298.557c-4.357-16.248-6.442-32.573-6.447-48.631
+		l-50.016,0.144"/>
+	<path fill="none" stroke="#000000" stroke-width="18" d="M250,250.001L68.964,201.553c4.35-16.25,10.706-31.431,18.731-45.339
+		l-43.388-24.882"/>
+	<path fill="none" stroke="#000000" stroke-width="18" d="M250,250.001L117.438,117.529c11.892-11.898,24.986-21.867,38.89-29.9
+		l-25.135-43.241"/>
+</g>
+</g>
+</svg>
