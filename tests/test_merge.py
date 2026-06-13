@@ -19,10 +19,16 @@ def test_url_match_ignores_utm_and_scheme(fresh_db):
 
 
 def test_title_publication_match_when_no_url(fresh_db):
-    aid = db.insert_article(**_cookie_style(original_url=None))
+    # title fallback applies to NON-canonical rows (email/unknown sources)...
+    aid = db.insert_article(**_cookie_style(message_id="<mail-1@x>", original_url=None))
     m = db.find_article_match(publication="blog a", title="BIG POST")
     assert m and m["id"] == aid
     assert db.find_article_match(publication="Blog B", title="Big Post") is None
+    # ...but NEVER to canonical substack rows: recurring titles ("Open Thread")
+    # must not absorb a genuinely new post into an old one
+    db.insert_article(**_cookie_style(message_id="substack:77", title="Other Post",
+                                      original_url=None))
+    assert db.find_article_match(publication="Blog A", title="Other Post") is None
 
 
 def test_absorb_fills_missing_and_adopts_guid(fresh_db):

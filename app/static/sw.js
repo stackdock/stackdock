@@ -2,11 +2,11 @@
    Deliberately minimal: this is a PRIVATE, cookie-authenticated app, so we
    never cache page content (it could outlive a logout). Static assets are
    cache-first; navigations are network-only with a tiny offline fallback. */
-const STATIC_CACHE = "stackdock-static-v1";
+const STATIC_CACHE = "stackdock-static-v3";
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(STATIC_CACHE).then((c) =>
-    c.addAll(["/static/style.css", "/static/icon-192.png"])));
+    c.addAll(["/static/style.css", "/static/icon-192.png", "/static/work-icon.svg"])));
   self.skipWaiting();
 });
 

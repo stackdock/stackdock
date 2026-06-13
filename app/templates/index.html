@@ -2,7 +2,7 @@
 {% block content %}
 
 <section class="feed-box">
-  <span class="label">Unified feeds — everything from everyone, one URL each</span>
+  <span class="label"><span class="fun-label">Unified feeds — everything from everyone, one URL each</span><span class="work-label">Sync endpoints</span></span>
   <div class="feed-row"><span class="feed-name">🎧 Podcast apps</span>
     <code id="feed-audio">{{ feed_base }}/all.xml</code>
     <button onclick="copyFeed('feed-audio')">Copy</button></div>
@@ -17,8 +17,8 @@
 </section>
 
 <nav class="tabs">
-  <a href="/" class="tab {{ 'active' if active_tab == 'text' }}">Articles <span class="count">{{ articles|length }}</span></a>
-  <a href="/?tab=audio" class="tab {{ 'active' if active_tab == 'audio' }}">Podcasts <span class="count">{{ episodes|length }}</span></a>
+  <a href="/" class="tab {{ 'active' if active_tab == 'text' }}"><span class="fun-label">Articles</span><span class="work-label">Documents</span> <span class="count">{{ articles|length }}</span></a>
+  <a href="/?tab=audio" class="tab {{ 'active' if active_tab == 'audio' }}"><span class="fun-label">Podcasts</span><span class="work-label">Briefings</span> <span class="count">{{ episodes|length }}</span></a>
 </nav>
 
 {% if active_tab == 'text' %}
@@ -127,22 +127,35 @@
 {% endif %}
 
 <script>
-/* paint listen progress on podcast cards from the player's localStorage */
-document.querySelectorAll("[data-ep-slug]").forEach((card) => {
-  const slug = card.dataset.epSlug;
-  let pos = 0, dur = 0, done = false;
+/* paint listen progress on podcast cards: server positions first (cross-device),
+   merged with this device's localStorage as fallback */
+(async () => {
+  let server = {};
   try {
-    pos = parseFloat(localStorage.getItem("pos:" + slug) || "0");
-    dur = parseFloat(localStorage.getItem("dur:" + slug) || "0");
-    done = !!localStorage.getItem("done:" + slug);
+    const r = await fetch("/api/positions", { credentials: "same-origin" });
+    if (r.ok) server = await r.json();
   } catch {}
-  if (done) {
-    card.querySelector(".ep-played").hidden = false;
-    card.classList.add("played");
-  } else if (pos > 10 && dur > 0) {
-    card.querySelector(".ep-progress-fill").style.width =
-      Math.min(100, 100 * pos / dur) + "%";
-  }
-});
+  document.querySelectorAll("[data-ep-slug]").forEach((card) => {
+    const slug = card.dataset.epSlug;
+    let pos = 0, dur = 0, done = false;
+    try {
+      pos = parseFloat(localStorage.getItem("pos:" + slug) || "0");
+      dur = parseFloat(localStorage.getItem("dur:" + slug) || "0");
+      done = !!localStorage.getItem("done:" + slug);
+    } catch {}
+    const sp = server[slug];
+    if (sp) {
+      done = done || sp.done;
+      if (sp.position > pos) { pos = sp.position; dur = sp.duration || dur; }
+    }
+    if (done) {
+      card.querySelector(".ep-played").hidden = false;
+      card.classList.add("played");
+    } else if (pos > 10 && dur > 0) {
+      card.querySelector(".ep-progress-fill").style.width =
+        Math.min(100, 100 * pos / dur) + "%";
+    }
+  });
+})();
 </script>
 {% endblock %}

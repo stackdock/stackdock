@@ -2,40 +2,139 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
   <title>{% block title %}{{ site_title }}{% endblock %}</title>
+  <script>
+    /* applied before first paint to avoid theme flashing */
+    (function () {
+      try {
+        var t = localStorage.getItem("theme");           // "agartha" | "brimstone" | null=auto
+        if (t) document.documentElement.dataset.theme = t;
+        if (localStorage.getItem("workmode") === "1")
+          document.documentElement.dataset.workmode = "1";
+      } catch (e) {}
+    })();
+  </script>
   <link rel="stylesheet" href="/static/style.css">
   <link rel="manifest" href="/static/manifest.webmanifest">
-  <meta name="theme-color" content="#2e6e4e">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#2e6e4e">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1d2320">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Stackdock">
   <link rel="icon" type="image/svg+xml" href="/static/rss.svg">
 </head>
 <body>
   <header class="masthead">
-    <a class="wordmark" href="/"><img class="brand-chud" src="/static/chud-spin-clear.svg" alt="">{{ site_title }}</a>
+    <a class="wordmark" href="/"><img class="brand-chud" src="/static/chud-spin-clear.svg" alt=""><span class="fun-label">{{ site_title }}</span><span class="work-label">Meridian Workspace</span></a>
     <nav>
       {% if user is defined and user %}
-        <a href="/">Articles</a>
-        <a href="/?tab=audio">Podcasts</a>
+        <a href="/"><span class="fun-label">Articles</span><span class="work-label">Documents</span></a>
+        <a href="/?tab=audio"><span class="fun-label">Podcasts</span><span class="work-label">Briefings</span></a>
         <a href="/accounts">Accounts</a>
         <a href="/status">Status</a>
         <a href="/account">Account</a>
         {% if user.is_admin %}<a href="/admin">Admin</a>{% endif %}
         <a href="/logout">Log out</a>
+        <span class="mode-btns">
+          <button id="theme-btn" type="button" title="Theme: auto / brimstone / agartha">◐</button>
+          <button id="work-btn" type="button" title="Work mode (also: press W twice)">💼</button>
+        </span>
       {% endif %}
     </nav>
   </header>
   <main>
     {% block content %}{% endblock %}
   </main>
-  <footer>Chud Use ONLY | Enforced by Sovereign Citizen Maritime Law<br>
-    <span class="footer-temple">✝ running on TempleOS v5.03</span></footer>
+  <footer><span class="fun-label">Chud Use ONLY | Enforced by Sovereign Citizen Maritime Law<br>
+    <span class="footer-temple">✝ running on TempleOS v5.03</span></span></footer>
 <script>
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
+
+(function () {
+  var html = document.documentElement;
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+    del: function (k) { try { localStorage.removeItem(k); } catch (e) {} },
+  };
+
+  function themeColor() {
+    var metas = document.querySelectorAll('meta[name="theme-color"]');
+    if (!metas.length) return;
+    var c;
+    if (html.dataset.workmode === "1") c = "#3b5bdb";
+    else if (html.dataset.theme === "brimstone") c = "#1d2320";
+    else if (html.dataset.theme === "agartha") c = "#2e6e4e";
+    if (c) metas.forEach(function (m) { m.content = c; });
+    else {  // auto: restore the media-split pair
+      metas.forEach(function (m) {
+        m.content = (m.media || "").indexOf("dark") !== -1 ? "#1d2320" : "#2e6e4e";
+      });
+    }
+  }
+
+  function applyWork() {
+    var on = html.dataset.workmode === "1";
+    document.title = on ? "Meridian Workspace — Q2 Documents"
+                        : document.title.replace(/^Meridian Workspace.*$/, "{{ site_title }}");
+    var icon = document.querySelector('link[rel="icon"]');
+    if (icon) icon.href = on ? "/static/work-icon.svg" : "/static/rss.svg";
+    var wb = document.getElementById("work-btn");
+    if (wb) wb.textContent = on ? "🏠" : "💼";
+    themeColor();
+  }
+
+  function toggleWork() {
+    if (html.dataset.workmode === "1") {
+      delete html.dataset.workmode; store.del("workmode");
+    } else {
+      html.dataset.workmode = "1"; store.set("workmode", "1");
+    }
+    applyWork();
+  }
+
+  var tb = document.getElementById("theme-btn"), wb = document.getElementById("work-btn");
+  if (tb) tb.onclick = function () {
+    // cycle: auto -> brimstone (dark) -> agartha (light) -> auto
+    var cur = html.dataset.theme || "auto";
+    var next = cur === "auto" ? "brimstone" : cur === "brimstone" ? "agartha" : "auto";
+    if (next === "auto") { delete html.dataset.theme; store.del("theme"); }
+    else { html.dataset.theme = next; store.set("theme", next); }
+    tb.textContent = next === "brimstone" ? "🌙" : next === "agartha" ? "☀️" : "◐";
+    themeColor();
+  };
+  if (tb) {
+    var t = html.dataset.theme;
+    tb.textContent = t === "brimstone" ? "🌙" : t === "agartha" ? "☀️" : "◐";
+  }
+  if (wb) wb.onclick = toggleWork;
+
+  // mobile panic gesture: triple-tap empty header space (links/buttons excluded)
+  var taps = [];
+  var head = document.querySelector(".masthead");
+  if (head) head.addEventListener("click", function (e) {
+    if (e.target.closest("a, button, input")) return;
+    var now = Date.now();
+    taps = taps.filter(function (t) { return now - t < 900; });
+    taps.push(now);
+    if (taps.length >= 3) { taps = []; toggleWork(); }
+  });
+
+  // panic key: tap W twice quickly anywhere (not in an input)
+  var lastW = 0;
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "w" && e.key !== "W") return;
+    if (["INPUT", "TEXTAREA"].indexOf(document.activeElement.tagName) !== -1) return;
+    var now = Date.now();
+    if (now - lastW < 450) { toggleWork(); lastW = 0; } else { lastW = now; }
+  });
+
+  applyWork();
+  if (matchMedia) matchMedia("(prefers-color-scheme: dark)").addEventListener("change", themeColor);
+})();
 </script>
 </body>
 </html>

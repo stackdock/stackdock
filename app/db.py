@@ -62,6 +62,16 @@ CREATE TABLE IF NOT EXISTS connected_accounts (
     created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS listen_positions (
+    user_id INTEGER NOT NULL,
+    slug TEXT NOT NULL,                -- episode slug
+    position REAL NOT NULL DEFAULT 0,  -- seconds into the episode
+    duration REAL NOT NULL DEFAULT 0,
+    done INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, slug)
+);
+
 CREATE TABLE IF NOT EXISTS tracked_publications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -210,9 +220,14 @@ def find_article_match(original_url: str | None = None, publication: str | None 
                     if _norm_url(r["original_url"]) == target:
                         return r
         if publication and title:
+            # Title fallback ONLY matches rows that aren't already canonical
+            # substack posts. Canonical rows dedupe strictly by post id —
+            # otherwise a pub's recurring titles ("Open Thread", "Weekly
+            # Roundup") would absorb a genuinely NEW post into an old one.
             return c.execute(
                 "SELECT * FROM articles WHERE lower(publication) = lower(?) "
-                "AND lower(title) = lower(?) LIMIT 1",
+                "AND lower(title) = lower(?) AND message_id NOT LIKE 'substack:%' "
+                "LIMIT 1",
                 (publication, title)).fetchone()
     return None
 
@@ -546,6 +561,29 @@ def delete_account(account_id: int, user_id: int) -> bool:
             (account_id, user_id),
         )
         return cur.rowcount == 1
+
+
+def upsert_listen_position(user_id: int, slug: str, position: float,
+                           duration: float, done: bool) -> None:
+    with conn() as c:
+        c.execute(
+            """INSERT INTO listen_positions (user_id, slug, position, duration, done, updated_at)
+               VALUES (?,?,?,?,?,?)
+               ON CONFLICT(user_id, slug) DO UPDATE SET
+                 position = excluded.position, duration = excluded.duration,
+                 done = excluded.done, updated_at = excluded.updated_at""",
+            (user_id, slug, max(0.0, float(position)), max(0.0, float(duration)),
+             1 if done else 0, now_iso()))
+
+
+def get_listen_positions(user_id: int) -> dict:
+    """{slug: {position, duration, done}} for every episode this user touched."""
+    with conn() as c:
+        return {r["slug"]: {"position": r["position"], "duration": r["duration"],
+                            "done": bool(r["done"])}
+                for r in c.execute(
+                    "SELECT slug, position, duration, done FROM listen_positions "
+                    "WHERE user_id = ?", (user_id,)).fetchall()}
 
 
 def add_tracked_publication(user_id: int, name: str, base_url: str) -> int:

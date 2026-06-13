@@ -70,7 +70,32 @@
   // `engaged` guards every save: a visit where you never pressed play must not
   // overwrite the stored position with 0 on the way out.
   let engaged = false;
-  const saved = parseFloat(store.get(K_POS) || "0");
+  let saved = parseFloat(store.get(K_POS) || "0");
+  let serverDone = false;
+  // server position: lets resume follow you across devices and across the
+  // Safari <-> installed-app storage split on iOS
+  const serverSync = fetch("/api/positions", { credentials: "same-origin" })
+    .then((r) => (r.ok ? r.json() : {}))
+    .then((all) => {
+      const sp = all[slug];
+      if (!sp) return;
+      serverDone = !!sp.done;
+      if (sp.done) { store.set(K_DONE, "1"); return; }
+      if (sp.position > saved) {
+        saved = sp.position;
+        store.set(K_POS, String(saved));
+        if (sp.duration) store.set(K_DUR, String(sp.duration));
+        if (saved > 10 && a.readyState >= 1 && a.paused && !engaged) {
+          a.currentTime = saved;
+        }
+        if (saved > 10) {
+          const note = $("pp-resume");
+          note.textContent = "Resuming from " + fmt(saved);
+          note.hidden = false;
+          setTimeout(() => { note.hidden = true; }, 5000);
+        }
+      }
+    }).catch(() => {});
   if (saved > 10 && !store.get(K_DONE)) {
     const note = $("pp-resume");
     note.textContent = "Resuming from " + fmt(saved);
@@ -85,11 +110,30 @@
   if (a.readyState >= 1) restore();           // metadata beat us to it
   else a.addEventListener("loadedmetadata", restore, { once: true });
 
-  const save = () => {
+  const payload = (done) => JSON.stringify({
+    position: a.currentTime || 0, duration: a.duration || 0, done: !!done });
+  let lastPush = 0;
+  const pushServer = (done, useBeacon) => {
+    const body = payload(done);
+    if (useBeacon && navigator.sendBeacon) {
+      navigator.sendBeacon("/api/positions/" + slug, new Blob([body], { type: "text/plain" }));
+      return;
+    }
+    fetch("/api/positions/" + slug, {
+      method: "POST", credentials: "same-origin", keepalive: true,
+      headers: { "Content-Type": "application/json" }, body,
+    }).catch(() => {});
+  };
+  const save = (opts) => {
     if (!engaged) return;                      // never played this visit
     const t = a.currentTime || 0;
     if (t > 5) store.set(K_POS, String(t));    // never stomp a real position with ~0
     else if (t === 0 && saved <= 5) store.del(K_POS);
+    const leaving = opts && opts.leaving;
+    if (t > 5 && (leaving || Date.now() - lastPush > 10000)) {
+      lastPush = Date.now();
+      pushServer(false, leaving);
+    }
   };
   let lastSave = 0;
   a.addEventListener("timeupdate", () => {
@@ -100,10 +144,25 @@
   });
   a.addEventListener("pause", save);
   a.addEventListener("seeked", save);
-  window.addEventListener("pagehide", save);
-  window.addEventListener("beforeunload", save);
-  document.addEventListener("visibilitychange", () => { if (document.hidden) save(); });
-  a.addEventListener("ended", () => { store.set(K_DONE, "1"); store.del(K_POS); setPlayIcon(); });
+  window.addEventListener("pagehide", () => save({ leaving: true }));
+  window.addEventListener("beforeunload", () => save({ leaving: true }));
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) save({ leaving: true });
+  });
+  a.addEventListener("ended", () => {
+    store.set(K_DONE, "1"); store.del(K_POS); setPlayIcon();
+    pushServer(true, false);
+  });
+
+  // 3) presigned audio URLs expire (default 7 days): if playback errors after
+  // we've started, save and reload once — the fresh page presigns a new URL
+  // and resumes from the synced position
+  a.addEventListener("error", () => {
+    if (!engaged || sessionStorage.getItem("pp-reloaded:" + slug)) return;
+    try { sessionStorage.setItem("pp-reloaded:" + slug, "1"); } catch {}
+    save({ leaving: true });
+    setTimeout(() => location.reload(), 300);
+  });
 
   // ---- controls ----
   const setPlayIcon = () => { $("pp-play").textContent = a.paused ? "▶" : "❚❚"; };
@@ -115,8 +174,13 @@
   $("pp-seek").addEventListener("input", (e) => {
     if (a.duration) a.currentTime = a.duration * e.target.value / 1000;
   });
-  $("pp-restart").onclick = (e) => { e.preventDefault(); a.currentTime = 0; store.del(K_DONE); a.play(); };
-  $("pp-done").onclick = (e) => { e.preventDefault(); store.set(K_DONE, "1"); store.del(K_POS); a.pause(); };
+  $("pp-restart").onclick = (e) => {
+    e.preventDefault(); a.currentTime = 0; store.del(K_DONE); a.play();
+  };
+  $("pp-done").onclick = (e) => {
+    e.preventDefault(); store.set(K_DONE, "1"); store.del(K_POS); a.pause();
+    pushServer(true, false);
+  };
 
   // ---- playback speed (persisted globally) ----
   const SPEEDS = [1, 1.25, 1.5, 1.75, 2];

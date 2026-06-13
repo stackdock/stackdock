@@ -1,4 +1,5 @@
 """Stackdock — personal newsletter & podcast mirror (multi-user)."""
+import json
 import logging
 import secrets as pysecrets
 import shutil
@@ -286,6 +287,32 @@ def accounts_sync(request: Request, user=Depends(auth.current_user)):
     count = substack.run()
     return render(request, "accounts.html",
                   **_accounts_ctx(user, message=f"Sync finished: {count} new item(s)."))
+
+
+@app.get("/api/positions")
+def api_positions(user=Depends(auth.current_user)):
+    """Per-user listening positions — lets resume follow you across devices
+    (and across Safari vs the installed home-screen app, which have separate
+    local storage on iOS)."""
+    return db.get_listen_positions(user["id"])
+
+
+@app.post("/api/positions/{slug}")
+async def api_save_position(slug: str, request: Request, user=Depends(auth.current_user)):
+    """Accepts fetch() JSON or navigator.sendBeacon (text/plain blob)."""
+    if not db.get_episode_by_slug(slug):
+        raise HTTPException(404)
+    try:
+        data = json.loads((await request.body()) or b"{}")
+        position = float(data.get("position", 0))
+        duration = float(data.get("duration", 0))
+        done = bool(data.get("done", False))
+    except (ValueError, TypeError):
+        raise HTTPException(400, "bad payload")
+    if position < 0 or position > 60 * 60 * 24 or duration < 0 or duration > 60 * 60 * 24:
+        raise HTTPException(400, "out of range")
+    db.upsert_listen_position(user["id"], slug, position, duration, done)
+    return {"ok": True}
 
 
 @app.post("/publications/add")
