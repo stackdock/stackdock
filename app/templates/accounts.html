@@ -15,6 +15,7 @@
     <li>
       <span class="spine">{{ acc.service }} · {{ "synced " + acc.last_sync[:16] if acc.last_sync else "pending first sync" }}</span>
       <span class="row-title">{{ acc.label }}
+        {% if acc.handle %}<small class="hint"> · @{{ acc.handle }}</small>{% else %}<small class="hint"> · handle not detected yet</small>{% endif %}
         {% if acc.status %}<small class="hint"> — {{ acc.status }}</small>{% endif %}
       </span>
       <form method="post" action="/accounts/delete" class="inline-form"
