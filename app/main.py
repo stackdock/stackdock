@@ -432,49 +432,79 @@ def publications_delete(request: Request, user=Depends(auth.current_user),
 
 # ---------------- content ----------------
 
+PAGE_SIZE = 50
+
+
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, user=Depends(auth.current_user),
           pub: str | None = None, show: str | None = None, tab: str = "text",
           q: str | None = None, sort: str = "new", hidden: int = 0,
-          sub: str = "articles"):
+          sub: str = "articles", page: int = 1):
     q = (q or "").strip() or None
     sort = "old" if sort == "old" else "new"
     tab = tab if tab in ("text", "audio", "mine") else "text"
     mine_sub = sub if sub in ("articles", "podcasts") else "articles"
     show_hidden = bool(hidden)
+    page = max(1, page)
+    offset = (page - 1) * PAGE_SIZE
     followed_pubs = db.list_follows(user["id"], "pub")
     followed_shows = db.list_follows(user["id"], "show")
+
+    # tab badges show true totals (independent of the current page/filter)
+    n_articles = db.count_articles()
+    n_episodes = db.count_episodes()
+
+    articles = episodes = []
     mine_articles = mine_episodes = []
     hidden_arts = hidden_eps = set()
     n_mine_articles = n_mine_episodes = n_mine_hidden = 0
-    if tab == "mine":
+    total = 0  # rows matching the active tab's filter, for the pager
+
+    if tab == "text":
+        total = db.count_articles(publication=pub, q=q, include_hidden=show_hidden)
+        articles = db.list_articles(publication=pub, q=q, sort=sort,
+                                    include_hidden=show_hidden, limit=PAGE_SIZE, offset=offset)
+    elif tab == "audio":
+        total = db.count_episodes(feed=show)
+        episodes = db.list_episodes(feed=show, sort=sort, limit=PAGE_SIZE, offset=offset)
+    else:  # mine — small, user-curated; hidden-filter then paginate in Python
         hidden_arts = db.list_hidden_refs(user["id"], "article")
         hidden_eps = db.list_hidden_refs(user["id"], "episode")
-        arts = db.list_articles(publications=followed_pubs, q=q, sort=sort)
-        eps = db.list_episodes(feeds=followed_shows, sort=sort)
-        # sub-tab badges show the unread (visible) count for each side
-        n_mine_articles = sum(1 for a in arts if a["slug"] not in hidden_arts)
-        n_mine_episodes = sum(1 for e in eps if e["slug"] not in hidden_eps)
+        arts = db.list_articles(publications=followed_pubs, q=q, sort=sort, limit=100000)
+        eps = db.list_episodes(feeds=followed_shows, sort=sort, limit=100000)
+        vis_arts = [a for a in arts if a["slug"] not in hidden_arts]
+        vis_eps = [e for e in eps if e["slug"] not in hidden_eps]
+        n_mine_articles, n_mine_episodes = len(vis_arts), len(vis_eps)
         if mine_sub == "articles":
-            mine_articles = arts if show_hidden else [a for a in arts if a["slug"] not in hidden_arts]
+            rows = arts if show_hidden else vis_arts
             n_mine_hidden = len(arts) - n_mine_articles
         else:
-            mine_episodes = eps if show_hidden else [e for e in eps if e["slug"] not in hidden_eps]
+            rows = eps if show_hidden else vis_eps
             n_mine_hidden = len(eps) - n_mine_episodes
+        total = len(rows)
+        page_rows = rows[offset:offset + PAGE_SIZE]
+        if mine_sub == "articles":
+            mine_articles = page_rows
+        else:
+            mine_episodes = page_rows
+
+    total_pages = max(1, -(-total // PAGE_SIZE))  # ceil
     return render(request, "index.html", user=user,
-                  articles=db.list_articles(publication=pub, q=q, sort=sort, include_hidden=bool(hidden)),
+                  articles=articles,
                   publications=db.list_publications(),
                   active_pub=pub, q=q or "", sort=sort, show_hidden=show_hidden,
                   n_hidden=db.count_hidden_articles(),
                   active_tab=tab, mine_sub=mine_sub,
                   hidden_arts=hidden_arts, hidden_eps=hidden_eps,
+                  n_articles=n_articles, n_episodes=n_episodes,
                   n_mine_articles=n_mine_articles, n_mine_episodes=n_mine_episodes,
                   n_mine_hidden=n_mine_hidden,
                   followed_pubs=followed_pubs, followed_shows=followed_shows,
                   mine_articles=mine_articles, mine_episodes=mine_episodes,
-                  episodes=db.list_episodes(limit=200, feed=show, sort=sort),
+                  episodes=episodes,
                   episode_feeds=db.list_episode_feeds(),
                   active_show=show,
+                  page=page, total_pages=total_pages, total_items=total,
                   feed_base=f"{config.PUBLIC_BASE_URL}/feed/{config.FEED_TOKEN}")
 
 

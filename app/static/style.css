@@ -481,3 +481,14 @@ html[data-workmode="1"] .mode-btns button { border-color: rgba(255,255,255,0.6);
 .mine-h { font-family: var(--serif); font-size: 1.05rem; margin: 1.6rem 0 0.4rem; }
 .badges { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0.25rem 0 0.5rem; }
 .badges img { height: 20px; display: block; }
+.pager {
+  display: flex; align-items: center; justify-content: center; gap: 1rem;
+  margin: 1.5rem 0 0.5rem; font-family: var(--mono); font-size: 0.78rem;
+}
+.pager a {
+  text-decoration: none; color: var(--ink); border: 1px solid var(--rule);
+  border-radius: 99px; padding: 0.3rem 0.9rem; background: var(--panel);
+}
+.pager a:hover { color: var(--shelf); border-color: var(--shelf); }
+.pager .off { color: var(--ink-soft); opacity: 0.4; padding: 0.3rem 0.9rem; }
+.pager-info { color: var(--ink-soft); }

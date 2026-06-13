@@ -101,3 +101,15 @@ def test_offline_page_unauthenticated(fresh_db):
         r = c.get("/offline")
         assert r.status_code == 200
         assert "stackdock-audio-v1" in r.text and "Save for offline" in r.text
+
+
+def test_articles_and_podcasts_paginate(client):
+    # client fixture already added 2 articles + 2 episodes; push past one page
+    for i in range(60):
+        db.insert_article(f"pg{i}", "Blog A", f"Article {i}", "x", None, "<p>x</p>",
+                          f"2026-02-{(i % 28) + 1:02d}")
+    r = client.get("/?tab=text")
+    assert "page 1 of" in r.text and "page=2" in r.text       # pager rendered
+    assert "page 1 of 1" not in r.text                        # more than one page
+    r2 = client.get("/?tab=text&page=2")
+    assert "page 2 of" in r2.text

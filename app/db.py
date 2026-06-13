@@ -339,8 +339,9 @@ _ARTICLE_COLS = (
 )
 
 
-def list_articles(limit=1000, publication=None, publications=None, q=None,
-                  sort="new", include_hidden=False):
+def _article_where(publication, publications, q, include_hidden):
+    """Shared filter for list_articles / count_articles. Returns (sql, args), or
+    None when the filter can match nothing (empty publications list)."""
     where, args = [], []
     if not include_hidden:
         where.append("hidden = 0")
@@ -348,19 +349,36 @@ def list_articles(limit=1000, publication=None, publications=None, q=None,
         where.append("publication = ?"); args.append(publication)
     if publications is not None:
         if not publications:
-            return []
+            return None
         where.append(f"publication IN ({','.join('?' * len(publications))})")
         args += list(publications)
     if q:
         where.append("(title LIKE ? OR publication LIKE ? OR author LIKE ?)")
         args += [f"%{q}%", f"%{q}%", f"%{q}%"]
-    wsql = (" WHERE " + " AND ".join(where)) if where else ""
+    return (" WHERE " + " AND ".join(where)) if where else "", args
+
+
+def list_articles(limit=1000, publication=None, publications=None, q=None,
+                  sort="new", include_hidden=False, offset=0):
+    w = _article_where(publication, publications, q, include_hidden)
+    if w is None:
+        return []
+    wsql, args = w
     order = "ASC" if sort == "old" else "DESC"
-    args.append(limit)
+    args += [limit, offset]
     with conn() as c:
         return c.execute(
             f"SELECT {_ARTICLE_COLS} FROM articles{wsql} "
-            f"ORDER BY COALESCE(published_at, created_at) {order} LIMIT ?", args).fetchall()
+            f"ORDER BY COALESCE(published_at, created_at) {order} LIMIT ? OFFSET ?", args).fetchall()
+
+
+def count_articles(publication=None, publications=None, q=None, include_hidden=False) -> int:
+    w = _article_where(publication, publications, q, include_hidden)
+    if w is None:
+        return 0
+    wsql, args = w
+    with conn() as c:
+        return c.execute(f"SELECT COUNT(*) AS n FROM articles{wsql}", args).fetchone()["n"]
 
 
 def set_article_hidden(article_id: int, hidden: bool) -> None:
@@ -447,22 +465,39 @@ def refresh_episode_paid(guid, is_paid) -> None:
                   (1 if is_paid else 0, guid))
 
 
-def list_episodes(limit=500, feed=None, feeds=None, sort="new"):
-    order = "ASC" if sort == "old" else "DESC"
+def _episode_where(feed, feeds):
+    """Shared filter for list_episodes / count_episodes. (sql, args) or None."""
     where, args = [], []
     if feed:
         where.append("feed_name = ?"); args.append(feed)
     if feeds is not None:
         if not feeds:
-            return []
+            return None
         where.append(f"feed_name IN ({','.join('?' * len(feeds))})")
         args += list(feeds)
-    wsql = (" WHERE " + " AND ".join(where)) if where else ""
-    args.append(limit)
+    return (" WHERE " + " AND ".join(where)) if where else "", args
+
+
+def list_episodes(limit=500, feed=None, feeds=None, sort="new", offset=0):
+    w = _episode_where(feed, feeds)
+    if w is None:
+        return []
+    wsql, args = w
+    order = "ASC" if sort == "old" else "DESC"
+    args += [limit, offset]
     with conn() as c:
         return c.execute(
             f"SELECT * FROM episodes{wsql} "
-            f"ORDER BY COALESCE(published_at, created_at) {order} LIMIT ?", args).fetchall()
+            f"ORDER BY COALESCE(published_at, created_at) {order} LIMIT ? OFFSET ?", args).fetchall()
+
+
+def count_episodes(feed=None, feeds=None) -> int:
+    w = _episode_where(feed, feeds)
+    if w is None:
+        return 0
+    wsql, args = w
+    with conn() as c:
+        return c.execute(f"SELECT COUNT(*) AS n FROM episodes{wsql}", args).fetchone()["n"]
 
 
 def rename_feed(old_name: str, new_name: str) -> int:
