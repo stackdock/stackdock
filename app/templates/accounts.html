@@ -54,37 +54,6 @@
 </section>
 
 <section>
-  <h2>Track publications by URL</h2>
-  <p class="hint">Doesn't depend on Substack's subscriptions API — if discovery breaks or you
-    just want one extra blog, add it here. Synced with your cookie when you have one connected
-    (full paid posts); otherwise anonymously (free posts in full, paid posts as links).</p>
-
-  {% if tracked %}
-  <ul class="rows">
-    {% for t in tracked %}
-    <li>
-      <span class="spine">tracked</span>
-      <span class="row-title">{{ t.name }} <small class="hint">— {{ t.base_url }}</small></span>
-      <form method="post" action="/publications/delete" class="inline-form"
-            onsubmit="return confirm('Stop tracking? Already-mirrored posts stay.')">
-        <input type="hidden" name="pub_id" value="{{ t.id }}">
-        <button type="submit">Remove</button>
-      </form>
-    </li>
-    {% endfor %}
-  </ul>
-  {% endif %}
-
-  <div class="auth-card" style="margin:1rem 0 0; max-width:560px">
-    <form method="post" action="/publications/add">
-      <label>Display name <input name="name" placeholder="e.g. Astral Codex Ten" required></label>
-      <label>Publication URL <input name="base_url" placeholder="https://example.substack.com" required></label>
-      <button type="submit">Track publication</button>
-    </form>
-  </div>
-</section>
-
-<section>
   <p class="hint">
     ⚠️ Session cookies grant full access to your accounts and are stored in this server's
     database — only connect accounts on a server run by someone you trust. Cookies expire

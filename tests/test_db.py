@@ -69,6 +69,26 @@ def test_update_account_and_alert(fresh_db):
     assert row["last_alert"] == "2026-01-01T00:00:00+00:00"
 
 
+def test_reconnect_cookie_updates_in_place(fresh_db):
+    uid = db.create_user("rec", "hash")
+    aid = db.add_account(uid, "substack", "My Sub", "old-cookie")
+    db.update_account(aid, db.now_iso(), "STALE: cookie expired")
+    db.set_account_alert(aid, "2026-01-01T00:00:00+00:00")
+    # reconnecting with the SAME label updates in place: no duplicate row, keeps
+    # last_sync (so it skips the full re-backfill), clears the stale status/alert
+    aid2 = db.add_account(uid, "substack", "My Sub", "new-cookie")
+    assert aid2 == aid
+    rows = db.list_accounts(user_id=uid)
+    assert len(rows) == 1
+    assert rows[0]["cookie"] == "new-cookie"
+    assert rows[0]["last_sync"] is not None
+    assert rows[0]["status"] is None and rows[0]["last_alert"] is None
+    assert db.account_exists(uid, "substack", "My Sub") is True
+    # a different label is a genuinely new account (fresh backfill)
+    db.add_account(uid, "substack", "Other", "c2")
+    assert len(db.list_accounts(user_id=uid)) == 2
+
+
 def test_migration_from_legacy_substack_accounts(tmp_path, monkeypatch):
     """An old DB with a `substack_accounts` table is migrated into
     `connected_accounts` with service='substack' on init()."""

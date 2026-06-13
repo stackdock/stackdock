@@ -25,17 +25,29 @@ scheduler = BackgroundScheduler()
 START_TIME = datetime.now(timezone.utc)
 JOB_STATE: dict[str, dict] = {}   # job_id -> {last_run, result, ok}
 
+# all ingest jobs, by id — the scheduler AND the manual sync buttons both go
+# through run_job() so /status reflects manual runs too (not just scheduled ones)
+JOBS = {"email": email_ingest.run, "podcasts": podcast_rss.run, "substack": substack.run}
 
-def _tracked(job_id: str, fn):
-    """Wrap an ingest job so /status can show its last outcome."""
-    def runner():
-        started = datetime.now(timezone.utc)
-        try:
-            n = fn()
-            JOB_STATE[job_id] = {"last_run": started, "result": f"{n} new item(s)", "ok": True}
-        except Exception as e:  # job errors are recorded, never crash the scheduler
-            JOB_STATE[job_id] = {"last_run": started, "result": f"{type(e).__name__}: {e}", "ok": False}
-            log.exception("Job %s failed", job_id)
+
+def run_job(job_id: str) -> int | None:
+    """Run an ingest job and record its outcome for /status. Returns the new-item
+    count, or None on failure (recorded, never raised — a manual run or the
+    scheduler must not crash on an ingest error)."""
+    started = datetime.now(timezone.utc)
+    try:
+        n = JOBS[job_id]()
+        JOB_STATE[job_id] = {"last_run": started, "result": f"{n} new item(s)", "ok": True}
+        return n
+    except Exception as e:
+        JOB_STATE[job_id] = {"last_run": started, "result": f"{type(e).__name__}: {e}", "ok": False}
+        log.exception("Job %s failed", job_id)
+        return None
+
+
+def _tracked(job_id: str):
+    """A stable, named callable for the scheduler that records JOB_STATE."""
+    runner = lambda: run_job(job_id)
     runner.__name__ = f"{job_id}_job"
     return runner
 
@@ -51,11 +63,11 @@ def _safe_next(next_url: str | None) -> str:
 async def lifespan(app: FastAPI):
     db.init()
     auth.ensure_admin_user()
-    scheduler.add_job(_tracked("email", email_ingest.run), "interval",
+    scheduler.add_job(_tracked("email"), "interval",
                       minutes=config.EMAIL_POLL_MINUTES, id="email", max_instances=1, coalesce=True)
-    scheduler.add_job(_tracked("podcasts", podcast_rss.run), "interval",
+    scheduler.add_job(_tracked("podcasts"), "interval",
                       minutes=config.PODCAST_POLL_MINUTES, id="podcasts", max_instances=1, coalesce=True)
-    scheduler.add_job(_tracked("substack", substack.run), "interval",
+    scheduler.add_job(_tracked("substack"), "interval",
                       minutes=config.SUBSTACK_POLL_MINUTES, id="substack", max_instances=1, coalesce=True)
     scheduler.start()
     log.info("Stackdock started. Feed: %s/feed/%s/all.xml", config.PUBLIC_BASE_URL, config.FEED_TOKEN)
@@ -250,11 +262,12 @@ def admin_reset_link(request: Request, user=Depends(auth.current_admin), user_id
 
 @app.post("/admin/sync/{job}")
 def manual_sync(job: str, user=Depends(auth.current_admin)):
-    jobs = {"email": email_ingest.run, "podcasts": podcast_rss.run,
-            "substack": substack.run}
-    if job not in jobs:
+    if job not in JOBS:
         raise HTTPException(404)
-    return {"job": job, "new_items": jobs[job]()}
+    n = run_job(job)   # records JOB_STATE so /status reflects this manual run
+    state = JOB_STATE.get(job, {})
+    return {"job": job, "ok": state.get("ok", n is not None),
+            "new_items": n, "result": state.get("result")}
 
 
 # ---------------- connected accounts (substack) ----------------
@@ -284,7 +297,11 @@ def accounts_add(request: Request, user=Depends(auth.current_user),
         return page(error="Both a label and the cookie value are required.")
     if len(cookie) < 20:
         return page(error="That doesn't look like a session cookie value.")
+    reconnect = db.account_exists(user["id"], service, label)
     db.add_account(user["id"], service, label, cookie, handle)
+    if reconnect:
+        return page(message=f"Cookie for “{label}” refreshed. It keeps its sync history, so the "
+                            "next sync only pulls new posts (no re-backfill, no Discord spam).")
     return page(message=f"{service.capitalize()} account connected. It will backfill on the "
                         "next sync (or press Sync now below).")
 
@@ -299,9 +316,10 @@ def accounts_delete(request: Request, user=Depends(auth.current_user),
 @app.post("/accounts/sync")
 def accounts_sync(request: Request, user=Depends(auth.current_user)):
     """Any member can trigger a sync of all connected Substack accounts."""
-    count = substack.run()
-    return render(request, "accounts.html",
-                  **_accounts_ctx(user, message=f"Sync finished: {count} new item(s)."))
+    count = run_job("substack")   # records JOB_STATE so /status reflects this run
+    msg = (f"Sync finished: {count} new item(s)." if count is not None
+           else "Sync failed — see Status for details.")
+    return render(request, "accounts.html", **_accounts_ctx(user, message=msg))
 
 
 @app.post("/follow")
@@ -397,22 +415,41 @@ def publications_delete(request: Request, user=Depends(auth.current_user),
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, user=Depends(auth.current_user),
           pub: str | None = None, show: str | None = None, tab: str = "text",
-          q: str | None = None, sort: str = "new", hidden: int = 0):
+          q: str | None = None, sort: str = "new", hidden: int = 0,
+          sub: str = "articles"):
     q = (q or "").strip() or None
     sort = "old" if sort == "old" else "new"
     tab = tab if tab in ("text", "audio", "mine") else "text"
+    mine_sub = sub if sub in ("articles", "podcasts") else "articles"
+    show_hidden = bool(hidden)
     followed_pubs = db.list_follows(user["id"], "pub")
     followed_shows = db.list_follows(user["id"], "show")
     mine_articles = mine_episodes = []
+    hidden_arts = hidden_eps = set()
+    n_mine_articles = n_mine_episodes = n_mine_hidden = 0
     if tab == "mine":
-        mine_articles = db.list_articles(publications=followed_pubs, q=q, sort=sort)
-        mine_episodes = db.list_episodes(feeds=followed_shows, sort=sort)
+        hidden_arts = db.list_hidden_refs(user["id"], "article")
+        hidden_eps = db.list_hidden_refs(user["id"], "episode")
+        arts = db.list_articles(publications=followed_pubs, q=q, sort=sort)
+        eps = db.list_episodes(feeds=followed_shows, sort=sort)
+        # sub-tab badges show the unread (visible) count for each side
+        n_mine_articles = sum(1 for a in arts if a["slug"] not in hidden_arts)
+        n_mine_episodes = sum(1 for e in eps if e["slug"] not in hidden_eps)
+        if mine_sub == "articles":
+            mine_articles = arts if show_hidden else [a for a in arts if a["slug"] not in hidden_arts]
+            n_mine_hidden = len(arts) - n_mine_articles
+        else:
+            mine_episodes = eps if show_hidden else [e for e in eps if e["slug"] not in hidden_eps]
+            n_mine_hidden = len(eps) - n_mine_episodes
     return render(request, "index.html", user=user,
                   articles=db.list_articles(publication=pub, q=q, sort=sort, include_hidden=bool(hidden)),
                   publications=db.list_publications(),
-                  active_pub=pub, q=q or "", sort=sort, show_hidden=bool(hidden),
+                  active_pub=pub, q=q or "", sort=sort, show_hidden=show_hidden,
                   n_hidden=db.count_hidden_articles(),
-                  active_tab=tab,
+                  active_tab=tab, mine_sub=mine_sub,
+                  hidden_arts=hidden_arts, hidden_eps=hidden_eps,
+                  n_mine_articles=n_mine_articles, n_mine_episodes=n_mine_episodes,
+                  n_mine_hidden=n_mine_hidden,
                   followed_pubs=followed_pubs, followed_shows=followed_shows,
                   mine_articles=mine_articles, mine_episodes=mine_episodes,
                   episodes=db.list_episodes(limit=200, feed=show, sort=sort),
@@ -425,6 +462,19 @@ def index(request: Request, user=Depends(auth.current_user),
 def hide_article(article_id: int, user=Depends(auth.current_user), unhide: int = Form(0)):
     db.set_article_hidden(article_id, not unhide)
     return RedirectResponse(f"/?tab=text{'&hidden=1' if unhide else ''}", status_code=303)
+
+
+@app.post("/mine/hide")
+def hide_mine_item(user=Depends(auth.current_user), kind: str = Form(...),
+                   ref: str = Form(...), back: str = Form("/?tab=mine"),
+                   unhide: int = Form(0)):
+    """Per-user hide/unhide of an article or episode in Your Stuff."""
+    if kind not in ("article", "episode") or not ref.strip():
+        raise HTTPException(400)
+    db.set_hidden_item(user["id"], kind, ref.strip(), not unhide)
+    if not back.startswith("/") or back.startswith("//"):
+        back = "/?tab=mine"
+    return RedirectResponse(back, status_code=303)
 
 
 @app.get("/read/{slug}", response_class=HTMLResponse)
@@ -502,6 +552,8 @@ def status_page(request: Request, user=Depends(auth.current_user)):
                   disk_used_pct=round(du.used / du.total * 100),
                   disk_free_gb=round(du.free / 1e9, 1),
                   accounts=accounts,
+                  github_repo=config.GITHUB_REPO,
+                  github_workflows=config.GITHUB_WORKFLOWS,
                   n_articles=len(db.list_articles()),
                   n_episodes=len(db.list_episodes()))
 

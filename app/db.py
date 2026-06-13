@@ -79,6 +79,14 @@ CREATE TABLE IF NOT EXISTS listen_positions (
     PRIMARY KEY (user_id, slug)
 );
 
+CREATE TABLE IF NOT EXISTS hidden_items (
+    user_id INTEGER NOT NULL,
+    kind TEXT NOT NULL,                -- 'article' | 'episode'
+    ref TEXT NOT NULL,                 -- article/episode slug
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, kind, ref)   -- per-user "read it, hide it" in Your Stuff
+);
+
 CREATE TABLE IF NOT EXISTS tracked_publications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -556,13 +564,33 @@ SERVICES = ("substack",)
 
 
 def add_account(user_id: int, service: str, label: str, cookie: str, handle: str | None = None) -> int:
+    """Connect an account, or RECONNECT one with the same (user, service, label):
+    reconnecting replaces the cookie in place and keeps last_sync, so a fresh
+    cookie for an account we already mirror only picks up new posts (no full
+    re-backfill / no duplicate row), and clears the stale status + alert state."""
     with conn() as c:
+        existing = c.execute(
+            "SELECT id FROM connected_accounts WHERE user_id=? AND service=? AND label=?",
+            (user_id, service, label)).fetchone()
+        if existing:
+            c.execute(
+                "UPDATE connected_accounts SET cookie=?, handle=COALESCE(?, handle), "
+                "status=NULL, last_alert=NULL WHERE id=?",
+                (cookie, handle, existing["id"]))
+            return existing["id"]
         cur = c.execute(
             "INSERT INTO connected_accounts (user_id, service, label, cookie, handle, created_at) "
             "VALUES (?,?,?,?,?,?)",
             (user_id, service, label, cookie, handle, now_iso()),
         )
         return cur.lastrowid
+
+
+def account_exists(user_id: int, service: str, label: str) -> bool:
+    with conn() as c:
+        return c.execute(
+            "SELECT 1 FROM connected_accounts WHERE user_id=? AND service=? AND label=?",
+            (user_id, service, label)).fetchone() is not None
 
 
 def list_accounts(service: str | None = None, user_id: int | None = None):
@@ -605,6 +633,26 @@ def list_follows(user_id: int, kind: str | None = None) -> list[str]:
         q += " AND kind = ?"; args.append(kind)
     with conn() as c:
         return [r["name"] for r in c.execute(q + " ORDER BY name", args).fetchall()]
+
+
+def set_hidden_item(user_id: int, kind: str, ref: str, hidden: bool) -> None:
+    """Per-user hide/unhide of an article or episode (by slug) in Your Stuff.
+    Independent of the global articles.hidden flag used on the Articles tab."""
+    assert kind in ("article", "episode")
+    with conn() as c:
+        if hidden:
+            c.execute("INSERT OR IGNORE INTO hidden_items (user_id, kind, ref, created_at) "
+                      "VALUES (?,?,?,?)", (user_id, kind, ref, now_iso()))
+        else:
+            c.execute("DELETE FROM hidden_items WHERE user_id=? AND kind=? AND ref=?",
+                      (user_id, kind, ref))
+
+
+def list_hidden_refs(user_id: int, kind: str) -> set[str]:
+    with conn() as c:
+        return {r["ref"] for r in c.execute(
+            "SELECT ref FROM hidden_items WHERE user_id=? AND kind=?",
+            (user_id, kind)).fetchall()}
 
 
 def upsert_listen_position(user_id: int, slug: str, position: float,

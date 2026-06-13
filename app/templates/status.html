@@ -47,6 +47,20 @@
   <p class="hint">Metrics cached 5 min. Load/memory need DO's metrics agent (on by default on new droplets).</p>
 </section>
 
+{% if github_repo %}
+<section>
+  <h2>Pipelines</h2>
+  <p class="badges">
+    {% for wf in github_workflows %}
+    <a href="https://github.com/{{ github_repo }}/actions/workflows/{{ wf }}" target="_blank" rel="noopener">
+      <img src="https://github.com/{{ github_repo }}/actions/workflows/{{ wf }}/badge.svg" alt="{{ wf }} status">
+    </a>
+    {% endfor %}
+  </p>
+  <p class="hint">Live from GitHub Actions. For a private repo, badges only render while you're signed in to GitHub.</p>
+</section>
+{% endif %}
+
 <section>
   <h2>Sync jobs</h2>
   <ul class="rows">

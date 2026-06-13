@@ -61,7 +61,7 @@
     <li class="card{{ ' is-hidden' if a.hidden }}">
       <a href="/read/{{ a.slug }}" class="card-link">
         {% if a.cover_image %}
-          <img class="thumb" src="{{ a.cover_image }}" alt="" loading="lazy">
+          <img class="thumb" src="{{ a.cover_image }}" alt="" loading="lazy" data-fallback="{{ (a.publication or a.title)[:1] | upper }}">
         {% else %}
           <span class="thumb thumb-fallback">{{ (a.publication or a.title)[:1] | upper }}</span>
         {% endif %}
@@ -84,6 +84,8 @@
 </section>
 
 {% elif active_tab == 'mine' %}
+{% set hidden_part = '&hidden=1' if show_hidden else '' %}
+{% set mine_back = '/?tab=mine&sub=' ~ mine_sub ~ ('&sort=old' if sort == 'old' else '') ~ hidden_part %}
 <section id="mine">
   {% if not followed_pubs and not followed_shows %}
     <p class="empty">Nothing here yet. Tap the ☆ next to any publication on the
@@ -91,20 +93,31 @@
       <a href="/?tab=audio">Podcasts</a> tab, and it'll show up here.</p>
   {% else %}
 
-  <h2 class="mine-h"><span class="fun-label">Articles from your stuff</span><span class="work-label">Starred documents</span></h2>
+  <div class="pub-filter subtabs">
+    <a href="/?tab=mine&sub=articles{{ '&sort=old' if sort == 'old' else '' }}" class="{{ 'active' if mine_sub == 'articles' }}"><span class="fun-label">Articles</span><span class="work-label">Documents</span> <span class="count">{{ n_mine_articles }}</span></a>
+    <a href="/?tab=mine&sub=podcasts{{ '&sort=old' if sort == 'old' else '' }}" class="{{ 'active' if mine_sub == 'podcasts' }}"><span class="fun-label">Podcasts</span><span class="work-label">Briefings</span> <span class="count">{{ n_mine_episodes }}</span></a>
+  </div>
+
+  <div class="list-controls">
+    <a class="sort-toggle" href="/?tab=mine&sub={{ mine_sub }}{{ hidden_part }}&sort={{ 'old' if sort == 'new' else 'new' }}">{{ 'Oldest first ↑' if sort == 'new' else 'Newest first ↓' }}</a>
+    {% if n_mine_hidden or show_hidden %}<a class="hint" href="/?tab=mine&sub={{ mine_sub }}{{ '' if show_hidden else '&hidden=1' }}{{ '&sort=old' if sort == 'old' else '' }}">{{ 'back to unread' if show_hidden else (n_mine_hidden ~ ' read/hidden') }}</a>{% endif %}
+  </div>
+
+  {% if mine_sub == 'articles' %}
   {% if followed_pubs %}
   <div class="pub-filter">
     {% for name in followed_pubs %}
-      <span class="chip-wrap"><a href="/?tab=text&pub={{ name | urlencode }}">{{ name }}</a>{{ follow_star('pub', name, '/?tab=mine') }}</span>
+      <span class="chip-wrap"><a href="/?tab=text&pub={{ name | urlencode }}">{{ name }}</a>{{ follow_star('pub', name, '/?tab=mine&sub=articles') }}</span>
     {% endfor %}
   </div>
   {% endif %}
-  {% if not mine_articles %}<p class="empty">{% if followed_pubs %}No articles from these yet.{% else %}No publications followed — ☆ some on the Articles tab.{% endif %}</p>{% endif %}
+  {% if not mine_articles %}<p class="empty">{% if followed_pubs %}{{ 'Nothing hidden yet.' if show_hidden else 'All caught up — nothing unread here.' }}{% else %}No publications followed — ☆ some on the Articles tab.{% endif %}</p>{% endif %}
   <ul class="cards">
-    {% for a in mine_articles[:50] %}
-    <li class="card">
+    {% for a in mine_articles[:100] %}
+    {% set is_hidden = a.slug in hidden_arts %}
+    <li class="card{{ ' is-hidden' if is_hidden }}">
       <a href="/read/{{ a.slug }}" class="card-link">
-        {% if a.cover_image %}<img class="thumb" src="{{ a.cover_image }}" alt="" loading="lazy">
+        {% if a.cover_image %}<img class="thumb" src="{{ a.cover_image }}" alt="" loading="lazy" data-fallback="{{ (a.publication or a.title)[:1] | upper }}">
         {% else %}<span class="thumb thumb-fallback">{{ (a.publication or a.title)[:1] | upper }}</span>{% endif %}
         <span class="card-body">
           <span class="spine">{{ a.publication }}{% if a.is_paid %} <span class="badge {{ 'paid-locked' if a.is_locked else 'paid-open' }}">paid{{ ' 🔒' if a.is_locked else '' }}</span>{% endif %}</span>
@@ -112,25 +125,33 @@
           <span class="row-meta"><time>{{ (a.published_at or a.created_at)[:10] }}</time></span>
         </span>
       </a>
+      <form method="post" action="/mine/hide" class="card-hide">
+        <input type="hidden" name="kind" value="article">
+        <input type="hidden" name="ref" value="{{ a.slug }}">
+        <input type="hidden" name="back" value="{{ mine_back }}">
+        {% if is_hidden %}<input type="hidden" name="unhide" value="1"><button type="submit" title="Mark unread">↩</button>
+        {% else %}<button type="submit" title="Mark read / hide">✕</button>{% endif %}
+      </form>
     </li>
     {% endfor %}
   </ul>
 
-  <h2 class="mine-h"><span class="fun-label">Podcasts from your stuff</span><span class="work-label">Starred briefings</span></h2>
+  {% else %}
   {% if followed_shows %}
   <div class="pub-filter">
     {% for name in followed_shows %}
-      <span class="chip-wrap"><a href="/?tab=audio&show={{ name | urlencode }}">{{ name }}</a>{{ follow_star('show', name, '/?tab=mine') }}</span>
+      <span class="chip-wrap"><a href="/?tab=audio&show={{ name | urlencode }}">{{ name }}</a>{{ follow_star('show', name, '/?tab=mine&sub=podcasts') }}</span>
     {% endfor %}
   </div>
   {% endif %}
-  {% if not mine_episodes %}<p class="empty">{% if followed_shows %}No episodes from these yet.{% else %}No shows followed — ☆ some on the Podcasts tab.{% endif %}</p>{% endif %}
+  {% if not mine_episodes %}<p class="empty">{% if followed_shows %}{{ 'Nothing hidden yet.' if show_hidden else 'All caught up — nothing unplayed here.' }}{% else %}No shows followed — ☆ some on the Podcasts tab.{% endif %}</p>{% endif %}
   <ul class="cards">
-    {% for e in mine_episodes[:50] %}
-    <li class="card" data-ep-slug="{{ e.slug }}">
+    {% for e in mine_episodes[:100] %}
+    {% set is_hidden = e.slug in hidden_eps %}
+    <li class="card{{ ' is-hidden' if is_hidden }}" data-ep-slug="{{ e.slug }}">
       <a href="/listen/{{ e.slug }}" class="card-link">
         <span class="thumb-wrap">
-          {% if e.image_url %}<img class="thumb" src="{{ e.image_url }}" alt="" loading="lazy">
+          {% if e.image_url %}<img class="thumb" src="{{ e.image_url }}" alt="" loading="lazy" data-fallback="▶">
           {% else %}<span class="thumb thumb-fallback">▶</span>{% endif %}
           <span class="ep-progress"><span class="ep-progress-fill"></span></span>
           <span class="ep-played" hidden>✓</span>
@@ -141,9 +162,18 @@
           <span class="row-meta">{% if e.duration %}<span class="added-by">{{ e.duration }}</span> · {% endif %}<time>{{ (e.published_at or e.created_at)[:16] }}</time></span>
         </span>
       </a>
+      <form method="post" action="/mine/hide" class="card-hide">
+        <input type="hidden" name="kind" value="episode">
+        <input type="hidden" name="ref" value="{{ e.slug }}">
+        <input type="hidden" name="back" value="{{ mine_back }}">
+        {% if is_hidden %}<input type="hidden" name="unhide" value="1"><button type="submit" title="Mark unplayed">↩</button>
+        {% else %}<button type="submit" title="Mark played / hide">✕</button>{% endif %}
+      </form>
     </li>
     {% endfor %}
   </ul>
+  {% endif %}
+
   {% endif %}
   <p class="hint"><a href="/offline">📦 Episodes saved on this device</a></p>
 </section>
@@ -175,7 +205,7 @@
       <a href="/listen/{{ e.slug }}" class="card-link">
         <span class="thumb-wrap">
           {% if e.image_url %}
-            <img class="thumb" src="{{ e.image_url }}" alt="" loading="lazy">
+            <img class="thumb" src="{{ e.image_url }}" alt="" loading="lazy" data-fallback="▶">
           {% else %}
             <span class="thumb thumb-fallback">▶</span>
           {% endif %}

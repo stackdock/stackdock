@@ -75,6 +75,14 @@ CLOUDFLARE_ACCOUNT_ID = os.getenv("CLOUDFLARE_ACCOUNT_ID", "")
 DO_API_TOKEN = os.getenv("DO_API_TOKEN", "")
 DO_DROPLET_ID = os.getenv("DO_DROPLET_ID", "")
 
+# ---- GitHub Actions pipeline badges (optional, for /status) ----
+# "owner/name" of the repo; badges are hidden when blank. Comma-separated workflow
+# file names as they live in .github/workflows/. Private-repo badges only render
+# for viewers signed in to GitHub.
+GITHUB_REPO = os.getenv("GITHUB_REPO", "stackdock/stackdock")
+GITHUB_WORKFLOWS = [w.strip() for w in
+                    os.getenv("GITHUB_WORKFLOWS", "ci.yml,deploy.yml").split(",") if w.strip()]
+
 # ---- Discord ----
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
 

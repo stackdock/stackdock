@@ -59,6 +59,26 @@
 <script>
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
 
+// Remote thumbnails are hotlinked; when one 404s or is hotlink-blocked the <img>
+// renders blank. Swap any broken .thumb for its CSS fallback tile (the letter for
+// articles, ▶ for episodes). Capture phase: image error events don't bubble.
+(function () {
+  function fallback(img) {
+    if (!img || img.tagName !== "IMG" || !img.classList.contains("thumb")) return;
+    var fb = document.createElement("span");
+    fb.className = "thumb thumb-fallback";
+    fb.textContent = img.getAttribute("data-fallback") || "▶";
+    img.replaceWith(fb);
+  }
+  addEventListener("error", function (e) { fallback(e.target); }, true);
+  // images that already failed before this ran (cached errors)
+  addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll("img.thumb").forEach(function (img) {
+      if (img.complete && img.naturalWidth === 0) fallback(img);
+    });
+  });
+})();
+
 (function () {
   var html = document.documentElement;
   var store = {

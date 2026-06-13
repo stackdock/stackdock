@@ -37,14 +37,38 @@ def test_open_redirect_blocked(client):
 def test_mine_tab_filters_to_follows(client):
     client.post("/follow", data={"kind": "pub", "name": "Blog A"})
     client.post("/follow", data={"kind": "show", "name": "Show B"})
+    # Your Stuff is split into Articles / Podcasts sub-tabs (default = articles)
     r = client.get("/?tab=mine")
     assert "Alpha Article" in r.text and "Bravo Article" not in r.text
+    assert "Alpha Episode" not in r.text
+    r = client.get("/?tab=mine&sub=podcasts")
     assert "Bravo Episode" in r.text and "Alpha Episode" not in r.text
+    assert "Alpha Article" not in r.text
     # empty state when nothing followed
     client.post("/follow", data={"kind": "pub", "name": "Blog A"})
     client.post("/follow", data={"kind": "show", "name": "Show B"})
     r = client.get("/?tab=mine")
     assert "Nothing here yet" in r.text
+
+
+def test_mine_hide_persists_per_user(client):
+    import bcrypt
+    client.post("/follow", data={"kind": "pub", "name": "Blog A"})
+    slug = db.list_articles(publications=["Blog A"])[0]["slug"]
+    # hidden items are excluded from the default Your Stuff view, shown under "read/hidden"
+    client.post("/mine/hide", data={"kind": "article", "ref": slug})
+    assert "Alpha Article" not in client.get("/?tab=mine").text
+    assert "Alpha Article" in client.get("/?tab=mine&hidden=1").text
+    # persists across requests; unhide restores it
+    client.post("/mine/hide", data={"kind": "article", "ref": slug, "unhide": "1"})
+    assert "Alpha Article" in client.get("/?tab=mine").text
+    # another user who follows the same pub is NOT affected by the first user's hide
+    client.post("/mine/hide", data={"kind": "article", "ref": slug})
+    db.create_user("friend2", bcrypt.hashpw(b"pw123456", bcrypt.gensalt()).decode())
+    client.get("/logout")
+    client.post("/login", data={"username": "friend2", "password": "pw123456"})
+    client.post("/follow", data={"kind": "pub", "name": "Blog A"})
+    assert "Alpha Article" in client.get("/?tab=mine").text
 
 
 def test_follows_are_per_user(client):

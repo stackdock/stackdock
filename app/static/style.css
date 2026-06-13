@@ -479,3 +479,5 @@ html[data-workmode="1"] .mode-btns button { border-color: rgba(255,255,255,0.6);
 }
 .star.on { color: #d9a514; }
 .mine-h { font-family: var(--serif); font-size: 1.05rem; margin: 1.6rem 0 0.4rem; }
+.badges { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0.25rem 0 0.5rem; }
+.badges img { height: 20px; display: block; }
