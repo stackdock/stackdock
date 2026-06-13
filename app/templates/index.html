@@ -39,16 +39,21 @@
 {% if active_tab == 'text' %}
 {% set q_part = ('&q=' ~ (q | urlencode)) if q else '' %}
 {% set sort_part = '&sort=old' if sort == 'old' else '' %}
-{% set pub_part = ('&pub=' ~ (active_pub | urlencode)) if active_pub else '' %}
 {% set hidden_part = '&hidden=1' if show_hidden else '' %}
+{% set pns = namespace(s='') %}{% for pp in active_pubs %}{% set pns.s = pns.s ~ '&pub=' ~ (pp | urlencode) %}{% endfor %}
+{% set pub_part = pns.s %}
 <section id="articles">
   {% if publications %}
-  <details class="filter-box"{% if active_pub %} open{% endif %}>
-    <summary><span class="fun-label">Publications</span><span class="work-label">Sources</span> <span class="count">{{ publications|length }}</span>{% if active_pub %} · {{ active_pub }}{% endif %}</summary>
+  <details class="filter-box"{% if active_pubs %} open{% endif %}>
+    <summary><span class="fun-label">Publications</span><span class="work-label">Sources</span> <span class="count">{{ publications|length }}</span>{% if active_pubs %} · {{ active_pubs|length }} selected{% endif %}</summary>
     <div class="pub-filter">
-      <a href="/?tab=text{{ q_part }}{{ sort_part }}" class="{{ 'active' if not active_pub }}">All</a>
+      <a href="/?tab=text&clear=1{{ q_part }}{{ sort_part }}" class="{{ 'active' if not active_pubs }}">All</a>
       {% for p in publications %}
-        <span class="chip-wrap"><a href="/?tab=text&pub={{ p.publication | urlencode }}{{ q_part }}{{ sort_part }}" class="{{ 'active' if active_pub == p.publication }}{{ ' paid' if p.paid }}"{% if p.paid %} title="paid subscription"{% endif %}>{{ p.publication }} <span class="count">{{ p.n }}</span></a>{{ follow_star('pub', p.publication, '/?tab=text') }}</span>
+        {% set sel = p.publication in active_pubs %}
+        {% set tns = namespace(s='') %}
+        {% set target = (active_pubs | reject('equalto', p.publication) | list) if sel else (active_pubs + [p.publication]) %}
+        {% for pp in target %}{% set tns.s = tns.s ~ '&pub=' ~ (pp | urlencode) %}{% endfor %}
+        <span class="chip-wrap"><a href="/?tab=text{{ tns.s }}{{ q_part }}{{ sort_part }}" class="{{ 'active' if sel }}{{ ' paid' if p.paid }}"{% if p.paid %} title="paid subscription"{% endif %}>{{ p.publication }} <span class="count">{{ p.n }}</span>{% if sel %} <span class="chip-x" title="Remove from filter">×</span>{% endif %}</a>{{ follow_star('pub', p.publication, '/?tab=text') }}</span>
       {% endfor %}
     </div>
   </details>
@@ -57,7 +62,7 @@
   <div class="list-controls">
     <form method="get" action="/" class="search-form">
       <input type="hidden" name="tab" value="text">
-      {% if active_pub %}<input type="hidden" name="pub" value="{{ active_pub }}">{% endif %}
+      {% for pp in active_pubs %}<input type="hidden" name="pub" value="{{ pp }}">{% endfor %}
       {% if sort == 'old' %}<input type="hidden" name="sort" value="old">{% endif %}
       <input type="search" name="q" value="{{ q }}" placeholder="Search articles…" autocomplete="off">
       <button type="submit">Search</button>

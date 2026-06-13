@@ -505,3 +505,5 @@ html[data-workmode="1"] .mode-btns button { border-color: rgba(255,255,255,0.6);
 .filter-box > summary:hover { color: var(--shelf); border-color: var(--shelf); }
 .filter-box[open] > summary { margin-bottom: 0.55rem; }
 .filter-box .pub-filter { margin: 0; }
+.chip-x { font-weight: 700; opacity: 0.85; margin-left: 0.1rem; }
+.pub-filter a.active .chip-x:hover { opacity: 1; }

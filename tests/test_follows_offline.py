@@ -113,3 +113,13 @@ def test_articles_and_podcasts_paginate(client):
     assert "page 1 of 1" not in r.text                        # more than one page
     r2 = client.get("/?tab=text&page=2")
     assert "page 2 of" in r2.text
+
+
+def test_multi_publication_filter(client):
+    # both selected -> both shown; the active chips expose an × to remove
+    r = client.get("/?tab=text&pub=Blog A&pub=Blog B")
+    assert "Alpha Article" in r.text and "Bravo Article" in r.text
+    assert "chip-x" in r.text and "2 selected" in r.text
+    # narrow to one -> only its articles
+    r = client.get("/?tab=text&pub=Blog A")
+    assert "Alpha Article" in r.text and "Bravo Article" not in r.text

@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from apscheduler.schedulers.background import BackgroundScheduler
-from fastapi import Depends, FastAPI, Form, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, Response
 from fastapi.responses import (FileResponse, HTMLResponse, JSONResponse,
                                RedirectResponse, StreamingResponse)
 from fastapi.staticfiles import StaticFiles
@@ -437,7 +437,7 @@ PAGE_SIZE = 25
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, user=Depends(auth.current_user),
-          pub: str | None = None, show: str | None = None, tab: str = "text",
+          pub: list[str] = Query(default=[]), show: str | None = None, tab: str = "text",
           q: str | None = None, sort: str = "new", hidden: int = 0,
           sub: str = "articles", page: int = 1):
     q = (q or "").strip() or None
@@ -447,6 +447,7 @@ def index(request: Request, user=Depends(auth.current_user),
     show_hidden = bool(hidden)
     page = max(1, page)
     offset = (page - 1) * PAGE_SIZE
+    active_pubs = [p for p in pub if p]          # multi-select publication filter
     followed_pubs = db.list_follows(user["id"], "pub")
     followed_shows = db.list_follows(user["id"], "show")
 
@@ -461,8 +462,9 @@ def index(request: Request, user=Depends(auth.current_user),
     total = 0  # rows matching the active tab's filter, for the pager
 
     if tab == "text":
-        total = db.count_articles(publication=pub, q=q, include_hidden=show_hidden)
-        articles = db.list_articles(publication=pub, q=q, sort=sort,
+        pubs_filter = active_pubs or None
+        total = db.count_articles(publications=pubs_filter, q=q, include_hidden=show_hidden)
+        articles = db.list_articles(publications=pubs_filter, q=q, sort=sort,
                                     include_hidden=show_hidden, limit=PAGE_SIZE, offset=offset)
     elif tab == "audio":
         total = db.count_episodes(feed=show)
@@ -492,7 +494,7 @@ def index(request: Request, user=Depends(auth.current_user),
     return render(request, "index.html", user=user,
                   articles=articles,
                   publications=db.list_publications(),
-                  active_pub=pub, q=q or "", sort=sort, show_hidden=show_hidden,
+                  active_pubs=active_pubs, q=q or "", sort=sort, show_hidden=show_hidden,
                   n_hidden=db.count_hidden_articles(),
                   active_tab=tab, mine_sub=mine_sub,
                   hidden_arts=hidden_arts, hidden_eps=hidden_eps,
