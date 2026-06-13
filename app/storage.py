@@ -30,6 +30,11 @@ def upload_stream(fileobj, key: str, content_type: str) -> None:
     )
 
 
+def delete(key: str) -> None:
+    """Delete an object (e.g. an orphaned preview audio after a paid upgrade)."""
+    client().delete_object(Bucket=config.S3_BUCKET, Key=key)
+
+
 def url_for(key: str, download_name: str | None = None) -> str:
     """Return a URL a podcast app or browser can fetch the object from.
 

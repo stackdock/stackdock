@@ -56,7 +56,9 @@ class World:
 
     # ---- API fakes, keyed off the session's cookie ----
     def get_publications(self, s):
-        return [{"name": n, "base_url": b} for n, b in self.accounts[s.cookie]["pubs"]]
+        paid = self.accounts[s.cookie]["paid"]
+        return [{"name": n, "base_url": b, "paid": b in paid}
+                for n, b in self.accounts[s.cookie]["pubs"]]
 
     def fetch_archive(self, s, base, n):
         return list(self.posts.get(base, []))
@@ -70,8 +72,13 @@ class World:
         paid_ok = any(post in self.posts.get(b, []) for b in acct["paid"])
         full = dict(post)
         if post["audience"] == "only_paid" and not paid_ok:
-            full["body_html"] = PREVIEW          # no paywall marker -> locked
-            full.pop("podcast_url", None)        # no audio on free tier
+            full["body_html"] = PREVIEW          # no paywall marker -> text locked
+            if post["type"] == "podcast":
+                # a paid show still hands a non-subscriber a short PREVIEW clip
+                full["podcast_url"] = f"https://media.test/{post['slug']}-preview.mp3"
+                full["podcast_duration"] = 60
+            else:
+                full.pop("podcast_url", None)
         else:
             full["body_html"] = FULL
             if post["type"] == "podcast":
@@ -179,45 +186,29 @@ def test_email_row_absorbed_by_cookie_sync(world):
     assert row["cover_image"] == "https://cdn/x2.png"  # metadata filled in
 
 
-def test_podcast_audio_paid_only_and_single_episode(world):
-    _member(world, "alice", "c1", [("Blog X", X)], paid=[])
-    _member(world, "bob", "c2", [("Blog X", X)], paid=[X])
+def test_paid_subscriber_upgrades_preview_podcast(world):
+    """A free subscriber stores the short PREVIEW clip; a paying subscriber's sync
+    replaces it with the full episode in place (same guid), no duplicate. Audio
+    access tracks paid SUBSCRIPTION status, not the post text paywall."""
+    _member(world, "alice", "c1", [("Blog X", X)], paid=[])      # free sub
+    _member(world, "bob", "c2", [("Blog X", X)], paid=[X])       # paid sub
 
     substack.sync_account(_account_row("alice's account"))
-    assert db.list_episodes() == [] and world.downloads == []   # free tier: no audio
-
-    substack.sync_account(_account_row("bob's account"))
-    assert len(db.list_episodes()) == 1 and len(world.downloads) == 1
-    # the paid show is flagged paid in the feed filter (green chip, like articles)
+    assert len(db.list_episodes()) == 1 and len(world.downloads) == 1   # preview stored
+    assert db.get_episode_by_guid("substack:3")["paid_access"] == 0
+    # the paid show is flagged paid in the feed filter (green chip) regardless
     assert {f["feed_name"]: f["paid"] for f in db.list_episode_feeds()}["Blog X"] == 1
 
-    # everyone resyncs; the episode must not duplicate or redownload
     substack.sync_account(_account_row("bob's account"))
-    substack.sync_account(_account_row("alice's account"))
-    assert len(db.list_episodes()) == 1 and len(world.downloads) == 1
-
-
-def test_existing_episode_paid_flag_backfilled_cheaply(world):
-    """A podcast post's audio comes down full via the cookie regardless of text
-    paywall, so an episode synced before the paid flag existed (is_paid=0) gets
-    its flag refreshed on the next sync from the archive's audience — with NO
-    by-id fetch and NO re-download."""
-    # episode stored under the old code path: full audio, but flagged not-paid
-    db.insert_episode(
-        guid="substack:3", feed_name="Blog X", title="Paid Pod", description="",
-        audio_key="podcasts/blog-x/paid-pod.mp3", audio_bytes=49_000_000,
-        audio_mime="audio/mpeg", duration="1800",
-        published_at="2026-01-03T00:00:00", paid_access=0, is_paid=0)
-
-    _member(world, "alice", "c1", [("Blog X", X)], paid=[])
-    substack.sync_account(_account_row("alice's account"))
-
     ep = db.get_episode_by_guid("substack:3")
-    assert ep["is_paid"] == 1 and ep["paid_access"] == 1     # flags refreshed in place
-    assert ep["audio_key"] == "podcasts/blog-x/paid-pod.mp3"  # unchanged
-    assert len(db.list_episodes()) == 1                       # not duplicated
-    assert world.downloads == []                              # nothing re-downloaded
-    assert {f["feed_name"]: f["paid"] for f in db.list_episode_feeds()}["Blog X"] == 1
+    assert ep["paid_access"] == 1                      # upgraded to full audio
+    assert len(db.list_episodes()) == 1                # replaced in place, not duplicated
+    assert len(world.downloads) == 2                   # preview + full, once each
+
+    # resyncs are no-ops: it's full now, and a free member can't improve it
+    substack.sync_account(_account_row("bob's account"))
+    substack.sync_account(_account_row("alice's account"))
+    assert len(world.downloads) == 2 and len(db.list_episodes()) == 1
 
 
 def test_new_post_seen_by_both_accounts_one_digest_item(world):
@@ -246,12 +237,13 @@ def test_third_member_joining_later_changes_nothing(world):
     _member(world, "bob", "c2", [("Blog X", X)], paid=[X])
     substack.run()
     n_articles, n_episodes = len(db.list_articles()), len(db.list_episodes())
+    n_downloads = len(world.downloads)
 
     _member(world, "carol", "c3", [("Blog X", X)], paid=[X])
     substack.sync_account(_account_row("carol's account"))
     assert len(db.list_articles()) == n_articles
     assert len(db.list_episodes()) == n_episodes
-    assert len(world.downloads) == 1     # audio not re-downloaded
+    assert len(world.downloads) == n_downloads     # audio not re-downloaded
     for a in db.list_articles():
         assert "carol's account" in db.list_article_sources(a["id"])
 

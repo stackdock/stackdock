@@ -174,7 +174,13 @@ def get_publications_via_profile(s: requests.Session, handle: str) -> list[dict]
         key = custom or subdomain
         if key not in seen:
             seen.add(key)
-            pubs.append({"name": name, "base_url": _effective_base(s, subdomain, custom)})
+            # membership_state: "free_signup" = free; "subscribed"/"comped"/
+            # "founding"/etc = paying. Anything that isn't a free signup is treated
+            # as paid access — the reliable signal for whether this account gets the
+            # FULL paid podcast audio (the post text paywall marker is no signal).
+            ms = (sub or {}).get("membership_state")
+            pubs.append({"name": name, "base_url": _effective_base(s, subdomain, custom),
+                         "paid": bool(ms) and ms != "free_signup"})
     return pubs
 
 
@@ -319,13 +325,19 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
     if handle and not account["handle"]:
         db.set_account_handle(account["id"], handle)
     have = {p["base_url"] for p in pubs}
+    paid_map = {}
     if handle:
         for p in get_publications_via_profile(s, handle):
+            paid_map[p["base_url"]] = p.get("paid", False)
             if p["base_url"] not in have:
                 have.add(p["base_url"]); pubs.append(p)
         log.info("[%s] discovery: %d publications (profile=%s)", account["label"], len(pubs), handle)
 
     pubs += [m for m in manual if m["base_url"] not in have]
+    # stamp paid-subscription status (from the public-profile membership) on every
+    # pub, so the podcast path knows whether THIS account gets full paid audio
+    for p in pubs:
+        p["paid"] = paid_map.get(p["base_url"], p.get("paid", False))
     if not pubs:
         return 0, "OK: no subscriptions found on this account", []
 
@@ -345,18 +357,23 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
             url = post.get("canonical_url") or f"{pub['base_url']}/p/{slug}"
             title = post.get("title") or "(untitled)"
 
-            # ---- podcast episodes: pull the FULL audio via the cookie ----
-            # The cookie's podcast_url returns the FULL episode even when the post
-            # TEXT is a paywalled preview (a podcast post's body is just short show
-            # notes, so the text paywall marker is no signal of audio access). So
-            # downloaded audio is always the full episode. Dedupe by post id; for an
-            # episode we already hold, just refresh its paid-show flag from the
-            # archive (cheap — no by-id fetch, no re-download).
+            # ---- podcast episodes: pull the audio via the cookie ----
+            # A paid show served to a NON-paying subscriber yields a short preview
+            # podcast_url; a paying subscriber gets the full episode. So audio access
+            # tracks paid-SUBSCRIPTION status (pub["paid"], from the public-profile
+            # membership) — NOT the post text paywall (a podcast body is just show
+            # notes). Dedupe by post id; a paying account upgrades a stored preview
+            # to full audio in place (replacing the old R2 object). is_paid (green
+            # chip) is the audience flag and is refreshed cheaply for existing rows.
             if post.get("type") == "podcast":
                 is_paid = post.get("audience") == "only_paid"
-                if db.get_episode_by_guid(guid):
-                    db.refresh_episode_paid(guid, is_paid)
-                    continue
+                account_pays = bool(pub.get("paid"))
+                existing_ep = db.get_episode_by_guid(guid)
+                if existing_ep:
+                    db.set_episode_paid(guid, is_paid)   # keep green flag current (cheap)
+                    if existing_ep["paid_access"] or not account_pays:
+                        continue   # already full, or this account can't get a better version
+                    # else: we hold a preview AND this account pays -> upgrade below
                 full = _post_by_id(s, post_id) or {}
                 audio_url = full.get("podcast_url") or post.get("podcast_url")
                 if not audio_url:
@@ -389,6 +406,22 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
                 dur = full.get("podcast_duration") or post.get("podcast_duration")
                 ep_image = (full.get("podcast_episode_image_url")
                             or post.get("podcast_episode_image_url") or post.get("cover_image"))
+                if existing_ep:
+                    # paying subscriber replaces the stored preview with full audio
+                    db.upgrade_episode(
+                        guid, audio_key=key, audio_bytes=size, audio_mime=mime,
+                        duration=str(round(dur)) if dur else "",
+                        image_url=ep_image, paid_access=1, is_paid=1 if is_paid else 0)
+                    old_key = existing_ep["audio_key"]
+                    if old_key and old_key != key:
+                        try:
+                            storage.delete(old_key)
+                        except Exception as e:
+                            log.warning("Could not delete old preview audio %s: %s", old_key, e)
+                    log.info("[%s] upgraded podcast to full paid audio: %s",
+                             account["label"], title)
+                    episodes += 1
+                    continue   # an upgrade is not a NEW item — don't re-notify
                 episode_id = db.insert_episode(
                     guid=guid, feed_name=pub["name"], title=title,
                     description=full.get("subtitle") or "",
@@ -396,7 +429,7 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
                     duration=str(round(dur)) if dur else "",
                     published_at=post.get("post_date"),
                     image_url=ep_image,
-                    paid_access=1,                      # cookie podcast_url is the full episode
+                    paid_access=1 if account_pays else 0,   # full only when this account pays
                     is_paid=1 if is_paid else 0,
                 )
                 if episode_id:

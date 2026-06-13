@@ -31,8 +31,9 @@ def test_profile_discovery_parses_library_shape(monkeypatch):
                         lambda s, sub, custom: f"https://{custom}" if custom
                         else f"https://{sub}.substack.com")
     pubs = substack.get_publications_via_profile(object(), "someone")
-    assert pubs == [{"name": "Blog A", "base_url": "https://bloga.substack.com"},
-                    {"name": "Blog B", "base_url": "https://blogb.com"}]
+    assert pubs == [
+        {"name": "Blog A", "base_url": "https://bloga.substack.com", "paid": True},
+        {"name": "Blog B", "base_url": "https://blogb.com", "paid": True}]
 
 
 def test_profile_discovery_handles_garbage(monkeypatch):

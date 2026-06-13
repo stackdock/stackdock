@@ -460,13 +460,27 @@ def get_episode_by_guid(guid: str):
         return c.execute("SELECT * FROM episodes WHERE guid = ?", (guid,)).fetchone()
 
 
-def refresh_episode_paid(guid, is_paid) -> None:
-    """Keep an existing episode's paid-show flag current from the archive (cheap,
-    no by-id fetch / no re-download). Audio we already hold via the cookie's
-    podcast_url is the full episode, so it's also marked accessible."""
+def set_episode_paid(guid, is_paid) -> None:
+    """Keep an existing episode's paid-show flag (green chip) current from the
+    archive — cheap, no by-id fetch / no re-download. Does NOT touch paid_access
+    (full-vs-preview audio), which only a paid-subscriber download can establish."""
     with conn() as c:
-        c.execute("UPDATE episodes SET is_paid=?, paid_access=1 WHERE guid=?",
+        c.execute("UPDATE episodes SET is_paid=? WHERE guid=?",
                   (1 if is_paid else 0, guid))
+
+
+def upgrade_episode(guid, *, audio_key, audio_bytes, audio_mime,
+                    duration, image_url=None, paid_access=1, is_paid=1) -> None:
+    """Replace a stored episode's audio in place when a PAYING subscriber supplies
+    the full version of a preview-only download. Keeps guid/slug so listening
+    positions and links survive. Caller deletes the old R2 object if the key moved."""
+    with conn() as c:
+        c.execute(
+            """UPDATE episodes SET audio_key=?, audio_bytes=?, audio_mime=?,
+                 duration=?, image_url=COALESCE(?, image_url), paid_access=?, is_paid=?
+               WHERE guid=?""",
+            (audio_key, audio_bytes, audio_mime, duration, image_url,
+             1 if paid_access else 0, 1 if is_paid else 0, guid))
 
 
 def _episode_where(feed, feeds):

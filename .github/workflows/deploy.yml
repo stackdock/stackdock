@@ -1,13 +1,12 @@
 name: Deploy to DigitalOcean
 
-# Ships ONLY when you publish a GitHub release (or trigger manually). Pushing to
-# main no longer auto-deploys — main is for integration, and cutting a release is
-# the deliberate "ship it". Tests still run here and gate the deploy; it ships the
-# exact commit the release tag points at.
+# Deploys every push to main (tests gate the deploy). Releases are a SEPARATE,
+# manual thing — they just post a changelog to Discord (see release-discord.yml),
+# they don't control shipping.
 on:
-  release:
-    types: [published]
-  workflow_dispatch: {}   # manual deploy of current main from the Actions tab
+  push:
+    branches: [main]
+  workflow_dispatch: {}   # manual deploy from the Actions tab
 
 concurrency:
   group: deploy
@@ -33,20 +32,16 @@ jobs:
     steps:
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.0
-        env:
-          DEPLOY_REF: ${{ github.event.release.tag_name || 'origin/main' }}
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           script_stop: true
-          envs: DEPLOY_REF
           script: |
             set -e
             cd /opt/stackdock
-            # ship the released tag (release events); fall back to main for manual runs
-            git fetch origin main --tags --force
-            git reset --hard "${DEPLOY_REF}"
+            git fetch origin main
+            git reset --hard origin/main
             docker compose up -d --build
             docker image prune -f
             # health check from inside the compose network (port 8000 isn't published on the host)

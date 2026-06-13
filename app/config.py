@@ -80,11 +80,10 @@ DO_DROPLET_ID = os.getenv("DO_DROPLET_ID", "")
 # file names as they live in .github/workflows/. Private-repo badges only render
 # for viewers signed in to GitHub.
 GITHUB_REPO = os.getenv("GITHUB_REPO", "stackdock/stackdock")
-# deploy.yml is the only workflow that runs on main (it tests + gates before
-# release); ci.yml only runs on PRs / non-main pushes, so its badge would read
-# "no status" here. Override via GITHUB_WORKFLOWS if that changes.
+# ci.yml runs the test suite on every push (incl. main); deploy.yml runs on a
+# published release. Both badges are meaningful. Override via GITHUB_WORKFLOWS.
 GITHUB_WORKFLOWS = [w.strip() for w in
-                    os.getenv("GITHUB_WORKFLOWS", "deploy.yml").split(",") if w.strip()]
+                    os.getenv("GITHUB_WORKFLOWS", "ci.yml,deploy.yml").split(",") if w.strip()]
 
 # ---- Discord ----
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
