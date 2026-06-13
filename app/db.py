@@ -349,10 +349,15 @@ def count_hidden_articles() -> int:
 
 
 def list_publications():
-    """[{'publication': name, 'n': count}], busiest first — the aggregate across all users."""
+    """[{'publication', 'n', 'paid'}] — paid=1 when this account has at least one
+    fully-accessible paid post here (so it can be highlighted as a paid sub).
+    Paid pubs sort first, then by article count."""
     with conn() as c:
         return c.execute(
-            "SELECT publication, COUNT(*) AS n FROM articles GROUP BY publication ORDER BY n DESC"
+            "SELECT publication, COUNT(*) AS n, "
+            "MAX(CASE WHEN is_paid = 1 AND is_locked = 0 THEN 1 ELSE 0 END) AS paid "
+            "FROM articles WHERE hidden = 0 GROUP BY publication "
+            "ORDER BY paid DESC, n DESC"
         ).fetchall()
 
 

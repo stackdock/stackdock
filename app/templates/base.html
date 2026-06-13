@@ -28,7 +28,7 @@
 </head>
 <body>
   <header class="masthead">
-    <a class="wordmark" href="/"><img class="brand-chud" src="/static/chud-spin-clear.svg" alt=""><span class="fun-label">{{ site_title }}</span><span class="work-label">Meridian Workspace</span></a>
+    <a class="wordmark" href="/"><img class="brand-chud" src="/static/chud-spin-clear.svg" alt=""><span class="fun-label">{{ site_title }}</span><span class="work-label">4HL'er</span></a>
     <nav>
       {% if user is defined and user %}
         <a href="/"><span class="fun-label">Articles</span><span class="work-label">Documents</span></a>
@@ -39,7 +39,6 @@
         {% if user.is_admin %}<a href="/admin">Admin</a>{% endif %}
         <a href="/logout">Log out</a>
         <span class="mode-btns">
-          <button id="theme-btn" type="button" title="Theme: auto / brimstone / agartha">◐</button>
           <button id="work-btn" type="button" title="Work mode (also: press W twice)">💼</button>
         </span>
       {% endif %}
@@ -50,6 +49,11 @@
   </main>
   <footer><span class="fun-label">Chud Use ONLY | Enforced by Sovereign Citizen Maritime Law<br>
     <span class="footer-temple">✝ running on TempleOS v5.03</span></span></footer>
+  <select id="theme-select" class="theme-dropdown" aria-label="Theme">
+    <option value="auto">◐ Auto</option>
+    <option value="agartha">☀ Agartha</option>
+    <option value="brimstone">🌙 Brimstone</option>
+  </select>
 <script>
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
 
@@ -78,8 +82,8 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
 
   function applyWork() {
     var on = html.dataset.workmode === "1";
-    document.title = on ? "Meridian Workspace — Q2 Documents"
-                        : document.title.replace(/^Meridian Workspace.*$/, "{{ site_title }}");
+    document.title = on ? "4HL'er"
+                        : document.title.replace(/^4HL'er.*$/, "{{ site_title }}");
     var icon = document.querySelector('link[rel="icon"]');
     if (icon) icon.href = on ? "/static/work-icon.svg" : "/static/rss.svg";
     var wb = document.getElementById("work-btn");
@@ -96,19 +100,15 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
     applyWork();
   }
 
-  var tb = document.getElementById("theme-btn"), wb = document.getElementById("work-btn");
-  if (tb) tb.onclick = function () {
-    // cycle: auto -> brimstone (dark) -> agartha (light) -> auto
-    var cur = html.dataset.theme || "auto";
-    var next = cur === "auto" ? "brimstone" : cur === "brimstone" ? "agartha" : "auto";
-    if (next === "auto") { delete html.dataset.theme; store.del("theme"); }
-    else { html.dataset.theme = next; store.set("theme", next); }
-    tb.textContent = next === "brimstone" ? "🌙" : next === "agartha" ? "☀️" : "◐";
-    themeColor();
-  };
-  if (tb) {
-    var t = html.dataset.theme;
-    tb.textContent = t === "brimstone" ? "🌙" : t === "agartha" ? "☀️" : "◐";
+  var ts = document.getElementById("theme-select"), wb = document.getElementById("work-btn");
+  if (ts) {
+    ts.value = html.dataset.theme || "auto";
+    ts.onchange = function () {
+      var v = ts.value;
+      if (v === "auto") { delete html.dataset.theme; store.del("theme"); }
+      else { html.dataset.theme = v; store.set("theme", v); }
+      themeColor();
+    };
   }
   if (wb) wb.onclick = toggleWork;
 

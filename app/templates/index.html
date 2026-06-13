@@ -30,7 +30,7 @@
   <p class="pub-filter">
     <a href="/?tab=text{{ q_part }}{{ sort_part }}" class="{{ 'active' if not active_pub }}">All</a>
     {% for p in publications %}
-      <a href="/?tab=text&pub={{ p.publication | urlencode }}{{ q_part }}{{ sort_part }}" class="{{ 'active' if active_pub == p.publication }}">{{ p.publication }} <span class="count">{{ p.n }}</span></a>
+      <a href="/?tab=text&pub={{ p.publication | urlencode }}{{ q_part }}{{ sort_part }}" class="{{ 'active' if active_pub == p.publication }}{{ ' paid' if p.paid }}"{% if p.paid %} title="paid subscription"{% endif %}>{{ p.publication }} <span class="count">{{ p.n }}</span></a>
     {% endfor %}
   </p>
   {% endif %}

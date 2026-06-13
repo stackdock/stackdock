@@ -212,3 +212,17 @@ def test_episode_rfc822_dates_normalized_on_init(fresh_db):
     with db.conn() as c:
         row = c.execute("SELECT published_at FROM episodes WHERE guid='gx'").fetchone()
     assert row["published_at"].startswith("2025-06-04T10")
+
+
+def test_list_publications_paid_flag_and_order(fresh_db):
+    # Pub P: a fully-accessible paid post -> paid=1; Pub F: only free -> paid=0
+    db.insert_article("p1", "P", "paid full", "a", None, "<p>x</p>", "2026-01-01", is_paid=1, is_locked=0)
+    db.insert_article("f1", "F", "free one", "a", None, "<p>x</p>", "2026-01-02")
+    db.insert_article("f2", "F", "free two", "a", None, "<p>x</p>", "2026-01-03")
+    pubs = {r["publication"]: r for r in db.list_publications()}
+    assert pubs["P"]["paid"] == 1 and pubs["F"]["paid"] == 0
+    # paid pubs sort first even with fewer articles
+    assert db.list_publications()[0]["publication"] == "P"
+    # a locked-only paid post does NOT count as paid access
+    db.insert_article("l1", "L", "locked", "a", None, "<p>x</p>", "2026-01-04", is_paid=1, is_locked=1)
+    assert {r["publication"]: r["paid"] for r in db.list_publications()}["L"] == 0

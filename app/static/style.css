@@ -130,6 +130,25 @@ h2 {
   border: 1px solid var(--rule); border-radius: 99px; padding: 0.25rem 0.7rem; background: var(--panel);
 }
 .sort-toggle:hover { color: var(--shelf); border-color: var(--shelf); }
+/* generic hint text/links (themed) — fixes the unthemed hidden/clear toggles */
+.hint { color: var(--ink-soft); }
+a.hint { text-decoration: none; }
+a.hint:hover { color: var(--shelf); }
+/* paid publications stand out green in the blog selector */
+.pub-filter a.paid { color: var(--shelf); border-color: var(--shelf); font-weight: 600; }
+.pub-filter a.paid.active { color: #fff; background: var(--shelf); }
+/* floating theme picker, bottom-right */
+.theme-dropdown {
+  position: fixed; z-index: 60;
+  bottom: calc(0.9rem + env(safe-area-inset-bottom, 0px));
+  right: calc(0.9rem + env(safe-area-inset-right, 0px));
+  font-family: var(--mono); font-size: 0.72rem;
+  color: var(--ink); background: var(--panel);
+  border: 1px solid var(--rule); border-radius: 8px;
+  padding: 0.35rem 0.5rem; cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+}
+html[data-workmode="1"] .theme-dropdown { box-shadow: none; }
 .card-link {
   display: grid; grid-template-columns: 84px 1fr; gap: 0.9rem; align-items: center;
   padding: 0.6rem 0; text-decoration: none; color: inherit;
