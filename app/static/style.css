@@ -294,8 +294,12 @@ footer {
 .meme-card input {
   display: block; width: 100%; margin-top: 0.3rem; padding: 0.6rem 0.7rem;
   font-size: 1rem; border: 2px solid #1c1c1c; border-radius: 3px;
-  background: #fafafa; font-family: var(--sans);
+  /* card is always light, so force dark input text regardless of theme
+     (-webkit-text-fill-color stops iOS dark mode from lightening it) */
+  background: #fafafa; color: #1c1c1c; -webkit-text-fill-color: #1c1c1c;
+  font-family: var(--sans);
 }
+.meme-card input::placeholder { color: #8a8a8a; -webkit-text-fill-color: #8a8a8a; }
 .meme-card input:focus { outline: 3px solid #789922; }
 .meme-card button {
   margin-top: 1.2rem; width: 100%;
