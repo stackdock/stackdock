@@ -68,6 +68,20 @@ STATIC_DIR = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
+def _static_version() -> str:
+    """Content hash of style.css, used as a ?v= cache-buster so a CSS change is
+    fetched immediately (the service worker keys its cache by full URL, so a new
+    hash dodges the stale stylesheet entirely)."""
+    import hashlib
+    try:
+        return hashlib.md5((STATIC_DIR / "style.css").read_bytes()).hexdigest()[:10]
+    except OSError:
+        return "0"
+
+
+STATIC_V = _static_version()
+
+
 @app.get("/sw.js", include_in_schema=False)
 def service_worker():
     """Service worker must be served from / so its scope can cover the whole app."""
@@ -77,6 +91,7 @@ def service_worker():
 
 def render(request, template, **ctx):
     ctx.setdefault("site_title", config.SITE_TITLE)
+    ctx.setdefault("static_v", STATIC_V)
     return templates.TemplateResponse(request, template, ctx)
 
 
