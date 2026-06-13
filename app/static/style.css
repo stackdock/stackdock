@@ -277,6 +277,12 @@ footer {
   .meme-stage .scene .tumbler { animation: none; }
 }
 
+/* "still" mode — toggled by clicking the header chud: stop motion + straighten */
+html[data-chud="still"] .meme-stage .scene .tumbler { animation: none !important; transform: none !important; }
+html[data-chud="still"] .wordmark,
+html[data-chud="still"] .wordmark:hover { transform: none !important; }
+html[data-chud="still"] .brand-chud { transform: none; }
+
 /* TempleOS footer credit */
 .footer-temple { color: var(--shelf); }
 .meme-card {
