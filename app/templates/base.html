@@ -121,10 +121,9 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
     var still = store.get("chudstill") === "1";
     function applyChud() {
       if (still) html.dataset.chud = "still"; else delete html.dataset.chud;
-      // swap the tumbling login figures between the wojak and the spinning chud
-      document.querySelectorAll(".scene .tumbler img").forEach(function (im) {
-        im.src = still ? "/static/chud-spin-clear.svg" : "/static/wojak-figure.svg";
-      });
+      // toggle the HEADER logo only: spinning chud (default) <-> wojak (alt).
+      // The login-page figures always stay the tumbling wojak.
+      chud.src = still ? "/static/wojak-figure.svg" : "/static/chud-spin-clear.svg";
     }
     applyChud();
     chud.style.cursor = "pointer";

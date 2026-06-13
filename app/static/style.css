@@ -277,8 +277,8 @@ footer {
   .meme-stage .scene .tumbler { animation: none; }
 }
 
-/* "still" mode — toggled by clicking the header chud: stop motion + straighten */
-html[data-chud="still"] .meme-stage .scene .tumbler { animation: none !important; transform: none !important; }
+/* header logo in "alt" (wojak) mode: straighten the wordmark + logo.
+   The login figures keep tumbling regardless. */
 html[data-chud="still"] .wordmark,
 html[data-chud="still"] .wordmark:hover { transform: none !important; }
 html[data-chud="still"] .brand-chud { transform: none; }

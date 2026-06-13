@@ -12,7 +12,9 @@
     {% if sources %} · via {% for src in sources %}<span class="added-by">{{ src }}</span> {% endfor %}{% endif %}
   </p>
   {% if a.is_paid and a.is_locked %}<p class="form-error">Preview only — the connected account doesn't pay for this publication. <a href="{{ a.original_url }}" rel="noopener">Read the full post →</a></p>{% endif %}
-  {% if a.cover_image %}<img class="episode-art" src="{{ a.cover_image }}" alt="">{% endif %}
+  {# the cover image is the post's first image, which the mirrored body already
+     contains — only show it for link-only stubs that have no body images #}
+  {% if a.cover_image and a.html and 'class="stub"' in a.html %}<img class="episode-art" src="{{ a.cover_image }}" alt="">{% endif %}
   <div class="body">{{ a.html | safe }}</div>
 </article>
 {% endblock %}
