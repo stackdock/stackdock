@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
 
-<section class="feed-box">
-  <span class="label"><span class="fun-label">Unified feeds — everything from everyone, one URL each</span><span class="work-label">Sync endpoints</span></span>
+<details class="feed-box">
+  <summary class="label"><span class="fun-label">Unified feeds — everything from everyone, one URL each</span><span class="work-label">Sync endpoints</span></summary>
   <div class="feed-row"><span class="feed-name">🎧 Podcast apps</span>
     <code id="feed-audio">{{ feed_base }}/all.xml</code>
     <button onclick="copyFeed('feed-audio')">Copy</button></div>
@@ -14,7 +14,7 @@
     <button onclick="copyFeed('feed-everything')">Copy</button></div>
   <p class="hint">Each URL aggregates all blogs from all members. Keep them private.</p>
   <script>function copyFeed(id){navigator.clipboard.writeText(document.getElementById(id).textContent)}</script>
-</section>
+</details>
 
 <nav class="tabs">
   <a href="/" class="tab {{ 'active' if active_tab == 'text' }}"><span class="fun-label">Articles</span><span class="work-label">Documents</span> <span class="count">{{ articles|length }}</span></a>

@@ -112,6 +112,24 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
   }
   if (wb) wb.onclick = toggleWork;
 
+  // click the header chud to toggle spinning <-> still (persisted), without
+  // following the home link it sits inside
+  var chud = document.querySelector(".brand-chud");
+  if (chud) {
+    var SPIN = "/static/chud-spin-clear.svg", STILL = "/static/chud.svg";
+    var still = store.get("chudstill") === "1";
+    var apply = function () { chud.src = still ? STILL : SPIN; };
+    apply();
+    chud.style.cursor = "pointer";
+    chud.title = "click me";
+    chud.addEventListener("click", function (e) {
+      e.preventDefault(); e.stopPropagation();
+      still = !still;
+      if (still) store.set("chudstill", "1"); else store.del("chudstill");
+      apply();
+    });
+  }
+
   // mobile panic gesture: triple-tap empty header space (links/buttons excluded)
   var taps = [];
   var head = document.querySelector(".masthead");
