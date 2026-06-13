@@ -32,12 +32,12 @@
 {% set pub_part = ('&pub=' ~ (active_pub | urlencode)) if active_pub else '' %}
 <section id="articles">
   {% if publications %}
-  <p class="pub-filter">
+  <div class="pub-filter">
     <a href="/?tab=text{{ q_part }}{{ sort_part }}" class="{{ 'active' if not active_pub }}">All</a>
     {% for p in publications %}
       <span class="chip-wrap"><a href="/?tab=text&pub={{ p.publication | urlencode }}{{ q_part }}{{ sort_part }}" class="{{ 'active' if active_pub == p.publication }}{{ ' paid' if p.paid }}"{% if p.paid %} title="paid subscription"{% endif %}>{{ p.publication }} <span class="count">{{ p.n }}</span></a>{{ follow_star('pub', p.publication, '/?tab=text') }}</span>
     {% endfor %}
-  </p>
+  </div>
   {% endif %}
 
   <div class="list-controls">
@@ -93,11 +93,11 @@
 
   <h2 class="mine-h"><span class="fun-label">Articles from your stuff</span><span class="work-label">Starred documents</span></h2>
   {% if followed_pubs %}
-  <p class="pub-filter">
+  <div class="pub-filter">
     {% for name in followed_pubs %}
       <span class="chip-wrap"><a href="/?tab=text&pub={{ name | urlencode }}">{{ name }}</a>{{ follow_star('pub', name, '/?tab=mine') }}</span>
     {% endfor %}
-  </p>
+  </div>
   {% endif %}
   {% if not mine_articles %}<p class="empty">{% if followed_pubs %}No articles from these yet.{% else %}No publications followed — ☆ some on the Articles tab.{% endif %}</p>{% endif %}
   <ul class="cards">
@@ -118,11 +118,11 @@
 
   <h2 class="mine-h"><span class="fun-label">Podcasts from your stuff</span><span class="work-label">Starred briefings</span></h2>
   {% if followed_shows %}
-  <p class="pub-filter">
+  <div class="pub-filter">
     {% for name in followed_shows %}
       <span class="chip-wrap"><a href="/?tab=audio&show={{ name | urlencode }}">{{ name }}</a>{{ follow_star('show', name, '/?tab=mine') }}</span>
     {% endfor %}
-  </p>
+  </div>
   {% endif %}
   {% if not mine_episodes %}<p class="empty">{% if followed_shows %}No episodes from these yet.{% else %}No shows followed — ☆ some on the Podcasts tab.{% endif %}</p>{% endif %}
   <ul class="cards">
@@ -153,12 +153,12 @@
 {% set show_part = ('&show=' ~ (active_show | urlencode)) if active_show else '' %}
 <section id="audio">
   {% if episode_feeds %}
-  <p class="pub-filter">
+  <div class="pub-filter">
     <a href="/?tab=audio{{ psort_part }}" class="{{ 'active' if not active_show }}">All</a>
     {% for f in episode_feeds %}
       <span class="chip-wrap"><a href="/?tab=audio&show={{ f.feed_name | urlencode }}{{ psort_part }}" class="{{ 'active' if active_show == f.feed_name }}">{{ f.feed_name }} <span class="count">{{ f.n }}</span></a>{{ follow_star('show', f.feed_name, '/?tab=audio') }}</span>
     {% endfor %}
-  </p>
+  </div>
   {% endif %}
 
   <div class="list-controls">
