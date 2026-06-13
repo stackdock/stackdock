@@ -62,6 +62,13 @@ CREATE TABLE IF NOT EXISTS connected_accounts (
     created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS follows (
+    user_id INTEGER NOT NULL,
+    kind TEXT NOT NULL,                -- 'pub' (article publication) | 'show' (podcast feed)
+    name TEXT NOT NULL,
+    PRIMARY KEY (user_id, kind, name)
+);
+
 CREATE TABLE IF NOT EXISTS listen_positions (
     user_id INTEGER NOT NULL,
     slug TEXT NOT NULL,                -- episode slug
@@ -320,12 +327,18 @@ _ARTICLE_COLS = (
 )
 
 
-def list_articles(limit=1000, publication=None, q=None, sort="new", include_hidden=False):
+def list_articles(limit=1000, publication=None, publications=None, q=None,
+                  sort="new", include_hidden=False):
     where, args = [], []
     if not include_hidden:
         where.append("hidden = 0")
     if publication:
         where.append("publication = ?"); args.append(publication)
+    if publications is not None:
+        if not publications:
+            return []
+        where.append(f"publication IN ({','.join('?' * len(publications))})")
+        args += list(publications)
     if q:
         where.append("(title LIKE ? OR publication LIKE ? OR author LIKE ?)")
         args += [f"%{q}%", f"%{q}%", f"%{q}%"]
@@ -405,11 +418,16 @@ def insert_episode(guid, feed_name, title, description, audio_key,
         return cur.lastrowid or 0
 
 
-def list_episodes(limit=500, feed=None, sort="new"):
+def list_episodes(limit=500, feed=None, feeds=None, sort="new"):
     order = "ASC" if sort == "old" else "DESC"
     where, args = [], []
     if feed:
         where.append("feed_name = ?"); args.append(feed)
+    if feeds is not None:
+        if not feeds:
+            return []
+        where.append(f"feed_name IN ({','.join('?' * len(feeds))})")
+        args += list(feeds)
     wsql = (" WHERE " + " AND ".join(where)) if where else ""
     args.append(limit)
     with conn() as c:
@@ -566,6 +584,27 @@ def delete_account(account_id: int, user_id: int) -> bool:
             (account_id, user_id),
         )
         return cur.rowcount == 1
+
+
+def toggle_follow(user_id: int, kind: str, name: str) -> bool:
+    """Follow/unfollow a source. Returns True if now following."""
+    assert kind in ("pub", "show")
+    with conn() as c:
+        cur = c.execute("DELETE FROM follows WHERE user_id=? AND kind=? AND name=?",
+                        (user_id, kind, name))
+        if cur.rowcount:
+            return False
+        c.execute("INSERT INTO follows (user_id, kind, name) VALUES (?,?,?)",
+                  (user_id, kind, name))
+        return True
+
+
+def list_follows(user_id: int, kind: str | None = None) -> list[str]:
+    q, args = "SELECT kind, name FROM follows WHERE user_id = ?", [user_id]
+    if kind:
+        q += " AND kind = ?"; args.append(kind)
+    with conn() as c:
+        return [r["name"] for r in c.execute(q + " ORDER BY name", args).fetchall()]
 
 
 def upsert_listen_position(user_id: int, slug: str, position: float,

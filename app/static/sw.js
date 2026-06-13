@@ -4,17 +4,18 @@
    stale-while-revalidate (instant from cache, refreshed in the background so
    style/JS changes propagate without a hard refresh); navigations are
    network-only with a tiny offline fallback. */
-const STATIC_CACHE = "stackdock-static-v4";
+const STATIC_CACHE = "stackdock-static-v5";
+const AUDIO_CACHE = "stackdock-audio-v1";   // user's saved episodes — never purge
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(STATIC_CACHE).then((c) =>
-    c.addAll(["/static/style.css", "/static/icon-192.png", "/static/work-icon.svg"])));
+    c.addAll(["/static/style.css", "/static/icon-192.png", "/static/work-icon.svg", "/offline"])));
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (e) => {
   e.waitUntil(caches.keys().then((keys) =>
-    Promise.all(keys.filter((k) => k !== STATIC_CACHE).map((k) => caches.delete(k)))));
+    Promise.all(keys.filter((k) => k !== STATIC_CACHE && k !== AUDIO_CACHE).map((k) => caches.delete(k)))));
   self.clients.claim();
 });
 
@@ -36,9 +37,10 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // page navigations: network-only, friendly offline fallback (never cached)
+  // page navigations: network-only; offline -> the saved-episodes shelf
   if (e.request.mode === "navigate") {
-    e.respondWith(fetch(e.request).catch(() =>
+    e.respondWith(fetch(e.request).catch(async () =>
+      (await caches.match("/offline")) ||
       new Response(
         "<!doctype html><meta name=viewport content='width=device-width'>" +
         "<body style='font-family:system-ui;background:#f6f7f4;color:#1c2420;" +

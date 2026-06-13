@@ -19,7 +19,12 @@
 <nav class="tabs">
   <a href="/" class="tab {{ 'active' if active_tab == 'text' }}"><span class="fun-label">Articles</span><span class="work-label">Documents</span> <span class="count">{{ articles|length }}</span></a>
   <a href="/?tab=audio" class="tab {{ 'active' if active_tab == 'audio' }}"><span class="fun-label">Podcasts</span><span class="work-label">Briefings</span> <span class="count">{{ episodes|length }}</span></a>
+  <a href="/?tab=mine" class="tab {{ 'active' if active_tab == 'mine' }}"><span class="fun-label">Your Stuff</span><span class="work-label">Starred</span> <span class="count">{{ followed_pubs|length + followed_shows|length }}</span></a>
 </nav>
+
+{% macro follow_star(kind, name, back) -%}
+  <form method="post" action="/follow" class="follow-form"><input type="hidden" name="kind" value="{{ kind }}"><input type="hidden" name="name" value="{{ name }}"><input type="hidden" name="back" value="{{ back }}">{% set on = name in (followed_pubs if kind == 'pub' else followed_shows) %}<button type="submit" class="star {{ 'on' if on }}" title="{{ 'Remove from' if on else 'Add to' }} Your Stuff">{{ '★' if on else '☆' }}</button></form>
+{%- endmacro %}
 
 {% if active_tab == 'text' %}
 {% set q_part = ('&q=' ~ (q | urlencode)) if q else '' %}
@@ -30,7 +35,7 @@
   <p class="pub-filter">
     <a href="/?tab=text{{ q_part }}{{ sort_part }}" class="{{ 'active' if not active_pub }}">All</a>
     {% for p in publications %}
-      <a href="/?tab=text&pub={{ p.publication | urlencode }}{{ q_part }}{{ sort_part }}" class="{{ 'active' if active_pub == p.publication }}{{ ' paid' if p.paid }}"{% if p.paid %} title="paid subscription"{% endif %}>{{ p.publication }} <span class="count">{{ p.n }}</span></a>
+      <span class="chip-wrap"><a href="/?tab=text&pub={{ p.publication | urlencode }}{{ q_part }}{{ sort_part }}" class="{{ 'active' if active_pub == p.publication }}{{ ' paid' if p.paid }}"{% if p.paid %} title="paid subscription"{% endif %}>{{ p.publication }} <span class="count">{{ p.n }}</span></a>{{ follow_star('pub', p.publication, '/?tab=text') }}</span>
     {% endfor %}
   </p>
   {% endif %}
@@ -78,6 +83,71 @@
   </ul>
 </section>
 
+{% elif active_tab == 'mine' %}
+<section id="mine">
+  {% if not followed_pubs and not followed_shows %}
+    <p class="empty">Nothing here yet. Tap the ☆ next to any publication on the
+      <a href="/?tab=text">Articles</a> tab or any show on the
+      <a href="/?tab=audio">Podcasts</a> tab, and it'll show up here.</p>
+  {% else %}
+
+  <h2 class="mine-h"><span class="fun-label">Articles from your stuff</span><span class="work-label">Starred documents</span></h2>
+  {% if followed_pubs %}
+  <p class="pub-filter">
+    {% for name in followed_pubs %}
+      <span class="chip-wrap"><a href="/?tab=text&pub={{ name | urlencode }}">{{ name }}</a>{{ follow_star('pub', name, '/?tab=mine') }}</span>
+    {% endfor %}
+  </p>
+  {% endif %}
+  {% if not mine_articles %}<p class="empty">{% if followed_pubs %}No articles from these yet.{% else %}No publications followed — ☆ some on the Articles tab.{% endif %}</p>{% endif %}
+  <ul class="cards">
+    {% for a in mine_articles[:50] %}
+    <li class="card">
+      <a href="/read/{{ a.slug }}" class="card-link">
+        {% if a.cover_image %}<img class="thumb" src="{{ a.cover_image }}" alt="" loading="lazy">
+        {% else %}<span class="thumb thumb-fallback">{{ (a.publication or a.title)[:1] | upper }}</span>{% endif %}
+        <span class="card-body">
+          <span class="spine">{{ a.publication }}{% if a.is_paid %} <span class="badge {{ 'paid-locked' if a.is_locked else 'paid-open' }}">paid{{ ' 🔒' if a.is_locked else '' }}</span>{% endif %}</span>
+          <span class="card-title">{{ a.title }}</span>
+          <span class="row-meta"><time>{{ (a.published_at or a.created_at)[:10] }}</time></span>
+        </span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+
+  <h2 class="mine-h"><span class="fun-label">Podcasts from your stuff</span><span class="work-label">Starred briefings</span></h2>
+  {% if followed_shows %}
+  <p class="pub-filter">
+    {% for name in followed_shows %}
+      <span class="chip-wrap"><a href="/?tab=audio&show={{ name | urlencode }}">{{ name }}</a>{{ follow_star('show', name, '/?tab=mine') }}</span>
+    {% endfor %}
+  </p>
+  {% endif %}
+  {% if not mine_episodes %}<p class="empty">{% if followed_shows %}No episodes from these yet.{% else %}No shows followed — ☆ some on the Podcasts tab.{% endif %}</p>{% endif %}
+  <ul class="cards">
+    {% for e in mine_episodes[:50] %}
+    <li class="card" data-ep-slug="{{ e.slug }}">
+      <a href="/listen/{{ e.slug }}" class="card-link">
+        <span class="thumb-wrap">
+          {% if e.image_url %}<img class="thumb" src="{{ e.image_url }}" alt="" loading="lazy">
+          {% else %}<span class="thumb thumb-fallback">▶</span>{% endif %}
+          <span class="ep-progress"><span class="ep-progress-fill"></span></span>
+          <span class="ep-played" hidden>✓</span>
+        </span>
+        <span class="card-body">
+          <span class="spine">{{ e.feed_name }}</span>
+          <span class="card-title">{{ e.title }}</span>
+          <span class="row-meta">{% if e.duration %}<span class="added-by">{{ e.duration }}</span> · {% endif %}<time>{{ (e.published_at or e.created_at)[:16] }}</time></span>
+        </span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  <p class="hint"><a href="/offline">📦 Episodes saved on this device</a></p>
+</section>
+
 {% else %}
 {% set psort_part = '&sort=old' if sort == 'old' else '' %}
 {% set show_part = ('&show=' ~ (active_show | urlencode)) if active_show else '' %}
@@ -86,13 +156,14 @@
   <p class="pub-filter">
     <a href="/?tab=audio{{ psort_part }}" class="{{ 'active' if not active_show }}">All</a>
     {% for f in episode_feeds %}
-      <a href="/?tab=audio&show={{ f.feed_name | urlencode }}{{ psort_part }}" class="{{ 'active' if active_show == f.feed_name }}">{{ f.feed_name }} <span class="count">{{ f.n }}</span></a>
+      <span class="chip-wrap"><a href="/?tab=audio&show={{ f.feed_name | urlencode }}{{ psort_part }}" class="{{ 'active' if active_show == f.feed_name }}">{{ f.feed_name }} <span class="count">{{ f.n }}</span></a>{{ follow_star('show', f.feed_name, '/?tab=audio') }}</span>
     {% endfor %}
   </p>
   {% endif %}
 
   <div class="list-controls">
     <a class="sort-toggle" href="/?tab=audio{{ show_part }}&sort={{ 'old' if sort == 'new' else 'new' }}">{{ 'Oldest first ↑' if sort == 'new' else 'Newest first ↓' }}</a>
+    <a class="hint" href="/offline">📦 saved on this device</a>
   </div>
 
   {% if not episodes %}

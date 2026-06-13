@@ -9,7 +9,7 @@ from pathlib import Path
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import Depends, FastAPI, Form, HTTPException, Request, Response
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -289,6 +289,44 @@ def accounts_sync(request: Request, user=Depends(auth.current_user)):
                   **_accounts_ctx(user, message=f"Sync finished: {count} new item(s)."))
 
 
+@app.post("/follow")
+def follow_toggle(request: Request, user=Depends(auth.current_user),
+                  kind: str = Form(...), name: str = Form(...), back: str = Form("/")):
+    if kind not in ("pub", "show") or not name.strip():
+        raise HTTPException(400)
+    db.toggle_follow(user["id"], kind, name.strip())
+    if not back.startswith("/") or back.startswith("//"):
+        back = "/"
+    return RedirectResponse(back, status_code=303)
+
+
+@app.get("/audio/{slug}")
+def audio_proxy(slug: str, user=Depends(auth.current_user)):
+    """Same-origin audio stream. Playback uses presigned R2 URLs directly; this
+    exists so the episode page's JS can fetch() the file into the offline cache
+    (cross-origin presigned URLs are CORS-blocked for JS)."""
+    e = db.get_episode_by_slug(slug)
+    if not e:
+        raise HTTPException(404)
+    try:
+        body, ctype, length = storage.open_stream(e["audio_key"])
+    except Exception:
+        raise HTTPException(503, "storage unavailable")
+    headers = {"Cache-Control": "no-store"}
+    if length:
+        headers["Content-Length"] = str(length)
+    return StreamingResponse(body, media_type=e["audio_mime"] or ctype, headers=headers)
+
+
+@app.get("/offline", response_class=HTMLResponse)
+def offline_page(request: Request):
+    """Self-contained saved-episodes player. Deliberately unauthenticated and
+    precached by the service worker: it must render with no network at all.
+    It contains NO server data — episodes/metadata come from the device's own
+    Cache Storage and localStorage."""
+    return render(request, "offline.html", user=None)
+
+
 @app.get("/api/positions")
 def api_positions(user=Depends(auth.current_user)):
     """Per-user listening positions — lets resume follow you across devices
@@ -347,12 +385,21 @@ def index(request: Request, user=Depends(auth.current_user),
           q: str | None = None, sort: str = "new", hidden: int = 0):
     q = (q or "").strip() or None
     sort = "old" if sort == "old" else "new"
+    tab = tab if tab in ("text", "audio", "mine") else "text"
+    followed_pubs = db.list_follows(user["id"], "pub")
+    followed_shows = db.list_follows(user["id"], "show")
+    mine_articles = mine_episodes = []
+    if tab == "mine":
+        mine_articles = db.list_articles(publications=followed_pubs, q=q, sort=sort)
+        mine_episodes = db.list_episodes(feeds=followed_shows, sort=sort)
     return render(request, "index.html", user=user,
                   articles=db.list_articles(publication=pub, q=q, sort=sort, include_hidden=bool(hidden)),
                   publications=db.list_publications(),
                   active_pub=pub, q=q or "", sort=sort, show_hidden=bool(hidden),
                   n_hidden=db.count_hidden_articles(),
-                  active_tab="audio" if tab == "audio" else "text",
+                  active_tab=tab,
+                  followed_pubs=followed_pubs, followed_shows=followed_shows,
+                  mine_articles=mine_articles, mine_episodes=mine_episodes,
                   episodes=db.list_episodes(limit=200, feed=show, sort=sort),
                   episode_feeds=db.list_episode_feeds(),
                   active_show=show,

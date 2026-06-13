@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Saved episodes</title>
+  <!-- Self-contained on purpose: this page is precached and must render with
+       ZERO network. No server data lives here — the episode list and audio
+       come from this device's Cache Storage + localStorage. -->
+  <style>
+    :root { --paper:#f6f7f4; --panel:#fff; --ink:#1c2420; --soft:#5a665f; --acc:#2e6e4e; --rule:#d8ddd8; }
+    @media (prefers-color-scheme: dark) {
+      :root { --paper:#141816; --panel:#1d2320; --ink:#e6eae7; --soft:#9aa69f; --acc:#4da97c; --rule:#2d3531; }
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink);
+           font-family: system-ui, -apple-system, sans-serif;
+           padding: max(1rem, env(safe-area-inset-top)) 1rem max(2rem, env(safe-area-inset-bottom)); }
+    h1 { font-size:1.2rem; } .soft { color:var(--soft); font-size:0.85rem; }
+    a { color: var(--acc); }
+    ul { list-style:none; padding:0; }
+    li { background:var(--panel); border:1px solid var(--rule); border-radius:8px;
+         padding:0.8rem 1rem; margin:0.6rem 0; }
+    .t { font-weight:600; } .s { color:var(--soft); font-size:0.8rem; }
+    audio { width:100%; margin-top:0.5rem; }
+    button { background:none; border:1px solid var(--rule); color:var(--soft);
+             border-radius:6px; padding:0.25rem 0.6rem; cursor:pointer; margin-top:0.4rem; }
+  </style>
+</head>
+<body>
+  <h1>📦 Saved on this device</h1>
+  <p class="soft">These play with no connection. Positions still save locally and
+    sync back when you're online. <a href="/">← back to Stackdock</a></p>
+  <p class="soft" id="quota"></p>
+  <ul id="list"></ul>
+  <p class="soft" id="empty" hidden>Nothing saved yet. Open an episode and tap
+    “📦 Save for offline” before your flight.</p>
+
+<script>
+(async () => {
+  const AUDIO_CACHE = "stackdock-audio-v1";
+  const list = document.getElementById("list");
+  const c = await caches.open(AUDIO_CACHE);
+  const keys = await c.keys();
+  if (!keys.length) document.getElementById("empty").hidden = false;
+
+  if (navigator.storage && navigator.storage.estimate) {
+    try {
+      const est = await navigator.storage.estimate();
+      document.getElementById("quota").textContent =
+        "Using " + (est.usage / 1048576).toFixed(0) + " MB of ~" +
+        (est.quota / 1048576).toFixed(0) + " MB available.";
+    } catch {}
+  }
+
+  for (const req of keys) {
+    const slug = new URL(req.url).pathname.replace("/offline-audio/", "");
+    let meta = {};
+    try { meta = JSON.parse(localStorage.getItem("offline:" + slug) || "{}"); } catch {}
+    const li = document.createElement("li");
+    const t = document.createElement("div"); t.className = "t";
+    t.textContent = meta.title || slug;
+    const s = document.createElement("div"); s.className = "s";
+    s.textContent = (meta.show || "") +
+      (meta.savedAt ? " · saved " + new Date(meta.savedAt).toLocaleDateString() : "");
+    const audio = document.createElement("audio");
+    audio.controls = true; audio.preload = "metadata";
+    const resp = await c.match(req);
+    audio.src = URL.createObjectURL(await resp.blob());
+    // resume from the same per-episode position the main player uses
+    const pos = parseFloat(localStorage.getItem("pos:" + slug) || "0");
+    audio.addEventListener("loadedmetadata", () => {
+      if (pos > 10 && pos < audio.duration - 20 && !localStorage.getItem("done:" + slug))
+        audio.currentTime = pos;
+    });
+    let last = 0;
+    audio.addEventListener("timeupdate", () => {
+      if (Date.now() - last > 4000 && audio.currentTime > 5) {
+        last = Date.now();
+        try { localStorage.setItem("pos:" + slug, String(audio.currentTime)); } catch {}
+      }
+    });
+    audio.addEventListener("ended", () => {
+      try { localStorage.setItem("done:" + slug, "1");
+            localStorage.removeItem("pos:" + slug); } catch {}
+    });
+    const del = document.createElement("button");
+    del.textContent = "Remove";
+    del.onclick = async () => {
+      await c.delete(req);
+      try { localStorage.removeItem("offline:" + slug); } catch {}
+      li.remove();
+    };
+    li.append(t, s, audio, del);
+    list.append(li);
+  }
+})();
+</script>
+</body>
+</html>

@@ -469,3 +469,13 @@ html[data-workmode="1"] .mode-btns button { border-color: rgba(255,255,255,0.6);
     display: inline-flex; align-items: center; justify-content: center;
   }
 }
+
+/* follow stars + chips */
+.chip-wrap { display: inline-flex; align-items: center; gap: 0; }
+.follow-form { display: inline; }
+.star {
+  background: none; border: 0; cursor: pointer; padding: 0 0.3rem 0 0.1rem;
+  color: var(--ink-soft); font-size: 0.95rem; touch-action: manipulation;
+}
+.star.on { color: #d9a514; }
+.mine-h { font-family: var(--serif); font-size: 1.05rem; margin: 1.6rem 0 0.4rem; }

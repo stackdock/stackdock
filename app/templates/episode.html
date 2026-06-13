@@ -34,9 +34,11 @@
     <p class="pp-note" id="pp-resume" hidden></p>
     <p class="meta pp-actions">
       <a href="{{ download_url or audio_url }}">⬇ Download</a>
+      · <a href="#" id="pp-offline" data-bytes="{{ e.audio_bytes or 0 }}">📦 Save for offline</a>
       · <a href="#" id="pp-restart">Restart episode</a>
       · <a href="#" id="pp-done">Mark played</a>
     </p>
+    <p class="pp-note" id="pp-offline-note" hidden></p>
   </div>
   {% else %}
   <p class="empty">Audio storage isn't configured, so this episode can't be streamed right now.</p>
@@ -229,6 +231,48 @@
     if (e.code === "ArrowUp") { e.preventDefault(); volEl.value = Math.min(100, +volEl.value + 5); volEl.dispatchEvent(new Event("input")); }
     if (e.code === "ArrowDown") { e.preventDefault(); volEl.value = Math.max(0, +volEl.value - 5); volEl.dispatchEvent(new Event("input")); }
   });
+
+  // ---- offline cache: fetch via the same-origin /audio proxy into Cache
+  //      Storage under a STABLE key (presigned URLs expire; the key doesn't).
+  //      The /offline page plays these with no network at all. ----
+  const AUDIO_CACHE = "stackdock-audio-v1";
+  const cacheKey = "/offline-audio/" + slug;
+  const offBtn = $("pp-offline"), offNote = $("pp-offline-note");
+  const setOffUi = (savedNow) => {
+    offBtn.textContent = savedNow ? "🗑 Remove offline copy" : "📦 Save for offline";
+    offBtn.dataset.saved = savedNow ? "1" : "";
+  };
+  const offMsg = (t) => { offNote.textContent = t; offNote.hidden = !t; };
+  if ("caches" in window) {
+    caches.open(AUDIO_CACHE).then((c) => c.match(cacheKey)).then((hit) => setOffUi(!!hit));
+    offBtn.onclick = async (e) => {
+      e.preventDefault();
+      const c = await caches.open(AUDIO_CACHE);
+      if (offBtn.dataset.saved) {
+        await c.delete(cacheKey);
+        store.del("offline:" + slug);
+        setOffUi(false); offMsg("Removed from this device.");
+        return;
+      }
+      const mb = (+offBtn.dataset.bytes / 1048576).toFixed(0);
+      offMsg("Saving" + (mb > 0 ? " ~" + mb + " MB" : "") + "… keep this page open");
+      try {
+        if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+        const resp = await fetch("/audio/" + slug, { credentials: "same-origin" });
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+        await c.put(cacheKey, resp);
+        store.set("offline:" + slug, JSON.stringify({
+          title: box.dataset.title, show: box.dataset.show,
+          art: box.dataset.art || "", savedAt: Date.now(),
+        }));
+        setOffUi(true); offMsg("Saved ✓ — playable from the 📦 offline shelf with no connection.");
+      } catch (err) {
+        offMsg("Save failed (" + err.message + "). Try again on good wifi.");
+      }
+    };
+  } else {
+    offBtn.style.display = "none";
+  }
 
   // ---- lock screen / media keys (Media Session API) ----
   if ("mediaSession" in navigator) {

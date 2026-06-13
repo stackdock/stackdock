@@ -44,3 +44,14 @@ def url_for(key: str, download_name: str | None = None) -> str:
         params["ResponseContentDisposition"] = f'attachment; filename="{safe}"'
     return client().generate_presigned_url(
         "get_object", Params=params, ExpiresIn=config.PRESIGN_EXPIRY_SECONDS)
+
+
+def open_stream(key: str):
+    """(iterator, content_type, content_length) streaming the object — used by
+    the same-origin /audio proxy so page JS can cache episodes for offline
+    (cross-origin presigned URLs can't be fetch()ed from JS without CORS)."""
+    obj = client().get_object(Bucket=config.S3_BUCKET, Key=key)
+    body = obj["Body"]
+    return (iter(lambda: body.read(256 * 1024), b""),
+            obj.get("ContentType") or "application/octet-stream",
+            obj.get("ContentLength"))
