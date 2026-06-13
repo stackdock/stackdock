@@ -3,7 +3,7 @@ import json
 import logging
 import secrets as pysecrets
 import shutil
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -64,12 +64,22 @@ def _safe_next(next_url: str | None) -> str:
 async def lifespan(app: FastAPI):
     db.init()
     auth.ensure_admin_user()
+    # Interval jobs default to first-run = now + interval, so the hourly substack
+    # job would only fire 60 min after boot — and a deploy restarts the app and
+    # resets that countdown, so frequent deploys mean it may never run (and a
+    # newly added cookie sits at "pending first sync"). Kick each job off shortly
+    # after startup (staggered) so a fresh boot syncs within ~a minute.
+    now = datetime.now(timezone.utc)
+    kickoff = {"email": 30, "substack": 60, "podcasts": 110}  # seconds after boot
     scheduler.add_job(_tracked("email"), "interval",
-                      minutes=config.EMAIL_POLL_MINUTES, id="email", max_instances=1, coalesce=True)
+                      minutes=config.EMAIL_POLL_MINUTES, id="email", max_instances=1,
+                      coalesce=True, next_run_time=now + timedelta(seconds=kickoff["email"]))
     scheduler.add_job(_tracked("podcasts"), "interval",
-                      minutes=config.PODCAST_POLL_MINUTES, id="podcasts", max_instances=1, coalesce=True)
+                      minutes=config.PODCAST_POLL_MINUTES, id="podcasts", max_instances=1,
+                      coalesce=True, next_run_time=now + timedelta(seconds=kickoff["podcasts"]))
     scheduler.add_job(_tracked("substack"), "interval",
-                      minutes=config.SUBSTACK_POLL_MINUTES, id="substack", max_instances=1, coalesce=True)
+                      minutes=config.SUBSTACK_POLL_MINUTES, id="substack", max_instances=1,
+                      coalesce=True, next_run_time=now + timedelta(seconds=kickoff["substack"]))
     scheduler.start()
     log.info("Stackdock started. Feed: %s/feed/%s/all.xml", config.PUBLIC_BASE_URL, config.FEED_TOKEN)
     yield
