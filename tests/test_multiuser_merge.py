@@ -197,47 +197,27 @@ def test_podcast_audio_paid_only_and_single_episode(world):
     assert len(db.list_episodes()) == 1 and len(world.downloads) == 1
 
 
-def test_paid_sync_upgrades_preview_episode_and_deletes_old(world, monkeypatch):
-    """A paying account replaces a previously-stored free PREVIEW clip with the
-    full audio in place (same guid/slug) and the old R2 object is deleted."""
-    deleted = []
-    monkeypatch.setattr(substack.storage, "delete", lambda k: deleted.append(k))
-    # simulate a free clip stored earlier (free tier serving a preview podcast_url)
+def test_existing_episode_paid_flag_backfilled_cheaply(world):
+    """A podcast post's audio comes down full via the cookie regardless of text
+    paywall, so an episode synced before the paid flag existed (is_paid=0) gets
+    its flag refreshed on the next sync from the archive's audience — with NO
+    by-id fetch and NO re-download."""
+    # episode stored under the old code path: full audio, but flagged not-paid
     db.insert_episode(
         guid="substack:3", feed_name="Blog X", title="Paid Pod", description="",
-        audio_key="podcasts/blog-x/old-preview.mp3", audio_bytes=10,
-        audio_mime="audio/mpeg", duration="30",
-        published_at="2026-01-03T00:00:00", paid_access=0)
-    assert db.get_episode_by_guid("substack:3")["paid_access"] == 0
-
-    _member(world, "bob", "c2", [("Blog X", X)], paid=[X])
-    substack.sync_account(_account_row("bob's account"))
-
-    ep = db.get_episode_by_guid("substack:3")
-    assert ep["paid_access"] == 1                            # upgraded to full
-    assert ep["audio_key"] != "podcasts/blog-x/old-preview.mp3"
-    assert len(db.list_episodes()) == 1                      # replaced, not duplicated
-    assert world.downloads == [ep["audio_key"]]             # full audio fetched once
-    assert deleted == ["podcasts/blog-x/old-preview.mp3"]    # orphan preview removed
-
-    # a second paid resync is a no-op (already full): no re-download, no re-delete
-    substack.sync_account(_account_row("bob's account"))
-    assert len(world.downloads) == 1 and len(deleted) == 1
-
-
-def test_free_sync_never_downgrades_or_touches_full_episode(world, monkeypatch):
-    monkeypatch.setattr(substack.storage, "delete", lambda k: deleted.append(k))
-    deleted = []
-    db.insert_episode(
-        guid="substack:3", feed_name="Blog X", title="Paid Pod", description="",
-        audio_key="podcasts/blog-x/full.mp3", audio_bytes=999,
+        audio_key="podcasts/blog-x/paid-pod.mp3", audio_bytes=49_000_000,
         audio_mime="audio/mpeg", duration="1800",
-        published_at="2026-01-03T00:00:00", paid_access=1)
+        published_at="2026-01-03T00:00:00", paid_access=0, is_paid=0)
+
     _member(world, "alice", "c1", [("Blog X", X)], paid=[])
     substack.sync_account(_account_row("alice's account"))
+
     ep = db.get_episode_by_guid("substack:3")
-    assert ep["paid_access"] == 1 and ep["audio_key"] == "podcasts/blog-x/full.mp3"
-    assert world.downloads == [] and deleted == []          # free member touched nothing
+    assert ep["is_paid"] == 1 and ep["paid_access"] == 1     # flags refreshed in place
+    assert ep["audio_key"] == "podcasts/blog-x/paid-pod.mp3"  # unchanged
+    assert len(db.list_episodes()) == 1                       # not duplicated
+    assert world.downloads == []                              # nothing re-downloaded
+    assert {f["feed_name"]: f["paid"] for f in db.list_episode_feeds()}["Blog X"] == 1
 
 
 def test_new_post_seen_by_both_accounts_one_digest_item(world):

@@ -438,19 +438,13 @@ def get_episode_by_guid(guid: str):
         return c.execute("SELECT * FROM episodes WHERE guid = ?", (guid,)).fetchone()
 
 
-def upgrade_episode(guid, *, audio_key, audio_bytes, audio_mime,
-                    duration, image_url=None, paid_access=1, is_paid=1) -> None:
-    """Replace a stored episode's audio in place when a paying account supplies
-    the FULL version of a previously preview-only download. Keeps guid/slug so
-    listening positions and links survive. (Caller deletes the old R2 object if
-    audio_key changed.)"""
+def refresh_episode_paid(guid, is_paid) -> None:
+    """Keep an existing episode's paid-show flag current from the archive (cheap,
+    no by-id fetch / no re-download). Audio we already hold via the cookie's
+    podcast_url is the full episode, so it's also marked accessible."""
     with conn() as c:
-        c.execute(
-            """UPDATE episodes SET audio_key=?, audio_bytes=?, audio_mime=?,
-                 duration=?, image_url=COALESCE(?, image_url), paid_access=?, is_paid=?
-               WHERE guid=?""",
-            (audio_key, audio_bytes, audio_mime, duration, image_url,
-             1 if paid_access else 0, 1 if is_paid else 0, guid))
+        c.execute("UPDATE episodes SET is_paid=?, paid_access=1 WHERE guid=?",
+                  (1 if is_paid else 0, guid))
 
 
 def list_episodes(limit=500, feed=None, feeds=None, sort="new"):
@@ -486,7 +480,7 @@ def list_episode_feeds():
     with conn() as c:
         return c.execute(
             "SELECT e.feed_name AS feed_name, COUNT(*) AS n, "
-            "MAX(CASE WHEN (e.is_paid = 1 AND e.paid_access = 1) "
+            "MAX(CASE WHEN e.is_paid = 1 "
             "  OR EXISTS (SELECT 1 FROM articles a WHERE a.publication = e.feed_name "
             "             AND a.is_paid = 1 AND a.is_locked = 0) "
             "  THEN 1 ELSE 0 END) AS paid "
