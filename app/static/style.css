@@ -423,8 +423,17 @@ html[data-workmode="1"] {
   --rule: #d9dce1;
   --serif: var(--sans);      /* nothing serif'd, nothing fun */
 }
-html[data-workmode="1"][data-theme="brimstone"],
-html[data-workmode="1"]:not([data-theme="agartha"]) { color-scheme: light; }
+/* work mode honours the theme: dark corporate palette for brimstone / auto-dark */
+html[data-workmode="1"][data-theme="brimstone"] {
+  --paper: #1b1f24; --panel: #22272e; --ink: #e6edf3; --ink-soft: #9da7b3;
+  --shelf: #4f7cff; --shelf-soft: #20283a; --rule: #30363d; color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  html[data-workmode="1"]:not([data-theme="agartha"]):not([data-theme="brimstone"]) {
+    --paper: #1b1f24; --panel: #22272e; --ink: #e6edf3; --ink-soft: #9da7b3;
+    --shelf: #4f7cff; --shelf-soft: #20283a; --rule: #30363d; color-scheme: dark;
+  }
+}
 html[data-workmode="1"] .brand-chud,
 html[data-workmode="1"] footer,
 html[data-workmode="1"] .thumb,

@@ -121,10 +121,9 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
     var still = store.get("chudstill") === "1";
     function applyChud() {
       if (still) html.dataset.chud = "still"; else delete html.dataset.chud;
-      chud.src = still ? "/static/chud.svg" : "/static/chud-spin-clear.svg";
-      // swap the tumbling login figures for the still chud
+      // swap the tumbling login figures between the wojak and the spinning chud
       document.querySelectorAll(".scene .tumbler img").forEach(function (im) {
-        im.src = still ? "/static/chud.svg" : "/static/wojak-figure.svg";
+        im.src = still ? "/static/chud-spin-clear.svg" : "/static/wojak-figure.svg";
       });
     }
     applyChud();

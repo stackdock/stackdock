@@ -1,8 +1,10 @@
 /* Stackdock service worker.
    Deliberately minimal: this is a PRIVATE, cookie-authenticated app, so we
    never cache page content (it could outlive a logout). Static assets are
-   cache-first; navigations are network-only with a tiny offline fallback. */
-const STATIC_CACHE = "stackdock-static-v3";
+   stale-while-revalidate (instant from cache, refreshed in the background so
+   style/JS changes propagate without a hard refresh); navigations are
+   network-only with a tiny offline fallback. */
+const STATIC_CACHE = "stackdock-static-v4";
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(STATIC_CACHE).then((c) =>
@@ -20,15 +22,17 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== "GET") return;
 
-  // static assets: cache-first (same-origin only)
+  // static assets: stale-while-revalidate (same-origin only) so CSS/JS updates
+  // reach clients on the next load instead of being pinned forever
   if (url.origin === location.origin && url.pathname.startsWith("/static/")) {
-    e.respondWith(
-      caches.match(e.request).then((hit) =>
-        hit || fetch(e.request).then((resp) => {
-          const copy = resp.clone();
-          caches.open(STATIC_CACHE).then((c) => c.put(e.request, copy));
+    e.respondWith(caches.open(STATIC_CACHE).then((c) =>
+      c.match(e.request).then((hit) => {
+        const net = fetch(e.request).then((resp) => {
+          if (resp && resp.ok) c.put(e.request, resp.clone());
           return resp;
-        })));
+        }).catch(() => hit);
+        return hit || net;   // instant from cache, refresh in the background
+      })));
     return;
   }
 
