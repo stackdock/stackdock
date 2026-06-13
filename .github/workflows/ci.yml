@@ -1,11 +1,11 @@
 name: CI
 
-# Runs the test suite on pull requests and on pushes to any branch other than
-# main. (Pushes to main are tested + gated inside deploy.yml before release.)
+# Runs the test suite on every push (including main) and on pull requests.
+# Deploys no longer happen on push — they're gated on publishing a release
+# (see deploy.yml) — so CI is what keeps main green between releases.
 on:
   pull_request: {}
-  push:
-    branches-ignore: [main]
+  push: {}
 
 jobs:
   test:
