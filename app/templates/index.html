@@ -69,6 +69,7 @@
       {% if q %}<a class="hint" href="/?tab=text{{ pub_part }}{{ sort_part }}">clear</a>{% endif %}
     </form>
     <a class="sort-toggle" href="/?tab=text{{ pub_part }}{{ q_part }}&sort={{ 'old' if sort == 'new' else 'new' }}">{{ 'Oldest first ↑' if sort == 'new' else 'Newest first ↓' }}</a>
+    {% if active_pubs %}<a class="hint" href="/?tab=text&clear=1{{ q_part }}{{ sort_part }}">✕ unselect all</a>{% endif %}
     {% if n_hidden %}<a class="hint" href="/?tab=text&hidden={{ 0 if show_hidden else 1 }}">{{ 'back to visible' if show_hidden else (n_hidden ~ ' hidden') }}</a>{% endif %}
   </div>
 
@@ -202,15 +203,20 @@
 
 {% else %}
 {% set psort_part = '&sort=old' if sort == 'old' else '' %}
-{% set show_part = ('&show=' ~ (active_show | urlencode)) if active_show else '' %}
+{% set sns = namespace(s='') %}{% for ss in active_shows %}{% set sns.s = sns.s ~ '&show=' ~ (ss | urlencode) %}{% endfor %}
+{% set show_part = sns.s %}
 <section id="audio">
   {% if episode_feeds %}
-  <details class="filter-box"{% if active_show %} open{% endif %}>
-    <summary><span class="fun-label">Shows</span><span class="work-label">Sources</span> <span class="count">{{ episode_feeds|length }}</span>{% if active_show %} · {{ active_show }}{% endif %}</summary>
+  <details class="filter-box"{% if active_shows %} open{% endif %}>
+    <summary><span class="fun-label">Shows</span><span class="work-label">Sources</span> <span class="count">{{ episode_feeds|length }}</span>{% if active_shows %} · {{ active_shows|length }} selected{% endif %}</summary>
     <div class="pub-filter">
-      <a href="/?tab=audio{{ psort_part }}" class="{{ 'active' if not active_show }}">All</a>
+      <a href="/?tab=audio&clear=1{{ psort_part }}" class="{{ 'active' if not active_shows }}">All</a>
       {% for f in episode_feeds %}
-        <span class="chip-wrap"><a href="/?tab=audio&show={{ f.feed_name | urlencode }}{{ psort_part }}" class="{{ 'active' if active_show == f.feed_name }}{{ ' paid' if f.paid }}"{% if f.paid %} title="paid subscription"{% endif %}>{{ f.feed_name }} <span class="count">{{ f.n }}</span></a>{{ follow_star('show', f.feed_name, '/?tab=audio') }}</span>
+        {% set sel = f.feed_name in active_shows %}
+        {% set tns = namespace(s='') %}
+        {% set target = (active_shows | reject('equalto', f.feed_name) | list) if sel else (active_shows + [f.feed_name]) %}
+        {% for ss in target %}{% set tns.s = tns.s ~ '&show=' ~ (ss | urlencode) %}{% endfor %}
+        <span class="chip-wrap"><a href="/?tab=audio{{ tns.s }}{{ psort_part }}" class="{{ 'active' if sel }}{{ ' paid' if f.paid }}"{% if f.paid %} title="paid subscription"{% endif %}>{{ f.feed_name }} <span class="count">{{ f.n }}</span>{% if sel %} <span class="chip-x" title="Remove from filter">×</span>{% endif %}</a>{{ follow_star('show', f.feed_name, '/?tab=audio') }}</span>
       {% endfor %}
     </div>
   </details>
@@ -218,6 +224,7 @@
 
   <div class="list-controls">
     <a class="sort-toggle" href="/?tab=audio{{ show_part }}&sort={{ 'old' if sort == 'new' else 'new' }}">{{ 'Oldest first ↑' if sort == 'new' else 'Newest first ↓' }}</a>
+    {% if active_shows %}<a class="hint" href="/?tab=audio&clear=1{{ psort_part }}">✕ unselect all</a>{% endif %}
     <a class="hint" href="/offline">📦 saved on this device</a>
   </div>
 

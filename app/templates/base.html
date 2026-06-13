@@ -17,20 +17,23 @@
           document.documentElement.dataset.chud = "still";
       } catch (e) {}
     })();
-    /* persist the multi-publication article filter across sessions: a bare
-       Articles view re-applies the saved selection; "All" (clear=1) forgets it. */
+    /* persist the multi-select filters across sessions: a bare Articles/Podcasts
+       view re-applies the saved selection; "All"/unselect-all (clear=1) forgets it. */
     (function () {
       try {
         if (location.pathname !== "/") return;
         var p = new URLSearchParams(location.search);
-        if ((p.get("tab") || "text") !== "text") return;
-        if (p.get("clear")) { localStorage.removeItem("pubfilter"); return; }
-        var urlPubs = p.getAll("pub").filter(Boolean);
-        if (urlPubs.length) { localStorage.setItem("pubfilter", JSON.stringify(urlPubs)); return; }
+        var tab = p.get("tab") || "text";
+        var cfg = tab === "text" ? { key: "pubfilter", param: "pub" }
+                : tab === "audio" ? { key: "showfilter", param: "show" } : null;
+        if (!cfg) return;
+        if (p.get("clear")) { localStorage.removeItem(cfg.key); return; }
+        var urlVals = p.getAll(cfg.param).filter(Boolean);
+        if (urlVals.length) { localStorage.setItem(cfg.key, JSON.stringify(urlVals)); return; }
         if (p.get("page") || p.get("q")) return;   // don't hijack paging/search of the all-view
-        var saved = JSON.parse(localStorage.getItem("pubfilter") || "[]");
+        var saved = JSON.parse(localStorage.getItem(cfg.key) || "[]");
         if (saved.length) {
-          saved.forEach(function (x) { p.append("pub", x); });
+          saved.forEach(function (x) { p.append(cfg.param, x); });
           location.replace("/?" + p.toString());
         }
       } catch (e) {}

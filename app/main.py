@@ -437,8 +437,8 @@ PAGE_SIZE = 25
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, user=Depends(auth.current_user),
-          pub: list[str] = Query(default=[]), show: str | None = None, tab: str = "text",
-          q: str | None = None, sort: str = "new", hidden: int = 0,
+          pub: list[str] = Query(default=[]), show: list[str] = Query(default=[]),
+          tab: str = "text", q: str | None = None, sort: str = "new", hidden: int = 0,
           sub: str = "articles", page: int = 1):
     q = (q or "").strip() or None
     sort = "old" if sort == "old" else "new"
@@ -448,6 +448,7 @@ def index(request: Request, user=Depends(auth.current_user),
     page = max(1, page)
     offset = (page - 1) * PAGE_SIZE
     active_pubs = [p for p in pub if p]          # multi-select publication filter
+    active_shows = [s for s in show if s]        # multi-select podcast-show filter
     followed_pubs = db.list_follows(user["id"], "pub")
     followed_shows = db.list_follows(user["id"], "show")
 
@@ -467,8 +468,9 @@ def index(request: Request, user=Depends(auth.current_user),
         articles = db.list_articles(publications=pubs_filter, q=q, sort=sort,
                                     include_hidden=show_hidden, limit=PAGE_SIZE, offset=offset)
     elif tab == "audio":
-        total = db.count_episodes(feed=show)
-        episodes = db.list_episodes(feed=show, sort=sort, limit=PAGE_SIZE, offset=offset)
+        shows_filter = active_shows or None
+        total = db.count_episodes(feeds=shows_filter)
+        episodes = db.list_episodes(feeds=shows_filter, sort=sort, limit=PAGE_SIZE, offset=offset)
     else:  # mine — small, user-curated; hidden-filter then paginate in Python
         hidden_arts = db.list_hidden_refs(user["id"], "article")
         hidden_eps = db.list_hidden_refs(user["id"], "episode")
@@ -505,7 +507,7 @@ def index(request: Request, user=Depends(auth.current_user),
                   mine_articles=mine_articles, mine_episodes=mine_episodes,
                   episodes=episodes,
                   episode_feeds=db.list_episode_feeds(),
-                  active_show=show,
+                  active_shows=active_shows,
                   page=page, total_pages=total_pages, total_items=total,
                   feed_base=f"{config.PUBLIC_BASE_URL}/feed/{config.FEED_TOKEN}")
 

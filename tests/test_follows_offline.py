@@ -123,3 +123,11 @@ def test_multi_publication_filter(client):
     # narrow to one -> only its articles
     r = client.get("/?tab=text&pub=Blog A")
     assert "Alpha Article" in r.text and "Bravo Article" not in r.text
+
+
+def test_multi_show_filter_and_unselect_all(client):
+    r = client.get("/?tab=audio&show=Show A&show=Show B")
+    assert "Alpha Episode" in r.text and "Bravo Episode" in r.text
+    assert "2 selected" in r.text and "unselect all" in r.text   # explicit clear offered
+    r = client.get("/?tab=audio&show=Show A")
+    assert "Alpha Episode" in r.text and "Bravo Episode" not in r.text
