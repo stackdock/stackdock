@@ -125,6 +125,7 @@ def _run() -> int:
                 duration=entry.get("itunes_duration", ""),
                 published_at=_iso_date(entry),
                 image_url=_entry_image(entry, parsed),
+                paid_access=1,  # private per-subscriber feeds always deliver full audio
             )
             if episode_id:
                 new_count += 1

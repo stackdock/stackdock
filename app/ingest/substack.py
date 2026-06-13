@@ -346,12 +346,23 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
             title = post.get("title") or "(untitled)"
 
             # ---- podcast episodes: pull the FULL audio via the cookie ----
+            # Episodes dedupe by post id. We may already hold a PREVIEW (downloaded
+            # by a non-paying account). A paying account UPGRADES it to full audio
+            # in place — same guid/slug (so listening positions survive) — and the
+            # old object is removed from R2. Mirrors the article body-upgrade path.
             if post.get("type") == "podcast":
-                if db.episode_exists(guid):
-                    continue
+                existing_ep = db.get_episode_by_guid(guid)
+                if existing_ep and existing_ep["paid_access"]:
+                    continue  # already have the full version
                 full = _post_by_id(s, post_id) or {}
                 audio_url = full.get("podcast_url") or post.get("podcast_url")
                 if not audio_url:
+                    continue
+                is_paid = post.get("audience") == "only_paid"
+                has_full = (not is_paid) or not _is_locked(full)
+                # if we already have a preview and THIS account also lacks full
+                # access, its audio would be the same preview — skip the re-download
+                if existing_ep and not has_full:
                     continue
                 ext = audio_url.split("?")[0].rsplit(".", 1)
                 ext = ext[1].lower() if len(ext) == 2 and len(ext[1]) <= 4 else "mp3"
@@ -379,14 +390,31 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
                 if mime is None:   # all attempts failed (size can legitimately be 0)
                     continue
                 dur = full.get("podcast_duration") or post.get("podcast_duration")
+                ep_image = (full.get("podcast_episode_image_url")
+                            or post.get("podcast_episode_image_url") or post.get("cover_image"))
+                if existing_ep:
+                    db.upgrade_episode(
+                        guid, audio_key=key, audio_bytes=size, audio_mime=mime,
+                        duration=str(round(dur)) if dur else "",
+                        image_url=ep_image, paid_access=1)
+                    old_key = existing_ep["audio_key"]
+                    if old_key and old_key != key:
+                        try:
+                            storage.delete(old_key)
+                        except Exception as e:
+                            log.warning("Could not delete old preview audio %s: %s", old_key, e)
+                    log.info("[%s] upgraded episode to full paid audio: %s",
+                             account["label"], title)
+                    episodes += 1
+                    continue  # an upgrade is not a NEW item — don't re-notify
                 episode_id = db.insert_episode(
                     guid=guid, feed_name=pub["name"], title=title,
                     description=full.get("subtitle") or "",
                     audio_key=key, audio_bytes=size, audio_mime=mime,
                     duration=str(round(dur)) if dur else "",
                     published_at=post.get("post_date"),
-                    image_url=(full.get("podcast_episode_image_url")
-                               or post.get("podcast_episode_image_url") or post.get("cover_image")),
+                    image_url=ep_image,
+                    paid_access=1 if has_full else 0,
                 )
                 if episode_id:
                     new_count += 1
