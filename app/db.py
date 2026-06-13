@@ -115,7 +115,8 @@ CREATE TABLE IF NOT EXISTS episodes (
     created_at TEXT NOT NULL,
     image_url TEXT,                    -- remote thumbnail URL from the RSS feed
     slug TEXT,                         -- pretty URL: /listen/{slug}
-    paid_access INTEGER DEFAULT 0      -- 1 = downloaded with FULL access (not a free preview)
+    paid_access INTEGER DEFAULT 0,     -- 1 = downloaded with FULL access (not a free preview)
+    is_paid INTEGER DEFAULT 0          -- 1 = the source post is paid-subscriber-only
 );
 """
 
@@ -167,6 +168,7 @@ def init():
                            ("episodes", "image_url TEXT"),
                            ("episodes", "slug TEXT"),
                            ("episodes", "paid_access INTEGER DEFAULT 0"),
+                           ("episodes", "is_paid INTEGER DEFAULT 0"),
                            ("connected_accounts", "last_alert TEXT"),
                            ("connected_accounts", "handle TEXT")]:
             try:
@@ -413,18 +415,20 @@ def episode_exists(guid: str) -> bool:
 
 def insert_episode(guid, feed_name, title, description, audio_key,
                    audio_bytes, audio_mime, duration, published_at, image_url=None,
-                   paid_access=0) -> int:
+                   paid_access=0, is_paid=0) -> int:
     with conn() as c:
         if c.execute("SELECT 1 FROM episodes WHERE guid = ?", (guid,)).fetchone():
             return 0
         cur = c.execute(
             """INSERT OR IGNORE INTO episodes
                (guid, feed_name, title, description, audio_key, audio_bytes,
-                audio_mime, duration, published_at, created_at, image_url, slug, paid_access)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                audio_mime, duration, published_at, created_at, image_url, slug,
+                paid_access, is_paid)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (guid, feed_name, title, description, audio_key, audio_bytes,
              audio_mime, duration, published_at, now_iso(), image_url,
-             _unique_slug(c, "episodes", title), 1 if paid_access else 0),
+             _unique_slug(c, "episodes", title), 1 if paid_access else 0,
+             1 if is_paid else 0),
         )
         return cur.lastrowid or 0
 
@@ -435,7 +439,7 @@ def get_episode_by_guid(guid: str):
 
 
 def upgrade_episode(guid, *, audio_key, audio_bytes, audio_mime,
-                    duration, image_url=None, paid_access=1) -> None:
+                    duration, image_url=None, paid_access=1, is_paid=1) -> None:
     """Replace a stored episode's audio in place when a paying account supplies
     the FULL version of a previously preview-only download. Keeps guid/slug so
     listening positions and links survive. (Caller deletes the old R2 object if
@@ -443,10 +447,10 @@ def upgrade_episode(guid, *, audio_key, audio_bytes, audio_mime,
     with conn() as c:
         c.execute(
             """UPDATE episodes SET audio_key=?, audio_bytes=?, audio_mime=?,
-                 duration=?, image_url=COALESCE(?, image_url), paid_access=?
+                 duration=?, image_url=COALESCE(?, image_url), paid_access=?, is_paid=?
                WHERE guid=?""",
             (audio_key, audio_bytes, audio_mime, duration, image_url,
-             1 if paid_access else 0, guid))
+             1 if paid_access else 0, 1 if is_paid else 0, guid))
 
 
 def list_episodes(limit=500, feed=None, feeds=None, sort="new"):
@@ -475,10 +479,14 @@ def rename_feed(old_name: str, new_name: str) -> int:
 
 
 def list_episode_feeds():
-    """[{'feed_name': name, 'n': count}], busiest first — podcast shows for the filter bar."""
+    """[{'feed_name', 'n', 'paid'}], busiest first — podcast shows for the filter
+    bar. paid=1 when the show has at least one paid-subscriber episode we hold the
+    full audio for (mirrors list_publications' paid highlight for articles)."""
     with conn() as c:
         return c.execute(
-            "SELECT feed_name, COUNT(*) AS n FROM episodes GROUP BY feed_name ORDER BY n DESC"
+            "SELECT feed_name, COUNT(*) AS n, "
+            "MAX(CASE WHEN is_paid = 1 AND paid_access = 1 THEN 1 ELSE 0 END) AS paid "
+            "FROM episodes GROUP BY feed_name ORDER BY n DESC"
         ).fetchall()
 
 

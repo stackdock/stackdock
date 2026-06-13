@@ -396,7 +396,7 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
                     db.upgrade_episode(
                         guid, audio_key=key, audio_bytes=size, audio_mime=mime,
                         duration=str(round(dur)) if dur else "",
-                        image_url=ep_image, paid_access=1)
+                        image_url=ep_image, paid_access=1, is_paid=1 if is_paid else 0)
                     old_key = existing_ep["audio_key"]
                     if old_key and old_key != key:
                         try:
@@ -415,6 +415,7 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
                     published_at=post.get("post_date"),
                     image_url=ep_image,
                     paid_access=1 if has_full else 0,
+                    is_paid=1 if is_paid else 0,
                 )
                 if episode_id:
                     new_count += 1

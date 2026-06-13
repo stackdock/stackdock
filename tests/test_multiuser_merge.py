@@ -188,6 +188,8 @@ def test_podcast_audio_paid_only_and_single_episode(world):
 
     substack.sync_account(_account_row("bob's account"))
     assert len(db.list_episodes()) == 1 and len(world.downloads) == 1
+    # the paid show is flagged paid in the feed filter (green chip, like articles)
+    assert {f["feed_name"]: f["paid"] for f in db.list_episode_feeds()}["Blog X"] == 1
 
     # everyone resyncs; the episode must not duplicate or redownload
     substack.sync_account(_account_row("bob's account"))

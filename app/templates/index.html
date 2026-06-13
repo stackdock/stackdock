@@ -186,7 +186,7 @@
   <div class="pub-filter">
     <a href="/?tab=audio{{ psort_part }}" class="{{ 'active' if not active_show }}">All</a>
     {% for f in episode_feeds %}
-      <span class="chip-wrap"><a href="/?tab=audio&show={{ f.feed_name | urlencode }}{{ psort_part }}" class="{{ 'active' if active_show == f.feed_name }}">{{ f.feed_name }} <span class="count">{{ f.n }}</span></a>{{ follow_star('show', f.feed_name, '/?tab=audio') }}</span>
+      <span class="chip-wrap"><a href="/?tab=audio&show={{ f.feed_name | urlencode }}{{ psort_part }}" class="{{ 'active' if active_show == f.feed_name }}{{ ' paid' if f.paid }}"{% if f.paid %} title="paid subscription"{% endif %}>{{ f.feed_name }} <span class="count">{{ f.n }}</span></a>{{ follow_star('show', f.feed_name, '/?tab=audio') }}</span>
     {% endfor %}
   </div>
   {% endif %}
