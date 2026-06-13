@@ -492,3 +492,16 @@ html[data-workmode="1"] .mode-btns button { border-color: rgba(255,255,255,0.6);
 .pager a:hover { color: var(--shelf); border-color: var(--shelf); }
 .pager .off { color: var(--ink-soft); opacity: 0.4; padding: 0.3rem 0.9rem; }
 .pager-info { color: var(--ink-soft); }
+.filter-box { margin: 0.5rem 0 0.75rem; }
+.filter-box > summary {
+  cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 0.4rem;
+  font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--ink-soft); border: 1px solid var(--rule); border-radius: 99px;
+  padding: 0.3rem 0.85rem; background: var(--panel); user-select: none;
+}
+.filter-box > summary::-webkit-details-marker { display: none; }
+.filter-box > summary::after { content: "▾"; margin-left: 0.1rem; }
+.filter-box[open] > summary::after { content: "▴"; }
+.filter-box > summary:hover { color: var(--shelf); border-color: var(--shelf); }
+.filter-box[open] > summary { margin-bottom: 0.55rem; }
+.filter-box .pub-filter { margin: 0; }

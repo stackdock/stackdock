@@ -392,13 +392,17 @@ def count_hidden_articles() -> int:
 
 
 def list_publications():
-    """[{'publication', 'n', 'paid'}] — paid=1 when this account has at least one
-    fully-accessible paid post here (so it can be highlighted as a paid sub).
-    Paid pubs sort first, then by article count."""
+    """[{'publication', 'n', 'paid'}] — paid=1 (green chip) only when we genuinely
+    have paid access: at least one fully-accessible paid post AND at least as many
+    accessible paid posts as locked previews. This stops a single fluke-unlocked
+    post (e.g. an author freebie) from flagging a whole publication as a paid sub
+    we don't actually hold. Paid pubs sort first, then by article count."""
     with conn() as c:
         return c.execute(
             "SELECT publication, COUNT(*) AS n, "
-            "MAX(CASE WHEN is_paid = 1 AND is_locked = 0 THEN 1 ELSE 0 END) AS paid "
+            "(SUM(CASE WHEN is_paid = 1 AND is_locked = 0 THEN 1 ELSE 0 END) > 0 "
+            " AND SUM(CASE WHEN is_paid = 1 AND is_locked = 0 THEN 1 ELSE 0 END) "
+            "     >= SUM(CASE WHEN is_paid = 1 AND is_locked = 1 THEN 1 ELSE 0 END)) AS paid "
             "FROM articles WHERE hidden = 0 GROUP BY publication "
             "ORDER BY paid DESC, n DESC"
         ).fetchall()

@@ -246,3 +246,22 @@ def test_list_publications_paid_flag_and_order(fresh_db):
     # a locked-only paid post does NOT count as paid access
     db.insert_article("l1", "L", "locked", "a", None, "<p>x</p>", "2026-01-04", is_paid=1, is_locked=1)
     assert {r["publication"]: r["paid"] for r in db.list_publications()}["L"] == 0
+
+
+def test_publication_paid_flag_needs_real_access(fresh_db):
+    # a publication with ONE fluke-unlocked paid post but mostly locked previews
+    # must NOT read as a paid sub (this was the J'accuse false-green bug)
+    db.insert_article("a-free", "Mixed Pub", "Free", "x", None, "<p>x</p>", "2026-01-01",
+                      is_paid=0, is_locked=0)
+    db.insert_article("a-open", "Mixed Pub", "Open", "x", None, "<p>x</p>", "2026-01-02",
+                      is_paid=1, is_locked=0)
+    for i in range(5):
+        db.insert_article(f"a-lock{i}", "Mixed Pub", f"Locked {i}", "x", None, "<p>x</p>",
+                          f"2026-02-0{i+1}", is_paid=1, is_locked=1)
+    # a genuinely-subscribed pub: all paid posts accessible
+    for i in range(3):
+        db.insert_article(f"b-open{i}", "Paid Pub", f"Open {i}", "x", None, "<p>x</p>",
+                          f"2026-03-0{i+1}", is_paid=1, is_locked=0)
+    flags = {p["publication"]: p["paid"] for p in db.list_publications()}
+    assert flags["Mixed Pub"] == 0    # 1 open vs 5 locked -> not a paid sub we hold
+    assert flags["Paid Pub"] == 1     # all paid posts accessible -> green

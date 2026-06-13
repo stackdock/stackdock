@@ -1,0 +1,42 @@
+name: Release Discord Alert
+
+# When a GitHub release is published, post its changelog to the Discord webhook —
+# but ONLY for "major" releases: a whole number or a .5 (e.g. v1.0, v1.5, v2.0).
+# Patch/minor releases (v1.1, v1.2.3) are skipped silently.
+on:
+  release:
+    types: [published]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Announce major release to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          TAG: ${{ github.event.release.tag_name }}
+          RELEASE_NAME: ${{ github.event.release.name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+          RELEASE_BODY: ${{ github.event.release.body }}
+        run: |
+          set -euo pipefail
+          VER="${TAG#v}"                       # strip an optional leading "v"
+          if ! printf '%s' "$VER" | grep -Eq '^[0-9]+\.(0|5)(\.0)?$'; then
+            echo "::notice::$TAG is not a major (.0/.5) release — skipping Discord alert."
+            exit 0
+          fi
+          if [ -z "${DISCORD_WEBHOOK_URL:-}" ]; then
+            echo "::warning::DISCORD_WEBHOOK_URL secret not set — skipping Discord alert."
+            exit 0
+          fi
+          # Discord embed descriptions cap at 4096 chars; keep headroom.
+          BODY="$(printf '%s' "$RELEASE_BODY" | head -c 3800)"
+          [ -z "$BODY" ] && BODY="(no changelog provided)"
+          jq -n \
+            --arg content "🚀 **Stackdock ${TAG}** released — ${RELEASE_NAME}"$'\n'"${RELEASE_URL}" \
+            --arg title "📓 Changelog — ${TAG}" \
+            --arg desc "$BODY" \
+            --arg url "$RELEASE_URL" \
+            '{content: $content, embeds: [{title: $title, description: $desc, url: $url, color: 3066993}]}' \
+          | curl -fsS -X POST -H "Content-Type: application/json" -d @- "$DISCORD_WEBHOOK_URL"
+          echo "Announced $TAG to Discord."

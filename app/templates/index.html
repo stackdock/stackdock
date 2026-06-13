@@ -43,12 +43,15 @@
 {% set hidden_part = '&hidden=1' if show_hidden else '' %}
 <section id="articles">
   {% if publications %}
-  <div class="pub-filter">
-    <a href="/?tab=text{{ q_part }}{{ sort_part }}" class="{{ 'active' if not active_pub }}">All</a>
-    {% for p in publications %}
-      <span class="chip-wrap"><a href="/?tab=text&pub={{ p.publication | urlencode }}{{ q_part }}{{ sort_part }}" class="{{ 'active' if active_pub == p.publication }}{{ ' paid' if p.paid }}"{% if p.paid %} title="paid subscription"{% endif %}>{{ p.publication }} <span class="count">{{ p.n }}</span></a>{{ follow_star('pub', p.publication, '/?tab=text') }}</span>
-    {% endfor %}
-  </div>
+  <details class="filter-box"{% if active_pub %} open{% endif %}>
+    <summary><span class="fun-label">Publications</span><span class="work-label">Sources</span> <span class="count">{{ publications|length }}</span>{% if active_pub %} · {{ active_pub }}{% endif %}</summary>
+    <div class="pub-filter">
+      <a href="/?tab=text{{ q_part }}{{ sort_part }}" class="{{ 'active' if not active_pub }}">All</a>
+      {% for p in publications %}
+        <span class="chip-wrap"><a href="/?tab=text&pub={{ p.publication | urlencode }}{{ q_part }}{{ sort_part }}" class="{{ 'active' if active_pub == p.publication }}{{ ' paid' if p.paid }}"{% if p.paid %} title="paid subscription"{% endif %}>{{ p.publication }} <span class="count">{{ p.n }}</span></a>{{ follow_star('pub', p.publication, '/?tab=text') }}</span>
+      {% endfor %}
+    </div>
+  </details>
   {% endif %}
 
   <div class="list-controls">
@@ -197,12 +200,15 @@
 {% set show_part = ('&show=' ~ (active_show | urlencode)) if active_show else '' %}
 <section id="audio">
   {% if episode_feeds %}
-  <div class="pub-filter">
-    <a href="/?tab=audio{{ psort_part }}" class="{{ 'active' if not active_show }}">All</a>
-    {% for f in episode_feeds %}
-      <span class="chip-wrap"><a href="/?tab=audio&show={{ f.feed_name | urlencode }}{{ psort_part }}" class="{{ 'active' if active_show == f.feed_name }}{{ ' paid' if f.paid }}"{% if f.paid %} title="paid subscription"{% endif %}>{{ f.feed_name }} <span class="count">{{ f.n }}</span></a>{{ follow_star('show', f.feed_name, '/?tab=audio') }}</span>
-    {% endfor %}
-  </div>
+  <details class="filter-box"{% if active_show %} open{% endif %}>
+    <summary><span class="fun-label">Shows</span><span class="work-label">Sources</span> <span class="count">{{ episode_feeds|length }}</span>{% if active_show %} · {{ active_show }}{% endif %}</summary>
+    <div class="pub-filter">
+      <a href="/?tab=audio{{ psort_part }}" class="{{ 'active' if not active_show }}">All</a>
+      {% for f in episode_feeds %}
+        <span class="chip-wrap"><a href="/?tab=audio&show={{ f.feed_name | urlencode }}{{ psort_part }}" class="{{ 'active' if active_show == f.feed_name }}{{ ' paid' if f.paid }}"{% if f.paid %} title="paid subscription"{% endif %}>{{ f.feed_name }} <span class="count">{{ f.n }}</span></a>{{ follow_star('show', f.feed_name, '/?tab=audio') }}</span>
+      {% endfor %}
+    </div>
+  </details>
   {% endif %}
 
   <div class="list-controls">
@@ -274,4 +280,18 @@
   });
 })();
 </script>
+
+<details class="feed-box feed-box-bottom">
+  <summary class="label"><span class="fun-label">Unified feeds — everything from everyone, one URL each</span><span class="work-label">Sync endpoints</span></summary>
+  <div class="feed-row"><span class="feed-name">🎧 Podcast apps</span>
+    <code id="feed-audio-b">{{ feed_base }}/all.xml</code>
+    <button onclick="copyFeed('feed-audio-b')">Copy</button></div>
+  <div class="feed-row"><span class="feed-name">📰 Articles (RSS readers)</span>
+    <code id="feed-articles-b">{{ feed_base }}/articles.xml</code>
+    <button onclick="copyFeed('feed-articles-b')">Copy</button></div>
+  <div class="feed-row"><span class="feed-name">🗞 Everything combined</span>
+    <code id="feed-everything-b">{{ feed_base }}/everything.xml</code>
+    <button onclick="copyFeed('feed-everything-b')">Copy</button></div>
+  <p class="hint">Each URL aggregates all blogs from all members. Keep them private.</p>
+</details>
 {% endblock %}
