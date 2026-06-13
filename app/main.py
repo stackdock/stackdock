@@ -432,7 +432,7 @@ def publications_delete(request: Request, user=Depends(auth.current_user),
 
 # ---------------- content ----------------
 
-PAGE_SIZE = 50
+PAGE_SIZE = 25
 
 
 @app.get("/", response_class=HTMLResponse)
