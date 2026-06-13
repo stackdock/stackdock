@@ -480,13 +480,17 @@ def rename_feed(old_name: str, new_name: str) -> int:
 
 def list_episode_feeds():
     """[{'feed_name', 'n', 'paid'}], busiest first — podcast shows for the filter
-    bar. paid=1 when the show has at least one paid-subscriber episode we hold the
-    full audio for (mirrors list_publications' paid highlight for articles)."""
+    bar. paid=1 when the show has a paid episode we hold full audio for, OR a
+    same-named article publication is a paid sub (the latter also covers episodes
+    ingested before is_paid was tracked). Mirrors list_publications for articles."""
     with conn() as c:
         return c.execute(
-            "SELECT feed_name, COUNT(*) AS n, "
-            "MAX(CASE WHEN is_paid = 1 AND paid_access = 1 THEN 1 ELSE 0 END) AS paid "
-            "FROM episodes GROUP BY feed_name ORDER BY n DESC"
+            "SELECT e.feed_name AS feed_name, COUNT(*) AS n, "
+            "MAX(CASE WHEN (e.is_paid = 1 AND e.paid_access = 1) "
+            "  OR EXISTS (SELECT 1 FROM articles a WHERE a.publication = e.feed_name "
+            "             AND a.is_paid = 1 AND a.is_locked = 0) "
+            "  THEN 1 ELSE 0 END) AS paid "
+            "FROM episodes e GROUP BY e.feed_name ORDER BY n DESC"
         ).fetchall()
 
 
