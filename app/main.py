@@ -9,7 +9,8 @@ from pathlib import Path
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import Depends, FastAPI, Form, HTTPException, Request, Response
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import (FileResponse, HTMLResponse, JSONResponse,
+                               RedirectResponse, StreamingResponse)
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -105,6 +106,15 @@ def render(request, template, **ctx):
     ctx.setdefault("site_title", config.SITE_TITLE)
     ctx.setdefault("static_v", STATIC_V)
     return templates.TemplateResponse(request, template, ctx)
+
+
+@app.exception_handler(404)
+async def not_found(request: Request, exc):
+    """Custom 404 page for browser navigations; JSON for API/asset requests."""
+    if "text/html" in request.headers.get("accept", ""):
+        return templates.TemplateResponse(request, "404.html",
+                                          {"site_title": config.SITE_TITLE}, status_code=404)
+    return JSONResponse({"detail": getattr(exc, "detail", "Not Found")}, status_code=404)
 
 
 @app.get("/healthz")

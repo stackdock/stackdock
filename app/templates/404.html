@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>404 — you're lost</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      min-height: 100%;
+      font-family: "Comic Sans MS", "Comic Sans", "Chalkboard SE", "Segoe Print", cursive;
+      color: #ffd6f5;
+      background: #14001a url("/static/404-bg.webp") repeat;
+      background-size: 84px;
+      image-rendering: pixelated;
+      display: grid;
+      place-items: center;
+      padding: 2rem 1rem calc(2rem + env(safe-area-inset-bottom, 0px));
+      text-align: center;
+    }
+    /* darken the tiled emote so foreground pops, classic tumblr vignette */
+    body::before {
+      content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background: radial-gradient(ellipse at center, rgba(20,0,26,0.35), rgba(20,0,26,0.85));
+    }
+    .wrap { position: relative; z-index: 1; max-width: 560px; }
+    .glitch {
+      font-size: clamp(5rem, 26vw, 11rem); line-height: 0.9; margin: 0;
+      font-weight: 900; letter-spacing: 0.02em;
+      color: #ff4fd8;
+      text-shadow:
+        0 0 6px #ff4fd8, 0 0 22px #ff4fd8,
+        4px 4px 0 #00e5ff, -4px -4px 0 #b76bff;
+      animation: wobble 3.2s ease-in-out infinite;
+    }
+    @keyframes wobble { 0%,100% { transform: rotate(-2deg) } 50% { transform: rotate(2deg) } }
+    .figure {
+      width: min(70vw, 280px); max-height: 60vh; height: auto;
+      filter: drop-shadow(0 0 18px rgba(255,79,216,0.55));
+      animation: bob 4s ease-in-out infinite;
+    }
+    @keyframes bob { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-14px) } }
+    .holler { font-size: 1.5rem; margin: 0.4rem 0 0.2rem; text-shadow: 0 0 10px #b76bff; }
+    .sub { font-size: 1rem; color: #c9a7ff; margin: 0 0 1.2rem; }
+    .home {
+      display: inline-block; text-decoration: none;
+      font-weight: 700; color: #14001a; background: #ff4fd8;
+      padding: 0.6rem 1.2rem; border-radius: 999px;
+      box-shadow: 0 0 16px #ff4fd8; transition: transform 0.1s ease;
+    }
+    .home:hover { transform: scale(1.06); }
+    .sparkle { animation: twinkle 1.6s steps(2) infinite; }
+    @keyframes twinkle { 50% { opacity: 0.25 } }
+    .music-note { margin-top: 1rem; font-size: 0.8rem; color: #9a7bd6; }
+    #player { position: fixed; width: 1px; height: 1px; left: -9999px; top: -9999px; border: 0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <img class="figure" src="/static/404-character.webp" alt="lost">
+    <p class="glitch">404</p>
+    <p class="holler"><span class="sparkle">✦</span> you wandered off the map <span class="sparkle">✦</span></p>
+    <p class="sub">this page doesn't exist (or it got privated). go home before you get lost forever.</p>
+    <a class="home" href="/">⟵ take me home</a>
+    <p class="music-note">now playing: the tunes ♫ — <a href="https://youtu.be/SlUnVAgTDBQ?t=24" style="color:#9a7bd6">source</a></p>
+  </div>
+
+  <script>
+    // Autoplay the tunes. Browsers allow unmuted autoplay only once a site has
+    // enough media-engagement (true for the owner), so we attempt it on load and
+    // SILENTLY fall back to the first user gesture (click/scroll/key/touch) for
+    // any browser that blocked it — no blocking overlay either way.
+    (function () {
+      function play() {
+        if (document.getElementById("player")) return;
+        var f = document.createElement("iframe");
+        f.id = "player";
+        f.allow = "autoplay";
+        f.src = "https://www.youtube.com/embed/SlUnVAgTDBQ?autoplay=1&start=24&loop=1&playlist=SlUnVAgTDBQ";
+        document.body.appendChild(f);
+      }
+      play();  // best-effort true autoplay
+      // silent fallback: first interaction (re)starts it if the browser blocked autoplay
+      ["pointerdown", "keydown", "scroll", "touchstart"].forEach(function (ev) {
+        addEventListener(ev, play, { once: true, passive: true });
+      });
+    })();
+  </script>
+</body>
+</html>
