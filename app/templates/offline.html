@@ -44,14 +44,15 @@
   const keys = await c.keys();
   if (!keys.length) document.getElementById("empty").hidden = false;
 
-  if (navigator.storage && navigator.storage.estimate) {
-    try {
-      const est = await navigator.storage.estimate();
-      document.getElementById("quota").textContent =
-        "Using " + (est.usage / 1048576).toFixed(0) + " MB of ~" +
-        (est.quota / 1048576).toFixed(0) + " MB available.";
-    } catch {}
+  function fmt(b) {
+    b = b || 0;
+    if (b < 1048576) return (b / 1024).toFixed(0) + " KB";
+    if (b < 1073741824) return (b / 1048576).toFixed(0) + " MB";
+    if (b < 1099511627776) return (b / 1073741824).toFixed(1) + " GB";
+    return (b / 1099511627776).toFixed(2) + " TB";
   }
+
+  let savedBytes = 0;   // total size of the saved episode audio (summed below)
 
   for (const req of keys) {
     const slug = new URL(req.url).pathname.replace("/offline-audio/", "");
@@ -66,7 +67,9 @@
     const audio = document.createElement("audio");
     audio.controls = true; audio.preload = "metadata";
     const resp = await c.match(req);
-    audio.src = URL.createObjectURL(await resp.blob());
+    const blob = await resp.blob();
+    savedBytes += blob.size;
+    audio.src = URL.createObjectURL(blob);
     // resume from the same per-episode position the main player uses
     const pos = parseFloat(localStorage.getItem("pos:" + slug) || "0");
     audio.addEventListener("loadedmetadata", () => {
@@ -94,6 +97,20 @@
     li.append(t, s, audio, del);
     list.append(li);
   }
+
+  // storage line: actual saved-audio size, plus how much room is left on device
+  let line = keys.length
+    ? fmt(savedBytes) + " of audio saved (" + keys.length +
+      " episode" + (keys.length === 1 ? "" : "s") + ")"
+    : "";
+  if (navigator.storage && navigator.storage.estimate) {
+    try {
+      const est = await navigator.storage.estimate();
+      const free = Math.max(0, (est.quota || 0) - (est.usage || 0));
+      line += (line ? " · " : "") + "~" + fmt(free) + " free on this device";
+    } catch {}
+  }
+  document.getElementById("quota").textContent = line;
 })();
 </script>
 </body>
