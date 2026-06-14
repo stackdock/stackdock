@@ -4,7 +4,7 @@
    stale-while-revalidate (instant from cache, refreshed in the background so
    style/JS changes propagate without a hard refresh); navigations are
    network-only with a tiny offline fallback. */
-const STATIC_CACHE = "stackdock-static-v9";
+const STATIC_CACHE = "stackdock-static-v10";
 const AUDIO_CACHE = "stackdock-audio-v1";   // user's saved episodes — never purge
 
 self.addEventListener("install", (e) => {
