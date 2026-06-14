@@ -138,5 +138,5 @@ def _run() -> int:
                     "published_at": entry.get("published", ""),
                 })
 
-    notify.push_new_items(items)  # one digest + one outbound POST per run
+    notify.flush()  # resilient digest (DB-driven; survives interrupted runs)
     return new_count

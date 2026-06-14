@@ -145,7 +145,7 @@ def run() -> int:
                     "published_at": published_at,
                 })
 
-        notify.push_new_items(items)
+        notify.flush()   # resilient digest (DB-driven; survives interrupted runs)
         return new_count
     finally:
         try:

@@ -265,3 +265,24 @@ def test_publication_paid_flag_needs_real_access(fresh_db):
     flags = {p["publication"]: p["paid"] for p in db.list_publications()}
     assert flags["Mixed Pub"] == 0    # 1 open vs 5 locked -> not a paid sub we hold
     assert flags["Paid Pub"] == 1     # all paid posts accessible -> green
+
+
+def test_notified_migration_suppresses_backlog(tmp_path, monkeypatch):
+    """Adding the `notified` column must mark all PRE-EXISTING rows as already
+    announced, so a deploy doesn't blast the whole backlog into Discord."""
+    db_path = tmp_path / "old.db"
+    monkeypatch.setattr(config, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(config, "DB_PATH", db_path)
+    c = sqlite3.connect(db_path)
+    c.executescript(
+        "CREATE TABLE articles (id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "message_id TEXT UNIQUE, publication TEXT, title TEXT NOT NULL, author TEXT, "
+        "original_url TEXT, html TEXT NOT NULL, published_at TEXT, created_at TEXT NOT NULL);"
+        "INSERT INTO articles (message_id,title,html,created_at) "
+        "VALUES ('m1','Old backlog post','x','2026-01-01');")
+    c.commit(); c.close()
+    db.init()
+    assert db.list_unnotified_items() == []     # backlog suppressed, won't re-announce
+    # a genuinely new insert afterwards IS pending
+    db.insert_article("m2", "Pub", "Brand new", "a", None, "<p>x</p>", None, notified=0)
+    assert [i["title"] for i in db.list_unnotified_items()] == ["Brand new"]

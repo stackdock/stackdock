@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS articles (
     slug TEXT,                         -- pretty URL: /read/{slug}
     is_paid INTEGER DEFAULT 0,         -- 1 if the source post is paid-subscriber-only
     is_locked INTEGER DEFAULT 0,       -- 1 if paid but we only got a preview (no full access)
-    hidden INTEGER DEFAULT 0           -- 1 = manually hidden from the listing
+    hidden INTEGER DEFAULT 0,          -- 1 = manually hidden from the listing
+    notified INTEGER DEFAULT 0         -- 1 once announced in a Discord digest
 );
 
 CREATE TABLE IF NOT EXISTS users (
@@ -116,7 +117,8 @@ CREATE TABLE IF NOT EXISTS episodes (
     image_url TEXT,                    -- remote thumbnail URL from the RSS feed
     slug TEXT,                         -- pretty URL: /listen/{slug}
     paid_access INTEGER DEFAULT 0,     -- 1 = downloaded with FULL access (not a free preview)
-    is_paid INTEGER DEFAULT 0          -- 1 = the source post is paid-subscriber-only
+    is_paid INTEGER DEFAULT 0,         -- 1 = the source post is paid-subscriber-only
+    notified INTEGER DEFAULT 0         -- 1 once announced in a Discord digest
 );
 """
 
@@ -175,6 +177,14 @@ def init():
                 c.execute(f"ALTER TABLE {table} ADD COLUMN {col}")
             except sqlite3.OperationalError:
                 pass  # column already exists
+        # `notified` is special: when first added, mark all existing rows as
+        # already-notified so we don't blast the entire backlog into Discord.
+        for table in ("articles", "episodes"):
+            try:
+                c.execute(f"ALTER TABLE {table} ADD COLUMN notified INTEGER DEFAULT 0")
+                c.execute(f"UPDATE {table} SET notified = 1")   # runs once, on add
+            except sqlite3.OperationalError:
+                pass  # column already exists; leave per-row flags intact
         try:
             c.execute(
                 "INSERT INTO connected_accounts (user_id, service, label, cookie, last_sync, status, created_at) "
@@ -316,18 +326,19 @@ def upgrade_article_body(article_id: int, html: str, added_by: str) -> None:
 
 
 def insert_article(message_id, publication, title, author, original_url, html,
-                   published_at, added_by=None, cover_image=None, is_paid=0, is_locked=0) -> int:
+                   published_at, added_by=None, cover_image=None, is_paid=0, is_locked=0,
+                   notified=0) -> int:
     with conn() as c:
         if c.execute("SELECT 1 FROM articles WHERE message_id = ?", (message_id,)).fetchone():
             return 0
         cur = c.execute(
             """INSERT OR IGNORE INTO articles
                (message_id, publication, title, author, original_url, html, published_at,
-                created_at, added_by, cover_image, slug, is_paid, is_locked)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                created_at, added_by, cover_image, slug, is_paid, is_locked, notified)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (message_id, publication, title, author, original_url, html, published_at,
              now_iso(), added_by, cover_image, _unique_slug(c, "articles", title),
-             1 if is_paid else 0, 1 if is_locked else 0),
+             1 if is_paid else 0, 1 if is_locked else 0, 1 if notified else 0),
         )
         return cur.lastrowid or 0
 
@@ -437,7 +448,7 @@ def episode_exists(guid: str) -> bool:
 
 def insert_episode(guid, feed_name, title, description, audio_key,
                    audio_bytes, audio_mime, duration, published_at, image_url=None,
-                   paid_access=0, is_paid=0) -> int:
+                   paid_access=0, is_paid=0, notified=0) -> int:
     with conn() as c:
         if c.execute("SELECT 1 FROM episodes WHERE guid = ?", (guid,)).fetchone():
             return 0
@@ -445,12 +456,12 @@ def insert_episode(guid, feed_name, title, description, audio_key,
             """INSERT OR IGNORE INTO episodes
                (guid, feed_name, title, description, audio_key, audio_bytes,
                 audio_mime, duration, published_at, created_at, image_url, slug,
-                paid_access, is_paid)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                paid_access, is_paid, notified)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (guid, feed_name, title, description, audio_key, audio_bytes,
              audio_mime, duration, published_at, now_iso(), image_url,
              _unique_slug(c, "episodes", title), 1 if paid_access else 0,
-             1 if is_paid else 0),
+             1 if is_paid else 0, 1 if notified else 0),
         )
         return cur.lastrowid or 0
 
@@ -458,6 +469,36 @@ def insert_episode(guid, feed_name, title, description, audio_key,
 def get_episode_by_guid(guid: str):
     with conn() as c:
         return c.execute("SELECT * FROM episodes WHERE guid = ?", (guid,)).fetchone()
+
+
+def list_unnotified_items() -> list[dict]:
+    """Articles/episodes inserted as announce-worthy (notified=0) but not yet sent
+    in a Discord digest. Drives a resilient digest: an interrupted sync leaves
+    items unnotified and the next run sends them, so pings are never silently lost."""
+    base = config.PUBLIC_BASE_URL
+    items = []
+    with conn() as c:
+        for a in c.execute("SELECT id, slug, title, publication, original_url, published_at "
+                           "FROM articles WHERE notified = 0").fetchall():
+            items.append({"type": "article", "id": a["id"], "source": a["publication"],
+                          "title": a["title"], "url": f"{base}/read/{a['slug']}",
+                          "original_url": a["original_url"], "published_at": a["published_at"]})
+        for e in c.execute("SELECT id, slug, title, feed_name, published_at "
+                           "FROM episodes WHERE notified = 0").fetchall():
+            items.append({"type": "episode", "id": e["id"], "source": e["feed_name"],
+                          "title": e["title"], "url": f"{base}/listen/{e['slug']}",
+                          "original_url": None, "published_at": e["published_at"]})
+    return items
+
+
+def mark_items_notified(items: list[dict]) -> None:
+    art = [i["id"] for i in items if i.get("type") == "article"]
+    eps = [i["id"] for i in items if i.get("type") == "episode"]
+    with conn() as c:
+        if art:
+            c.execute(f"UPDATE articles SET notified = 1 WHERE id IN ({','.join('?' * len(art))})", art)
+        if eps:
+            c.execute(f"UPDATE episodes SET notified = 1 WHERE id IN ({','.join('?' * len(eps))})", eps)
 
 
 def set_episode_paid(guid, is_paid) -> None:

@@ -431,6 +431,7 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
                     image_url=ep_image,
                     paid_access=1 if account_pays else 0,   # full only when this account pays
                     is_paid=1 if is_paid else 0,
+                    notified=0 if not is_backfill else 1,   # backfill is silent
                 )
                 if episode_id:
                     new_count += 1
@@ -491,6 +492,7 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
                 cover_image=post.get("cover_image"),
                 is_paid=is_paid,
                 is_locked=locked,
+                notified=0 if not is_backfill else 1,   # backfill is silent
             )
             if article_id:
                 db.add_article_source(article_id, account["label"])
@@ -536,7 +538,7 @@ def sync_orphan_tracked_pubs(covered_user_ids: set[int]) -> int:
                     author=(post.get("publishedBylines") or [{}])[0].get("name") or m["name"],
                     original_url=url, html=body, published_at=post.get("post_date"),
                     added_by=f"tracked:{m['name']}", cover_image=post.get("cover_image"),
-                    is_paid=is_paid, is_locked=is_paid):
+                    is_paid=is_paid, is_locked=is_paid, notified=1):  # silent backfill
                 new_count += 1
     return new_count  # silent (treated like backfill); digest covers account syncs
 
@@ -581,6 +583,7 @@ def _run() -> int:
         total += sync_orphan_tracked_pubs(covered)
     except Exception as e:
         log.warning("Tracked-publication sync failed: %s", e)
-    # ONE unified push for everything new across every member's subscriptions
-    notify.push_new_items(all_items)
+    # ONE unified, resilient digest for everything not yet announced (this run's
+    # new items + any orphaned by a prior interrupted run)
+    notify.flush()
     return total

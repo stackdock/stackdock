@@ -129,3 +129,15 @@ def test_outbound_webhook_skipped_when_unset(monkeypatch):
     monkeypatch.setattr(notify.requests, "post",
                         lambda *a, **k: (_ for _ in ()).throw(AssertionError("should not post")))
     notify.push_outbound(_items())
+
+
+def test_flush_is_resilient_and_exactly_once(fresh_db, captured):
+    from app import db
+    db.insert_article("m-new", "Pub", "Fresh", "a", None, "<p>x</p>", None, notified=0)
+    db.insert_article("m-old", "Pub", "Already announced", "a", None, "<p>x</p>", None, notified=1)
+    notify.flush()
+    assert len(captured) == 1                              # one digest embed
+    desc = captured[0]["embeds"][0]["description"]
+    assert "Fresh" in desc and "Already announced" not in desc
+    notify.flush()                                         # nothing left to send
+    assert len(captured) == 1                              # not re-announced

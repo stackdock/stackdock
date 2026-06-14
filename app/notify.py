@@ -141,3 +141,16 @@ def push_new_items(items: list[dict]) -> None:
     """
     notify_digest(items)
     push_outbound(items)
+
+
+def flush() -> None:
+    """Resilient digest: announce every not-yet-notified item, then mark them.
+    The pending set lives in the DB (notified=0), so a sync that dies before this
+    point leaves items pending and the NEXT run sends them — a digest is never
+    silently lost to a crash/restart mid-run."""
+    from . import db
+    items = db.list_unnotified_items()
+    if not items:
+        return
+    push_new_items(items)
+    db.mark_items_notified(items)
