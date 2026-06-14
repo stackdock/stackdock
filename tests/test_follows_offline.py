@@ -131,3 +131,36 @@ def test_multi_show_filter_and_unselect_all(client):
     assert "2 selected" in r.text and "unselect all" in r.text   # explicit clear offered
     r = client.get("/?tab=audio&show=Show A")
     assert "Alpha Episode" in r.text and "Bravo Episode" not in r.text
+
+
+def test_account_add_rules(client, monkeypatch):
+    import bcrypt
+    from app import main
+    monkeypatch.setattr(main.substack, "_session", lambda c: object())
+    # pretend the reading list is public (non-empty) so no warning is appended
+    monkeypatch.setattr(main.substack, "get_publications_via_profile",
+                        lambda s, h: [{"name": "X", "base_url": "https://x", "paid": True}])
+
+    # Substack username is mandatory
+    r = client.post("/accounts/add", data={"service": "substack", "cookie": "c" * 30})
+    assert "username is required" in r.text and not db.list_accounts()
+
+    # @ is stripped; the account is labeled after the member who added it (admin)
+    client.post("/accounts/add", data={"service": "substack", "cookie": "c" * 30, "handle": "@erin"})
+    accts = db.list_accounts()
+    assert len(accts) == 1 and accts[0]["label"] == "admin" and accts[0]["handle"] == "erin"
+
+    # the SAME cookie connected by a different member is rejected
+    db.create_user("other", bcrypt.hashpw(b"pw123456", bcrypt.gensalt()).decode())
+    client.get("/logout")
+    client.post("/login", data={"username": "other", "password": "pw123456"})
+    r = client.post("/accounts/add", data={"service": "substack", "cookie": "c" * 30, "handle": "x"})
+    assert "already connected" in r.text and len(db.list_accounts()) == 1
+
+
+def test_account_add_warns_when_profile_private(client, monkeypatch):
+    from app import main
+    monkeypatch.setattr(main.substack, "_session", lambda c: object())
+    monkeypatch.setattr(main.substack, "get_publications_via_profile", lambda s, h: [])  # private/empty
+    r = client.post("/accounts/add", data={"service": "substack", "cookie": "c" * 30, "handle": "erin"})
+    assert "reading list public" in r.text.lower() or "couldn't read your subscriptions" in r.text

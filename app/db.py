@@ -716,6 +716,15 @@ def account_exists(user_id: int, service: str, label: str) -> bool:
             (user_id, service, label)).fetchone() is not None
 
 
+def account_with_cookie(service: str, cookie: str):
+    """The account already using this exact cookie (any member), or None — so we
+    can reject connecting one login twice."""
+    with conn() as c:
+        return c.execute(
+            "SELECT id, user_id, label FROM connected_accounts WHERE service=? AND cookie=?",
+            (service, cookie)).fetchone()
+
+
 def list_accounts(service: str | None = None, user_id: int | None = None):
     q = "SELECT * FROM connected_accounts WHERE 1=1"
     args = []

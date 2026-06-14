@@ -305,25 +305,45 @@ def accounts_page(request: Request, user=Depends(auth.current_user)):
 
 @app.post("/accounts/add")
 def accounts_add(request: Request, user=Depends(auth.current_user),
-                 service: str = Form(...), label: str = Form(...), cookie: str = Form(...),
+                 service: str = Form(...), cookie: str = Form(...),
                  handle: str = Form("")):
-    service, label, cookie = service.strip(), label.strip(), cookie.strip()
-    handle = handle.strip().lstrip("@") or None
+    service, cookie = service.strip(), cookie.strip()
+    handle = handle.strip().lstrip("@")
+    label = user["username"]          # the account is named after the member who added it
     def page(error=None, message=None):
         return render(request, "accounts.html", **_accounts_ctx(user, error, message))
     if service not in db.SERVICES:
         return page(error="Unknown service.")
-    if not label or not cookie:
-        return page(error="Both a label and the cookie value are required.")
+    if not cookie:
+        return page(error="The cookie value is required.")
     if len(cookie) < 20:
         return page(error="That doesn't look like a session cookie value.")
+    if not handle:
+        return page(error="Your Substack username is required (it's in your profile URL: "
+                          "substack.com/@yourhandle).")
+    # one login can't be connected twice (e.g. someone pasting another member's cookie)
+    owner = db.account_with_cookie(service, cookie)
+    if owner and not (owner["user_id"] == user["id"] and owner["label"] == label):
+        return page(error="That cookie is already connected to another account. "
+                          "Each member connects their own Substack login.")
     reconnect = db.account_exists(user["id"], service, label)
     db.add_account(user["id"], service, label, cookie, handle)
+    # best-effort: is their reading list public? full discovery needs it (the
+    # cookie's own subscriptions API only returns a curated handful).
+    public_note = ""
+    try:
+        s = substack._session(cookie)
+        if not substack.get_publications_via_profile(s, handle):
+            public_note = (" ⚠️ We couldn't read your subscriptions from your public profile — "
+                           "open Substack → Settings → Privacy and turn ON “Show reading list on "
+                           "profile”, or we'll only see a partial list of what you follow.")
+    except Exception:
+        pass
     if reconnect:
         return page(message=f"Cookie for “{label}” refreshed. It keeps its sync history, so the "
-                            "next sync only pulls new posts (no re-backfill, no Discord spam).")
-    return page(message=f"{service.capitalize()} account connected. It will backfill on the "
-                        "next sync (or press Sync now below).")
+                            "next sync only pulls new posts (no re-backfill, no Discord spam)." + public_note)
+    return page(message=f"{service.capitalize()} account connected as “{label}”. It will backfill "
+                        "on the next sync (or press Sync now below)." + public_note)
 
 
 @app.post("/accounts/delete")
