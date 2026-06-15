@@ -10,7 +10,9 @@ episodes (audio streamed to R2). The creator's campaign name is the "publication
 is_paid + current_user_can_view drive the paid/locked flags. First sync per
 account is a silent backfill (notified=1); later syncs notify via notify.flush().
 """
+import html as _htmlmod
 import io
+import json
 import logging
 import random
 import threading
@@ -131,6 +133,87 @@ def _thumb_url(a):
     return next((c for c in cands if isinstance(c, str) and c.startswith("http")), None)
 
 
+def _pm_to_html(node) -> str:
+    """Render Patreon's content_json_string (a ProseMirror doc) to HTML."""
+    if isinstance(node, list):
+        return "".join(_pm_to_html(n) for n in node)
+    if not isinstance(node, dict):
+        return ""
+    t = node.get("type")
+    inner = _pm_to_html(node.get("content")) if node.get("content") else ""
+    if t == "doc":
+        return inner
+    if t == "paragraph":
+        return f"<p>{inner}</p>" if inner else ""
+    if t == "heading":
+        lvl = min(max(int((node.get("attrs") or {}).get("level") or 2), 1), 6)
+        return f"<h{lvl}>{inner}</h{lvl}>"
+    if t == "text":
+        text = _htmlmod.escape(node.get("text") or "")
+        for m in node.get("marks") or []:
+            mt = m.get("type")
+            if mt in ("bold", "strong"):
+                text = f"<strong>{text}</strong>"
+            elif mt in ("italic", "em"):
+                text = f"<em>{text}</em>"
+            elif mt in ("strike", "strikethrough"):
+                text = f"<s>{text}</s>"
+            elif mt == "code":
+                text = f"<code>{text}</code>"
+            elif mt == "link":
+                href = _htmlmod.escape(((m.get("attrs") or {}).get("href")) or "", quote=True)
+                text = f'<a href="{href}" rel="noopener">{text}</a>'
+        return text
+    if t == "image":
+        a = node.get("attrs") or {}
+        src = _htmlmod.escape(a.get("src") or a.get("url") or "", quote=True)
+        alt = _htmlmod.escape(a.get("alt") or "", quote=True)
+        return f'<p><img src="{src}" alt="{alt}" loading="lazy"></p>' if src else ""
+    if t in ("bulletList", "bullet_list"):
+        return f"<ul>{inner}</ul>"
+    if t in ("orderedList", "ordered_list"):
+        return f"<ol>{inner}</ol>"
+    if t in ("listItem", "list_item"):
+        return f"<li>{inner}</li>"
+    if t == "blockquote":
+        return f"<blockquote>{inner}</blockquote>"
+    if t in ("horizontalRule", "horizontal_rule"):
+        return "<hr>"
+    if t in ("hardBreak", "hard_break"):
+        return "<br>"
+    if t in ("codeBlock", "code_block"):
+        return f"<pre><code>{inner}</code></pre>"
+    return inner   # unknown node — keep its children rather than dropping text
+
+
+def _post_detail(s, post_id):
+    """The full post: Patreon serves the body in content_json_string on the
+    per-post endpoint (the stream listing omits it)."""
+    d = _get(s, f"{API}/posts/{post_id}",
+             {"fields[post]": "content_json_string,teaser_text_json_string"})
+    if not d:
+        return None
+    return (d.get("data") or {}).get("attributes") or {}
+
+
+def _render_doc(raw):
+    if not raw:
+        return ""
+    try:
+        return _pm_to_html(json.loads(raw))
+    except (ValueError, TypeError):
+        return ""
+
+
+def _needs_body(existing) -> bool:
+    """True if a stored article is a locked/stub/short placeholder we should try
+    to replace with the full body (but a video watch-link card is final)."""
+    h = existing["html"] or ""
+    if "Watch this video on Patreon" in h:
+        return False
+    return bool(existing["is_locked"]) or 'class="stub"' in h or len(h) < 200
+
+
 def sync_account(account) -> tuple[int, str]:
     """Sync one Patreon account. Returns (new_count, status_message)."""
     s = _session(account["cookie"])
@@ -185,23 +268,34 @@ def sync_account(account) -> tuple[int, str]:
                 # fall through and store it as an article instead
 
         # ---- everything else (text / video / image / link) -> article ----
-        # Patreon videos are expiring, Cloudflare-protected HLS streams that can't
-        # be embedded, so a video post becomes an article whose body links out to
-        # watch on Patreon (and whose card shows the poster thumbnail).
+        # The stream omits the body; the full text lives in content_json_string on
+        # the per-post endpoint, which we fetch (only for new posts or stub/locked
+        # ones we want to upgrade) and render to HTML. Videos are expiring,
+        # Cloudflare-protected HLS streams that can't be embedded, so a video post
+        # becomes an article that links out to watch on Patreon.
         is_video = (a.get("post_type") or "") == "video_external_file"
         thumb = _thumb_url(a)
-        body = _clean_body(a.get("content")) if (can_view and a.get("content")) else ""
+        existing = db.get_article_by_message_id(guid)
+        if existing and not _needs_body(existing):
+            db.add_article_source(existing["id"], account["label"])
+            continue
+
+        content_html = ""
+        if can_view:
+            detail = _post_detail(s, pid)
+            content_html = _render_doc((detail or {}).get("content_json_string"))
+            time.sleep(random.uniform(0.5, 1.2))   # polite between per-post fetches
+        body = content_html
         if is_video:
             body = (f'<p class="stub">🎬 <a href="{url}">Watch this video on Patreon →</a></p>'
-                    + body)
+                    + (content_html or ""))
         if not (body or "").strip():
-            body = _teaser_stub(url, a.get("teaser_text"))
+            body = _teaser_stub(url, None)
         locked = is_paid and not can_view
 
-        existing = db.get_article_by_message_id(guid)
         if existing:
-            if existing["is_locked"] and can_view and a.get("content"):
-                db.upgrade_article_body(existing["id"], _clean_body(a["content"]), account["label"])
+            if content_html:
+                db.upgrade_article_body(existing["id"], body, account["label"])
             db.add_article_source(existing["id"], account["label"])
             continue
         aid = db.insert_article(
