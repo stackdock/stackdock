@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS articles (
     is_paid INTEGER DEFAULT 0,         -- 1 if the source post is paid-subscriber-only
     is_locked INTEGER DEFAULT 0,       -- 1 if paid but we only got a preview (no full access)
     hidden INTEGER DEFAULT 0,          -- 1 = manually hidden from the listing
-    notified INTEGER DEFAULT 0         -- 1 once announced in a Discord digest
+    notified INTEGER DEFAULT 0,        -- 1 once announced in a Discord digest
+    media_key TEXT                     -- Patreon video: the post id, for /media HLS playback
 );
 
 CREATE TABLE IF NOT EXISTS users (
@@ -167,6 +168,7 @@ def init():
                            ("articles", "is_paid INTEGER DEFAULT 0"),
                            ("articles", "is_locked INTEGER DEFAULT 0"),
                            ("articles", "hidden INTEGER DEFAULT 0"),
+                           ("articles", "media_key TEXT"),
                            ("episodes", "image_url TEXT"),
                            ("episodes", "slug TEXT"),
                            ("episodes", "paid_access INTEGER DEFAULT 0"),
@@ -329,20 +331,25 @@ def upgrade_article_body(article_id: int, html: str, added_by: str) -> None:
 
 def insert_article(message_id, publication, title, author, original_url, html,
                    published_at, added_by=None, cover_image=None, is_paid=0, is_locked=0,
-                   notified=0) -> int:
+                   notified=0, media_key=None) -> int:
     with conn() as c:
         if c.execute("SELECT 1 FROM articles WHERE message_id = ?", (message_id,)).fetchone():
             return 0
         cur = c.execute(
             """INSERT OR IGNORE INTO articles
                (message_id, publication, title, author, original_url, html, published_at,
-                created_at, added_by, cover_image, slug, is_paid, is_locked, notified)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                created_at, added_by, cover_image, slug, is_paid, is_locked, notified, media_key)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (message_id, publication, title, author, original_url, html, published_at,
              now_iso(), added_by, cover_image, _unique_slug(c, "articles", title),
-             1 if is_paid else 0, 1 if is_locked else 0, 1 if notified else 0),
+             1 if is_paid else 0, 1 if is_locked else 0, 1 if notified else 0, media_key),
         )
         return cur.lastrowid or 0
+
+
+def set_article_media(article_id: int, media_key: str) -> None:
+    with conn() as c:
+        c.execute("UPDATE articles SET media_key = ? WHERE id = ?", (media_key, article_id))
 
 
 _ARTICLE_COLS = (

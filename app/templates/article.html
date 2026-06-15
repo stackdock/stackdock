@@ -14,7 +14,20 @@
   {% if a.is_paid and a.is_locked %}<p class="form-error">Preview only — the connected account doesn't pay for this publication. <a href="{{ a.original_url }}" rel="noopener">Read the full post →</a></p>{% endif %}
   {# the cover image is the post's first image, which the mirrored body already
      contains — only show it for link-only stubs that have no body images #}
-  {% if a.cover_image and a.html and 'class="stub"' in a.html %}<img class="episode-art" src="{{ a.cover_image }}" alt="">{% endif %}
+  {% if a.media_key %}
+  <video id="patreon-video" controls playsinline preload="metadata"
+         {% if a.cover_image %}poster="{{ a.cover_image }}"{% endif %}
+         style="width:100%; height:auto; background:#000; border-radius:6px; margin:0.5rem 0"></video>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
+  <script>
+    (function () {
+      var v = document.getElementById("patreon-video"), src = "/media/{{ a.slug }}";
+      if (v.canPlayType("application/vnd.apple.mpegurl")) { v.src = src; }      // Safari/iOS native HLS
+      else if (window.Hls && Hls.isSupported()) { var h = new Hls(); h.loadSource(src); h.attachMedia(v); }
+      else { v.src = src; }
+    })();
+  </script>
+  {% elif a.cover_image and a.html and 'class="stub"' in a.html %}<img class="episode-art" src="{{ a.cover_image }}" alt="">{% endif %}
   <div class="body">{{ a.html | safe }}</div>
 </article>
 {% endblock %}

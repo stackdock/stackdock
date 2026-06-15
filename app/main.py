@@ -406,6 +406,27 @@ def audio_proxy(slug: str, user=Depends(auth.current_user)):
     return StreamingResponse(body, media_type=e["audio_mime"] or ctype, headers=headers)
 
 
+@app.get("/media/{slug}")
+def media_hls(slug: str, user=Depends(auth.current_user)):
+    """Redirect to a freshly-signed HLS playlist for a Patreon video article. The
+    browser's player streams the segments directly from Mux (CORS-open, signed);
+    nothing is downloaded or proxied through us. The signed URL expires, so we mint
+    a new one each play using a connected Patreon cookie."""
+    a = db.get_article_by_slug(slug)
+    if not a or not a["media_key"]:
+        raise HTTPException(404)
+    accts = db.list_accounts(service="patreon")
+    accts.sort(key=lambda x: x["label"] != a["added_by"])   # prefer the article's own account
+    for acc in accts:
+        try:
+            url = patreon.fresh_hls_url(acc["cookie"], a["media_key"])
+        except Exception:
+            url = None
+        if url:
+            return RedirectResponse(url, status_code=302)
+    raise HTTPException(503, "video unavailable (no working Patreon connection)")
+
+
 @app.get("/offline", response_class=HTMLResponse)
 def offline_page(request: Request):
     """Self-contained saved-episodes player. Deliberately unauthenticated and

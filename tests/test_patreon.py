@@ -40,7 +40,9 @@ def _post(pid, title, is_paid, can_view, ptype="text_only"):
 def _stream():
     return ([_post("1", "Free One", False, True),
              _post("2", "Paid Open", True, True),
-             _post("3", "Paid Locked", True, False)], {"c1": "Frienji"})
+             _post("3", "Paid Locked", True, False),
+             _post("4", "Video One", False, True, ptype="video_external_file")],
+            {"c1": "Frienji"})
 
 
 def _doc(text):
@@ -62,7 +64,7 @@ def world(fresh_db, monkeypatch):
 def test_patreon_pulls_full_body_and_flags(world):
     new, status = patreon.sync_account({"cookie": "sess-cookie-long-enough",
                                         "label": "erin", "last_sync": None})
-    assert new == 3
+    assert new == 4
     arts = {a["title"]: db.get_article_by_slug(a["slug"])
             for a in db.list_articles(publications=["Frienji"])}
     assert (arts["Free One"]["is_paid"], arts["Free One"]["is_locked"]) == (0, 0)
@@ -70,6 +72,7 @@ def test_patreon_pulls_full_body_and_flags(world):
     assert "Paid full body" in arts["Paid Open"]["html"]
     assert (arts["Paid Locked"]["is_paid"], arts["Paid Locked"]["is_locked"]) == (1, 1)
     assert "Read on Patreon" in arts["Paid Locked"]["html"]       # locked -> stub
+    assert arts["Video One"]["media_key"] == "4"                  # playable inline via /media
     assert "Frienji" in {p["publication"] for p in db.list_publications()}
 
 

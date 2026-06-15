@@ -186,6 +186,16 @@ def _pm_to_html(node) -> str:
     return inner   # unknown node — keep its children rather than dropping text
 
 
+def fresh_hls_url(cookie: str, post_id: str):
+    """A freshly-signed HLS (.m3u8) URL for a video post — Patreon's signed Mux
+    URLs expire, so /media fetches one on demand at play time."""
+    s = _session(cookie)
+    d = _get(s, f"{API}/posts/{post_id}", {"fields[post]": "post_file"})
+    pf = (((d or {}).get("data") or {}).get("attributes") or {}).get("post_file") or {}
+    url = pf.get("url") or ""
+    return url if ".m3u8" in url else None
+
+
 def _post_detail(s, post_id):
     """The full post: Patreon serves the body in content_json_string on the
     per-post endpoint (the stream listing omits it)."""
@@ -273,12 +283,19 @@ def sync_account(account) -> tuple[int, str]:
         # ones we want to upgrade) and render to HTML. Videos are expiring,
         # Cloudflare-protected HLS streams that can't be embedded, so a video post
         # becomes an article that links out to watch on Patreon.
+        # A video post is an article that plays inline: media_key = the post id, so
+        # /media/{slug} can fetch a fresh signed HLS playlist on demand (Patreon
+        # videos are Mux HLS — streamed straight to the browser, not downloaded).
         is_video = (a.get("post_type") or "") == "video_external_file"
+        video_key = pid if (is_video and can_view) else None
         thumb = _thumb_url(a)
         existing = db.get_article_by_message_id(guid)
-        if existing and not _needs_body(existing):
-            db.add_article_source(existing["id"], account["label"])
-            continue
+        if existing:
+            if video_key and not existing["media_key"]:
+                db.set_article_media(existing["id"], video_key)   # flag old video rows as playable
+            if not _needs_body(existing):
+                db.add_article_source(existing["id"], account["label"])
+                continue
 
         content_html = ""
         if can_view:
@@ -286,7 +303,7 @@ def sync_account(account) -> tuple[int, str]:
             content_html = _render_doc((detail or {}).get("content_json_string"))
             time.sleep(random.uniform(0.5, 1.2))   # polite between per-post fetches
         body = content_html
-        if is_video:
+        if is_video and not video_key:
             body = (f'<p class="stub">🎬 <a href="{url}">Watch this video on Patreon →</a></p>'
                     + (content_html or ""))
         if not (body or "").strip():
@@ -301,7 +318,7 @@ def sync_account(account) -> tuple[int, str]:
         aid = db.insert_article(
             message_id=guid, publication=pub, title=title, author=pub,
             original_url=url, html=body, published_at=published,
-            added_by=account["label"], cover_image=thumb,
+            added_by=account["label"], cover_image=thumb, media_key=video_key,
             is_paid=1 if is_paid else 0, is_locked=1 if locked else 0, notified=notified)
         if aid:
             db.add_article_source(aid, account["label"])
