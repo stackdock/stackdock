@@ -303,3 +303,14 @@ def test_show_paid_flag_needs_majority_paid(fresh_db):
     flags = {f["feed_name"]: f["paid"] for f in db.list_episode_feeds()}
     assert flags["Mixed Show"] == 0    # 2 paid vs 9 free -> not green
     assert flags["Paid Show"] == 1     # all paid -> green
+
+
+def test_init_keeps_known_services_drops_removed(fresh_db):
+    uid = db.create_user("z", "h")
+    db.add_account(uid, "patreon", "z", "cookie-long-enough")
+    with db.conn() as c:   # a leftover row for a service we no longer support
+        c.execute("INSERT INTO connected_accounts (user_id,service,label,cookie,created_at) "
+                  "VALUES (?,?,?,?,?)", (uid, "gumroad", "z-g", "x", db.now_iso()))
+    db.init()              # runs the startup cleanup
+    services = {a["service"] for a in db.list_accounts(user_id=uid)}
+    assert "patreon" in services and "gumroad" not in services

@@ -193,8 +193,10 @@ def init():
             c.execute("DROP TABLE substack_accounts")
         except sqlite3.OperationalError:
             pass  # old table doesn't exist
-        # gumroad was removed: drop its connected accounts (mirrored content stays)
-        c.execute("DELETE FROM connected_accounts WHERE service != 'substack'")
+        # drop accounts for services we no longer support (e.g. the removed gumroad);
+        # anything in the current SERVICES list (substack, patreon, ...) is kept.
+        ph = ",".join("?" * len(SERVICES))
+        c.execute(f"DELETE FROM connected_accounts WHERE service NOT IN ({ph})", SERVICES)
         # backfill slugs for rows created before slugs existed
         for table in ("articles", "episodes"):
             for row in c.execute(f"SELECT id, title FROM {table} WHERE slug IS NULL").fetchall():
