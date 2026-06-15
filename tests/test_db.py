@@ -286,3 +286,20 @@ def test_notified_migration_suppresses_backlog(tmp_path, monkeypatch):
     # a genuinely new insert afterwards IS pending
     db.insert_article("m2", "Pub", "Brand new", "a", None, "<p>x</p>", None, notified=0)
     assert [i["title"] for i in db.list_unnotified_items()] == ["Brand new"]
+
+
+def test_show_paid_flag_needs_majority_paid(fresh_db):
+    # mostly-free show with 2 paid bonus episodes -> NOT a paid sub (the Michael Tracey case)
+    for i in range(9):
+        db.insert_episode(f"f{i}", "Mixed Show", f"Free {i}", "", f"k{i}", 1, "audio/mpeg", "",
+                          None, is_paid=0)
+    for i in range(2):
+        db.insert_episode(f"p{i}", "Mixed Show", f"Paid {i}", "", f"pk{i}", 1, "audio/mpeg", "",
+                          None, is_paid=1)
+    # a predominantly-paid show
+    for i in range(3):
+        db.insert_episode(f"q{i}", "Paid Show", f"Ep {i}", "", f"qk{i}", 1, "audio/mpeg", "",
+                          None, is_paid=1)
+    flags = {f["feed_name"]: f["paid"] for f in db.list_episode_feeds()}
+    assert flags["Mixed Show"] == 0    # 2 paid vs 9 free -> not green
+    assert flags["Paid Show"] == 1     # all paid -> green
