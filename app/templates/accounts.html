@@ -55,6 +55,24 @@
 </section>
 
 <section>
+  <h2>Connect Patreon</h2>
+  <div class="auth-card" style="margin:1rem 0 0; max-width:560px">
+    <form method="post" action="/accounts/add">
+      <input type="hidden" name="service" value="patreon">
+      <label>session_id cookie value <input name="cookie" required autocomplete="off"></label>
+      <button type="submit">Connect Patreon</button>
+    </form>
+    <p class="hint" style="margin-top:1rem">
+      Saved under your username, <strong>{{ user.username }}</strong>. Pulls the posts
+      from creators you back (text → articles, audio → episodes).
+      <strong>Cookie:</strong> log in at patreon.com → <code>F12</code> →
+      <strong>Application</strong>/<strong>Storage</strong> → Cookies →
+      <code>https://www.patreon.com</code> → copy the <em>Value</em> of <code>session_id</code>.
+    </p>
+  </div>
+</section>
+
+<section>
   <p class="hint">
     ⚠️ Session cookies grant full access to your accounts and are stored in this server's
     database — only connect accounts on a server run by someone you trust. Cookies expire

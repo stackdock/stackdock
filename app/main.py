@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import auth, config, db, feedgen, metrics, notify, storage
-from .ingest import email_ingest, podcast_rss, substack
+from .ingest import email_ingest, patreon, podcast_rss, substack
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger("stackdock")
@@ -28,7 +28,8 @@ JOB_STATE: dict[str, dict] = {}   # job_id -> {last_run, result, ok}
 
 # all ingest jobs, by id — the scheduler AND the manual sync buttons both go
 # through run_job() so /status reflects manual runs too (not just scheduled ones)
-JOBS = {"email": email_ingest.run, "podcasts": podcast_rss.run, "substack": substack.run}
+JOBS = {"email": email_ingest.run, "podcasts": podcast_rss.run,
+        "substack": substack.run, "patreon": patreon.run}
 
 
 def run_job(job_id: str) -> int | None:
@@ -70,7 +71,7 @@ async def lifespan(app: FastAPI):
     # newly added cookie sits at "pending first sync"). Kick each job off shortly
     # after startup (staggered) so a fresh boot syncs within ~a minute.
     now = datetime.now(timezone.utc)
-    kickoff = {"email": 30, "substack": 60, "podcasts": 110}  # seconds after boot
+    kickoff = {"email": 30, "substack": 60, "patreon": 90, "podcasts": 130}  # seconds after boot
     scheduler.add_job(_tracked("email"), "interval",
                       minutes=config.EMAIL_POLL_MINUTES, id="email", max_instances=1,
                       coalesce=True, next_run_time=now + timedelta(seconds=kickoff["email"]))
@@ -80,6 +81,9 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(_tracked("substack"), "interval",
                       minutes=config.SUBSTACK_POLL_MINUTES, id="substack", max_instances=1,
                       coalesce=True, next_run_time=now + timedelta(seconds=kickoff["substack"]))
+    scheduler.add_job(_tracked("patreon"), "interval",
+                      minutes=config.PATREON_POLL_MINUTES, id="patreon", max_instances=1,
+                      coalesce=True, next_run_time=now + timedelta(seconds=kickoff["patreon"]))
     scheduler.start()
     log.info("Stackdock started. Feed: %s/feed/%s/all.xml", config.PUBLIC_BASE_URL, config.FEED_TOKEN)
     yield
@@ -318,27 +322,28 @@ def accounts_add(request: Request, user=Depends(auth.current_user),
         return page(error="The cookie value is required.")
     if len(cookie) < 20:
         return page(error="That doesn't look like a session cookie value.")
-    if not handle:
+    if service == "substack" and not handle:
         return page(error="Your Substack username is required (it's in your profile URL: "
                           "substack.com/@yourhandle).")
     # one login can't be connected twice (e.g. someone pasting another member's cookie)
     owner = db.account_with_cookie(service, cookie)
     if owner and not (owner["user_id"] == user["id"] and owner["label"] == label):
         return page(error="That cookie is already connected to another account. "
-                          "Each member connects their own Substack login.")
+                          "Each member connects their own login.")
     reconnect = db.account_exists(user["id"], service, label)
-    db.add_account(user["id"], service, label, cookie, handle)
-    # best-effort: is their reading list public? full discovery needs it (the
-    # cookie's own subscriptions API only returns a curated handful).
+    db.add_account(user["id"], service, label, cookie, handle or None)
+    # Substack only: best-effort reading-list-public check (full discovery needs
+    # it — the cookie's own subscriptions API returns only a curated handful).
     public_note = ""
-    try:
-        s = substack._session(cookie)
-        if not substack.get_publications_via_profile(s, handle):
-            public_note = (" ⚠️ We couldn't read your subscriptions from your public profile — "
-                           "open Substack → Settings → Privacy and turn ON “Show reading list on "
-                           "profile”, or we'll only see a partial list of what you follow.")
-    except Exception:
-        pass
+    if service == "substack":
+        try:
+            s = substack._session(cookie)
+            if not substack.get_publications_via_profile(s, handle):
+                public_note = (" ⚠️ We couldn't read your subscriptions from your public profile — "
+                               "open Substack → Settings → Privacy and turn ON “Show reading list on "
+                               "profile”, or we'll only see a partial list of what you follow.")
+        except Exception:
+            pass
     if reconnect:
         return page(message=f"Cookie for “{label}” refreshed. It keeps its sync history, so the "
                             "next sync only pulls new posts (no re-backfill, no Discord spam)." + public_note)
@@ -355,10 +360,12 @@ def accounts_delete(request: Request, user=Depends(auth.current_user),
 
 @app.post("/accounts/sync")
 def accounts_sync(request: Request, user=Depends(auth.current_user)):
-    """Any member can trigger a sync of all connected Substack accounts."""
-    count = run_job("substack")   # records JOB_STATE so /status reflects this run
-    msg = (f"Sync finished: {count} new item(s)." if count is not None
-           else "Sync failed — see Status for details.")
+    """Any member can trigger a sync of all connected accounts (Substack + Patreon)."""
+    counts = [run_job(j) for j in ("substack", "patreon")]   # each records JOB_STATE
+    if all(c is None for c in counts):
+        msg = "Sync failed — see Status for details."
+    else:
+        msg = f"Sync finished: {sum(c for c in counts if c)} new item(s)."
     return render(request, "accounts.html", **_accounts_ctx(user, message=msg))
 
 

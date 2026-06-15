@@ -132,7 +132,7 @@ def test_migration_from_legacy_substack_accounts(tmp_path, monkeypatch):
 
 
 def test_services_constant():
-    assert db.SERVICES == ("substack",)
+    assert db.SERVICES == ("substack", "patreon")
 
 
 def test_slugs_generated_and_unique(fresh_db):

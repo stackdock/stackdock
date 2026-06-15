@@ -682,7 +682,7 @@ def consume_reset_token(token_hash: str):
 
 # ---------- connected accounts (substack) ----------
 
-SERVICES = ("substack",)
+SERVICES = ("substack", "patreon")
 
 
 def add_account(user_id: int, service: str, label: str, cookie: str, handle: str | None = None) -> int:
