@@ -111,6 +111,24 @@ def _teaser_stub(url, teaser) -> str:
     return head + f'<p class="stub"><a href="{url}">Read on Patreon →</a></p>'
 
 
+def _thumb_url(a):
+    """Best-effort poster image for a post (used as the article's cover thumbnail)."""
+    pf = a.get("post_file") or {}
+    cands = []
+    dt = pf.get("default_thumbnail")
+    if isinstance(dt, str):
+        cands.append(dt)
+    elif isinstance(dt, dict):
+        cands.append(dt.get("url"))
+    for k in ("thumbnail", "image"):
+        v = a.get(k)
+        if isinstance(v, dict):
+            cands += [v.get("url"), v.get("large"), v.get("large_2")]
+        elif isinstance(v, str):
+            cands.append(v)
+    return next((c for c in cands if isinstance(c, str) and c.startswith("http")), None)
+
+
 def sync_account(account) -> tuple[int, str]:
     """Sync one Patreon account. Returns (new_count, status_message)."""
     s = _session(account["cookie"])
@@ -164,11 +182,19 @@ def sync_account(account) -> tuple[int, str]:
                             account["label"], title, e)
                 # fall through and store it as an article instead
 
-        # ---- everything else -> article (full body if viewable, else teaser link) ----
-        body = _clean_body(a.get("content")) if (can_view and a.get("content")) else None
-        locked = is_paid and not can_view
-        if not body:
+        # ---- everything else (text / video / image / link) -> article ----
+        # Patreon videos are expiring, Cloudflare-protected HLS streams that can't
+        # be embedded, so a video post becomes an article whose body links out to
+        # watch on Patreon (and whose card shows the poster thumbnail).
+        is_video = (a.get("post_type") or "") == "video_external_file"
+        thumb = _thumb_url(a)
+        body = _clean_body(a.get("content")) if (can_view and a.get("content")) else ""
+        if is_video:
+            body = (f'<p class="stub">🎬 <a href="{url}">Watch this video on Patreon →</a></p>'
+                    + body)
+        if not (body or "").strip():
             body = _teaser_stub(url, a.get("teaser_text"))
+        locked = is_paid and not can_view
 
         existing = db.get_article_by_message_id(guid)
         if existing:
@@ -179,8 +205,8 @@ def sync_account(account) -> tuple[int, str]:
         aid = db.insert_article(
             message_id=guid, publication=pub, title=title, author=pub,
             original_url=url, html=body, published_at=published,
-            added_by=account["label"], is_paid=1 if is_paid else 0,
-            is_locked=1 if locked else 0, notified=notified)
+            added_by=account["label"], cover_image=thumb,
+            is_paid=1 if is_paid else 0, is_locked=1 if locked else 0, notified=notified)
         if aid:
             db.add_article_source(aid, account["label"])
             new += 1

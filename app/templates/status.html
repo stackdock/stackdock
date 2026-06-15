@@ -61,7 +61,11 @@
 {% endif %}
 
 <section>
-  <h2>Sync jobs</h2>
+  <h2>Sync jobs
+    <form method="post" action="/status/sync" class="inline-form" style="display:inline; margin-left:0.75rem">
+      <button type="submit">Sync now</button>
+    </form>
+  </h2>
   <ul class="rows">
     {% for j in jobs %}
     <li>

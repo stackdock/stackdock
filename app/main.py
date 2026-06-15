@@ -358,6 +358,14 @@ def accounts_delete(request: Request, user=Depends(auth.current_user),
     return RedirectResponse("/accounts", status_code=303)
 
 
+@app.post("/status/sync")
+def status_sync(user=Depends(auth.current_user)):
+    """Sync-now button on /status: run the cookie syncs, then land back on /status."""
+    for j in ("substack", "patreon"):
+        run_job(j)
+    return RedirectResponse("/status", status_code=303)
+
+
 @app.post("/accounts/sync")
 def accounts_sync(request: Request, user=Depends(auth.current_user)):
     """Any member can trigger a sync of all connected accounts (Substack + Patreon)."""
