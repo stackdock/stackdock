@@ -628,8 +628,8 @@ def status_page(request: Request, user=Depends(auth.current_user)):
                   accounts=accounts,
                   github_repo=config.GITHUB_REPO,
                   github_workflows=config.GITHUB_WORKFLOWS,
-                  n_articles=len(db.list_articles()),
-                  n_episodes=len(db.list_episodes()))
+                  n_articles=db.count_articles(),
+                  n_episodes=db.count_episodes())
 
 
 # ---- Token-protected podcast feed (no session: podcast apps need plain URLs) ----
