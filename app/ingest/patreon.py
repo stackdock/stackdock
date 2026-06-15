@@ -30,11 +30,13 @@ _POST_FIELDS = ("title,content,teaser_text,post_type,is_paid,current_user_can_vi
 
 
 def _session(cookie: str):
-    """curl_cffi session impersonating Chrome (TLS + UA) so Cloudflare lets us in."""
+    """curl_cffi session impersonating Chrome (TLS + UA) so Cloudflare lets us in.
+    IMPORTANT: do NOT add extra headers (a Referer in particular makes Cloudflare
+    403 the request) — the bare impersonated session matches a real browser; any
+    override breaks the fingerprint consistency CF checks."""
     from curl_cffi import requests as cffi
     s = cffi.Session(impersonate="chrome", timeout=40)
     s.cookies.set("session_id", cookie, domain=".patreon.com")
-    s.headers.update({"Referer": "https://www.patreon.com/home", "Accept": "*/*"})
     return s
 
 
