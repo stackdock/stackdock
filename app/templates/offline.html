@@ -52,6 +52,45 @@
     return (b / 1099511627776).toFixed(2) + " TB";
   }
 
+  // Best-effort server sync. The page renders fully offline, but positions
+  // accumulated offline must still reach listen_positions so they survive the
+  // iOS PWA<->Safari storage split and follow you to other devices. These calls
+  // no-op/fail silently with no connection and flush when you're back online.
+  function pushServer(slug, position, duration, done, useBeacon) {
+    if (!navigator.onLine) return;
+    const body = JSON.stringify({ position: position || 0, duration: duration || 0, done: !!done });
+    try {
+      if (useBeacon && navigator.sendBeacon) {
+        navigator.sendBeacon("/api/positions/" + slug, new Blob([body], { type: "text/plain" }));
+        return;
+      }
+      fetch("/api/positions/" + slug, { method: "POST", credentials: "same-origin",
+        keepalive: true, headers: { "Content-Type": "application/json" }, body }).catch(() => {});
+    } catch {}
+  }
+  async function flushPositions(slugs) {
+    if (!navigator.onLine || !slugs.length) return;
+    let server = {};
+    try {
+      const r = await fetch("/api/positions", { credentials: "same-origin" });
+      if (r.ok) server = await r.json();
+    } catch { return; }
+    for (const slug of slugs) {
+      const local = parseFloat(localStorage.getItem("pos:" + slug) || "0");
+      const done = !!localStorage.getItem("done:" + slug);
+      const sp = server[slug] || {};
+      if (done && !sp.done) { pushServer(slug, 0, sp.duration || 0, true, false); continue; }
+      if ((sp.position || 0) > local && !done) {            // server further -> adopt locally
+        try { localStorage.setItem("pos:" + slug, String(sp.position));
+              if (sp.duration) localStorage.setItem("dur:" + slug, String(sp.duration)); } catch {}
+      } else if (local > (sp.position || 0) + 2 && local > 5) {   // offline gains -> push up
+        const dur = parseFloat(localStorage.getItem("dur:" + slug) || "0");
+        pushServer(slug, local, dur, false, false);
+      }
+    }
+  }
+
+  const slugs = [];
   let savedBytes = 0;   // total size of the saved episode audio (summed below)
 
   for (const req of keys) {
@@ -70,22 +109,38 @@
     const blob = await resp.blob();
     savedBytes += blob.size;
     audio.src = URL.createObjectURL(blob);
+    slugs.push(slug);
     // resume from the same per-episode position the main player uses
     const pos = parseFloat(localStorage.getItem("pos:" + slug) || "0");
     audio.addEventListener("loadedmetadata", () => {
+      // store duration too — index progress bars need dur:{slug} > 0 to render,
+      // and the server push carries it for cross-device resume
+      if (audio.duration) try { localStorage.setItem("dur:" + slug, String(audio.duration)); } catch {}
       if (pos > 10 && pos < audio.duration - 20 && !localStorage.getItem("done:" + slug))
         audio.currentTime = pos;
     });
-    let last = 0;
-    audio.addEventListener("timeupdate", () => {
-      if (Date.now() - last > 4000 && audio.currentTime > 5) {
-        last = Date.now();
-        try { localStorage.setItem("pos:" + slug, String(audio.currentTime)); } catch {}
+    let last = 0, lastPush = 0, played = false;
+    const persist = (leaving) => {
+      const t = audio.currentTime || 0;
+      if (t <= 5) return;                          // never stomp a real position with ~0
+      try { localStorage.setItem("pos:" + slug, String(t)); } catch {}
+      if (leaving || Date.now() - lastPush > 10000) {
+        lastPush = Date.now();
+        pushServer(slug, t, audio.duration || 0, false, leaving);
       }
+    };
+    audio.addEventListener("play", () => { played = true; });
+    audio.addEventListener("timeupdate", () => {
+      if (Date.now() - last > 4000) { last = Date.now(); persist(false); }
     });
+    audio.addEventListener("pause", () => { if (played) persist(true); });
+    const onLeave = () => { if (played) persist(true); };
+    window.addEventListener("pagehide", onLeave);
+    document.addEventListener("visibilitychange", () => { if (document.hidden) onLeave(); });
     audio.addEventListener("ended", () => {
       try { localStorage.setItem("done:" + slug, "1");
             localStorage.removeItem("pos:" + slug); } catch {}
+      pushServer(slug, 0, audio.duration || 0, true, false);
     });
     const del = document.createElement("button");
     del.textContent = "Remove";
@@ -97,6 +152,11 @@
     li.append(t, s, audio, del);
     list.append(li);
   }
+
+  // flush offline-accumulated positions up to the server now (if online) and
+  // again whenever connectivity returns (e.g. landing after a flight)
+  flushPositions(slugs);
+  window.addEventListener("online", () => flushPositions(slugs));
 
   // storage line: actual saved-audio size, plus how much room is left on device
   let line = keys.length
