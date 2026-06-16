@@ -52,7 +52,8 @@ def _doc(text):
 
 @pytest.fixture
 def world(fresh_db, monkeypatch):
-    bodies = {"1": _doc("Free full body"), "2": _doc("Paid full body")}
+    bodies = {"1": _doc("Free full body"), "2": _doc("Paid full body"),
+              "4": _doc("Video recipe text")}
     monkeypatch.setattr(patreon, "_authenticated", lambda s: True)
     monkeypatch.setattr(patreon, "fetch_stream", lambda s, n: _stream())
     monkeypatch.setattr(patreon, "_post_detail",
@@ -73,7 +74,9 @@ def test_patreon_pulls_full_body_and_flags(world):
     assert (arts["Paid Locked"]["is_paid"], arts["Paid Locked"]["is_locked"]) == (1, 1)
     assert "Read on Patreon" in arts["Paid Locked"]["html"]       # locked -> stub
     assert arts["Video One"]["media_key"] == "4"                  # playable inline via /media
-    assert "Frienji" in {p["publication"] for p in db.list_publications()}
+    assert "Video recipe text" in arts["Video One"]["html"]       # video posts carry their text too
+    pubs = {p["publication"]: p["paid"] for p in db.list_publications()}
+    assert pubs.get("Frienji") == 1                               # Patreon pubs are always green/paid
 
 
 def test_patreon_upgrades_stub_body_on_resync(world):

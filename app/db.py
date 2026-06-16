@@ -416,13 +416,15 @@ def list_publications():
     have paid access: at least one fully-accessible paid post AND at least as many
     accessible paid posts as locked previews. This stops a single fluke-unlocked
     post (e.g. an author freebie) from flagging a whole publication as a paid sub
-    we don't actually hold. Paid pubs sort first, then by article count."""
+    we don't actually hold. Patreon publications are always paid (you pay Patreon
+    to follow a creator). Paid pubs sort first, then by article count."""
     with conn() as c:
         return c.execute(
             "SELECT publication, COUNT(*) AS n, "
-            "(SUM(CASE WHEN is_paid = 1 AND is_locked = 0 THEN 1 ELSE 0 END) > 0 "
-            " AND SUM(CASE WHEN is_paid = 1 AND is_locked = 0 THEN 1 ELSE 0 END) "
-            "     >= SUM(CASE WHEN is_paid = 1 AND is_locked = 1 THEN 1 ELSE 0 END)) AS paid "
+            "(MAX(CASE WHEN message_id LIKE 'patreon:%' THEN 1 ELSE 0 END) = 1 "
+            " OR (SUM(CASE WHEN is_paid = 1 AND is_locked = 0 THEN 1 ELSE 0 END) > 0 "
+            "     AND SUM(CASE WHEN is_paid = 1 AND is_locked = 0 THEN 1 ELSE 0 END) "
+            "         >= SUM(CASE WHEN is_paid = 1 AND is_locked = 1 THEN 1 ELSE 0 END))) AS paid "
             "FROM articles WHERE hidden = 0 GROUP BY publication "
             "ORDER BY paid DESC, n DESC"
         ).fetchall()
@@ -577,15 +579,15 @@ def rename_feed(old_name: str, new_name: str) -> int:
 
 def list_episode_feeds():
     """[{'feed_name', 'n', 'paid'}], busiest first — podcast shows for the filter
-    bar. paid=1 (green) only when the show is PREDOMINANTLY paid: at least one paid
-    episode AND paid episodes >= free ones. So a mostly-free show with the odd paid
-    bonus episode isn't flagged as a paid subscription."""
+    bar. paid=1 (green) when the show is PREDOMINANTLY paid (>= as many paid as free
+    episodes), or it's a Patreon show (you pay Patreon to follow a creator)."""
     with conn() as c:
         return c.execute(
             "SELECT feed_name, COUNT(*) AS n, "
-            "(SUM(CASE WHEN is_paid = 1 THEN 1 ELSE 0 END) > 0 "
-            " AND SUM(CASE WHEN is_paid = 1 THEN 1 ELSE 0 END) "
-            "     >= SUM(CASE WHEN is_paid = 0 THEN 1 ELSE 0 END)) AS paid "
+            "(MAX(CASE WHEN guid LIKE 'patreon:%' THEN 1 ELSE 0 END) = 1 "
+            " OR (SUM(CASE WHEN is_paid = 1 THEN 1 ELSE 0 END) > 0 "
+            "     AND SUM(CASE WHEN is_paid = 1 THEN 1 ELSE 0 END) "
+            "         >= SUM(CASE WHEN is_paid = 0 THEN 1 ELSE 0 END))) AS paid "
             "FROM episodes GROUP BY feed_name ORDER BY n DESC"
         ).fetchall()
 

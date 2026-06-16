@@ -217,10 +217,9 @@ def _render_doc(raw):
 
 def _needs_body(existing) -> bool:
     """True if a stored article is a locked/stub/short placeholder we should try
-    to replace with the full body (but a video watch-link card is final)."""
+    to replace with the full body. Video posts have body text too (the recipe /
+    write-up alongside the player), so they're upgraded like any other post."""
     h = existing["html"] or ""
-    if "Watch this video on Patreon" in h:
-        return False
     return bool(existing["is_locked"]) or 'class="stub"' in h or len(h) < 200
 
 

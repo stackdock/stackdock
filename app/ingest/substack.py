@@ -108,17 +108,32 @@ def _post_by_id(s: requests.Session, post_id) -> dict | None:
 
 
 _PAYWALL_MARKERS = ("paywall-jump", "paywalltodom", 'class="paywall')
+# Phrases Substack renders in a no-access preview's paywall gate/CTA.
+_PAYWALL_GATES = ("keep reading with", "this post is for paid", "this post is for pay",
+                  "upgrade to paid", "become a paid subscriber", "subscribe to keep reading",
+                  "7-day free trial", "to read the full post")
 
 
 def _is_locked(post: dict) -> bool:
-    """For a paid post, Substack injects a paywall-jump marker into body_html
-    ONLY when the account can read past the paywall (full access). A no-access
-    preview is just the truncated teaser and omits the marker entirely. (Length
-    ratios are unreliable — some previews run several paragraphs.)"""
+    """Decide whether a paid post's body is a no-access PREVIEW (vs the full text).
+    Signals, in priority order:
+      1. Substack injects a paywall marker (`_PAYWALL_MARKERS`) into body_html ONLY
+         when the account can read past the wall — present ⇒ full access.
+      2. A genuine no-access preview shows a paywall gate/CTA (`_PAYWALL_GATES`) —
+         present ⇒ locked.
+      3. Some publications' templates (e.g. J'accuse, custom domains) emit NEITHER
+         marker nor gate even on fully-readable posts, so the marker alone gives a
+         false "locked". As a last resort treat a substantial body as full and only
+         a tiny stub as a preview. Callers should prefer the paid-SUBSCRIPTION
+         signal (pub["paid"]) over this body heuristic where it's available."""
     bh = (post.get("body_html") or "").lower()
     if not bh:
         return True
-    return not any(m in bh for m in _PAYWALL_MARKERS)
+    if any(m in bh for m in _PAYWALL_MARKERS):
+        return False
+    if any(g in bh for g in _PAYWALL_GATES):
+        return True
+    return len(bh) < 1000
 
 
 def _effective_base(s: requests.Session, sub: str | None, custom: str | None) -> str:
@@ -459,7 +474,7 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
                 new_body = None
                 if needs_body:
                     full = _post_by_id(s, post_id)
-                    if full and full.get("body_html") and not _is_locked(full):
+                    if full and full.get("body_html") and (pub.get("paid") or not _is_locked(full)):
                         new_body = _clean_body(full["body_html"])
                         log.info("[%s] upgraded existing post to full body: %s",
                                  account["label"], title)
@@ -473,7 +488,9 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
 
             full = _post_by_id(s, post_id)
             body = _clean_body((full or {}).get("body_html"))
-            locked = bool(is_paid and (_is_locked(full) if full else True))
+            # A confirmed paid subscriber (pub["paid"]) always has full access;
+            # fall back to the body heuristic only when membership is unknown.
+            locked = bool(is_paid and not pub.get("paid") and (_is_locked(full) if full else True))
             if body:
                 mirrored += 1
             else:
