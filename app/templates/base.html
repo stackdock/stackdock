@@ -81,6 +81,66 @@
 <script>
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
 
+// Global listening-position sync. Positions accrued while OFFLINE only live in
+// this device's localStorage (the player's server push no-ops with no network).
+// This flushes any local position that's ahead of the server up to /api/positions
+// on every app page — on load and whenever connectivity returns — so a session
+// listened offline (e.g. on a flight) reaches the server the moment you're back
+// online, regardless of which page you land on. (The /offline page does the same
+// for its own list; this covers the rest of the app, incl. just opening the index.)
+(function () {
+  var syncing = false;
+  function localPos(slug) {
+    var p = parseFloat(localStorage.getItem("pos:" + slug) || "0");
+    return isFinite(p) ? p : 0;
+  }
+  async function flush() {
+    if (syncing || !navigator.onLine) return;
+    syncing = true;
+    try {
+      var slugs = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf("pos:") === 0) slugs.push(k.slice(4));
+        else if (k && k.indexOf("done:") === 0) slugs.push(k.slice(5));
+      }
+      if (!slugs.length) return;
+      var server = {};
+      var r = await fetch("/api/positions", { credentials: "same-origin" });
+      if (r.ok) server = await r.json();
+      for (var j = 0; j < slugs.length; j++) {
+        var slug = slugs[j];
+        var sp = server[slug] || {};
+        var done = !!localStorage.getItem("done:" + slug);
+        if (done && !sp.done) {
+          await pushPos(slug, 0, parseFloat(localStorage.getItem("dur:" + slug) || sp.duration || 0), true);
+          continue;
+        }
+        var local = localPos(slug);
+        // push only when the device is genuinely ahead (>2s guard against jitter)
+        if (!done && local > 5 && local > (sp.position || 0) + 2) {
+          await pushPos(slug, local, parseFloat(localStorage.getItem("dur:" + slug) || 0), false);
+        }
+      }
+    } catch (e) { /* offline / transient — retried on next load or `online` */ }
+    finally { syncing = false; }
+  }
+  function pushPos(slug, position, duration, done) {
+    return fetch("/api/positions/" + slug, {
+      method: "POST", credentials: "same-origin", keepalive: true,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ position: position || 0, duration: duration || 0, done: !!done }),
+    }).catch(function () {});
+  }
+  // a tick after load (let the page settle), on reconnect, and when refocused
+  // (mobile often fires neither `load` nor `online` reliably after a freeze)
+  setTimeout(flush, 1500);
+  window.addEventListener("online", flush);
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) flush();
+  });
+})();
+
 // Remote thumbnails are hotlinked; when one 404s or is hotlink-blocked the <img>
 // renders blank. Swap any broken .thumb for its CSS fallback tile (the letter for
 // articles, ▶ for episodes). Capture phase: image error events don't bubble.

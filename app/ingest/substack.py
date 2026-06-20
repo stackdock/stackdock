@@ -108,32 +108,25 @@ def _post_by_id(s: requests.Session, post_id) -> dict | None:
 
 
 _PAYWALL_MARKERS = ("paywall-jump", "paywalltodom", 'class="paywall')
-# Phrases Substack renders in a no-access preview's paywall gate/CTA.
-_PAYWALL_GATES = ("keep reading with", "this post is for paid", "this post is for pay",
-                  "upgrade to paid", "become a paid subscriber", "subscribe to keep reading",
-                  "7-day free trial", "to read the full post")
 
 
 def _is_locked(post: dict) -> bool:
     """Decide whether a paid post's body is a no-access PREVIEW (vs the full text).
-    Signals, in priority order:
-      1. Substack injects a paywall marker (`_PAYWALL_MARKERS`) into body_html ONLY
-         when the account can read past the wall — present ⇒ full access.
-      2. A genuine no-access preview shows a paywall gate/CTA (`_PAYWALL_GATES`) —
-         present ⇒ locked.
-      3. Some publications' templates (e.g. J'accuse, custom domains) emit NEITHER
-         marker nor gate even on fully-readable posts, so the marker alone gives a
-         false "locked". As a last resort treat a substantial body as full and only
-         a tiny stub as a preview. Callers should prefer the paid-SUBSCRIPTION
-         signal (pub["paid"]) over this body heuristic where it's available."""
-    bh = (post.get("body_html") or "").lower()
-    if not bh:
-        return True
-    if any(m in bh for m in _PAYWALL_MARKERS):
-        return False
-    if any(g in bh for g in _PAYWALL_GATES):
-        return True
-    return len(bh) < 1000
+
+    The ONLY reliable positive proof of full access is Substack injecting a
+    paywall marker (`_PAYWALL_MARKERS`) into body_html — present ⇒ we read past
+    the wall ⇒ full access. Anything else is treated as a locked preview.
+
+    Body LENGTH is deliberately NOT a signal: a no-access preview can run several
+    thousand characters with no gate/CTA text, just truncating mid-sentence (e.g.
+    Delicious Tacos' "The Slave" preview is ~6 KB and emitted neither marker nor
+    gate — the old `len < 1000` rule misread it as full and showed it green-paid).
+
+    Callers short-circuit on the paid-SUBSCRIPTION signal (pub["paid"]) BEFORE
+    consulting this, so this only ever runs for accounts that don't pay — where
+    over-locking (a markerless body the reader somehow fully sees) is the safe
+    failure, but over-UNLOCKING a long preview is a visible bug."""
+    return not any(m in (post.get("body_html") or "").lower() for m in _PAYWALL_MARKERS)
 
 
 def _effective_base(s: requests.Session, sub: str | None, custom: str | None) -> str:

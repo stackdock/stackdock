@@ -69,7 +69,9 @@
     } catch {}
   }
   async function flushPositions(slugs) {
-    if (!navigator.onLine || !slugs.length) return;
+    if (!slugs.length) return;
+    // Don't trust navigator.onLine to gate the fetch — it gives false negatives;
+    // the request just rejects (caught) when there's truly no connection.
     let server = {};
     try {
       const r = await fetch("/api/positions", { credentials: "same-origin" });
@@ -88,6 +90,26 @@
         pushServer(slug, local, dur, false, false);
       }
     }
+  }
+
+  // Point the OS "now playing" session at whichever episode is currently playing.
+  function bindMedia(audio, meta) {
+    if (!("mediaSession" in navigator)) return;
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: meta.title || "Saved episode",
+        artist: meta.show || "Stackdock (offline)",
+        artwork: meta.art ? [{ src: meta.art, sizes: "512x512" }] : [],
+      });
+      navigator.mediaSession.setActionHandler("play", () => audio.play());
+      navigator.mediaSession.setActionHandler("pause", () => audio.pause());
+      navigator.mediaSession.setActionHandler("seekbackward", () => {
+        audio.currentTime = Math.max(0, audio.currentTime - 15); });
+      navigator.mediaSession.setActionHandler("seekforward", () => {
+        audio.currentTime = Math.min(audio.duration || 1e9, audio.currentTime + 30); });
+      try { navigator.mediaSession.setActionHandler("seekto", (d) => {
+        if (d.seekTime != null) audio.currentTime = d.seekTime; }); } catch {}
+    } catch {}
   }
 
   const slugs = [];
@@ -129,9 +151,25 @@
         pushServer(slug, t, audio.duration || 0, false, leaving);
       }
     };
-    audio.addEventListener("play", () => { played = true; });
+    audio.addEventListener("play", () => {
+      played = true;
+      // Pause any other saved episode so only one plays at a time, then claim the
+      // Media Session for THIS audio. Without an active media session iOS treats
+      // background/locked playback as fair game and pauses it ("random pauses");
+      // registering it keeps audio alive off-screen and lights up lock-screen keys.
+      document.querySelectorAll("audio").forEach((o) => { if (o !== audio) o.pause(); });
+      bindMedia(audio, meta);
+    });
     audio.addEventListener("timeupdate", () => {
       if (Date.now() - last > 4000) { last = Date.now(); persist(false); }
+      if ("mediaSession" in navigator && !audio.paused && navigator.mediaSession.metadata
+          && navigator.mediaSession.metadata.title === (meta.title || slug)) {
+        try {
+          if (isFinite(audio.duration))
+            navigator.mediaSession.setPositionState({
+              duration: audio.duration, position: audio.currentTime, playbackRate: audio.playbackRate });
+        } catch {}
+      }
     });
     audio.addEventListener("pause", () => { if (played) persist(true); });
     const onLeave = () => { if (played) persist(true); };
@@ -157,6 +195,11 @@
   // again whenever connectivity returns (e.g. landing after a flight)
   flushPositions(slugs);
   window.addEventListener("online", () => flushPositions(slugs));
+  // mobile may fire neither `online` nor `load` reliably after a freeze/resume —
+  // retry the flush whenever the page is brought back to the foreground
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) flushPositions(slugs);
+  });
 
   // storage line: actual saved-audio size, plus how much room is left on device
   let line = keys.length
