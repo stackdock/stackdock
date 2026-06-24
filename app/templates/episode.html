@@ -72,8 +72,38 @@
   // `engaged` guards every save: a visit where you never pressed play must not
   // overwrite the stored position with 0 on the way out.
   let engaged = false;
+  let userScrubbed = false;     // a deliberate seek/skip/restart — may move the position backward
   let saved = parseFloat(store.get(K_POS) || "0");
+  // `floor` = furthest position we know is real (local, server, or reached by
+  // playback). The server push never drops BELOW it unless the user scrubbed
+  // back — so a slow cross-device fetch can't be clobbered by an early ~0:00 push.
+  let floor = saved;
   let serverDone = false;
+  let resumeTarget = saved;     // furthest of local vs server; what we seek to
+  let appliedTarget = -1;       // largest target already seeked to
+
+  const showResumeNote = (t) => {
+    const note = $("pp-resume");
+    note.textContent = "Resuming from " + fmt(t);
+    note.hidden = false;
+    setTimeout(() => { note.hidden = true; }, 5000);
+  };
+
+  // Seek to the furthest known position. Re-runnable: if a larger target arrives
+  // later (e.g. the /api/positions fetch resolves AFTER playback already started),
+  // jump FORWARD to it — unless the user has taken manual control. This is what
+  // makes cross-device resume survive a play-before-fetch race.
+  const applyResume = () => {
+    if (userScrubbed || store.get(K_DONE)) return;
+    if (!(a.readyState >= 1) || !isFinite(a.duration)) return;
+    const t = resumeTarget;
+    if (t <= 10 || t >= a.duration - 20 || t <= appliedTarget) return;
+    if (a.currentTime >= t - 1.5) { appliedTarget = t; return; }  // already at/past it
+    a.currentTime = t;
+    appliedTarget = t;
+    showResumeNote(t);
+  };
+
   // server position: lets resume follow you across devices and across the
   // Safari <-> installed-app storage split on iOS
   const serverSync = fetch("/api/positions", { credentials: "same-origin" })
@@ -83,34 +113,23 @@
       if (!sp) return;
       serverDone = !!sp.done;
       if (sp.done) { store.set(K_DONE, "1"); return; }
-      if (sp.position > saved) {
-        saved = sp.position;
+      if (sp.position > resumeTarget) {
+        resumeTarget = saved = sp.position;
+        floor = Math.max(floor, sp.position);
         store.set(K_POS, String(saved));
         if (sp.duration) store.set(K_DUR, String(sp.duration));
-        if (saved > 10 && a.readyState >= 1 && a.paused && !engaged) {
-          a.currentTime = saved;
-        }
-        if (saved > 10) {
-          const note = $("pp-resume");
-          note.textContent = "Resuming from " + fmt(saved);
-          note.hidden = false;
-          setTimeout(() => { note.hidden = true; }, 5000);
-        }
       }
+      applyResume();
     }).catch(() => {});
-  if (saved > 10 && !store.get(K_DONE)) {
-    const note = $("pp-resume");
-    note.textContent = "Resuming from " + fmt(saved);
-    note.hidden = false;
-    setTimeout(() => { note.hidden = true; }, 5000);
-  }
-  const restore = () => {
+  if (resumeTarget > 10 && !store.get(K_DONE)) showResumeNote(resumeTarget);
+
+  const onMeta = () => {
     $("pp-dur").textContent = fmt(a.duration);
     store.set(K_DUR, String(a.duration || 0));
-    if (saved > 10 && saved < a.duration - 20 && !store.get(K_DONE)) a.currentTime = saved;
+    applyResume();
   };
-  if (a.readyState >= 1) restore();           // metadata beat us to it
-  else a.addEventListener("loadedmetadata", restore, { once: true });
+  if (a.readyState >= 1) onMeta();             // metadata beat us to it
+  else a.addEventListener("loadedmetadata", onMeta, { once: true });
 
   const payload = (done) => JSON.stringify({
     position: a.currentTime || 0, duration: a.duration || 0, done: !!done });
@@ -129,9 +148,14 @@
   const save = (opts) => {
     if (!engaged) return;                      // never played this visit
     const t = a.currentTime || 0;
+    if (t > floor) floor = t;                  // playback advanced the high-water mark
     if (t > 5) store.set(K_POS, String(t));    // never stomp a real position with ~0
     else if (t === 0 && saved <= 5) store.del(K_POS);
     const leaving = opts && opts.leaving;
+    // Don't let an early/low position regress the server below the furthest
+    // known point unless the user deliberately scrubbed back — this is what kept
+    // a cross-device resume from surviving when play beat the positions fetch.
+    if (t > 5 && t < floor - 30 && !userScrubbed) return;
     if (t > 5 && (leaving || Date.now() - lastPush > 10000)) {
       lastPush = Date.now();
       pushServer(false, leaving);
@@ -171,13 +195,15 @@
   $("pp-play").onclick = () => { a.paused ? a.play() : a.pause(); };
   a.addEventListener("play", () => { engaged = true; store.del(K_DONE); setPlayIcon(); });
   a.addEventListener("pause", setPlayIcon);
-  $("pp-back").onclick = () => { a.currentTime = Math.max(0, a.currentTime - 15); };
-  $("pp-fwd").onclick = () => { a.currentTime = Math.min(a.duration || 1e9, a.currentTime + 30); };
+  $("pp-back").onclick = () => { userScrubbed = true; a.currentTime = Math.max(0, a.currentTime - 15); };
+  $("pp-fwd").onclick = () => { userScrubbed = true; a.currentTime = Math.min(a.duration || 1e9, a.currentTime + 30); };
   $("pp-seek").addEventListener("input", (e) => {
+    userScrubbed = true;
     if (a.duration) a.currentTime = a.duration * e.target.value / 1000;
   });
   $("pp-restart").onclick = (e) => {
-    e.preventDefault(); a.currentTime = 0; store.del(K_DONE); a.play();
+    e.preventDefault(); userScrubbed = true; floor = 0; appliedTarget = 1e9;  // deliberate reset to 0
+    a.currentTime = 0; store.del(K_DONE); a.play();
   };
   $("pp-done").onclick = (e) => {
     e.preventDefault(); store.set(K_DONE, "1"); store.del(K_POS); a.pause();
