@@ -346,6 +346,20 @@ def upgrade_article_body(article_id: int, html: str, added_by: str) -> None:
                   (html, added_by, article_id))
 
 
+def list_locked_articles(publication: str | None = None, limit: int = 5000):
+    """Locked previews (is_locked=1), optionally scoped to one publication.
+    Used by the periodic paid-content refresh to find posts worth re-fetching."""
+    with conn() as c:
+        if publication is not None:
+            return c.execute(
+                "SELECT id, message_id, title FROM articles "
+                "WHERE is_locked = 1 AND publication = ? LIMIT ?",
+                (publication, limit)).fetchall()
+        return c.execute(
+            "SELECT id, message_id, title, publication FROM articles "
+            "WHERE is_locked = 1 LIMIT ?", (limit,)).fetchall()
+
+
 def insert_article(message_id, publication, title, author, original_url, html,
                    published_at, added_by=None, cover_image=None, is_paid=0, is_locked=0,
                    notified=0, media_key=None) -> int:

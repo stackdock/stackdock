@@ -45,6 +45,12 @@ except json.JSONDecodeError:
 # Max posts to backfill per publication on an account's first sync
 SUBSTACK_BACKFILL_POSTS = int(os.getenv("SUBSTACK_BACKFILL_POSTS", "50"))
 SUBSTACK_POLL_MINUTES = int(os.getenv("SUBSTACK_POLL_MINUTES", "60"))
+# Periodic paid-content refresh: re-fetch locked previews in pubs a connected
+# account now pays for and upgrade them in place (upgrade-only, safe). Runs every
+# N hours (0 disables the schedule; the manual /admin button still works).
+# MAX caps how many locked posts to re-fetch per run so it can't hammer Substack.
+SUBSTACK_REFRESH_HOURS = int(os.getenv("SUBSTACK_REFRESH_HOURS", "12"))
+SUBSTACK_REFRESH_MAX = int(os.getenv("SUBSTACK_REFRESH_MAX", "150"))
 
 # ---- Patreon cookie sync (session_id; fetched via curl_cffi past Cloudflare) ----
 PATREON_BACKFILL_POSTS = int(os.getenv("PATREON_BACKFILL_POSTS", "50"))

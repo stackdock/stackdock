@@ -29,7 +29,8 @@ JOB_STATE: dict[str, dict] = {}   # job_id -> {last_run, result, ok}
 # all ingest jobs, by id — the scheduler AND the manual sync buttons both go
 # through run_job() so /status reflects manual runs too (not just scheduled ones)
 JOBS = {"email": email_ingest.run, "podcasts": podcast_rss.run,
-        "substack": substack.run, "patreon": patreon.run, "nyt": nyt.run}
+        "substack": substack.run, "patreon": patreon.run, "nyt": nyt.run,
+        "substack_refresh": substack.refresh_locked}
 
 
 def run_job(job_id: str) -> int | None:
@@ -99,6 +100,13 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(_tracked("nyt"), "interval",
                       minutes=config.NYT_POLL_MINUTES, id="nyt", max_instances=1,
                       coalesce=True, next_run_time=now + timedelta(seconds=150))
+    # Periodic paid-content refresh: upgrade locked previews once an account pays
+    # (upgrade-only, safe). Disabled when SUBSTACK_REFRESH_HOURS=0.
+    if config.SUBSTACK_REFRESH_HOURS > 0:
+        scheduler.add_job(_tracked("substack_refresh"), "interval",
+                          hours=config.SUBSTACK_REFRESH_HOURS, id="substack_refresh",
+                          max_instances=1, coalesce=True,
+                          next_run_time=now + timedelta(seconds=200))
     scheduler.start()
     log.info("Stackdock started. Feed: %s/feed/%s/all.xml", config.PUBLIC_BASE_URL, config.FEED_TOKEN)
     yield

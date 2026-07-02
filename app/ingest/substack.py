@@ -567,6 +567,60 @@ def run() -> int:
         _RUN_LOCK.release()
 
 
+def refresh_locked() -> int:
+    """Re-fetch locked previews in publications a connected account now PAYS for
+    and upgrade them to full in place. Upgrade-only — it never downgrades or
+    deletes, so it's safe to run on a schedule. Shares the sync lock so it can't
+    stack on a live sync (or another refresh). Returns count upgraded."""
+    if not _RUN_LOCK.acquire(blocking=False):
+        log.info("%s busy; skipping paid refresh.", __name__)
+        return 0
+    try:
+        return _refresh_locked()
+    finally:
+        _RUN_LOCK.release()
+
+
+def _refresh_locked() -> int:
+    upgraded = checked = 0
+    cap = config.SUBSTACK_REFRESH_MAX
+    for account in db.list_accounts(service="substack"):
+        if checked >= cap:
+            break
+        try:
+            s = _session(account["cookie"])
+            handle = account["handle"] or _self_handle(s)
+            if not handle:
+                continue
+            paid_names = {p["name"] for p in get_publications_via_profile(s, handle)
+                          if p.get("paid")}
+        except Exception as e:                                   # noqa: BLE001
+            log.warning("[%s] paid-refresh discovery failed: %s", account["label"], e)
+            continue
+        for name in paid_names:
+            for art in db.list_locked_articles(publication=name):
+                if checked >= cap:
+                    break
+                mid = art["message_id"] or ""
+                if not mid.startswith("substack:"):
+                    continue          # only canonical cookie-synced posts have a by-id
+                checked += 1
+                try:
+                    full = _post_by_id(s, mid.split(":", 1)[1])
+                except Exception:                               # noqa: BLE001
+                    continue
+                # only replace when this account genuinely has the full post
+                if full and full.get("body_html") and not _is_locked(full):
+                    body = _clean_body(full["body_html"])
+                    if body:
+                        db.upgrade_article_body(art["id"], body, account["label"])
+                        upgraded += 1
+                        log.info("[%s] paid-refresh upgraded: %s",
+                                 account["label"], art["title"])
+    log.info("Paid refresh: checked %d locked post(s), upgraded %d.", checked, upgraded)
+    return upgraded
+
+
 def _run() -> int:
     """Sync every connected account + manually tracked publications."""
     accounts = db.list_accounts(service='substack')
