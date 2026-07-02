@@ -668,23 +668,47 @@ def verify_paid_access() -> int:
 
 
 def _verify_paid_access() -> int:
-    probes = db.paid_publication_probes()   # [{publication, message_id}]
-    total = 0
-    for account in db.list_accounts(service="substack"):
-        s = _session(account["cookie"])
-        verified = []
-        for pr in probes:
-            pid = pr["message_id"].split(":", 1)[1]
+    probes = db.paid_publication_probes()   # {publication: [substack:id, ...]}
+    accounts = [(a, _session(a["cookie"])) for a in db.list_accounts(service="substack")]
+    if not accounts:
+        return 0
+    _, s0 = accounts[0]
+
+    # For each pub, pick a probe post that is CURRENTLY only_paid (audience is a
+    # property of the post, not the viewer — our stored is_paid can be stale, so
+    # a "paid" post may since have been un-paywalled and would read for everyone).
+    probe_by_pub: dict[str, str] = {}
+    for pub, mids in probes.items():
+        for mid in mids:
+            pid = mid.split(":", 1)[1]
             try:
-                full = _post_by_id(s, pid)
+                f = _post_by_id(s0, pid)
             except Exception:                                   # noqa: BLE001
                 continue
-            if full and full.get("body_html") and not _is_locked(full):
-                verified.append(pr["publication"])
-        db.set_account_paid_verified(account["id"], verified)
-        total += len(verified)
+            if f and f.get("audience") == "only_paid":
+                probe_by_pub[pub] = pid
+                break   # found a genuinely paywalled post to test this pub with
+
+    verified_by_acct: dict[int, list[str]] = {a["id"]: [] for a, _ in accounts}
+    for pub, pid in probe_by_pub.items():
+        for account, s in accounts:
+            try:
+                f = _post_by_id(s, pid)
+            except Exception:                                   # noqa: BLE001
+                continue
+            # PROOF of payment: the post is still only_paid AND this cookie reads
+            # the full body (not a hidden preview).
+            if (f and f.get("audience") == "only_paid"
+                    and f.get("body_html") and not _is_locked(f)):
+                verified_by_acct[account["id"]].append(pub)
+
+    total = 0
+    for account, _ in accounts:
+        names = verified_by_acct[account["id"]]
+        db.set_account_paid_verified(account["id"], names)
+        total += len(names)
         log.info("[%s] verified paid access: %d publication(s)",
-                 account["label"], len(verified))
+                 account["label"], len(names))
     return total
 
 

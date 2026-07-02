@@ -902,17 +902,24 @@ def set_account_subs(account_id: int, subs: list[dict]) -> None:
                   (payload, account_id))
 
 
-def paid_publication_probes() -> list[dict]:
-    """One paid post per publication (to test real paid access with a cookie).
-    Returns [{publication, message_id}] where message_id is a canonical
-    substack:{id} we can hand to posts/by-id. Article_sources is NOT usable for
-    "who pays" (posts dedupe across members, so a co-subscriber of an unlocked
-    post is not the payer) — access has to be tested, not inferred."""
+def paid_publication_probes(per_pub: int = 8) -> dict[str, list[str]]:
+    """Candidate paid post ids per publication for testing real paid access.
+    Returns {publication: [substack:{id}, ...]} newest-first. Several candidates
+    because our stored is_paid can be stale (a post can be un-paywalled later), so
+    the caller must confirm a candidate is CURRENTLY only_paid before trusting it.
+    Article_sources is NOT usable for "who pays" (posts dedupe across members, so
+    a co-subscriber of an unlocked post is not the payer) — access is tested."""
     with conn() as c:
-        return [dict(r) for r in c.execute(
-            "SELECT publication, MIN(message_id) AS message_id FROM articles "
+        rows = c.execute(
+            "SELECT publication, message_id FROM articles "
             "WHERE is_paid = 1 AND message_id LIKE 'substack:%' "
-            "AND publication IS NOT NULL GROUP BY publication").fetchall()]
+            "AND publication IS NOT NULL ORDER BY publication, id DESC").fetchall()
+    out: dict[str, list[str]] = {}
+    for r in rows:
+        lst = out.setdefault(r["publication"], [])
+        if len(lst) < per_pub:
+            lst.append(r["message_id"])
+    return out
 
 
 def set_account_paid_verified(account_id: int, names: list[str]) -> None:
