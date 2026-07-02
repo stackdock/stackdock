@@ -77,6 +77,9 @@ NYT_PROXY_PASS = os.getenv("NYT_PROXY_PASS", "")
 # finding a clean consumer-ISP IP (DataImpulse mixes in hosting ASNs).
 NYT_PROXY_STICKY_MINUTES = int(os.getenv("NYT_PROXY_STICKY_MINUTES", "30"))
 NYT_PROXY_MAX_TRIES = int(os.getenv("NYT_PROXY_MAX_TRIES", "20"))
+# How many times to launch a browser for the actual pull (each ~400 MB, so keep
+# this small — IP vetting is browser-free; this only retries DataDome blocks).
+NYT_BROWSER_TRIES = int(os.getenv("NYT_BROWSER_TRIES", "3"))
 NYT_PROXY_SESSION_PREFIX = os.getenv("NYT_PROXY_SESSION_PREFIX", "nyt")
 # How many 3s polls to wait for the article body / DataDome to settle.
 NYT_FETCH_POLL_TRIES = int(os.getenv("NYT_FETCH_POLL_TRIES", "15"))

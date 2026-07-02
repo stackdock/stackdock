@@ -29,6 +29,8 @@ import re
 import threading
 from dataclasses import dataclass, field
 
+import requests
+
 from app import config, db
 
 log = logging.getLogger(__name__)
@@ -124,6 +126,28 @@ def _looks_residential(org: str) -> bool:
     return bool(o) and not any(h in o for h in _HOSTING_HINTS)
 
 
+def _find_clean_session() -> tuple[str | None, str]:
+    """Find a sticky proxy sessid whose exit is a clean US (non-hosting) IP,
+    using cheap requests calls — NO browser. This is the memory-critical bit: a
+    headful Chromium is ~400 MB, so we must NOT launch one per proxy attempt.
+    Returns (sessid, org) or (None, reason)."""
+    for _ in range(config.NYT_PROXY_MAX_TRIES):
+        sessid = f"{config.NYT_PROXY_SESSION_PREFIX}{random.getrandbits(32):08x}"
+        user = _proxy_username(sessid)
+        scheme, rest = config.NYT_PROXY_SERVER.split("://", 1)
+        px = f"{scheme}://{user}:{config.NYT_PROXY_PASS}@{rest}"
+        try:
+            r = requests.get("https://ipinfo.io/json",
+                             proxies={"http": px, "https": px}, timeout=15)
+            info = r.json()
+        except Exception:                                       # noqa: BLE001
+            continue
+        org = info.get("org", "")
+        if info.get("country") == "US" and _looks_residential(org):
+            return sessid, org
+    return None, "no clean US residential exit found"
+
+
 def fetch_nyt_article(url: str, nyt_cookie: str | None = None) -> NytArticle:
     """Pull one NYT article. Raises NytFetchError / NytLiveBlogUnsupported."""
     url = url.strip()
@@ -146,19 +170,22 @@ def fetch_nyt_article(url: str, nyt_cookie: str | None = None) -> NytArticle:
 
     with sync_playwright() as pw:
         last_err = "no clean residential proxy IP found"
-        # Retry sticky sessions until we land on a clean consumer ISP.
-        for attempt in range(config.NYT_PROXY_MAX_TRIES):
-            # random sessid each try -> a FRESH exit IP. Deterministic sessids get
-            # "stuck" on the same (possibly hosting) IP for the whole sticky TTL,
-            # so retries would keep hitting the same bad exit.
-            sessid = f"{config.NYT_PROXY_SESSION_PREFIX}{random.getrandbits(32):08x}"
+        # Launch a browser only for the ACTUAL pull, and only a few times — never
+        # one per proxy attempt (that OOM'd the droplet: headful Chromium ~400 MB).
+        for _btry in range(config.NYT_BROWSER_TRIES):
+            # Vet the exit IP with cheap requests calls first (no browser).
+            sessid, org = _find_clean_session()
+            if not sessid:
+                last_err = org
+                break   # pool is all hosting right now — a browser won't help
             proxy = {"server": config.NYT_PROXY_SERVER,
                      "username": _proxy_username(sessid),
                      "password": config.NYT_PROXY_PASS}
             browser = pw.chromium.launch(
                 headless=False, proxy=proxy,
                 args=["--disable-blink-features=AutomationControlled",
-                      "--no-sandbox", "--disable-dev-shm-usage"])
+                      "--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu",
+                      "--no-zygote", "--js-flags=--max-old-space-size=256"])
             try:
                 ctx = browser.new_context(
                     user_agent=ua, locale="en-US",
@@ -169,26 +196,14 @@ def fetch_nyt_article(url: str, nyt_cookie: str | None = None) -> NytArticle:
                     "{get:()=>undefined});")
                 page = ctx.new_page()
 
-                # 1) confirm exit IP is a clean residential ISP
-                try:
-                    page.goto("https://ipinfo.io/json",
-                              wait_until="domcontentloaded", timeout=40000)
-                    info = json.loads(page.evaluate("() => document.body.innerText"))
-                except Exception:
-                    info = {}
-                org = info.get("org", "")
-                if info.get("country") != "US" or not _looks_residential(org):
-                    last_err = f"proxy exit not clean US residential (org={org!r})"
-                    browser.close()
-                    continue
-
-                # 2) prime DataDome on the home page (usually no challenge)
+                # IP is already vetted clean US residential — go straight to the
+                # site: prime DataDome on the home page (usually no challenge).
                 ctx.add_cookies(cookies)
                 page.goto("https://www.nytimes.com/",
                           wait_until="commit", timeout=60000)
                 page.wait_for_timeout(5000)
 
-                # 3) the article itself
+                # the article itself
                 try:
                     page.goto(url, wait_until="commit", timeout=60000)
                 except PWTimeout:
