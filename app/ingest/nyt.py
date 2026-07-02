@@ -41,12 +41,12 @@ log = logging.getLogger(__name__)
 _LOCKFILE = "/tmp/nyt_pull.lock"
 
 
-def _reap_chromium() -> None:
-    """Best-effort kill of leftover Chromium. Playwright doesn't always reap its
-    headful child processes under Xvfb, and on a ~1 GB box those orphans pile up
-    and OOM the server. NYT is the only thing here that launches Chromium, and
-    run() holds a lock so no pull is concurrent — so a blanket sweep is safe."""
-    for pat in ("chrome", "chromium", "headless_shell"):
+def _reap_browsers() -> None:
+    """Best-effort kill of any leftover browser. Playwright/Camoufox don't always
+    reap their child processes, and on a ~1 GB box those orphans pile up and OOM
+    the server. NYT is the only thing here that launches a browser, and run() holds
+    a cross-process lock so no pull is concurrent — so a blanket sweep is safe."""
+    for pat in ("camoufox", "firefox", "chrome", "chromium", "headless_shell"):
         try:
             subprocess.run(["pkill", "-9", "-f", pat],
                            timeout=10, check=False)
@@ -179,104 +179,82 @@ def fetch_nyt_article(url: str, nyt_cookie: str | None = None) -> NytArticle:
     if not config.NYT_PROXY_SERVER:
         raise NytFetchError("NYT_PROXY_SERVER not configured.")
 
-    from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
+    from camoufox.sync_api import Camoufox
 
-    ua = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-          "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
     cookies = _cookies_for(nyt_cookie)
+    last_err = "no clean residential proxy IP found"
+    # Launch a browser only for the ACTUAL pull, and only a few times — never one
+    # per proxy attempt (IP vetting above is browser-free). Camoufox is a hardened
+    # Firefox: it beats DataDome's device check (our old headful Chromium failed
+    # it) AND runs headless, so no Xvfb and a lighter footprint on the 1 GB box.
+    for _btry in range(config.NYT_BROWSER_TRIES):
+        sessid, org = _find_clean_session()
+        if not sessid:
+            last_err = org
+            break   # pool is all hosting right now — a browser won't help
+        proxy = {"server": config.NYT_PROXY_SERVER,
+                 "username": _proxy_username(sessid),
+                 "password": config.NYT_PROXY_PASS}
+        _reap_browsers()   # ensure at most one browser process tree is ever alive
+        try:
+            with Camoufox(headless=True, geoip=True, humanize=True,
+                          proxy=proxy) as browser:
+                page = browser.new_page()
+                page.context.add_cookies(cookies)
+                art, err = _do_pull(page, url)
+                if art is not None:
+                    return art
+                last_err = err
+        except Exception as e:               # noqa: BLE001 — retry on any failure
+            last_err = f"camoufox: {type(e).__name__}: {e}"
+        continue
+    raise NytFetchError(f"Could not pull article after "
+                        f"{config.NYT_BROWSER_TRIES} browser attempts: {last_err}")
 
-    with sync_playwright() as pw:
-        last_err = "no clean residential proxy IP found"
-        # Launch a browser only for the ACTUAL pull, and only a few times — never
-        # one per proxy attempt (that OOM'd the droplet: headful Chromium ~400 MB).
-        for _btry in range(config.NYT_BROWSER_TRIES):
-            # Vet the exit IP with cheap requests calls first (no browser).
-            sessid, org = _find_clean_session()
-            if not sessid:
-                last_err = org
-                break   # pool is all hosting right now — a browser won't help
-            proxy = {"server": config.NYT_PROXY_SERVER,
-                     "username": _proxy_username(sessid),
-                     "password": config.NYT_PROXY_PASS}
-            _reap_chromium()   # clear any stray from a prior attempt/run BEFORE
-            #                    launching, so at most one browser is ever alive
-            browser = pw.chromium.launch(
-                headless=False, proxy=proxy,
-                args=["--disable-blink-features=AutomationControlled",
-                      "--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu",
-                      "--no-zygote", "--js-flags=--max-old-space-size=256"])
-            try:
-                ctx = browser.new_context(
-                    user_agent=ua, locale="en-US",
-                    timezone_id="America/New_York",
-                    viewport={"width": 1366, "height": 900})
-                ctx.add_init_script(
-                    "Object.defineProperty(navigator,'webdriver',"
-                    "{get:()=>undefined});")
-                page = ctx.new_page()
 
-                # IP is already vetted clean US residential — go straight to the
-                # site: prime DataDome on the home page (usually no challenge).
-                ctx.add_cookies(cookies)
-                page.goto("https://www.nytimes.com/",
-                          wait_until="commit", timeout=60000)
-                page.wait_for_timeout(5000)
-
-                # the article itself
-                try:
-                    page.goto(url, wait_until="commit", timeout=60000)
-                except PWTimeout:
-                    pass
-                cooking = classify(url) == "cooking"
-                got, recipe, stuck = 0, None, 0
-                for _ in range(config.NYT_FETCH_POLL_TRIES):
-                    page.wait_for_timeout(3000)
-                    if (page.title() or "") == "nytimes.com":   # DataDome interstitial
-                        # a solvable interstitial clears in a few seconds; if it
-                        # persists it's a hard device check — bail early so we don't
-                        # keep a browser alive 45s (memory) before retrying a new IP.
-                        stuck += 1
-                        if stuck >= 4:
-                            break
-                        continue
-                    if cooking:
-                        # recipes live in a schema.org Recipe JSON-LD, not <p> tags
-                        recipe = page.evaluate(_RECIPE_JS)
-                        if recipe:
-                            break
-                    else:
-                        got = page.evaluate(
-                            f"() => document.querySelectorAll('{_ARTICLE_SELECTOR}').length")
-                        if got >= 5:
-                            break
-                html = page.content()
-                if (page.title() or "") == "nytimes.com" or "captcha-delivery" in html:
-                    last_err = "DataDome device check (article blocked on this IP)"
-                    browser.close()
-                    continue
-                if cooking:
-                    if not recipe:
-                        last_err = "recipe data (schema.org Recipe) not found"
-                        browser.close()
-                        continue
-                    art = _extract_recipe(url, recipe)
-                else:
-                    if got < 5:
-                        last_err = "no article body found (paywalled without access?)"
-                        browser.close()
-                        continue
-                    art = _extract(page, url)
-                browser.close()
-                return art
-            except Exception as e:               # noqa: BLE001 — retry on any failure
-                last_err = f"{type(e).__name__}: {e}"
-                try:
-                    browser.close()
-                except Exception:
-                    pass
-                continue
-        raise NytFetchError(f"Could not pull article after "
-                            f"{config.NYT_BROWSER_TRIES} browser attempts: {last_err}")
+def _do_pull(page, url: str) -> tuple[NytArticle | None, str]:
+    """Prime DataDome on the home page, load the article, extract. IP is already
+    vetted clean US residential. Returns (article, "") or (None, reason)."""
+    from playwright.sync_api import TimeoutError as PWTimeout
+    try:
+        page.goto("https://www.nytimes.com/", wait_until="commit", timeout=60000)
+    except Exception:                                           # noqa: BLE001
+        pass
+    page.wait_for_timeout(5000)
+    try:
+        page.goto(url, wait_until="commit", timeout=60000)
+    except PWTimeout:
+        pass
+    cooking = classify(url) == "cooking"
+    got, recipe, stuck = 0, None, 0
+    for _ in range(config.NYT_FETCH_POLL_TRIES):
+        page.wait_for_timeout(3000)
+        if (page.title() or "") == "nytimes.com":   # DataDome interstitial
+            # a solvable interstitial clears in a few seconds; if it persists it's
+            # a hard device check — bail early rather than hold the browser 45s.
+            stuck += 1
+            if stuck >= 4:
+                break
+            continue
+        if cooking:
+            recipe = page.evaluate(_RECIPE_JS)   # recipes live in Recipe JSON-LD
+            if recipe:
+                break
+        else:
+            got = page.evaluate(
+                f"() => document.querySelectorAll('{_ARTICLE_SELECTOR}').length")
+            if got >= 5:
+                break
+    html = page.content()
+    if (page.title() or "") == "nytimes.com" or "captcha-delivery" in html:
+        return None, "DataDome device check (article blocked on this IP)"
+    if cooking:
+        if not recipe:
+            return None, "recipe data (schema.org Recipe) not found"
+        return _extract_recipe(url, recipe), ""
+    if got < 5:
+        return None, "no article body found (paywalled without access?)"
+    return _extract(page, url), ""
 
 
 def _extract(page, url: str) -> NytArticle:
@@ -418,7 +396,7 @@ def run() -> int:
     try:
         return _run()
     finally:
-        _reap_chromium()   # sweep any browser Playwright left behind (OOM guard)
+        _reap_browsers()   # sweep any browser left behind (OOM guard)
         fcntl.flock(lockf, fcntl.LOCK_UN)
         lockf.close()
 

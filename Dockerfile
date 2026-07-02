@@ -1,12 +1,14 @@
-# Base on Microsoft's official Playwright image: Chromium + all its system libs
-# are baked in (matched to playwright 1.49.0), on Ubuntu Noble w/ Python 3.12.
-# This is what makes the NYT pull work — a real headful Chromium under Xvfb is
-# the only thing that gets past NYT's DataDome.
+# Base on Microsoft's official Playwright image: Firefox/Chromium system libs are
+# baked in (matched to playwright 1.49.0), on Ubuntu Noble w/ Python 3.12.
+# The NYT pull uses Camoufox (a hardened Firefox) — it beats DataDome's device
+# check that plain Chromium fails, and runs headless (no Xvfb needed).
 FROM mcr.microsoft.com/playwright/python:v1.49.0-noble
 WORKDIR /srv
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-# Xvfb gives the headful Chromium a virtual display on this headless server.
+# Fetch the Camoufox browser binary + GeoIP dataset into the image.
+RUN python -m camoufox fetch
+# Xvfb remains as a fallback display (Camoufox runs headless and won't need it).
 RUN apt-get update \
  && apt-get install -y --no-install-recommends xvfb \
  && rm -rf /var/lib/apt/lists/*
