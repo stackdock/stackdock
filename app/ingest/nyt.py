@@ -194,27 +194,39 @@ def fetch_nyt_article(url: str, nyt_cookie: str | None = None) -> NytArticle:
                     page.goto(url, wait_until="commit", timeout=60000)
                 except PWTimeout:
                     pass
-                got = 0
+                cooking = classify(url) == "cooking"
+                got, recipe = 0, None
                 for _ in range(config.NYT_FETCH_POLL_TRIES):
                     page.wait_for_timeout(3000)
-                    title = (page.title() or "")
-                    if title == "nytimes.com":       # DataDome interstitial
+                    if (page.title() or "") == "nytimes.com":   # DataDome interstitial
                         continue
-                    got = page.evaluate(
-                        f"() => document.querySelectorAll('{_ARTICLE_SELECTOR}').length")
-                    if got >= 5:
-                        break
+                    if cooking:
+                        # recipes live in a schema.org Recipe JSON-LD, not <p> tags
+                        recipe = page.evaluate(_RECIPE_JS)
+                        if recipe:
+                            break
+                    else:
+                        got = page.evaluate(
+                            f"() => document.querySelectorAll('{_ARTICLE_SELECTOR}').length")
+                        if got >= 5:
+                            break
                 html = page.content()
                 if (page.title() or "") == "nytimes.com" or "captcha-delivery" in html:
                     last_err = "DataDome device check (article blocked on this IP)"
                     browser.close()
                     continue
-                if got < 5:
-                    last_err = "no article body found (paywalled without access?)"
-                    browser.close()
-                    continue
-
-                art = _extract(page, url)
+                if cooking:
+                    if not recipe:
+                        last_err = "recipe data (schema.org Recipe) not found"
+                        browser.close()
+                        continue
+                    art = _extract_recipe(url, recipe)
+                else:
+                    if got < 5:
+                        last_err = "no article body found (paywalled without access?)"
+                        browser.close()
+                        continue
+                    art = _extract(page, url)
                 browser.close()
                 return art
             except Exception as e:               # noqa: BLE001 — retry on any failure
@@ -267,6 +279,88 @@ def _extract(page, url: str) -> NytArticle:
 
 def _escape(s: str) -> str:
     return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+
+
+# NYT Cooking recipes aren't in <article><p> — the content is a schema.org
+# Recipe JSON-LD. Find and return it (or null) from the page.
+_RECIPE_JS = """() => {
+  const blocks = [...document.querySelectorAll('script[type="application/ld+json"]')];
+  for (const b of blocks) {
+    let data; try { data = JSON.parse(b.textContent); } catch (e) { continue; }
+    const items = Array.isArray(data) ? data : (data['@graph'] || [data]);
+    for (const it of items) {
+      const t = it && it['@type'];
+      if (t === 'Recipe' || (Array.isArray(t) && t.includes('Recipe'))) return it;
+    }
+  }
+  return null;
+}"""
+
+
+def _ld_name(x) -> str:
+    if isinstance(x, dict):
+        return x.get("name", "") or ""
+    if isinstance(x, list):
+        return ", ".join(_ld_name(i) for i in x if i)
+    return x or ""
+
+
+def _fmt_duration(iso: str) -> str:
+    """ISO-8601 duration ('PT1H30M') -> '1 hr 30 min'. Passthrough on no match."""
+    if not iso:
+        return ""
+    m = re.match(r"PT(?:(\d+)H)?(?:(\d+)M)?", iso)
+    if not m or not (m.group(1) or m.group(2)):
+        return iso
+    h, mn = m.group(1), m.group(2)
+    return " ".join(p for p in [f"{h} hr" if h else "", f"{mn} min" if mn else ""] if p)
+
+
+def _extract_recipe(url: str, r: dict) -> NytArticle:
+    """Build a readable article from a schema.org Recipe JSON-LD block."""
+    title = (r.get("name") or "").strip()
+    author = _ld_name(r.get("author"))
+    desc = (r.get("description") or "").strip()
+    ingredients = [str(i).strip() for i in (r.get("recipeIngredient") or []) if i]
+    steps = []
+    for s in (r.get("recipeInstructions") or []):
+        if isinstance(s, dict):
+            steps.append((s.get("text") or s.get("name") or "").strip())
+        elif isinstance(s, str):
+            steps.append(s.strip())
+    steps = [s for s in steps if s]
+
+    yield_ = r.get("recipeYield")
+    if isinstance(yield_, list):
+        yield_ = yield_[0] if yield_ else ""
+    image = r.get("image")
+    if isinstance(image, list):
+        image = image[0] if image else ""
+    if isinstance(image, dict):
+        image = image.get("url") or image.get("@id") or ""
+
+    parts = []
+    if desc:
+        parts.append(f"<p>{_escape(desc)}</p>")
+    meta = [b for b in [_escape(str(yield_)) if yield_ else "",
+                        _fmt_duration(r.get("totalTime") or "")] if b]
+    if meta:
+        parts.append("<p><em>" + " · ".join(meta) + "</em></p>")
+    if ingredients:
+        parts.append("<h3>Ingredients</h3><ul>"
+                     + "".join(f"<li>{_escape(i)}</li>" for i in ingredients) + "</ul>")
+    if steps:
+        parts.append("<h3>Preparation</h3><ol>"
+                     + "".join(f"<li>{_escape(s)}</li>" for s in steps) + "</ol>")
+
+    return NytArticle(
+        url=url, canonical_url=url.split("?")[0], title=title, byline=author,
+        section="Cooking", published_at=(r.get("datePublished") or "").strip(),
+        body_html="\n".join(parts),
+        body_text="\n\n".join([desc] + ingredients + steps),
+        image_url=str(image or ""), kind="cooking",
+        paragraphs=(steps or ingredients),
+    )
 
 
 def run() -> int:
