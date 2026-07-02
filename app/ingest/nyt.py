@@ -195,6 +195,8 @@ def fetch_nyt_article(url: str, nyt_cookie: str | None = None) -> NytArticle:
             proxy = {"server": config.NYT_PROXY_SERVER,
                      "username": _proxy_username(sessid),
                      "password": config.NYT_PROXY_PASS}
+            _reap_chromium()   # clear any stray from a prior attempt/run BEFORE
+            #                    launching, so at most one browser is ever alive
             browser = pw.chromium.launch(
                 headless=False, proxy=proxy,
                 args=["--disable-blink-features=AutomationControlled",
