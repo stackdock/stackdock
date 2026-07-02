@@ -44,10 +44,17 @@ jobs:
             git reset --hard origin/main
             docker compose up -d --build
             docker image prune -f
-            # health check from inside the compose network (port 8000 isn't published on the host)
-            sleep 5
-            docker compose exec -T caddy wget -qO- http://stackdock:8000/healthz \
-              || (echo "Health check failed" && docker compose logs --tail=50 stackdock && exit 1)
+            # health check from inside the compose network (port 8000 isn't published on the host).
+            # the image ships a browser stack (Chromium + Xvfb) and boots slower, so POLL
+            # (up to ~120s) instead of a single shot that can fire before startup completes.
+            ok=""
+            for i in $(seq 1 24); do
+              if docker compose exec -T caddy wget -qO- http://stackdock:8000/healthz >/dev/null 2>&1; then
+                ok=1; break
+              fi
+              sleep 5
+            done
+            [ -n "$ok" ] || (echo "Health check failed" && docker compose logs --tail=50 stackdock && exit 1)
             # smoke test: every expected service must be running
             for svc in stackdock caddy uptime-kuma; do
               state=$(docker compose ps -q "$svc" | xargs -r docker inspect -f '{{.State.Running}}')
