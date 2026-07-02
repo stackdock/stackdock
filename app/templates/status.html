@@ -139,7 +139,7 @@
     {% endif %}
   </details>
   {% endfor %}
-  <p class="hint">Snapshot from each account’s last sync. “Pays for” also includes any paid publication the account has unlocked, even when its reading list is private.</p>
+  <p class="hint">“Pays for” is verified by actually reading a paywalled post with the account’s cookie (not guessed from membership state), so it’s accurate even when the reading list is private. Refreshed daily / via the <code>verify_paid</code> job.</p>
 </section>
 
 {% endblock %}

@@ -30,7 +30,8 @@ JOB_STATE: dict[str, dict] = {}   # job_id -> {last_run, result, ok}
 # through run_job() so /status reflects manual runs too (not just scheduled ones)
 JOBS = {"email": email_ingest.run, "podcasts": podcast_rss.run,
         "substack": substack.run, "patreon": patreon.run, "nyt": nyt.run,
-        "substack_refresh": substack.refresh_locked}
+        "substack_refresh": substack.refresh_locked,
+        "verify_paid": substack.verify_paid_access}
 
 
 def run_job(job_id: str) -> int | None:
@@ -107,6 +108,11 @@ async def lifespan(app: FastAPI):
                           hours=config.SUBSTACK_REFRESH_HOURS, id="substack_refresh",
                           max_instances=1, coalesce=True,
                           next_run_time=now + timedelta(seconds=200))
+    # Verify who actually pays for what (real access test) — drives the /status
+    # subscriptions breakdown. Daily is plenty; also a manual "verify_paid" job.
+    scheduler.add_job(_tracked("verify_paid"), "interval",
+                      hours=24, id="verify_paid", max_instances=1, coalesce=True,
+                      next_run_time=now + timedelta(seconds=260))
     scheduler.start()
     log.info("Stackdock started. Feed: %s/feed/%s/all.xml", config.PUBLIC_BASE_URL, config.FEED_TOKEN)
     yield
@@ -733,16 +739,18 @@ def status_page(request: Request, user=Depends(auth.current_user)):
     # demonstrably unlocked (catches paid subs a private reading list hides).
     account_subs = []
     for a in accounts:
-        try:
-            subs = json.loads(a["subs_json"]) if a["subs_json"] else []
-        except (TypeError, ValueError, KeyError):
-            subs = []
-        pays = set(db.account_paid_pubs(a["label"])) | {s["name"] for s in subs if s.get("paid")}
-        free = [s["name"] for s in subs if not s.get("paid") and s["name"] not in pays]
+        def _load(col):
+            try:
+                return json.loads(a[col]) if a[col] else []
+            except (TypeError, ValueError, KeyError):
+                return []
+        subs = _load("subs_json")          # names the account subscribes to
+        pays = set(_load("paid_json"))      # CONFIRMED paid (real access tested)
+        sub_names = {s["name"] for s in subs} | pays
+        free = sorted(n for n in sub_names if n not in pays)
         account_subs.append({
             "label": a["label"], "handle": a["handle"], "service": a["service"],
-            "pays": sorted(pays), "free": sorted(free),
-            "total": len(pays) + len(free),
+            "pays": sorted(pays), "free": free, "total": len(sub_names),
         })
     return render(request, "status.html", user=user,
                   r2=metrics.r2_metrics(),

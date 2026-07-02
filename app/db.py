@@ -193,7 +193,8 @@ def init():
                            ("episodes", "is_paid INTEGER DEFAULT 0"),
                            ("connected_accounts", "last_alert TEXT"),
                            ("connected_accounts", "handle TEXT"),
-                           ("connected_accounts", "subs_json TEXT")]:
+                           ("connected_accounts", "subs_json TEXT"),
+                           ("connected_accounts", "paid_json TEXT")]:
             try:
                 c.execute(f"ALTER TABLE {table} ADD COLUMN {col}")
             except sqlite3.OperationalError:
@@ -901,15 +902,25 @@ def set_account_subs(account_id: int, subs: list[dict]) -> None:
                   (payload, account_id))
 
 
-def account_paid_pubs(label: str) -> list[str]:
-    """Publications this account demonstrably PAYS for — it has contributed a
-    full (unlocked) paid article. Catches paid subs a private reading list hides."""
+def paid_publication_probes() -> list[dict]:
+    """One paid post per publication (to test real paid access with a cookie).
+    Returns [{publication, message_id}] where message_id is a canonical
+    substack:{id} we can hand to posts/by-id. Article_sources is NOT usable for
+    "who pays" (posts dedupe across members, so a co-subscriber of an unlocked
+    post is not the payer) — access has to be tested, not inferred."""
     with conn() as c:
-        return [r["publication"] for r in c.execute(
-            "SELECT DISTINCT a.publication FROM articles a "
-            "JOIN article_sources s ON s.article_id = a.id "
-            "WHERE s.label = ? AND a.is_paid = 1 AND a.is_locked = 0 "
-            "AND a.publication IS NOT NULL", (label,)).fetchall()]
+        return [dict(r) for r in c.execute(
+            "SELECT publication, MIN(message_id) AS message_id FROM articles "
+            "WHERE is_paid = 1 AND message_id LIKE 'substack:%' "
+            "AND publication IS NOT NULL GROUP BY publication").fetchall()]
+
+
+def set_account_paid_verified(account_id: int, names: list[str]) -> None:
+    """Persist the publications an account was CONFIRMED to pay for (it could read
+    a paywalled post). Authoritative source for the /status 'pays for' list."""
+    with conn() as c:
+        c.execute("UPDATE connected_accounts SET paid_json = ? WHERE id = ?",
+                  (json.dumps(sorted(set(names))), account_id))
 
 
 def update_account(account_id: int, last_sync: str | None, status: str) -> None:

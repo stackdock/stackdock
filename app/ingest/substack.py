@@ -649,6 +649,45 @@ def _refresh_locked() -> int:
     return upgraded
 
 
+def verify_paid_access() -> int:
+    """Authoritatively determine which publications each account PAYS for by
+    testing real access: fetch one known paid post per publication via the
+    account's cookie and check whether it reads the full body (not a preview).
+
+    This is the only trustworthy 'who pays' signal — membership_state can lie and
+    article_sources definitely does (deduped posts credit co-subscribers, not the
+    payer). It also catches paid subs hidden behind a private reading list.
+    Returns the total number of (account, publication) paid pairs confirmed."""
+    if not _RUN_LOCK.acquire(blocking=False):
+        log.info("%s busy; skipping paid-access verification.", __name__)
+        return 0
+    try:
+        return _verify_paid_access()
+    finally:
+        _RUN_LOCK.release()
+
+
+def _verify_paid_access() -> int:
+    probes = db.paid_publication_probes()   # [{publication, message_id}]
+    total = 0
+    for account in db.list_accounts(service="substack"):
+        s = _session(account["cookie"])
+        verified = []
+        for pr in probes:
+            pid = pr["message_id"].split(":", 1)[1]
+            try:
+                full = _post_by_id(s, pid)
+            except Exception:                                   # noqa: BLE001
+                continue
+            if full and full.get("body_html") and not _is_locked(full):
+                verified.append(pr["publication"])
+        db.set_account_paid_verified(account["id"], verified)
+        total += len(verified)
+        log.info("[%s] verified paid access: %d publication(s)",
+                 account["label"], len(verified))
+    return total
+
+
 def _run() -> int:
     """Sync every connected account + manually tracked publications."""
     accounts = db.list_accounts(service='substack')
