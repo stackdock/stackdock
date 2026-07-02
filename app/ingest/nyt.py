@@ -26,6 +26,7 @@ import json
 import logging
 import random
 import re
+import subprocess
 import threading
 from dataclasses import dataclass, field
 
@@ -35,6 +36,19 @@ from app import config, db
 
 log = logging.getLogger(__name__)
 _RUN_LOCK = threading.Lock()
+
+
+def _reap_chromium() -> None:
+    """Best-effort kill of leftover Chromium. Playwright doesn't always reap its
+    headful child processes under Xvfb, and on a ~1 GB box those orphans pile up
+    and OOM the server. NYT is the only thing here that launches Chromium, and
+    run() holds a lock so no pull is concurrent — so a blanket sweep is safe."""
+    for pat in ("chrome", "chromium", "headless_shell"):
+        try:
+            subprocess.run(["pkill", "-9", "-f", pat],
+                           timeout=10, check=False)
+        except Exception:                                       # noqa: BLE001
+            pass
 
 # DataDome blocks datacenter/hosting ASNs. Rather than a fragile whitelist of
 # ISP names (which rejects legit regional ISPs and wastes attempts), we BLOCK
@@ -209,10 +223,16 @@ def fetch_nyt_article(url: str, nyt_cookie: str | None = None) -> NytArticle:
                 except PWTimeout:
                     pass
                 cooking = classify(url) == "cooking"
-                got, recipe = 0, None
+                got, recipe, stuck = 0, None, 0
                 for _ in range(config.NYT_FETCH_POLL_TRIES):
                     page.wait_for_timeout(3000)
                     if (page.title() or "") == "nytimes.com":   # DataDome interstitial
+                        # a solvable interstitial clears in a few seconds; if it
+                        # persists it's a hard device check — bail early so we don't
+                        # keep a browser alive 45s (memory) before retrying a new IP.
+                        stuck += 1
+                        if stuck >= 4:
+                            break
                         continue
                     if cooking:
                         # recipes live in a schema.org Recipe JSON-LD, not <p> tags
@@ -251,7 +271,7 @@ def fetch_nyt_article(url: str, nyt_cookie: str | None = None) -> NytArticle:
                     pass
                 continue
         raise NytFetchError(f"Could not pull article after "
-                            f"{config.NYT_PROXY_MAX_TRIES} tries: {last_err}")
+                            f"{config.NYT_BROWSER_TRIES} browser attempts: {last_err}")
 
 
 def _extract(page, url: str) -> NytArticle:
@@ -389,6 +409,7 @@ def run() -> int:
     try:
         return _run()
     finally:
+        _reap_chromium()   # sweep any browser Playwright left behind (OOM guard)
         _RUN_LOCK.release()
 
 
