@@ -11,7 +11,7 @@ DATA_DIR = Path(os.getenv("DATA_DIR", "/data"))
 DB_PATH = DATA_DIR / "stackdock.db"
 
 # ---- Site / auth ----
-SITE_TITLE = os.getenv("SITE_TITLE", "Stackdock")
+SITE_TITLE = os.getenv("SITE_TITLE", "Chudstack")
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "http://localhost:8000").rstrip("/")
 # Signs session cookies. Generate with: openssl rand -hex 32
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-change-me")

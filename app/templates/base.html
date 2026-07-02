@@ -46,12 +46,12 @@
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Stackdock">
+  <meta name="apple-mobile-web-app-title" content="Chudstack">
   <link rel="icon" type="image/svg+xml" href="/static/rss.svg">
 </head>
 <body>
   <header class="masthead">
-    <a class="wordmark" href="/"><img class="brand-chud" src="/static/chud-spin-clear.svg" alt=""><span class="fun-label">{{ site_title }}</span><span class="work-label">4HL'er</span></a>
+    <a class="wordmark" href="/"><img class="brand-chud" src="/static/wojak-figure.svg" alt=""><span class="fun-label">{{ site_title }}</span><span class="work-label">4HL'er</span></a>
     <nav>
       {% if user is defined and user %}
         <a href="/"><span class="fun-label">Articles</span><span class="work-label">Documents</span></a>
@@ -224,9 +224,9 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
     var still = store.get("chudstill") === "1";
     function applyChud() {
       if (still) html.dataset.chud = "still"; else delete html.dataset.chud;
-      // toggle the HEADER logo only: spinning chud (default) <-> wojak (alt).
+      // toggle the HEADER logo only: wojak (default) <-> spinning chud (alt).
       // The login-page figures always stay the tumbling wojak.
-      chud.src = still ? "/static/wojak-figure.svg" : "/static/chud-spin-clear.svg";
+      chud.src = still ? "/static/chud-spin-clear.svg" : "/static/wojak-figure.svg";
     }
     applyChud();
     chud.style.cursor = "pointer";

@@ -47,6 +47,29 @@
   <p class="hint">Metrics cached 5 min. Load/memory need DO's metrics agent (on by default on new droplets).</p>
 </section>
 
+<section>
+  <h2>New York Times</h2>
+  <ul class="rows">
+    {% if not nyt.configured %}
+      <li><span class="spine">nyt</span><span class="row-title">Not configured — set <code>NYT_COOKIE</code> + <code>NYT_PROXY_*</code> in .env</span><span></span></li>
+    {% else %}
+      <li><span class="spine">token</span><span class="row-title">{{ "✅ cookie set" if nyt.cookie_set else "❌ NYT_COOKIE missing" }}</span><span></span></li>
+      {% if not nyt.proxy_set %}
+        <li><span class="spine">proxy</span><span class="row-title">❌ no proxy — set <code>NYT_PROXY_SERVER</code> (a datacenter IP is blocked by DataDome)</span><span></span></li>
+      {% elif nyt.proxy_error %}
+        <li><span class="spine">proxy</span><span class="row-title">❌ {{ nyt.proxy_error }}</span><span></span></li>
+      {% else %}
+        <li><span class="spine">proxy</span><span class="row-title">{{ "✅" if nyt.proxy_ok else "❌" }} exit {{ nyt.proxy_ip }} · {{ nyt.proxy_country }} · {{ "residential" if nyt.proxy_residential else "⚠️ non-residential (" ~ nyt.proxy_org ~ ")" }}</span><span></span></li>
+      {% endif %}
+      <li><span class="spine">pulls</span><span class="row-title">{{ "⚠️" if nyt_counts.failed else "✅" }} {{ nyt_counts.ready }} pulled · {{ nyt_counts.pulling }} pending · {{ nyt_counts.failed }} failed</span>{% if nyt_counts.last_pull %}<time>last {{ nyt_counts.last_pull[:16] }}</time>{% endif %}</li>
+      {% for f in nyt_failures if f.status != 'pulling' %}
+        <li><span class="spine">failed</span><span class="row-title">❌ {{ f.status }}<br><small class="hint" style="word-break:break-all">{{ f.original_url }}</small></span><span></span></li>
+      {% endfor %}
+    {% endif %}
+  </ul>
+  <p class="hint">Proxy check is a live one-shot through the residential gateway, cached 5 min. NYT cookie validity can only be confirmed by an actual pull.</p>
+</section>
+
 {% if github_repo %}
 <section>
   <h2>Pipelines</h2>

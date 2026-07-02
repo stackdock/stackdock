@@ -149,3 +149,53 @@ def _fetch_do() -> dict:
 
 def do_metrics() -> dict:
     return _cached("do", _fetch_do)
+
+
+# ---------------- NYT (cookie + residential proxy health) ----------------
+
+# ASN/org hints — mirror app/ingest/nyt.py so the status reads the same way.
+_NYT_RESIDENTIAL = ("comcast", "charter", "spectrum", "verizon", "at&t", "att ",
+                    "t-mobile", "tmobile", "cox", "centurylink", "frontier",
+                    "cablevision", "optimum", "rcn", "grande", "windstream",
+                    "mediacom", "sparklight", "cable", "communications",
+                    "broadband", "telecom", "fios", "wireless")
+_NYT_HOSTING = ("rocks computer", "hosting", "datacenter", "data center", "cloud",
+                "server", "colo", "zayo", "digitalocean", "amazon", "google",
+                "ovh", "hetzner", "linode", "vultr")
+
+
+def _fetch_nyt() -> dict:
+    """Cookie presence + a live one-shot proxy check (exit IP / country / ASN).
+
+    Cheap enough to cache for 5 min like the other metrics — one HTTP GET through
+    the proxy, no browser. Soft-fails so it can never break /status.
+    """
+    cookie_set = bool(config.NYT_COOKIE)
+    proxy_set = bool(config.NYT_PROXY_SERVER)
+    if not cookie_set and not proxy_set:
+        return {"configured": False}
+    out = {"configured": True, "cookie_set": cookie_set, "proxy_set": proxy_set}
+    if proxy_set:
+        try:
+            user = f"{config.NYT_PROXY_USER}__cr.us"      # US exit, no sticky needed
+            scheme, rest = config.NYT_PROXY_SERVER.split("://", 1)
+            px = f"{scheme}://{user}:{config.NYT_PROXY_PASS}@{rest}"
+            r = requests.get("https://ipinfo.io/json",
+                             proxies={"http": px, "https": px}, timeout=20)
+            j = r.json()
+            org = j.get("org", "")
+            residential = (any(h in org.lower() for h in _NYT_RESIDENTIAL)
+                           and not any(h in org.lower() for h in _NYT_HOSTING))
+            out.update({
+                "proxy_ok": r.status_code == 200 and j.get("country") == "US",
+                "proxy_ip": j.get("ip"), "proxy_country": j.get("country"),
+                "proxy_org": org, "proxy_residential": residential,
+            })
+        except Exception as e:
+            out["proxy_ok"] = False
+            out["proxy_error"] = f"{type(e).__name__}: {e}"
+    return out
+
+
+def nyt_metrics() -> dict:
+    return _cached("nyt", _fetch_nyt)

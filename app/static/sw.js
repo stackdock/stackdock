@@ -1,10 +1,10 @@
-/* Stackdock service worker.
+/* Chudstack service worker.
    Deliberately minimal: this is a PRIVATE, cookie-authenticated app, so we
    never cache page content (it could outlive a logout). Static assets are
    stale-while-revalidate (instant from cache, refreshed in the background so
    style/JS changes propagate without a hard refresh); navigations are
    network-only with a tiny offline fallback. */
-const STATIC_CACHE = "stackdock-static-v13";
+const STATIC_CACHE = "stackdock-static-v14";
 const AUDIO_CACHE = "stackdock-audio-v1";   // user's saved episodes — never purge
 
 self.addEventListener("install", (e) => {
@@ -45,7 +45,7 @@ self.addEventListener("fetch", (e) => {
         "<!doctype html><meta name=viewport content='width=device-width'>" +
         "<body style='font-family:system-ui;background:#f6f7f4;color:#1c2420;" +
         "display:grid;place-items:center;height:100vh;margin:0'>" +
-        "<div style='text-align:center'><h2>Stackdock is offline</h2>" +
+        "<div style='text-align:center'><h2>Chudstack is offline</h2>" +
         "<p>Reconnect and pull to refresh.</p></div>",
         { headers: { "Content-Type": "text/html" } })));
   }

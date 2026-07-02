@@ -30,7 +30,7 @@
 <body>
   <h1>📦 Saved on this device</h1>
   <p class="soft">These play with no connection. Positions still save locally and
-    sync back when you're online. <a href="/">← back to Stackdock</a></p>
+    sync back when you're online. <a href="/">← back to Chudstack</a></p>
   <p class="soft" id="quota"></p>
   <ul id="list"></ul>
   <p class="soft" id="empty" hidden>Nothing saved yet. Open an episode and tap
@@ -98,7 +98,7 @@
     try {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: meta.title || "Saved episode",
-        artist: meta.show || "Stackdock (offline)",
+        artist: meta.show || "Chudstack (offline)",
         artwork: meta.art ? [{ src: meta.art, sizes: "512x512" }] : [],
       });
       navigator.mediaSession.setActionHandler("play", () => audio.play());

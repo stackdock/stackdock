@@ -949,6 +949,20 @@ def get_nyt_article_by_slug(slug: str):
         return c.execute("SELECT * FROM nyt_articles WHERE slug = ?", (slug,)).fetchone()
 
 
+def nyt_status_counts() -> dict:
+    """Pull-health snapshot for /status: counts by state + last successful pull."""
+    with conn() as c:
+        row = c.execute(
+            "SELECT "
+            "SUM(status='ready') AS ready, "
+            "SUM(status='pulling') AS pulling, "
+            "SUM(status LIKE 'failed:%') AS failed, "
+            "MAX(CASE WHEN status='ready' THEN created_at END) AS last_pull "
+            "FROM nyt_articles").fetchone()
+        return {"ready": row["ready"] or 0, "pulling": row["pulling"] or 0,
+                "failed": row["failed"] or 0, "last_pull": row["last_pull"]}
+
+
 def recent_nyt_failures(limit: int = 5) -> list:
     """Recent non-ready rows (pulling / failed) to surface state on the page."""
     with conn() as c:

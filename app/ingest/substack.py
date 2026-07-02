@@ -51,9 +51,10 @@ REQUEST_GAP_MIN, REQUEST_GAP_MAX = 0.8, 2.2
 MAX_RETRIES = 4            # on 429/503
 BACKOFF_CAP_S = 90
 
-# Substack auto-subscribes every account to its own promo blog ("The Substack
-# Post", post.substack.com). It's noise — never ingest it.
-SKIP_SUBDOMAINS = {"post"}
+# Substack auto-subscribes every account to its own promo/editorial blogs — "The
+# Substack Post" (post.substack.com) and "On Substack" (on.substack.com). Both
+# are Substack-official noise, never a real subscription — never ingest them.
+SKIP_SUBDOMAINS = {"post", "on"}
 
 
 def _session(cookie: str) -> requests.Session:

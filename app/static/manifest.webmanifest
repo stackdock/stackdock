@@ -1,6 +1,6 @@
 {
-  "name": "Stackdock",
-  "short_name": "Stackdock",
+  "name": "Chudstack",
+  "short_name": "Chudstack",
   "description": "Self-hosted content reader.",
   "start_url": "/?source=pwa",
   "scope": "/",
