@@ -1,0 +1,314 @@
+"""Pull a gated NYT article server-side, past DataDome.
+
+NYT sits behind DataDome, which defeats cookie-replay (requests/curl_cffi always
+403 — DataDome needs real JS execution). The working recipe, proven on the
+droplet, is a REAL browser through a residential proxy:
+
+  * Playwright Chromium, headless=False, under Xvfb (a virtual display).
+    Plain headless — even with stealth — is detected and blocked. Camoufox
+    would be nicer (C++ fingerprint spoofing) but won't run on the droplet.
+  * A residential proxy (the droplet's datacenter IP has negative DataDome
+    trust). We use DataImpulse; the exit MUST be a real consumer ISP, not a
+    hosting ASN, so we retry sticky sessions until we land on one.
+  * A STICKY session (DataImpulse rotates per-request otherwise, which kills the
+    IP-bound DataDome cookie between the first and second navigation).
+
+Normal articles + interactive + Cooking work. Live blogs (/live/...) hit a
+harder DataDome "Device Check" a GPU-less VM can't pass — we detect and reject
+those with a clear error instead of hanging.
+
+This module is import-safe (playwright is imported lazily inside fetch) so the
+web app boots even if the browser stack isn't installed in a given environment.
+"""
+from __future__ import annotations
+
+import json
+import logging
+import re
+import threading
+from dataclasses import dataclass, field
+
+from app import config, db
+
+log = logging.getLogger(__name__)
+_RUN_LOCK = threading.Lock()
+
+# ISPs we treat as clean residential/mobile exits. DataDome trusts these; it
+# blocks hosting ASNs (e.g. "Rocks Computer Services") that also appear in the
+# DataImpulse pool.
+_RESIDENTIAL_HINTS = (
+    "comcast", "charter", "spectrum", "verizon", "at&t", "att ", "t-mobile",
+    "tmobile", "cox", "centurylink", "frontier", "cablevision", "optimum",
+    "rcn", "grande", "windstream", "mediacom", "sparklight", "cable",
+    "communications", "broadband", "telecom", "fios", "wireless",
+)
+_HOSTING_HINTS = ("rocks computer", "hosting", "datacenter", "data center",
+                  "cloud", "server", "colo", "zayo", "digitalocean", "amazon",
+                  "google", "ovh", "hetzner", "linode", "vultr")
+
+_ARTICLE_SELECTOR = ("article p, section[name=articleBody] p, "
+                     "div[data-testid=live-blog-post] p")
+_GATE_MARKERS = ("gateway-content", "reached your limit", "Subscribe to continue",
+                 "Create your free account")
+
+
+class NytFetchError(RuntimeError):
+    """Generic failure (blocked, timeout, no content)."""
+
+
+class NytLiveBlogUnsupported(NytFetchError):
+    """Live-blog URL that hits the DataDome device-check we can't pass yet."""
+
+
+@dataclass
+class NytArticle:
+    url: str
+    canonical_url: str
+    title: str
+    byline: str = ""
+    section: str = ""
+    published_at: str = ""
+    body_html: str = ""
+    body_text: str = ""
+    image_url: str = ""
+    kind: str = "article"          # article | cooking | interactive
+    paragraphs: list[str] = field(default_factory=list)
+
+    def as_dict(self) -> dict:
+        d = self.__dict__.copy()
+        d.pop("paragraphs", None)
+        return d
+
+
+def is_nyt_url(url: str) -> bool:
+    return bool(re.match(r"https?://(www\.|cooking\.)?nytimes\.com/", url.strip(),
+                         re.I))
+
+
+def is_live_blog(url: str) -> bool:
+    return "/live/" in url.lower()
+
+
+def classify(url: str) -> str:
+    u = url.lower()
+    if "cooking.nytimes.com" in u:
+        return "cooking"
+    if "/interactive/" in u:
+        return "interactive"
+    return "article"
+
+
+def _proxy_username(sessid: str) -> str:
+    """DataImpulse sticky-session username: US exit, held for sessttl minutes."""
+    base = config.NYT_PROXY_USER
+    ttl = config.NYT_PROXY_STICKY_MINUTES
+    return f"{base}__cr.us;sessid.{sessid};sessttl.{ttl}"
+
+
+def _cookies_for(raw: str) -> list[dict]:
+    out = []
+    for part in (raw or "").split(";"):
+        part = part.strip()
+        if "=" in part:
+            name, val = part.split("=", 1)
+            name = name.strip()
+            # never inject a stale, IP-bound datadome cookie — the browser earns
+            # a fresh one through the proxy IP.
+            if name.lower() == "datadome":
+                continue
+            out.append({"name": name, "value": val.strip(),
+                        "domain": ".nytimes.com", "path": "/"})
+    return out
+
+
+def _looks_residential(org: str) -> bool:
+    o = (org or "").lower()
+    if any(h in o for h in _HOSTING_HINTS):
+        return False
+    return any(h in o for h in _RESIDENTIAL_HINTS)
+
+
+def fetch_nyt_article(url: str, nyt_cookie: str | None = None) -> NytArticle:
+    """Pull one NYT article. Raises NytFetchError / NytLiveBlogUnsupported."""
+    url = url.strip()
+    if not is_nyt_url(url):
+        raise NytFetchError("Not an nytimes.com URL.")
+    if is_live_blog(url):
+        raise NytLiveBlogUnsupported(
+            "Live blogs hit a DataDome device check we can't pass yet — "
+            "regular articles and Cooking recipes work.")
+
+    nyt_cookie = nyt_cookie or config.NYT_COOKIE
+    if not config.NYT_PROXY_SERVER:
+        raise NytFetchError("NYT_PROXY_SERVER not configured.")
+
+    from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
+
+    ua = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+          "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+    cookies = _cookies_for(nyt_cookie)
+
+    with sync_playwright() as pw:
+        last_err = "no clean residential proxy IP found"
+        # Retry sticky sessions until we land on a clean consumer ISP.
+        for attempt in range(config.NYT_PROXY_MAX_TRIES):
+            sessid = f"{config.NYT_PROXY_SESSION_PREFIX}{attempt}"
+            proxy = {"server": config.NYT_PROXY_SERVER,
+                     "username": _proxy_username(sessid),
+                     "password": config.NYT_PROXY_PASS}
+            browser = pw.chromium.launch(
+                headless=False, proxy=proxy,
+                args=["--disable-blink-features=AutomationControlled",
+                      "--no-sandbox", "--disable-dev-shm-usage"])
+            try:
+                ctx = browser.new_context(
+                    user_agent=ua, locale="en-US",
+                    timezone_id="America/New_York",
+                    viewport={"width": 1366, "height": 900})
+                ctx.add_init_script(
+                    "Object.defineProperty(navigator,'webdriver',"
+                    "{get:()=>undefined});")
+                page = ctx.new_page()
+
+                # 1) confirm exit IP is a clean residential ISP
+                try:
+                    page.goto("https://ipinfo.io/json",
+                              wait_until="domcontentloaded", timeout=40000)
+                    info = json.loads(page.evaluate("() => document.body.innerText"))
+                except Exception:
+                    info = {}
+                org = info.get("org", "")
+                if info.get("country") != "US" or not _looks_residential(org):
+                    last_err = f"proxy exit not clean US residential (org={org!r})"
+                    browser.close()
+                    continue
+
+                # 2) prime DataDome on the home page (usually no challenge)
+                ctx.add_cookies(cookies)
+                page.goto("https://www.nytimes.com/",
+                          wait_until="commit", timeout=60000)
+                page.wait_for_timeout(5000)
+
+                # 3) the article itself
+                try:
+                    page.goto(url, wait_until="commit", timeout=60000)
+                except PWTimeout:
+                    pass
+                got = 0
+                for _ in range(config.NYT_FETCH_POLL_TRIES):
+                    page.wait_for_timeout(3000)
+                    title = (page.title() or "")
+                    if title == "nytimes.com":       # DataDome interstitial
+                        continue
+                    got = page.evaluate(
+                        f"() => document.querySelectorAll('{_ARTICLE_SELECTOR}').length")
+                    if got >= 5:
+                        break
+                html = page.content()
+                if (page.title() or "") == "nytimes.com" or "captcha-delivery" in html:
+                    last_err = "DataDome device check (article blocked on this IP)"
+                    browser.close()
+                    continue
+                if got < 5:
+                    last_err = "no article body found (paywalled without access?)"
+                    browser.close()
+                    continue
+
+                art = _extract(page, url)
+                browser.close()
+                return art
+            except Exception as e:               # noqa: BLE001 — retry on any failure
+                last_err = f"{type(e).__name__}: {e}"
+                try:
+                    browser.close()
+                except Exception:
+                    pass
+                continue
+        raise NytFetchError(f"Could not pull article after "
+                            f"{config.NYT_PROXY_MAX_TRIES} tries: {last_err}")
+
+
+def _extract(page, url: str) -> NytArticle:
+    meta = page.evaluate(
+        """() => {
+            const g = (s) => document.querySelector(s);
+            const c = (n) => (g(`meta[property="${n}"]`)||g(`meta[name="${n}"]`)||{}).content||'';
+            const paras = Array.from(document.querySelectorAll(
+                'article p, section[name=articleBody] p, div[data-testid=live-blog-post] p'
+            )).map(p => p.innerText.trim()).filter(t => t.length > 40);
+            const bylineEl = g('[data-testid=byline] , .last-byline, [class*=byline] a');
+            return {
+                title: c('og:title') || document.title,
+                section: c('article:section') || c('ad:section'),
+                published: c('article:published_time') || c('article:published'),
+                image: c('og:image'),
+                canonical: (g('link[rel=canonical]')||{}).href || location.href,
+                byline: bylineEl ? bylineEl.innerText.trim() : '',
+                paras,
+            };
+        }"""
+    )
+    paras = meta.get("paras") or []
+    body_html = "\n".join(f"<p>{_escape(p)}</p>" for p in paras)
+    return NytArticle(
+        url=url,
+        canonical_url=(meta.get("canonical") or url).split("?")[0],
+        title=(meta.get("title") or "").strip(),
+        byline=(meta.get("byline") or "").strip(),
+        section=(meta.get("section") or "").strip(),
+        published_at=(meta.get("published") or "").strip(),
+        image_url=(meta.get("image") or "").strip(),
+        body_html=body_html,
+        body_text="\n\n".join(paras),
+        kind=classify(url),
+        paragraphs=paras,
+    )
+
+
+def _escape(s: str) -> str:
+    return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+
+
+def run() -> int:
+    """Process every pending ('pulling') NYT row. Returns count pulled OK.
+
+    Non-blocking lock so a manual /nyt/sync can't stack on the scheduler run
+    (same posture as substack.run).
+    """
+    if not _RUN_LOCK.acquire(blocking=False):
+        log.info("nyt pull already running; skipping overlapping run.")
+        return 0
+    try:
+        return _run()
+    finally:
+        _RUN_LOCK.release()
+
+
+def _run() -> int:
+    pending = db.list_nyt_pending()
+    pulled = 0
+    for row in pending:
+        row_id, url = row["id"], row["original_url"]
+        try:
+            art = fetch_nyt_article(url)
+            db.finish_nyt_article(
+                row_id, canonical_url=art.canonical_url, title=art.title,
+                author=art.byline, section=art.section, kind=art.kind,
+                html=art.body_html, published_at=art.published_at,
+                cover_image=art.image_url)
+            pulled += 1
+            log.info("NYT pulled %r (%d paragraphs)", art.title, len(art.paragraphs))
+        except NytFetchError as e:
+            db.set_nyt_status(row_id, f"failed: {e}"[:300])
+            log.warning("NYT pull failed for %s: %s", url, e)
+        except Exception as e:                       # noqa: BLE001
+            db.set_nyt_status(row_id, f"failed: {type(e).__name__}: {e}"[:300])
+            log.exception("NYT pull crashed for %s", url)
+    return pulled
+
+
+if __name__ == "__main__":     # manual test: python -m app.ingest.nyt <url>
+    import sys
+    a = fetch_nyt_article(sys.argv[1])
+    print(json.dumps({**a.as_dict(), "n_paragraphs": len(a.paragraphs)},
+                     indent=2)[:1200])

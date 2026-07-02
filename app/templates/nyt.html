@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}NYT · {{ site_title }}{% endblock %}
+{% block content %}
+
+{% macro pager(base) -%}
+  {% if total_pages > 1 %}
+  <nav class="pager">
+    {% if page > 1 %}<a href="{{ base }}&page={{ page - 1 }}">← prev</a>{% else %}<span class="off">← prev</span>{% endif %}
+    <span class="pager-info">page {{ page }} of {{ total_pages }}</span>
+    {% if page < total_pages %}<a href="{{ base }}&page={{ page + 1 }}">next →</a>{% else %}<span class="off">next →</span>{% endif %}
+  </nav>
+  {% endif %}
+{%- endmacro %}
+
+<section>
+  <h2><span class="fun-label">NYT</span><span class="work-label">The Wire</span> <span class="count">{{ total_items }}</span></h2>
+  {% if message %}<p class="form-ok">{{ message }}</p>{% endif %}
+  {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
+
+  <div class="auth-card" style="margin:0.5rem 0 1rem; max-width:640px">
+    <form method="post" action="/nyt/add" class="search-form">
+      <input type="url" name="url" required autocomplete="off" style="flex:1"
+             placeholder="Paste an nytimes.com or cooking.nytimes.com article URL…">
+      <button type="submit">Pull</button>
+    </form>
+    <p class="hint" style="margin-top:0.6rem">
+      Pulls the full gated article server-side and adds it to the shared shelf below.
+      Regular articles and <strong>Cooking</strong> recipes work; live blogs
+      (<code>/live/…</code>) aren’t supported yet.
+    </p>
+  </div>
+
+  {% if pending %}
+  <ul class="rows" style="margin-bottom:1rem">
+    {% for p in pending %}
+    <li>
+      <span class="spine">{{ 'pulling…' if p.status == 'pulling' else p.status }}</span>
+      <span class="row-title" style="word-break:break-all">{{ p.original_url }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  <form method="post" action="/nyt/sync" class="inline-form" style="margin-bottom:1rem">
+    <button type="submit">Check pending pulls now</button>
+  </form>
+  {% endif %}
+
+  <div class="list-controls">
+    <a class="sort-toggle" href="/nyt?sort={{ 'old' if sort == 'new' else 'new' }}">{{ 'Oldest first ↑' if sort == 'new' else 'Newest first ↓' }}</a>
+  </div>
+
+  {% if not articles %}
+    <p class="empty">Nothing pulled yet — paste an NYT article URL above.</p>
+  {% endif %}
+  <ul class="cards">
+    {% for a in articles %}
+    <li class="card">
+      <a href="/nyt/read/{{ a.slug }}" class="card-link">
+        {% if a.cover_image %}
+          <img class="thumb" src="{{ a.cover_image }}" alt="" loading="lazy" data-fallback="{{ (a.title or 'N')[:1] | upper }}">
+        {% else %}
+          <span class="thumb thumb-fallback">{{ (a.title or 'N')[:1] | upper }}</span>
+        {% endif %}
+        <span class="card-body">
+          <span class="spine">The New York Times{% if a.section %} · {{ a.section }}{% endif %}{% if a.kind and a.kind != 'article' %} <span class="badge paid-open">{{ a.kind }}</span>{% endif %}</span>
+          <span class="card-title">{{ a.title }}</span>
+          <span class="row-meta">
+            {% if a.added_by %}<span class="added-by">{{ a.added_by }}</span> {% endif %}
+            <time>{{ (a.published_at or a.created_at)[:10] }}</time>
+          </span>
+        </span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {{ pager('/nyt?sort=' ~ sort) }}
+</section>
+{% endblock %}

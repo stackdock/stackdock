@@ -30,6 +30,23 @@ CREATE TABLE IF NOT EXISTS articles (
     media_key TEXT                     -- Patreon video: the post id, for /media HLS playback
 );
 
+CREATE TABLE IF NOT EXISTS nyt_articles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    original_url TEXT UNIQUE,           -- the pasted URL, dedupe key
+    canonical_url TEXT,
+    title TEXT NOT NULL,
+    author TEXT,
+    section TEXT,
+    kind TEXT DEFAULT 'article',        -- article | cooking | interactive
+    html TEXT,
+    published_at TEXT,
+    created_at TEXT NOT NULL,
+    cover_image TEXT,                   -- og:image URL (hotlinked, like articles)
+    slug TEXT,                          -- pretty URL: /nyt/read/{slug}
+    added_by TEXT,                      -- username of the member who pulled it
+    status TEXT DEFAULT 'pulling'       -- pulling | ready | failed: <reason>
+);
+
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL COLLATE NOCASE,
@@ -861,3 +878,81 @@ def update_account(account_id: int, last_sync: str | None, status: str) -> None:
                       (last_sync, status, account_id))
         else:
             c.execute("UPDATE connected_accounts SET status = ? WHERE id = ?", (status, account_id))
+
+
+# ---------- NYT articles (server-side browser pull) ----------
+
+_NYT_COLS = ("id, original_url, canonical_url, title, author, section, kind, "
+             "published_at, created_at, cover_image, slug, added_by, status")
+
+
+def insert_nyt_pending(original_url: str, added_by: str) -> tuple[int, bool]:
+    """Insert a 'pulling' stub for a pasted URL. Returns (id, created).
+
+    If the URL was already pulled, returns the existing row's id and False so the
+    caller can point the member at it instead of duplicating the fetch.
+    """
+    with conn() as c:
+        row = c.execute("SELECT id FROM nyt_articles WHERE original_url = ?",
+                        (original_url,)).fetchone()
+        if row:
+            return row["id"], False
+        cur = c.execute(
+            "INSERT INTO nyt_articles (original_url, title, added_by, status, created_at) "
+            "VALUES (?, ?, ?, 'pulling', ?)",
+            (original_url, original_url, added_by, now_iso()))
+        return cur.lastrowid, True
+
+
+def list_nyt_pending() -> list:
+    with conn() as c:
+        return c.execute(
+            "SELECT id, original_url FROM nyt_articles WHERE status = 'pulling' "
+            "ORDER BY created_at ASC").fetchall()
+
+
+def finish_nyt_article(row_id: int, *, canonical_url: str, title: str, author: str,
+                       section: str, kind: str, html: str, published_at: str,
+                       cover_image: str) -> None:
+    """Fill a pulled article's body + metadata and mark it ready."""
+    with conn() as c:
+        c.execute(
+            "UPDATE nyt_articles SET canonical_url = ?, title = ?, author = ?, "
+            "section = ?, kind = ?, html = ?, published_at = ?, cover_image = ?, "
+            "slug = ?, status = 'ready' WHERE id = ?",
+            (canonical_url, title, author, section, kind, html, published_at,
+             cover_image, _unique_slug(c, "nyt_articles", title or "nyt"), row_id))
+
+
+def set_nyt_status(row_id: int, status: str) -> None:
+    with conn() as c:
+        c.execute("UPDATE nyt_articles SET status = ? WHERE id = ?", (status, row_id))
+
+
+def list_nyt_articles(limit: int = 10, offset: int = 0, sort: str = "new") -> list:
+    order = "ASC" if sort == "old" else "DESC"
+    with conn() as c:
+        return c.execute(
+            f"SELECT {_NYT_COLS} FROM nyt_articles WHERE status = 'ready' "
+            f"ORDER BY COALESCE(published_at, created_at) {order} LIMIT ? OFFSET ?",
+            (limit, offset)).fetchall()
+
+
+def count_nyt_articles() -> int:
+    with conn() as c:
+        return c.execute(
+            "SELECT COUNT(*) AS n FROM nyt_articles WHERE status = 'ready'").fetchone()["n"]
+
+
+def get_nyt_article_by_slug(slug: str):
+    with conn() as c:
+        return c.execute("SELECT * FROM nyt_articles WHERE slug = ?", (slug,)).fetchone()
+
+
+def recent_nyt_failures(limit: int = 5) -> list:
+    """Recent non-ready rows (pulling / failed) to surface state on the page."""
+    with conn() as c:
+        return c.execute(
+            "SELECT id, original_url, status, created_at FROM nyt_articles "
+            "WHERE status != 'ready' ORDER BY created_at DESC LIMIT ?",
+            (limit,)).fetchall()

@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import auth, config, db, feedgen, metrics, notify, storage
-from .ingest import email_ingest, patreon, podcast_rss, substack
+from .ingest import email_ingest, nyt, patreon, podcast_rss, substack
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger("stackdock")
@@ -29,7 +29,7 @@ JOB_STATE: dict[str, dict] = {}   # job_id -> {last_run, result, ok}
 # all ingest jobs, by id — the scheduler AND the manual sync buttons both go
 # through run_job() so /status reflects manual runs too (not just scheduled ones)
 JOBS = {"email": email_ingest.run, "podcasts": podcast_rss.run,
-        "substack": substack.run, "patreon": patreon.run}
+        "substack": substack.run, "patreon": patreon.run, "nyt": nyt.run}
 
 
 def run_job(job_id: str) -> int | None:
@@ -52,6 +52,17 @@ def _tracked(job_id: str):
     runner = lambda: run_job(job_id)
     runner.__name__ = f"{job_id}_job"
     return runner
+
+
+def _trigger_nyt_pull():
+    """Kick a NYT pull off the request thread (Playwright is slow). run() takes a
+    non-blocking lock, so a one-shot firing while one is in flight just no-ops."""
+    try:
+        scheduler.add_job(_tracked("nyt"), id="nyt_now", replace_existing=True,
+                          max_instances=1, coalesce=True,
+                          next_run_time=datetime.now(timezone.utc))
+    except Exception:
+        log.exception("could not schedule NYT pull")
 
 
 def _safe_next(next_url: str | None) -> str:
@@ -84,6 +95,10 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(_tracked("patreon"), "interval",
                       minutes=config.PATREON_POLL_MINUTES, id="patreon", max_instances=1,
                       coalesce=True, next_run_time=now + timedelta(seconds=kickoff["patreon"]))
+    # NYT retries any rows still 'pulling' (e.g. left over from a crash/restart).
+    scheduler.add_job(_tracked("nyt"), "interval",
+                      minutes=config.NYT_POLL_MINUTES, id="nyt", max_instances=1,
+                      coalesce=True, next_run_time=now + timedelta(seconds=150))
     scheduler.start()
     log.info("Stackdock started. Feed: %s/feed/%s/all.xml", config.PUBLIC_BASE_URL, config.FEED_TOKEN)
     yield
@@ -594,6 +609,57 @@ def read_article(request: Request, slug: str, user=Depends(auth.current_user)):
         raise HTTPException(404)
     return render(request, "article.html", user=user, a=a,
                   sources=db.list_article_sources(a["id"]))
+
+
+NYT_PAGE_SIZE = 10
+
+
+@app.get("/nyt", response_class=HTMLResponse)
+def nyt_page(request: Request, user=Depends(auth.current_user),
+             page: int = 1, sort: str = "new", msg: str | None = None,
+             err: str | None = None):
+    sort = "old" if sort == "old" else "new"
+    page = max(1, page)
+    offset = (page - 1) * NYT_PAGE_SIZE
+    total = db.count_nyt_articles()
+    total_pages = max(1, -(-total // NYT_PAGE_SIZE))  # ceil
+    return render(request, "nyt.html", user=user,
+                  articles=db.list_nyt_articles(limit=NYT_PAGE_SIZE, offset=offset, sort=sort),
+                  pending=db.recent_nyt_failures(), sort=sort,
+                  page=page, total_pages=total_pages, total_items=total,
+                  message=msg, error=err)
+
+
+@app.post("/nyt/add")
+def nyt_add(user=Depends(auth.current_user), url: str = Form(...)):
+    url = (url or "").strip()
+    if not nyt.is_nyt_url(url):
+        return RedirectResponse("/nyt?err=Not+a+nytimes.com+URL", status_code=303)
+    if nyt.is_live_blog(url):
+        return RedirectResponse(
+            "/nyt?err=Live+blogs+aren%27t+supported+yet+%28DataDome+device+check%29",
+            status_code=303)
+    row_id, created = db.insert_nyt_pending(url, user["username"])
+    if not created:
+        return RedirectResponse("/nyt?msg=Already+pulled+%E2%80%94+see+below", status_code=303)
+    _trigger_nyt_pull()
+    return RedirectResponse(
+        "/nyt?msg=Pulling%E2%80%A6+refresh+in+a+moment", status_code=303)
+
+
+@app.post("/nyt/sync")
+def nyt_sync(user=Depends(auth.current_user)):
+    """Member-facing 'check for pending pulls now' button."""
+    _trigger_nyt_pull()
+    return RedirectResponse("/nyt?msg=Checking+pending+pulls%E2%80%A6", status_code=303)
+
+
+@app.get("/nyt/read/{slug}", response_class=HTMLResponse)
+def nyt_read(request: Request, slug: str, user=Depends(auth.current_user)):
+    a = db.get_nyt_article_by_slug(slug)
+    if not a:
+        raise HTTPException(404)
+    return render(request, "nyt_article.html", user=user, a=a)
 
 
 @app.get("/listen/{slug}", response_class=HTMLResponse)

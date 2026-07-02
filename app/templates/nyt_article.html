@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{{ a.title }} · {{ site_title }}{% endblock %}
+{% block content %}
+<article class="reader">
+  <p class="spine">The New York Times{% if a.section %} · {{ a.section }}{% endif %}
+    {% if a.kind and a.kind != 'article' %}<span class="badge paid-open">{{ a.kind }}</span>{% endif %}
+  </p>
+  <h1>{{ a.title }}</h1>
+  <p class="meta">
+    {% if a.author %}{{ a.author }} · {% endif %}{{ (a.published_at or a.created_at)[:10] }}
+    {% if a.added_by %} · pulled by <span class="added-by">{{ a.added_by }}</span>{% endif %}
+    {% if a.original_url %} · <a href="{{ a.original_url }}" rel="noopener">original</a>{% endif %}
+  </p>
+  {% if a.cover_image %}<img class="episode-art" src="{{ a.cover_image }}" alt="">{% endif %}
+  <div class="body">{{ a.html | safe }}</div>
+</article>
+{% endblock %}

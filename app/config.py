@@ -57,6 +57,27 @@ try:
 except json.JSONDecodeError:
     SUBSTACK_EXTRA_PUBS = []
 
+# ---- NYT (server-side browser pull past DataDome) ----
+# The member's nytimes.com cookie header (or at least NYT-S; nyt-a/nyt-b-sid/
+# nyt-purr help). Never commit it. A residential proxy is REQUIRED because the
+# droplet's datacenter IP has negative DataDome trust.
+NYT_COOKIE = os.getenv("NYT_COOKIE", "")
+# DataImpulse (or any residential) gateway, e.g. http://gw.dataimpulse.com:823
+NYT_PROXY_SERVER = os.getenv("NYT_PROXY_SERVER", "")
+# BASE login only (we append ;sessid/;sessttl/__cr.us ourselves).
+NYT_PROXY_USER = os.getenv("NYT_PROXY_USER", "")
+NYT_PROXY_PASS = os.getenv("NYT_PROXY_PASS", "")
+# Sticky session hold (minutes) and how many exits to try before giving up on
+# finding a clean consumer-ISP IP (DataImpulse mixes in hosting ASNs).
+NYT_PROXY_STICKY_MINUTES = int(os.getenv("NYT_PROXY_STICKY_MINUTES", "30"))
+NYT_PROXY_MAX_TRIES = int(os.getenv("NYT_PROXY_MAX_TRIES", "8"))
+NYT_PROXY_SESSION_PREFIX = os.getenv("NYT_PROXY_SESSION_PREFIX", "nyt")
+# How many 3s polls to wait for the article body / DataDome to settle.
+NYT_FETCH_POLL_TRIES = int(os.getenv("NYT_FETCH_POLL_TRIES", "15"))
+# Retry sweep for rows left 'pulling' after a crash/restart (on-demand pulls
+# fire immediately; this is just the safety net).
+NYT_POLL_MINUTES = int(os.getenv("NYT_POLL_MINUTES", "15"))
+
 # ---- Stale-cookie reminders ----
 # Re-alert this often (hours) while a cookie stays stale. 0 = alert once only.
 STALE_REMINDER_HOURS = int(os.getenv("STALE_REMINDER_HOURS", "24"))
