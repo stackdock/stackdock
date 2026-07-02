@@ -76,7 +76,7 @@ NYT_PROXY_PASS = os.getenv("NYT_PROXY_PASS", "")
 # Sticky session hold (minutes) and how many exits to try before giving up on
 # finding a clean consumer-ISP IP (DataImpulse mixes in hosting ASNs).
 NYT_PROXY_STICKY_MINUTES = int(os.getenv("NYT_PROXY_STICKY_MINUTES", "30"))
-NYT_PROXY_MAX_TRIES = int(os.getenv("NYT_PROXY_MAX_TRIES", "8"))
+NYT_PROXY_MAX_TRIES = int(os.getenv("NYT_PROXY_MAX_TRIES", "20"))
 NYT_PROXY_SESSION_PREFIX = os.getenv("NYT_PROXY_SESSION_PREFIX", "nyt")
 # How many 3s polls to wait for the article body / DataDome to settle.
 NYT_FETCH_POLL_TRIES = int(os.getenv("NYT_FETCH_POLL_TRIES", "15"))

@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 import logging
+import random
 import re
 import threading
 from dataclasses import dataclass, field
@@ -33,18 +34,14 @@ from app import config, db
 log = logging.getLogger(__name__)
 _RUN_LOCK = threading.Lock()
 
-# ISPs we treat as clean residential/mobile exits. DataDome trusts these; it
-# blocks hosting ASNs (e.g. "Rocks Computer Services") that also appear in the
-# DataImpulse pool.
-_RESIDENTIAL_HINTS = (
-    "comcast", "charter", "spectrum", "verizon", "at&t", "att ", "t-mobile",
-    "tmobile", "cox", "centurylink", "frontier", "cablevision", "optimum",
-    "rcn", "grande", "windstream", "mediacom", "sparklight", "cable",
-    "communications", "broadband", "telecom", "fios", "wireless",
-)
-_HOSTING_HINTS = ("rocks computer", "hosting", "datacenter", "data center",
-                  "cloud", "server", "colo", "zayo", "digitalocean", "amazon",
-                  "google", "ovh", "hetzner", "linode", "vultr")
+# DataDome blocks datacenter/hosting ASNs. Rather than a fragile whitelist of
+# ISP names (which rejects legit regional ISPs and wastes attempts), we BLOCK
+# known hosting orgs and accept any other US exit — DataDome itself is the final
+# judge, and a rare hosting IP that slips through just fails and we retry.
+_HOSTING_HINTS = ("hosting", "datacenter", "data center", "cloud", "colo",
+                  "colocation", "zayo", "digitalocean", "amazon", "google",
+                  "ovh", "hetzner", "linode", "vultr", "dynanode",
+                  "computer services", "m247", "cogent", "level 3", "gtt")
 
 _ARTICLE_SELECTOR = ("article p, section[name=articleBody] p, "
                      "div[data-testid=live-blog-post] p")
@@ -122,10 +119,9 @@ def _cookies_for(raw: str) -> list[dict]:
 
 
 def _looks_residential(org: str) -> bool:
+    """Accept any exit that isn't a known hosting/datacenter org (blocklist)."""
     o = (org or "").lower()
-    if any(h in o for h in _HOSTING_HINTS):
-        return False
-    return any(h in o for h in _RESIDENTIAL_HINTS)
+    return bool(o) and not any(h in o for h in _HOSTING_HINTS)
 
 
 def fetch_nyt_article(url: str, nyt_cookie: str | None = None) -> NytArticle:
@@ -152,7 +148,10 @@ def fetch_nyt_article(url: str, nyt_cookie: str | None = None) -> NytArticle:
         last_err = "no clean residential proxy IP found"
         # Retry sticky sessions until we land on a clean consumer ISP.
         for attempt in range(config.NYT_PROXY_MAX_TRIES):
-            sessid = f"{config.NYT_PROXY_SESSION_PREFIX}{attempt}"
+            # random sessid each try -> a FRESH exit IP. Deterministic sessids get
+            # "stuck" on the same (possibly hosting) IP for the whole sticky TTL,
+            # so retries would keep hitting the same bad exit.
+            sessid = f"{config.NYT_PROXY_SESSION_PREFIX}{random.getrandbits(32):08x}"
             proxy = {"server": config.NYT_PROXY_SERVER,
                      "username": _proxy_username(sessid),
                      "password": config.NYT_PROXY_PASS}
