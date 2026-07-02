@@ -22,12 +22,12 @@ web app boots even if the browser stack isn't installed in a given environment.
 """
 from __future__ import annotations
 
+import fcntl
 import json
 import logging
 import random
 import re
 import subprocess
-import threading
 from dataclasses import dataclass, field
 
 import requests
@@ -35,7 +35,10 @@ import requests
 from app import config, db
 
 log = logging.getLogger(__name__)
-_RUN_LOCK = threading.Lock()
+# Cross-PROCESS lock: a manual pull (a separate python process) must not race the
+# app's scheduled pull — two concurrent headful Chromiums OOM the 1 GB box. A
+# file lock (unlike a threading.Lock) excludes across processes, not just threads.
+_LOCKFILE = "/tmp/nyt_pull.lock"
 
 
 def _reap_chromium() -> None:
@@ -405,14 +408,19 @@ def run() -> int:
     Non-blocking lock so a manual /nyt/sync can't stack on the scheduler run
     (same posture as substack.run).
     """
-    if not _RUN_LOCK.acquire(blocking=False):
-        log.info("nyt pull already running; skipping overlapping run.")
+    lockf = open(_LOCKFILE, "w")
+    try:
+        fcntl.flock(lockf, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        log.info("nyt pull already running (another process holds the lock); skipping.")
+        lockf.close()
         return 0
     try:
         return _run()
     finally:
         _reap_chromium()   # sweep any browser Playwright left behind (OOM guard)
-        _RUN_LOCK.release()
+        fcntl.flock(lockf, fcntl.LOCK_UN)
+        lockf.close()
 
 
 def _run() -> int:
