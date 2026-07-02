@@ -114,20 +114,25 @@ _PAYWALL_MARKERS = ("paywall-jump", "paywalltodom", 'class="paywall')
 def _is_locked(post: dict) -> bool:
     """Decide whether a paid post's body is a no-access PREVIEW (vs the full text).
 
-    The ONLY reliable positive proof of full access is Substack injecting a
-    paywall marker (`_PAYWALL_MARKERS`) into body_html — present ⇒ we read past
-    the wall ⇒ full access. Anything else is treated as a locked preview.
+    Primary signal is Substack's own `hidden` flag on the posts/by-id response:
+    it is True when the body was withheld from this viewer (a no-access preview)
+    and falsy/None when the body we received is the full text. This replaced a
+    paywall-marker-only heuristic that mislabeled publications which serve full
+    paid bodies to subscribers WITHOUT any marker (e.g. J'accuse: a paying cookie
+    gets the complete ~10 KB essay, `hidden`=None, and no marker — the old rule
+    wrongly kept it locked, while a non-paying cookie gets a ~200-char body with
+    `hidden`=True).
 
-    Body LENGTH is deliberately NOT a signal: a no-access preview can run several
-    thousand characters with no gate/CTA text, just truncating mid-sentence (e.g.
-    Delicious Tacos' "The Slave" preview is ~6 KB and emitted neither marker nor
-    gate — the old `len < 1000` rule misread it as full and showed it green-paid).
-
-    Callers short-circuit on the paid-SUBSCRIPTION signal (pub["paid"]) BEFORE
-    consulting this, so this only ever runs for accounts that don't pay — where
-    over-locking (a markerless body the reader somehow fully sees) is the safe
-    failure, but over-UNLOCKING a long preview is a visible bug."""
-    return not any(m in (post.get("body_html") or "").lower() for m in _PAYWALL_MARKERS)
+    A present paywall marker still positively confirms full access (belt and
+    suspenders); an empty body is treated as locked. Body LENGTH is deliberately
+    NOT a signal (a no-access preview can run several KB and truncate mid-sentence
+    with no gate text)."""
+    body = post.get("body_html") or ""
+    if not body.strip():
+        return True
+    if any(m in body.lower() for m in _PAYWALL_MARKERS):
+        return False   # Substack rendered the wall inline ⇒ we read past it
+    return post.get("hidden") is True
 
 
 def _effective_base(s: requests.Session, sub: str | None, custom: str | None) -> str:
@@ -582,42 +587,62 @@ def refresh_locked() -> int:
 
 
 def _refresh_locked() -> int:
+    # Access-DRIVEN, not discovery-driven: a member can pay for a publication we
+    # can't see in their (private) reading list or the flaky subscriptions API,
+    # so we don't trust the paid-flag here — we just try to fetch the real body.
+    # Group locked posts by publication; for each pub, probe accounts with ONE
+    # post until one returns full access, then bulk-upgrade that pub with that
+    # account. Pubs no account can open cost only one probe per account.
+    accounts = [(a, _session(a["cookie"])) for a in db.list_accounts(service="substack")]
+    if not accounts:
+        return 0
+    by_pub: dict[str, list] = {}
+    for art in db.list_locked_articles():
+        mid = art["message_id"] or ""
+        if mid.startswith("substack:"):      # only canonical posts have a by-id
+            by_pub.setdefault(art["publication"], []).append(art)
+
+    def _pid(art):
+        return art["message_id"].split(":", 1)[1]
+
     upgraded = checked = 0
     cap = config.SUBSTACK_REFRESH_MAX
-    for account in db.list_accounts(service="substack"):
+    for pub_name, arts in by_pub.items():
         if checked >= cap:
             break
-        try:
-            s = _session(account["cookie"])
-            handle = account["handle"] or _self_handle(s)
-            if not handle:
+        # find an account that can actually read this pub's paid posts
+        opener = probe_full = None
+        for account, s in accounts:
+            if checked >= cap:
+                break
+            checked += 1
+            try:
+                full = _post_by_id(s, _pid(arts[0]))
+            except Exception:                                   # noqa: BLE001
                 continue
-            paid_names = {p["name"] for p in get_publications_via_profile(s, handle)
-                          if p.get("paid")}
-        except Exception as e:                                   # noqa: BLE001
-            log.warning("[%s] paid-refresh discovery failed: %s", account["label"], e)
+            if full and full.get("body_html") and not _is_locked(full):
+                opener, probe_full = (account, s), full
+                break
+        if not opener:
             continue
-        for name in paid_names:
-            for art in db.list_locked_articles(publication=name):
-                if checked >= cap:
-                    break
-                mid = art["message_id"] or ""
-                if not mid.startswith("substack:"):
-                    continue          # only canonical cookie-synced posts have a by-id
+        account, s = opener
+        for art in arts:
+            if checked >= cap:
+                break
+            try:
+                full = probe_full if art is arts[0] else _post_by_id(s, _pid(art))
+            except Exception:                                   # noqa: BLE001
+                continue
+            if art is not arts[0]:
                 checked += 1
-                try:
-                    full = _post_by_id(s, mid.split(":", 1)[1])
-                except Exception:                               # noqa: BLE001
-                    continue
-                # only replace when this account genuinely has the full post
-                if full and full.get("body_html") and not _is_locked(full):
-                    body = _clean_body(full["body_html"])
-                    if body:
-                        db.upgrade_article_body(art["id"], body, account["label"])
-                        upgraded += 1
-                        log.info("[%s] paid-refresh upgraded: %s",
-                                 account["label"], art["title"])
-    log.info("Paid refresh: checked %d locked post(s), upgraded %d.", checked, upgraded)
+            if full and full.get("body_html") and not _is_locked(full):
+                body = _clean_body(full["body_html"])
+                if body:
+                    db.upgrade_article_body(art["id"], body, account["label"])
+                    upgraded += 1
+                    log.info("[%s] paid-refresh upgraded: %s",
+                             account["label"], art["title"])
+    log.info("Paid refresh: checked %d post(s), upgraded %d.", checked, upgraded)
     return upgraded
 
 
