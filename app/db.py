@@ -1,4 +1,5 @@
 """SQLite storage for articles and podcast episodes."""
+import json
 import re
 import sqlite3
 import threading
@@ -191,7 +192,8 @@ def init():
                            ("episodes", "paid_access INTEGER DEFAULT 0"),
                            ("episodes", "is_paid INTEGER DEFAULT 0"),
                            ("connected_accounts", "last_alert TEXT"),
-                           ("connected_accounts", "handle TEXT")]:
+                           ("connected_accounts", "handle TEXT"),
+                           ("connected_accounts", "subs_json TEXT")]:
             try:
                 c.execute(f"ALTER TABLE {table} ADD COLUMN {col}")
             except sqlite3.OperationalError:
@@ -883,6 +885,31 @@ def set_account_alert(account_id: int, ts: str) -> None:
 def set_account_handle(account_id: int, handle: str) -> None:
     with conn() as c:
         c.execute("UPDATE connected_accounts SET handle = ? WHERE id = ?", (handle, account_id))
+
+
+def set_account_subs(account_id: int, subs: list[dict]) -> None:
+    """Persist an account's subscription snapshot [{name, paid}], deduped by name,
+    so /status can show who they follow / pay for without a live Substack call."""
+    dedup = {}
+    for s in subs:
+        name = (s.get("name") or "").strip()
+        if name:
+            dedup[name] = dedup.get(name, False) or bool(s.get("paid"))
+    payload = json.dumps([{"name": n, "paid": p} for n, p in sorted(dedup.items())])
+    with conn() as c:
+        c.execute("UPDATE connected_accounts SET subs_json = ? WHERE id = ?",
+                  (payload, account_id))
+
+
+def account_paid_pubs(label: str) -> list[str]:
+    """Publications this account demonstrably PAYS for — it has contributed a
+    full (unlocked) paid article. Catches paid subs a private reading list hides."""
+    with conn() as c:
+        return [r["publication"] for r in c.execute(
+            "SELECT DISTINCT a.publication FROM articles a "
+            "JOIN article_sources s ON s.article_id = a.id "
+            "WHERE s.label = ? AND a.is_paid = 1 AND a.is_locked = 0 "
+            "AND a.publication IS NOT NULL", (label,)).fetchall()]
 
 
 def update_account(account_id: int, last_sync: str | None, status: str) -> None:

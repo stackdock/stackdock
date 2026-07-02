@@ -727,6 +727,23 @@ def status_page(request: Request, user=Depends(auth.current_user)):
 
     du = shutil.disk_usage(config.DATA_DIR)
     accounts = db.list_accounts()
+
+    # per-account subscription breakdown (who they follow / pay for) for /status.
+    # "pays" merges the profile snapshot's paid flag with pubs the account has
+    # demonstrably unlocked (catches paid subs a private reading list hides).
+    account_subs = []
+    for a in accounts:
+        try:
+            subs = json.loads(a["subs_json"]) if a["subs_json"] else []
+        except (TypeError, ValueError, KeyError):
+            subs = []
+        pays = set(db.account_paid_pubs(a["label"])) | {s["name"] for s in subs if s.get("paid")}
+        free = [s["name"] for s in subs if not s.get("paid") and s["name"] not in pays]
+        account_subs.append({
+            "label": a["label"], "handle": a["handle"], "service": a["service"],
+            "pays": sorted(pays), "free": sorted(free),
+            "total": len(pays) + len(free),
+        })
     return render(request, "status.html", user=user,
                   r2=metrics.r2_metrics(),
                   do=metrics.do_metrics(),
@@ -739,6 +756,7 @@ def status_page(request: Request, user=Depends(auth.current_user)):
                   disk_used_pct=round(du.used / du.total * 100),
                   disk_free_gb=round(du.free / 1e9, 1),
                   accounts=accounts,
+                  account_subs=account_subs,
                   github_repo=config.GITHUB_REPO,
                   github_workflows=config.GITHUB_WORKFLOWS,
                   n_articles=db.count_articles(),

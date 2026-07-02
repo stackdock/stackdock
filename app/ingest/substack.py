@@ -352,6 +352,9 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
     # pub, so the podcast path knows whether THIS account gets full paid audio
     for p in pubs:
         p["paid"] = paid_map.get(p["base_url"], p.get("paid", False))
+    # snapshot who this account follows / pays for, for the /status breakdown
+    db.set_account_subs(account["id"],
+                        [{"name": p["name"], "paid": bool(p.get("paid"))} for p in pubs])
     if not pubs:
         return 0, "OK: no subscriptions found on this account", []
 

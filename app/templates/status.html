@@ -117,4 +117,29 @@
   </ul>
 </section>
 
+<section>
+  <h2>Subscriptions by account</h2>
+  {% if not account_subs %}<p class="empty">None connected.</p>{% endif %}
+  {% for acc in account_subs %}
+  <details class="filter-box">
+    <summary>{{ acc.label }}{% if acc.handle %} · @{{ acc.handle }}{% endif %}
+      <span class="count" title="pays for">{{ acc.pays|length }} paid</span>
+      <span class="count" title="free subscriptions">{{ acc.free|length }} free</span>
+    </summary>
+    {% if acc.pays %}
+      <p style="margin:.4rem 0"><strong>Pays for:</strong>
+        {% for p in acc.pays %}<span class="badge paid-open">{{ p }}</span> {% endfor %}
+      </p>
+    {% endif %}
+    {% if acc.free %}
+      <p style="margin:.4rem 0"><strong>Subscribed (free):</strong> {{ acc.free|join(', ') }}</p>
+    {% endif %}
+    {% if not acc.pays and not acc.free %}
+      <p class="hint">No subscriptions visible yet — sync hasn’t run, or the reading list is private.</p>
+    {% endif %}
+  </details>
+  {% endfor %}
+  <p class="hint">Snapshot from each account’s last sync. “Pays for” also includes any paid publication the account has unlocked, even when its reading list is private.</p>
+</section>
+
 {% endblock %}
