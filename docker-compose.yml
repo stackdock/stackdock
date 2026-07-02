@@ -2,6 +2,9 @@ services:
   stackdock:
     build: .
     restart: unless-stopped
+    # tini as PID 1 reaps zombie processes — the NYT pull's Chromium leaves
+    # defunct crashpad stubs when force-killed; without an init they'd accumulate.
+    init: true
     env_file: .env
     volumes:
       - stackdock-data:/data
