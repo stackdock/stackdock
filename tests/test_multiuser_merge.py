@@ -72,7 +72,8 @@ class World:
         paid_ok = any(post in self.posts.get(b, []) for b in acct["paid"])
         full = dict(post)
         if post["audience"] == "only_paid" and not paid_ok:
-            full["body_html"] = PREVIEW          # no paywall marker -> text locked
+            full["body_html"] = PREVIEW          # teaser only
+            full["hidden"] = True                # Substack marks withheld bodies -> locked
             if post["type"] == "podcast":
                 # a paid show still hands a non-subscriber a short PREVIEW clip
                 full["podcast_url"] = f"https://media.test/{post['slug']}-preview.mp3"
@@ -81,6 +82,7 @@ class World:
                 full.pop("podcast_url", None)
         else:
             full["body_html"] = FULL
+            full["hidden"] = False               # full access -> body not hidden
             if post["type"] == "podcast":
                 full["podcast_url"] = f"https://media.test/{post['slug']}.mp3"
                 full["podcast_duration"] = 1800

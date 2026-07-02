@@ -1,8 +1,10 @@
 """Substack ingest helpers: paid-lock detection (pure, network-free).
 
-A paid post is "unlocked" (full access) only when Substack injects its
-paywall-jump marker into body_html — i.e. the account can read past the
-paywall. A no-access preview omits the marker.
+A paid post is "locked" (no-access preview) when Substack's posts/by-id response
+carries `hidden: True`, OR the body is empty. It is unlocked (full access) when
+the body is present and either `hidden` is falsy or Substack injected its
+paywall-jump marker. (The old rule keyed only on the marker, which mislabeled
+pubs like J'accuse that serve full paid bodies to subscribers without a marker.)
 """
 from app.ingest.substack import _is_locked, _clean_body
 
@@ -14,10 +16,18 @@ def test_unlocked_when_paywall_marker_present():
     assert _is_locked(post) is False
 
 
-def test_locked_when_no_paywall_marker():
-    # truncated teaser, cut off mid-content, no marker
-    post = {"body_html": "<p>This is just the free preview teaser and then it stops…</p>"}
+def test_locked_when_no_access_preview_is_hidden():
+    # a no-access preview: truncated teaser, no marker, and Substack marks it hidden
+    post = {"body_html": "<p>This is just the free preview teaser and then it stops…</p>",
+            "hidden": True}
     assert _is_locked(post) is True
+
+
+def test_unlocked_markerless_full_body_when_not_hidden():
+    # J'accuse case: a paying cookie gets the FULL body with no paywall marker and
+    # `hidden` falsy — must NOT be treated as locked (the old marker-only rule did)
+    post = {"body_html": "<p>" + ("full essay text " * 200) + "</p>", "hidden": None}
+    assert _is_locked(post) is False
 
 
 def test_locked_when_body_empty_or_missing():
