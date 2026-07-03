@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}{{ series.name or 'Series' }} · mde.tv · {{ site_title }}{% endblock %}
+{% block content %}
+{% macro dur(s) -%}
+  {%- if s -%}{{ '%d:%02d'|format((s//60), (s%60)) if s < 3600 else '%d:%02d:%02d'|format(s//3600, (s%3600)//60, s%60) }}{%- endif -%}
+{%- endmacro %}
+<section>
+  <p class="spine"><a href="/mde">← mde.tv</a></p>
+  <h2>{{ series.name }} <span class="count">{{ videos|length }}</span></h2>
+  {% if message %}<p class="form-ok">{{ message }}</p>{% endif %}
+  {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
+
+  <ul class="cards">
+    {% for v in videos %}
+    {% set st = status.get(v.id) %}
+    <li class="card">
+      <span class="card-link" style="cursor:default">
+        {% set thumb = v.medium_thumbnail or v.small_thumbnail or v.thumbnail %}
+        {% if thumb %}
+          <img class="thumb" src="{{ thumb }}" alt="" loading="lazy" data-fallback="{{ (v.title or '?')[:1] | upper }}">
+        {% else %}
+          <span class="thumb thumb-fallback">▶</span>
+        {% endif %}
+        <span class="card-body">
+          <span class="spine">{% if v.episode %}Ep {{ v.episode }} · {% endif %}{{ dur(v.duration) }}</span>
+          <span class="card-title">{{ v.title }}</span>
+          <span class="row-meta">
+            {% if st and st[0] == 'ready' %}
+              <a class="badge paid-open" href="/mde/watch/{{ st[1] }}">▶ Watch (saved)</a>
+            {% elif st and (st[0] == 'pending' or st[0] == 'downloading') %}
+              <span class="badge">downloading…</span>
+            {% else %}
+              {% if st and st[0] and st[0].startswith('failed') %}<span class="added-by" title="{{ st[0] }}">failed</span>{% endif %}
+              <form method="post" action="/mde/download" class="inline-form">
+                <input type="hidden" name="video_id" value="{{ v.id }}">
+                <input type="hidden" name="tag" value="{{ series.tag }}">
+                <button type="submit">⬇ Download</button>
+              </form>
+            {% endif %}
+          </span>
+        </span>
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

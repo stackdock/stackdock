@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ d.title }} · mde.tv · {{ site_title }}{% endblock %}
+{% block content %}
+<article class="reader">
+  <p class="spine"><a href="/mde/{{ d.series_tag }}">← {{ d.series_name }}</a></p>
+  <h1>{{ d.title }}</h1>
+  <p class="meta">
+    {% if d.episode %}Episode {{ d.episode }} · {% endif %}saved to storage
+  </p>
+  {% if src %}
+  <video controls playsinline preload="metadata"
+         {% if d.thumbnail %}poster="{{ d.thumbnail }}"{% endif %}
+         style="width:100%; height:auto; background:#000; border-radius:6px; margin:0.5rem 0">
+    <source src="{{ src }}">
+  </video>
+  {% else %}
+  <p class="form-error">Storage isn’t configured, so this saved video can’t be served.</p>
+  {% endif %}
+</article>
+{% endblock %}

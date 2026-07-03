@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import auth, config, db, feedgen, metrics, notify, storage
-from .ingest import email_ingest, nyt, patreon, podcast_rss, substack, youtube
+from .ingest import email_ingest, mde, nyt, patreon, podcast_rss, substack, youtube
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger("stackdock")
@@ -31,7 +31,8 @@ JOB_STATE: dict[str, dict] = {}   # job_id -> {last_run, result, ok}
 JOBS = {"email": email_ingest.run, "podcasts": podcast_rss.run,
         "substack": substack.run, "patreon": patreon.run, "nyt": nyt.run,
         "substack_refresh": substack.refresh_locked,
-        "verify_paid": substack.verify_paid_access, "youtube": youtube.run}
+        "verify_paid": substack.verify_paid_access, "youtube": youtube.run,
+        "mde": mde.run}
 
 
 def run_job(job_id: str) -> int | None:
@@ -65,6 +66,16 @@ def _trigger_nyt_pull():
                           next_run_time=datetime.now(timezone.utc))
     except Exception:
         log.exception("could not schedule NYT pull")
+
+
+def _trigger_mde():
+    """Kick an mde.tv download off the request thread (video files are large)."""
+    try:
+        scheduler.add_job(_tracked("mde"), id="mde_now", replace_existing=True,
+                          max_instances=1, coalesce=True,
+                          next_run_time=datetime.now(timezone.utc))
+    except Exception:
+        log.exception("could not schedule mde download")
 
 
 def _trigger_youtube():
@@ -740,6 +751,58 @@ def youtube_watch(request: Request, slug: str, user=Depends(auth.current_user)):
     if not v:
         raise HTTPException(404)
     return render(request, "youtube_watch.html", user=user, v=v)
+
+
+@app.get("/mde", response_class=HTMLResponse)
+def mde_page(request: Request, user=Depends(auth.current_user), err: str | None = None):
+    # lazy: only hits mde.tv when someone opens the tab (cached thereafter)
+    try:
+        series = mde.list_series()
+    except Exception as e:  # noqa: BLE001
+        series, err = [], err or f"Couldn't reach mde.tv: {e}"
+    return render(request, "mde.html", user=user, series=series, error=err)
+
+
+@app.get("/mde/{tag}", response_class=HTMLResponse)
+def mde_series(request: Request, tag: str, user=Depends(auth.current_user),
+               msg: str | None = None, err: str | None = None):
+    try:
+        series, videos = mde.list_episodes(tag)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(404) from e
+    status = db.mde_status_map([v.get("id") for v in videos if v.get("id")])
+    return render(request, "mde_series.html", user=user, series=series,
+                  videos=videos, status=status, message=msg, error=err)
+
+
+@app.post("/mde/download")
+def mde_download(user=Depends(auth.current_user), video_id: str = Form(...),
+                 tag: str = Form(...)):
+    try:
+        v = mde.get_video(video_id)
+    except Exception:  # noqa: BLE001
+        return RedirectResponse(f"/mde/{tag}?err=Could+not+load+that+video", status_code=303)
+    db.request_mde_download(
+        video_id=video_id, series_tag=tag,
+        series_name=v.get("series_name") or tag, title=v.get("title") or video_id,
+        episode=v.get("episode"), duration=v.get("duration"),
+        thumbnail=v.get("medium_thumbnail") or v.get("video_thumbnail") or "",
+        added_by=user["username"])
+    _trigger_mde()
+    return RedirectResponse(f"/mde/{tag}?msg=Downloading%E2%80%A6+refresh+in+a+bit",
+                            status_code=303)
+
+
+@app.get("/mde/watch/{slug}", response_class=HTMLResponse)
+def mde_watch(request: Request, slug: str, user=Depends(auth.current_user)):
+    d = db.get_mde_download_by_slug(slug)
+    if not d or d["status"] != "ready":
+        raise HTTPException(404)
+    try:
+        src = storage.url_for(d["r2_key"])
+    except Exception:  # noqa: BLE001
+        src = None
+    return render(request, "mde_watch.html", user=user, d=d, src=src)
 
 
 @app.get("/listen/{slug}", response_class=HTMLResponse)

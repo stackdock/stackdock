@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}mde.tv · {{ site_title }}{% endblock %}
+{% block content %}
+<section>
+  <h2><span class="fun-label">mde.tv</span><span class="work-label">Archive</span> <span class="count">{{ series|length }}</span></h2>
+  {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
+  <p class="hint" style="margin:0 0 1rem">Browse the series, open one, and click an episode to download it to storage — then it’s viewable here. Nothing is fetched until you click.</p>
+
+  {% if not series %}
+    <p class="empty">No series loaded.</p>
+  {% endif %}
+  <ul class="cards">
+    {% for s in series %}
+    <li class="card">
+      <a href="/mde/{{ s.tag }}" class="card-link">
+        {% if s.thumbnail %}
+          <img class="thumb" src="{{ s.thumbnail }}" alt="" loading="lazy" data-fallback="{{ (s.name or '?')[:1] | upper }}">
+        {% else %}
+          <span class="thumb thumb-fallback">{{ (s.name or '?')[:1] | upper }}</span>
+        {% endif %}
+        <span class="card-body">
+          <span class="spine">{{ s.episodes }} episode{{ 's' if s.episodes != 1 else '' }}</span>
+          <span class="card-title">{{ s.name }}</span>
+          {% if s.description %}<span class="row-meta">{{ s.description[:90] }}{{ '…' if s.description|length > 90 }}</span>{% endif %}
+        </span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

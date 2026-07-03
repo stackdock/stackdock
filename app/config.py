@@ -128,6 +128,16 @@ DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
 # Use it to push the aggregated firehose into anything (n8n, Zapier, your own bot).
 OUTBOUND_WEBHOOK_URL = os.getenv("OUTBOUND_WEBHOOK_URL", "")
 
+# ---- mde.tv (lazy catalogue + on-demand download to R2) ----
+MDE_API_BASE = os.getenv("MDE_API_BASE", "https://api.mde.tv/v1")
+# The member's mde.tv tokens (from the mde-access-token / mde-refresh-token
+# cookies). The access token is a 15-min JWT; the refresh token is the durable
+# one. Only the /sign download step needs auth — the catalogue is public.
+MDE_ACCESS_TOKEN = os.getenv("MDE_ACCESS_TOKEN", "")
+MDE_REFRESH_TOKEN = os.getenv("MDE_REFRESH_TOKEN", "")
+# Catalogue responses are cached this long so browsing doesn't hammer mde.tv.
+MDE_CACHE_SECONDS = int(os.getenv("MDE_CACHE_SECONDS", "1800"))
+
 # ---- YouTube (channel upload notifications via per-channel RSS) ----
 # Default channels seeded on startup (handles, without the leading @). Members can
 # add more in the UI. A new upload with "PRIORITY" in the title @everyones the

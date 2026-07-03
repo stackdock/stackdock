@@ -72,6 +72,23 @@ CREATE TABLE IF NOT EXISTS youtube_videos (
     created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS mde_downloads (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    video_id TEXT UNIQUE NOT NULL,      -- mde.tv video uuid, dedupe key
+    series_tag TEXT,
+    series_name TEXT,
+    title TEXT,
+    episode INTEGER,
+    duration INTEGER,                   -- seconds
+    thumbnail TEXT,
+    r2_key TEXT,                        -- object key in R2 once downloaded
+    size_bytes INTEGER,
+    slug TEXT,                          -- /mde/watch/{slug}
+    added_by TEXT,
+    status TEXT DEFAULT 'pending',      -- pending | downloading | ready | failed: <reason>
+    created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL COLLATE NOCASE,
@@ -1152,3 +1169,72 @@ def mark_youtube_notified(ids: list[int]) -> None:
     with conn() as c:
         c.executemany("UPDATE youtube_videos SET notified = 1 WHERE id = ?",
                       [(i,) for i in ids])
+
+
+# ---------- mde.tv (on-demand downloads to R2) ----------
+
+def get_mde_download(video_id: str):
+    with conn() as c:
+        return c.execute("SELECT * FROM mde_downloads WHERE video_id = ?",
+                         (video_id,)).fetchone()
+
+
+def get_mde_download_by_slug(slug: str):
+    with conn() as c:
+        return c.execute("SELECT * FROM mde_downloads WHERE slug = ?", (slug,)).fetchone()
+
+
+def mde_status_map(video_ids: list[str]) -> dict:
+    """{video_id: (status, slug)} for a set of ids — to render episode buttons."""
+    if not video_ids:
+        return {}
+    ph = ",".join("?" * len(video_ids))
+    with conn() as c:
+        return {r["video_id"]: (r["status"], r["slug"]) for r in c.execute(
+            f"SELECT video_id, status, slug FROM mde_downloads WHERE video_id IN ({ph})",
+            video_ids).fetchall()}
+
+
+def request_mde_download(*, video_id: str, series_tag: str, series_name: str,
+                         title: str, episode, duration, thumbnail: str,
+                         added_by: str) -> tuple[str, bool]:
+    """Insert a 'pending' download (or return the existing status). Returns
+    (status, created)."""
+    with conn() as c:
+        row = c.execute("SELECT status FROM mde_downloads WHERE video_id = ?",
+                        (video_id,)).fetchone()
+        if row:
+            return row["status"], False
+        c.execute(
+            "INSERT INTO mde_downloads (video_id, series_tag, series_name, title, "
+            "episode, duration, thumbnail, slug, added_by, status, created_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?,'pending',?)",
+            (video_id, series_tag, series_name, title, episode, duration, thumbnail,
+             _unique_slug(c, "mde_downloads", title or video_id), added_by, now_iso()))
+        return "pending", True
+
+
+def finish_mde_download(video_id: str, *, r2_key: str, size_bytes: int) -> None:
+    with conn() as c:
+        c.execute("UPDATE mde_downloads SET r2_key = ?, size_bytes = ?, "
+                  "status = 'ready' WHERE video_id = ?", (r2_key, size_bytes, video_id))
+
+
+def set_mde_status(video_id: str, status: str) -> None:
+    with conn() as c:
+        c.execute("UPDATE mde_downloads SET status = ? WHERE video_id = ?",
+                  (status, video_id))
+
+
+def list_mde_pending() -> list:
+    with conn() as c:
+        return c.execute(
+            "SELECT video_id FROM mde_downloads WHERE status IN ('pending','downloading') "
+            "ORDER BY created_at ASC").fetchall()
+
+
+def list_mde_ready() -> list:
+    with conn() as c:
+        return c.execute(
+            "SELECT video_id, series_name, title, episode, duration, thumbnail, slug "
+            "FROM mde_downloads WHERE status = 'ready' ORDER BY created_at DESC").fetchall()
