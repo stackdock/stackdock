@@ -1,17 +1,20 @@
-# Base on Microsoft's official Playwright image: Firefox/Chromium system libs are
-# baked in (matched to playwright 1.49.0), on Ubuntu Noble w/ Python 3.12.
-# The NYT pull uses Camoufox (a hardened Firefox) — it beats DataDome's device
-# check that plain Chromium fails, and runs headless (no Xvfb needed).
-FROM mcr.microsoft.com/playwright/python:v1.49.0-noble
+# The NYT pull uses Camoufox (a hardened Firefox that beats DataDome's device
+# check, headless). Camoufox ships its OWN Firefox binary, so we don't need the
+# heavy Playwright image's bundled browsers — we only need Firefox's runtime
+# system libraries. Installing firefox-esr pulls exactly those (and avoids
+# guessing Debian's t64-renamed lib package names). Result: ~1.5 GB vs ~6 GB.
+FROM python:3.12-slim
 WORKDIR /srv
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-# Fetch the Camoufox browser binary + GeoIP dataset into the image.
-RUN python -m camoufox fetch
-# Xvfb remains as a fallback display (Camoufox runs headless and won't need it).
+# firefox-esr = the right Firefox runtime libs for Camoufox; procps = pkill for
+# the browser reaper. Then fetch the Camoufox browser binary + GeoIP dataset
+# (retry — the GitHub release CDN flakes and a failure would abort the deploy).
 RUN apt-get update \
- && apt-get install -y --no-install-recommends xvfb \
- && rm -rf /var/lib/apt/lists/*
+ && apt-get install -y --no-install-recommends firefox-esr procps \
+ && rm -rf /var/lib/apt/lists/* \
+ && for i in 1 2 3 4 5 6; do python -m camoufox fetch && break || { echo "camoufox fetch retry $i"; sleep 12; }; done \
+ && test -d /root/.cache/camoufox
 COPY app ./app
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
