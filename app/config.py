@@ -128,6 +128,17 @@ DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
 # Use it to push the aggregated firehose into anything (n8n, Zapier, your own bot).
 OUTBOUND_WEBHOOK_URL = os.getenv("OUTBOUND_WEBHOOK_URL", "")
 
+# ---- YouTube (channel upload notifications via per-channel RSS) ----
+# Default channels seeded on startup (handles, without the leading @). Members can
+# add more in the UI. A new upload with "PRIORITY" in the title @everyones the
+# Discord server; others get a normal webhook notification.
+YOUTUBE_DEFAULT_CHANNELS = [
+    c.strip().lstrip("@") for c in
+    os.getenv("YOUTUBE_DEFAULT_CHANNELS", "S2Underground,BubGames").split(",")
+    if c.strip()
+]
+YOUTUBE_POLL_MINUTES = int(os.getenv("YOUTUBE_POLL_MINUTES", "20"))
+
 # ---- Scheduler intervals (minutes) ----
 EMAIL_POLL_MINUTES = int(os.getenv("EMAIL_POLL_MINUTES", "10"))
 PODCAST_POLL_MINUTES = int(os.getenv("PODCAST_POLL_MINUTES", "30"))

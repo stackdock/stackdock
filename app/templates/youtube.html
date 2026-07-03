@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}YouTube · {{ site_title }}{% endblock %}
+{% block content %}
+
+{% macro pager(base) -%}
+  {% if total_pages > 1 %}
+  <nav class="pager">
+    {% if page > 1 %}<a href="{{ base }}&page={{ page - 1 }}">← prev</a>{% else %}<span class="off">← prev</span>{% endif %}
+    <span class="pager-info">page {{ page }} of {{ total_pages }}</span>
+    {% if page < total_pages %}<a href="{{ base }}&page={{ page + 1 }}">next →</a>{% else %}<span class="off">next →</span>{% endif %}
+  </nav>
+  {% endif %}
+{%- endmacro %}
+
+<section>
+  <h2><span class="fun-label">YouTube</span><span class="work-label">Video Feed</span> <span class="count">{{ total_items }}</span></h2>
+  {% if message %}<p class="form-ok">{{ message }}</p>{% endif %}
+  {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
+
+  <div class="auth-card" style="margin:0.5rem 0 1rem; max-width:640px">
+    <form method="post" action="/youtube/add-channel" class="search-form">
+      <input type="text" name="url" required autocomplete="off" style="flex:1"
+             placeholder="Add a channel: @handle or youtube.com/@channel…">
+      <button type="submit">Add</button>
+    </form>
+    <p class="hint" style="margin-top:0.6rem">
+      New uploads notify Discord; a video with <strong>PRIORITY</strong> in the title pings @everyone.
+      <br>
+      <span class="fun-label">⚠️ Heads up: adding autism or coal will be <strong>punished</strong>.</span><span class="work-label">Please add only relevant, on-topic channels.</span>
+    </p>
+  </div>
+
+  <details class="filter-box"{% if channels %} open{% endif %}>
+    <summary><span class="fun-label">Tracked channels</span><span class="work-label">Sources</span> <span class="count">{{ channels|length }}</span></summary>
+    <ul class="rows" style="margin-top:0.5rem">
+      {% for ch in channels %}
+      <li>
+        <span class="spine">@{{ ch.handle }}</span>
+        <span class="row-title">{{ ch.name or ch.handle }}
+          <small class="hint"> · added by {{ ch.added_by }}{% if not ch.last_sync %} · pending first check{% endif %}</small>
+        </span>
+        {% if user.is_admin %}
+        <form method="post" action="/youtube/remove-channel" class="inline-form"
+              onsubmit="return confirm('Stop tracking this channel?')">
+          <input type="hidden" name="channel_id" value="{{ ch.id }}">
+          <button type="submit">Remove</button>
+        </form>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    <form method="post" action="/youtube/sync" class="inline-form" style="margin-top:0.5rem">
+      <button type="submit">Check for new uploads now</button>
+    </form>
+  </details>
+
+  {% if not videos %}
+    <p class="empty">No videos yet — they’ll appear here as the tracked channels upload.</p>
+  {% endif %}
+  <ul class="cards">
+    {% for v in videos %}
+    <li class="card">
+      <a href="/youtube/watch/{{ v.slug }}" class="card-link">
+        {% if v.thumbnail %}
+          <img class="thumb" src="{{ v.thumbnail }}" alt="" loading="lazy" data-fallback="▶">
+        {% else %}
+          <span class="thumb thumb-fallback">▶</span>
+        {% endif %}
+        <span class="card-body">
+          <span class="spine">{{ v.channel }}{% if v.priority %} <span class="badge paid-locked">PRIORITY</span>{% endif %}</span>
+          <span class="card-title">{{ v.title }}</span>
+          <span class="row-meta">
+            <time>{{ (v.published_at or v.created_at)[:10] }}</time>
+          </span>
+        </span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {{ pager('/youtube?_=1') }}
+</section>
+{% endblock %}

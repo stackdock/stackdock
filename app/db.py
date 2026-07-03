@@ -48,6 +48,30 @@ CREATE TABLE IF NOT EXISTS nyt_articles (
     status TEXT DEFAULT 'pulling'       -- pulling | ready | failed: <reason>
 );
 
+CREATE TABLE IF NOT EXISTS youtube_channels (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    handle TEXT UNIQUE NOT NULL,        -- @handle without the @ (dedupe key)
+    channel_id TEXT,                    -- resolved UC... id (null until first sync)
+    name TEXT,                          -- channel display name
+    added_by TEXT,                      -- username, or 'system' for seeded defaults
+    last_sync TEXT,                     -- null = first sync is a silent backfill
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS youtube_videos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    video_id TEXT UNIQUE NOT NULL,      -- YouTube video id, dedupe key
+    channel TEXT,                       -- channel display name
+    title TEXT NOT NULL,
+    url TEXT,                           -- https://www.youtube.com/watch?v=...
+    published_at TEXT,
+    thumbnail TEXT,
+    slug TEXT,                          -- /youtube/watch/{slug}
+    priority INTEGER DEFAULT 0,         -- 1 if "PRIORITY" in title -> @everyone
+    notified INTEGER DEFAULT 0,         -- 1 once announced (backfill inserts as 1)
+    created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL COLLATE NOCASE,
@@ -237,6 +261,10 @@ def init():
         # seed article_sources from each article's original contributor
         c.execute("INSERT OR IGNORE INTO article_sources (article_id, label) "
                   "SELECT id, added_by FROM articles WHERE added_by IS NOT NULL AND added_by != ''")
+        # seed the default YouTube channels (handles, no @) — members add more in UI
+        for handle in config.YOUTUBE_DEFAULT_CHANNELS:
+            c.execute("INSERT OR IGNORE INTO youtube_channels (handle, added_by, created_at) "
+                      "VALUES (?, 'system', ?)", (handle, now_iso()))
 
 
 # ---------- articles ----------
@@ -1029,3 +1057,98 @@ def recent_nyt_failures(limit: int = 5) -> list:
             "SELECT id, original_url, status, created_at FROM nyt_articles "
             "WHERE status != 'ready' ORDER BY created_at DESC LIMIT ?",
             (limit,)).fetchall()
+
+
+# ---------- YouTube (channel upload notifications) ----------
+
+def list_youtube_channels() -> list:
+    with conn() as c:
+        return c.execute(
+            "SELECT id, handle, channel_id, name, added_by, last_sync "
+            "FROM youtube_channels ORDER BY LOWER(COALESCE(name, handle))").fetchall()
+
+
+def add_youtube_channel(handle: str, added_by: str) -> tuple[int, bool]:
+    """Add a channel by @handle (no @). Returns (id, created); created=False if it
+    already existed."""
+    with conn() as c:
+        row = c.execute("SELECT id FROM youtube_channels WHERE handle = ? COLLATE NOCASE",
+                        (handle,)).fetchone()
+        if row:
+            return row["id"], False
+        cur = c.execute(
+            "INSERT INTO youtube_channels (handle, added_by, created_at) VALUES (?, ?, ?)",
+            (handle, added_by, now_iso()))
+        return cur.lastrowid, True
+
+
+def set_youtube_channel_meta(channel_row_id: int, channel_id: str, name: str) -> None:
+    with conn() as c:
+        c.execute("UPDATE youtube_channels SET channel_id = ?, name = ? WHERE id = ?",
+                  (channel_id, name, channel_row_id))
+
+
+def set_youtube_channel_sync(channel_row_id: int, ts: str) -> None:
+    with conn() as c:
+        c.execute("UPDATE youtube_channels SET last_sync = ? WHERE id = ?",
+                  (ts, channel_row_id))
+
+
+def remove_youtube_channel(channel_row_id: int) -> None:
+    with conn() as c:
+        c.execute("DELETE FROM youtube_channels WHERE id = ?", (channel_row_id,))
+
+
+def youtube_video_exists(video_id: str) -> bool:
+    with conn() as c:
+        return c.execute("SELECT 1 FROM youtube_videos WHERE video_id = ?",
+                         (video_id,)).fetchone() is not None
+
+
+def insert_youtube_video(*, video_id: str, channel: str, title: str, url: str,
+                         published_at: str, thumbnail: str, priority: int,
+                         notified: int) -> int:
+    with conn() as c:
+        if c.execute("SELECT 1 FROM youtube_videos WHERE video_id = ?", (video_id,)).fetchone():
+            return 0
+        cur = c.execute(
+            "INSERT OR IGNORE INTO youtube_videos "
+            "(video_id, channel, title, url, published_at, thumbnail, slug, "
+            " priority, notified, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (video_id, channel, title, url, published_at, thumbnail,
+             _unique_slug(c, "youtube_videos", title), priority, notified, now_iso()))
+        return cur.lastrowid or 0
+
+
+def list_youtube_videos(limit: int = 12, offset: int = 0) -> list:
+    with conn() as c:
+        return c.execute(
+            "SELECT id, video_id, channel, title, url, published_at, thumbnail, "
+            "slug, priority, created_at FROM youtube_videos "
+            "ORDER BY COALESCE(published_at, created_at) DESC LIMIT ? OFFSET ?",
+            (limit, offset)).fetchall()
+
+
+def count_youtube_videos() -> int:
+    with conn() as c:
+        return c.execute("SELECT COUNT(*) AS n FROM youtube_videos").fetchone()["n"]
+
+
+def get_youtube_video_by_slug(slug: str):
+    with conn() as c:
+        return c.execute("SELECT * FROM youtube_videos WHERE slug = ?", (slug,)).fetchone()
+
+
+def list_unnotified_youtube() -> list:
+    with conn() as c:
+        return c.execute(
+            "SELECT id, channel, title, url, priority FROM youtube_videos "
+            "WHERE notified = 0 ORDER BY COALESCE(published_at, created_at) ASC").fetchall()
+
+
+def mark_youtube_notified(ids: list[int]) -> None:
+    if not ids:
+        return
+    with conn() as c:
+        c.executemany("UPDATE youtube_videos SET notified = 1 WHERE id = ?",
+                      [(i,) for i in ids])

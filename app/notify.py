@@ -143,6 +143,39 @@ def push_new_items(items: list[dict]) -> None:
     push_outbound(items)
 
 
+def notify_youtube(priority: list[dict], normal: list[dict]) -> None:
+    """PRIORITY uploads @everyone the server; the rest get a normal embed.
+    Each item: {"channel": ..., "title": ..., "url": watch-url}."""
+    def _lines(vids, icon):
+        out = [f"{icon} **{v['channel'][:60]}** — [{v['title'][:150]}]({v['url']})"
+               for v in vids[:DIGEST_MAX_LINES]]
+        if len(vids) > DIGEST_MAX_LINES:
+            out.append(f"…and **{len(vids) - DIGEST_MAX_LINES} more**")
+        return "\n".join(out)[:4000]
+
+    if priority:
+        _post({
+            "content": "@everyone 🚨 **PRIORITY**",
+            "allowed_mentions": {"parse": ["everyone"]},
+            "embeds": [{
+                "title": "🚨 PRIORITY upload",
+                "description": _lines(priority, "🚨"),
+                "color": 0xC0392B,
+                "footer": {"text": f"{config.SITE_TITLE} · YouTube"},
+            }],
+        })
+    if normal:
+        n = len(normal)
+        _post({
+            "embeds": [{
+                "title": f"New YouTube upload{'s' if n != 1 else ''}",
+                "description": _lines(normal, "▶️"),
+                "color": 0xC4302B,
+                "footer": {"text": f"{config.SITE_TITLE} · YouTube"},
+            }],
+        })
+
+
 def flush() -> None:
     """Resilient digest: announce every not-yet-notified item, then mark them.
     The pending set lives in the DB (notified=0), so a sync that dies before this

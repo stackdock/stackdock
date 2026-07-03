@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import auth, config, db, feedgen, metrics, notify, storage
-from .ingest import email_ingest, nyt, patreon, podcast_rss, substack
+from .ingest import email_ingest, nyt, patreon, podcast_rss, substack, youtube
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger("stackdock")
@@ -31,7 +31,7 @@ JOB_STATE: dict[str, dict] = {}   # job_id -> {last_run, result, ok}
 JOBS = {"email": email_ingest.run, "podcasts": podcast_rss.run,
         "substack": substack.run, "patreon": patreon.run, "nyt": nyt.run,
         "substack_refresh": substack.refresh_locked,
-        "verify_paid": substack.verify_paid_access}
+        "verify_paid": substack.verify_paid_access, "youtube": youtube.run}
 
 
 def run_job(job_id: str) -> int | None:
@@ -65,6 +65,17 @@ def _trigger_nyt_pull():
                           next_run_time=datetime.now(timezone.utc))
     except Exception:
         log.exception("could not schedule NYT pull")
+
+
+def _trigger_youtube():
+    """Kick a YouTube poll off the request thread (resolving a new channel +
+    fetching its feed shouldn't block the response)."""
+    try:
+        scheduler.add_job(_tracked("youtube"), id="youtube_now", replace_existing=True,
+                          max_instances=1, coalesce=True,
+                          next_run_time=datetime.now(timezone.utc))
+    except Exception:
+        log.exception("could not schedule YouTube poll")
 
 
 def _safe_next(next_url: str | None) -> str:
@@ -113,6 +124,10 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(_tracked("verify_paid"), "interval",
                       hours=24, id="verify_paid", max_instances=1, coalesce=True,
                       next_run_time=now + timedelta(seconds=260))
+    scheduler.add_job(_tracked("youtube"), "interval",
+                      minutes=config.YOUTUBE_POLL_MINUTES, id="youtube",
+                      max_instances=1, coalesce=True,
+                      next_run_time=now + timedelta(seconds=110))
     scheduler.start()
     log.info("Stackdock started. Feed: %s/feed/%s/all.xml", config.PUBLIC_BASE_URL, config.FEED_TOKEN)
     yield
@@ -674,6 +689,57 @@ def nyt_read(request: Request, slug: str, user=Depends(auth.current_user)):
     if not a:
         raise HTTPException(404)
     return render(request, "nyt_article.html", user=user, a=a)
+
+
+YT_PAGE_SIZE = 12
+
+
+@app.get("/youtube", response_class=HTMLResponse)
+def youtube_page(request: Request, user=Depends(auth.current_user),
+                 page: int = 1, msg: str | None = None, err: str | None = None):
+    page = max(1, page)
+    offset = (page - 1) * YT_PAGE_SIZE
+    total = db.count_youtube_videos()
+    total_pages = max(1, -(-total // YT_PAGE_SIZE))
+    return render(request, "youtube.html", user=user,
+                  videos=db.list_youtube_videos(limit=YT_PAGE_SIZE, offset=offset),
+                  channels=db.list_youtube_channels(),
+                  page=page, total_pages=total_pages, total_items=total,
+                  message=msg, error=err)
+
+
+@app.post("/youtube/add-channel")
+def youtube_add_channel(user=Depends(auth.current_user), url: str = Form(...)):
+    handle = youtube.normalize_handle(url)
+    if not handle:
+        return RedirectResponse("/youtube?err=Not+a+YouTube+channel", status_code=303)
+    _row_id, created = db.add_youtube_channel(handle, user["username"])
+    if not created:
+        return RedirectResponse("/youtube?msg=That+channel+is+already+tracked",
+                                status_code=303)
+    _trigger_youtube()
+    return RedirectResponse(f"/youtube?msg=Added+%40{handle}+%E2%80%94+checking+for+uploads",
+                            status_code=303)
+
+
+@app.post("/youtube/remove-channel")
+def youtube_remove_channel(user=Depends(auth.current_admin), channel_id: int = Form(...)):
+    db.remove_youtube_channel(channel_id)
+    return RedirectResponse("/youtube?msg=Channel+removed", status_code=303)
+
+
+@app.post("/youtube/sync")
+def youtube_sync(user=Depends(auth.current_user)):
+    _trigger_youtube()
+    return RedirectResponse("/youtube?msg=Checking+for+new+uploads%E2%80%A6", status_code=303)
+
+
+@app.get("/youtube/watch/{slug}", response_class=HTMLResponse)
+def youtube_watch(request: Request, slug: str, user=Depends(auth.current_user)):
+    v = db.get_youtube_video_by_slug(slug)
+    if not v:
+        raise HTTPException(404)
+    return render(request, "youtube_watch.html", user=user, v=v)
 
 
 @app.get("/listen/{slug}", response_class=HTMLResponse)

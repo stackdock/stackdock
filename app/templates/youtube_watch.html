@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{{ v.title }} · {{ site_title }}{% endblock %}
+{% block content %}
+<article class="reader">
+  <p class="spine">{{ v.channel }}
+    {% if v.priority %}<span class="badge paid-locked">PRIORITY</span>{% endif %}
+  </p>
+  <h1>{{ v.title }}</h1>
+  <p class="meta">
+    {{ (v.published_at or v.created_at)[:10] }}
+    · <a href="{{ v.url }}" rel="noopener" target="_blank">watch on YouTube ↗</a>
+  </p>
+  <div style="position:relative; width:100%; aspect-ratio:16/9; background:#000; border-radius:6px; overflow:hidden; margin:0.5rem 0">
+    <iframe src="https://www.youtube-nocookie.com/embed/{{ v.video_id }}"
+            title="{{ v.title }}" loading="lazy"
+            style="position:absolute; inset:0; width:100%; height:100%; border:0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen></iframe>
+  </div>
+</article>
+{% endblock %}
