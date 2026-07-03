@@ -109,13 +109,15 @@ def _run() -> int:
 
     for ch in channels:
         cid = ch["channel_id"]
+        cname = ch["name"]
         if not cid:
             cid, name = resolve_channel(ch["handle"])
             if not cid:
                 log.warning("YouTube: could not resolve @%s: %s", ch["handle"], name)
                 continue
             db.set_youtube_channel_meta(ch["id"], cid, name)
-        cname = ch["name"] or cid
+            cname = name          # use the freshly-resolved name, not the stale row
+        cname = cname or cid
         is_backfill = ch["last_sync"] is None
         try:
             parsed = feedparser.parse(_feed_url(cid))
