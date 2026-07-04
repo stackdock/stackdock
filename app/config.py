@@ -135,6 +135,10 @@ MDE_API_BASE = os.getenv("MDE_API_BASE", "https://api.mde.tv/v1")
 # one. Only the /sign download step needs auth — the catalogue is public.
 MDE_ACCESS_TOKEN = os.getenv("MDE_ACCESS_TOKEN", "")
 MDE_REFRESH_TOKEN = os.getenv("MDE_REFRESH_TOKEN", "")
+# Preferred: log in to mint tokens (POST /v1/auth/login) — self-healing, no manual
+# cookies. Used as the fallback when the stored/refresh tokens are dead.
+MDE_EMAIL = os.getenv("MDE_EMAIL", "")
+MDE_PASSWORD = os.getenv("MDE_PASSWORD", "")
 # Catalogue responses are cached this long so browsing doesn't hammer mde.tv.
 MDE_CACHE_SECONDS = int(os.getenv("MDE_CACHE_SECONDS", "1800"))
 

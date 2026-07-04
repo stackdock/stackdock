@@ -51,39 +51,56 @@ def _jwt_exp(tok: str) -> int:
         return 0
 
 
-def _refresh(access: str, refresh: str) -> tuple[str, str]:
-    """GET /v1/auth with both cookies -> fresh access + rotated refresh."""
-    r = requests.get("https://api.mde.tv/v1/auth",
-                     cookies={"mde-access-token": access, "mde-refresh-token": refresh},
-                     headers={"User-Agent": _UA, "Origin": "https://www.mde.tv",
-                              "Referer": "https://www.mde.tv/"},
-                     allow_redirects=False, timeout=25)
-    new_a = r.cookies.get("mde-access-token")
-    new_r = r.cookies.get("mde-refresh-token")
-    if not new_a:
-        raise MdeError("mde token refresh returned no new access token — the "
-                       "refresh token is expired/rotated; reconnect a fresh mde cookie.")
-    new_a, new_r = new_a, (new_r or refresh)
-    db.set_mde_tokens(new_a, new_r)
-    log.info("mde: minted fresh access token (exp in %ds)",
-             _jwt_exp(new_a) - int(time.time()))
-    return new_a, new_r
+_MDE_HDRS = {"User-Agent": _UA, "Origin": "https://www.mde.tv",
+             "Referer": "https://www.mde.tv/"}
+
+
+def _store(a: str, r: str) -> tuple[str, str]:
+    db.set_mde_tokens(a, r)
+    log.info("mde: fresh access token (exp in %ds)", _jwt_exp(a) - int(time.time()))
+    return a, r
+
+
+def _refresh(access: str, refresh: str) -> tuple[str, str] | None:
+    """GET /v1/auth with both cookies -> fresh access + rotated refresh, or None."""
+    try:
+        r = requests.get("https://api.mde.tv/v1/auth",
+                         cookies={"mde-access-token": access, "mde-refresh-token": refresh},
+                         headers=_MDE_HDRS, allow_redirects=False, timeout=25)
+        na, nr = r.cookies.get("mde-access-token"), r.cookies.get("mde-refresh-token")
+        return _store(na, nr or refresh) if na else None
+    except Exception as e:                                     # noqa: BLE001
+        log.info("mde refresh failed (%s), will log in", e)
+        return None
+
+
+def _login() -> tuple[str, str]:
+    """Mint a fresh token pair by logging in — the self-healing fallback."""
+    if not (config.MDE_EMAIL and config.MDE_PASSWORD):
+        raise MdeError("mde.tv not connected — set MDE_EMAIL/MDE_PASSWORD (or seed tokens).")
+    r = requests.post("https://api.mde.tv/v1/auth/login", headers=_MDE_HDRS,
+                      json={"email": config.MDE_EMAIL, "password": config.MDE_PASSWORD},
+                      allow_redirects=False, timeout=25)
+    na, nr = r.cookies.get("mde-access-token"), r.cookies.get("mde-refresh-token")
+    if not na:
+        raise MdeError(f"mde.tv login failed (HTTP {r.status_code}) — check credentials.")
+    return _store(na, nr or "")
 
 
 def access_token() -> str:
-    """A currently-valid access token, refreshing (and persisting rotation) as
-    needed. Seeds from config on first use."""
+    """A currently-valid access token. Try stored -> refresh -> login. Persists
+    every result (refresh rotates the token, so we must)."""
     with _TOKEN_LOCK:
         at, rt = db.get_mde_tokens()
-        if not at and not rt:
+        if not at and not rt and (config.MDE_ACCESS_TOKEN or config.MDE_REFRESH_TOKEN):
             at, rt = config.MDE_ACCESS_TOKEN, config.MDE_REFRESH_TOKEN
-            if at or rt:
-                db.set_mde_tokens(at, rt)
-        if not rt:
-            raise MdeError("mde.tv not connected — no refresh token stored.")
-        if _jwt_exp(at) - time.time() < 90:      # expired or about to
-            at, rt = _refresh(at, rt)
-        return at
+        if at and _jwt_exp(at) - time.time() > 90:
+            return at
+        if rt:
+            got = _refresh(at or "", rt)
+            if got:
+                return got[0]
+        return _login()[0]
 
 
 # ---------------- public catalogue ----------------
