@@ -17,6 +17,7 @@ the 1080p (or best ≤1080p) video + audio into an mp4 streamed straight to R2.
 import base64
 import json
 import logging
+import os
 import re
 import subprocess
 import threading
@@ -143,50 +144,55 @@ def get_video(video_id: str) -> dict:
 
 def _signed_playlist(series_tag: str, video_tag: str) -> str:
     """Open the watch page in a real browser and intercept the Bunny player's
-    request for the signed master playlist.m3u8."""
-    at = access_token()
-    _, rt = db.get_mde_tokens()
+    request for the signed master playlist.m3u8. Retries — the player occasionally
+    needs a nudge/longer wait before it fetches the manifest."""
     watch_url = f"https://www.mde.tv/series/{series_tag}/{video_tag}"
-    cookies = [{"name": n, "value": v, "domain": ".mde.tv", "path": "/"}
-               for n, v in (("mde-access-token", at), ("mde-refresh-token", rt)) if v]
+    last = "no attempt"
+    for attempt in range(2):
+        at = access_token()
+        _, rt = db.get_mde_tokens()
+        cookies = [{"name": n, "value": v, "domain": ".mde.tv", "path": "/"}
+                   for n, v in (("mde-access-token", at), ("mde-refresh-token", rt)) if v]
+        url = _intercept_once(watch_url, cookies)
+        if url:
+            return url
+        last = "player did not request the playlist"
+        log.info("mde: interception attempt %d failed (%s), retrying", attempt + 1, last)
+    raise MdeError(f"could not capture the signed playlist URL — {last} "
+                   "(watch page/player changed, or token not subscribed).")
 
+
+def _intercept_once(watch_url: str, cookies: list) -> str | None:
     from camoufox.sync_api import Camoufox
     found = {"url": None}
     try:
         with Camoufox(headless=True) as browser:
             page = browser.new_page()
             page.context.add_cookies(cookies)
-
-            def on_req(req):
-                u = req.url
-                if "stream.mde.tv" in u and "playlist.m3u8" in u and not found["url"]:
-                    found["url"] = u
-            page.on("request", on_req)
-
-            page.goto(watch_url, wait_until="commit", timeout=60000)
-            for _ in range(25):                       # ~50s max
+            page.on("request", lambda r: found.__setitem__("url", found["url"]
+                    or (r.url if "stream.mde.tv" in r.url and "playlist.m3u8" in r.url else None)))
+            try:
+                page.goto(watch_url, wait_until="domcontentloaded", timeout=60000)
+            except Exception:                         # noqa: BLE001
+                pass
+            for _ in range(40):                       # ~80s max
                 if found["url"]:
                     break
                 page.wait_for_timeout(2000)
-                # nudge any play button (Bunny iframe usually loads the manifest on
-                # init, but click a visible play control just in case)
-                try:
-                    page.locator("button:has-text('play'), .play, video").first.click(
-                        timeout=500, no_wait_after=True)
-                except Exception:                     # noqa: BLE001
-                    pass
+                # nudge play: click the player area / any video/iframe/play control
+                for sel in ("iframe", "video", "button[aria-label*=lay i]",
+                            "button:has-text('play')", ".vjs-big-play-button"):
+                    try:
+                        page.locator(sel).first.click(timeout=400, no_wait_after=True)
+                    except Exception:                 # noqa: BLE001
+                        pass
             browser.close()
     finally:
-        # Camoufox leaves headless Firefox procs behind (like the NYT engine); reap
-        # them so they don't accumulate + OOM the box before ffmpeg runs.
         for pat in ("camoufox", "firefox"):
             try:
                 subprocess.run(["pkill", "-9", "-f", pat], timeout=10, check=False)
             except Exception:                         # noqa: BLE001
                 pass
-    if not found["url"]:
-        raise MdeError("could not capture the signed playlist URL from the player "
-                       "(watch page/player may have changed, or token invalid).")
     return found["url"]
 
 
@@ -254,26 +260,34 @@ def _download(video_id: str) -> None:
 
         key = f"mde/{series_tag}/{video_id}.mp4"
         hdr = f"Referer: {_BUNNY_REFERER}\r\nUser-Agent: {_UA}\r\n"
+        # Regular mp4 with +faststart (moov at front) so the player knows the full
+        # duration and can seek — a fragmented/empty-moov mp4 makes the timer grow
+        # as it plays. faststart needs a seekable output, so write a temp file then
+        # upload. Copy the video; RE-ENCODE audio to AAC (cheap, audio-only) so it
+        # always plays regardless of the HLS audio's bitstream format.
+        tmp = f"/tmp/mde_{video_id}.mp4"
         cmd = ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
                "-headers", hdr, "-i", video_url]
         if audio_url:
-            cmd += ["-headers", hdr, "-i", audio_url]
-        cmd += ["-map", "0:v:0"] + (["-map", "1:a:0"] if audio_url else [])
-        # aac_adtstoasc converts the HLS AAC bitstream so it muxes into mp4;
-        # fragmented mp4 streamed to stdout (no temp file — disk is tight).
-        cmd += ["-c", "copy", "-bsf:a", "aac_adtstoasc", "-f", "mp4",
-                "-movflags", "frag_keyframe+empty_moov+default_base_moof", "pipe:1"]
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            cmd += ["-headers", hdr, "-i", audio_url,
+                    "-map", "0:v:0", "-map", "1:a:0"]
+        cmd += ["-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+                "-movflags", "+faststart", "-y", tmp]
         try:
-            storage.upload_stream(proc.stdout, key, "video/mp4")
+            r = subprocess.run(cmd, capture_output=True, timeout=7200)
+            if r.returncode != 0:
+                raise MdeError(f"ffmpeg failed (rc={r.returncode}): "
+                               f"{r.stderr.decode('utf-8', 'replace')[-400:]}")
+            size = os.path.getsize(tmp)
+            with open(tmp, "rb") as f:
+                storage.upload_stream(f, key, "video/mp4")
         finally:
-            proc.stdout.close()
-            err = proc.stderr.read().decode("utf-8", "replace")[-500:]
-            rc = proc.wait()
-        if rc != 0:
-            raise MdeError(f"ffmpeg failed (rc={rc}): {err}")
-        db.finish_mde_download(video_id, r2_key=key, size_bytes=0)
-        log.info("mde: downloaded %s -> %s", video_id, key)
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+        db.finish_mde_download(video_id, r2_key=key, size_bytes=size)
+        log.info("mde: downloaded %s -> %s (%d bytes)", video_id, key, size)
     except Exception as e:                                     # noqa: BLE001
         db.set_mde_status(video_id, f"failed: {e}"[:300])
         log.warning("mde download failed for %s: %s", video_id, e)
