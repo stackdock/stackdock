@@ -1,15 +1,26 @@
 """mde.tv catalogue + on-demand download.
 
-The catalogue (series list, episode lists, video detail) is PUBLIC JSON at
-api.mde.tv/v1 — no auth. Only the download (the signed stream URL) needs the
-member's mde-access-token. Nothing here runs on a schedule: the catalogue is
-fetched lazily when someone opens the tab / a series (cached), and a video is
-only downloaded to R2 when someone clicks it.
+Catalogue (series/episodes/video detail) is PUBLIC JSON at api.mde.tv/v1.
+
+Auth: mde uses a 15-min access JWT + a rotating refresh JWT (NOT a session
+cookie). We store both in the DB and mint fresh access tokens on demand:
+`GET /v1/auth` with BOTH cookies returns a new access token AND a new refresh
+token via Set-Cookie — the refresh token rotates every call, so we persist both
+under a lock so concurrent refreshes can't strand a dead token.
+
+Video: episodes are Bunny Stream HLS on stream.mde.tv, protected by a BunnyCDN
+token that mde's backend signs inside the Bunny embed player — the API never
+hands it over. So we open the watch page in Camoufox (with a fresh token),
+intercept the player's request for the signed `playlist.m3u8`, then ffmpeg-remux
+the 1080p (or best ≤1080p) video + audio into an mp4 streamed straight to R2.
 """
+import base64
+import json
 import logging
+import re
+import subprocess
 import threading
 import time
-from urllib.parse import urlparse
 
 import requests
 
@@ -19,13 +30,63 @@ log = logging.getLogger("stackdock.mde")
 
 _UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
        "(KHTML, like Gecko) Chrome/124 Safari/537.36")
+_BUNNY_REFERER = "https://player.mediadelivery.net/"
 _DL_LOCK = threading.Lock()
+_TOKEN_LOCK = threading.Lock()
 _cache: dict[str, tuple[float, object]] = {}
 
 
 class MdeError(RuntimeError):
     pass
 
+
+# ---------------- auth (store + auto-refresh, rotating) ----------------
+
+def _jwt_exp(tok: str) -> int:
+    try:
+        p = tok.split(".")[1]
+        p += "=" * (-len(p) % 4)
+        return int(json.loads(base64.urlsafe_b64decode(p)).get("exp", 0))
+    except Exception:                                          # noqa: BLE001
+        return 0
+
+
+def _refresh(access: str, refresh: str) -> tuple[str, str]:
+    """GET /v1/auth with both cookies -> fresh access + rotated refresh."""
+    r = requests.get("https://api.mde.tv/v1/auth",
+                     cookies={"mde-access-token": access, "mde-refresh-token": refresh},
+                     headers={"User-Agent": _UA, "Origin": "https://www.mde.tv",
+                              "Referer": "https://www.mde.tv/"},
+                     allow_redirects=False, timeout=25)
+    new_a = r.cookies.get("mde-access-token")
+    new_r = r.cookies.get("mde-refresh-token")
+    if not new_a:
+        raise MdeError("mde token refresh returned no new access token — the "
+                       "refresh token is expired/rotated; reconnect a fresh mde cookie.")
+    new_a, new_r = new_a, (new_r or refresh)
+    db.set_mde_tokens(new_a, new_r)
+    log.info("mde: minted fresh access token (exp in %ds)",
+             _jwt_exp(new_a) - int(time.time()))
+    return new_a, new_r
+
+
+def access_token() -> str:
+    """A currently-valid access token, refreshing (and persisting rotation) as
+    needed. Seeds from config on first use."""
+    with _TOKEN_LOCK:
+        at, rt = db.get_mde_tokens()
+        if not at and not rt:
+            at, rt = config.MDE_ACCESS_TOKEN, config.MDE_REFRESH_TOKEN
+            if at or rt:
+                db.set_mde_tokens(at, rt)
+        if not rt:
+            raise MdeError("mde.tv not connected — no refresh token stored.")
+        if _jwt_exp(at) - time.time() < 90:      # expired or about to
+            at, rt = _refresh(at, rt)
+        return at
+
+
+# ---------------- public catalogue ----------------
 
 def _cached(key: str, fn):
     now = time.time()
@@ -37,36 +98,23 @@ def _cached(key: str, fn):
     return val
 
 
-def _get(path: str, auth: bool = False) -> dict:
-    headers = {"User-Agent": _UA, "Origin": "https://www.mde.tv",
-               "Referer": "https://www.mde.tv/"}
-    cookies = {}
-    if auth:
-        tok = config.MDE_ACCESS_TOKEN
-        headers["Authorization"] = f"Bearer {tok}"
-        cookies["mde-access-token"] = tok
-    r = requests.get(f"{config.MDE_API_BASE}{path}", headers=headers,
-                     cookies=cookies, timeout=30)
-    if r.status_code == 403:
-        raise MdeError("mde.tv rejected the token (expired or not subscribed) — "
-                       "reconnect a fresh cookie.")
+def _get(path: str) -> dict:
+    r = requests.get(f"{config.MDE_API_BASE}{path}",
+                     headers={"User-Agent": _UA, "Origin": "https://www.mde.tv",
+                              "Referer": "https://www.mde.tv/"}, timeout=30)
     if r.status_code >= 400:
         raise MdeError(f"mde.tv API {r.status_code} for {path}")
     return r.json()
 
 
-# ---------------- public catalogue ----------------
-
 def list_series() -> list[dict]:
-    """All series (public). Cached."""
     return _cached("series", lambda: _get("/series").get("series", []))
 
 
-def list_episodes(tag: str) -> tuple[dict, list[dict]]:
-    """(series, [videos]) for one series tag (public). Cached per tag."""
+def list_episodes(tag: str):
     def fetch():
-        data = _get(f"/series/{tag}/videos")
-        return data.get("series", {}), data.get("videos", data.get("series", {}).get("videos", []))
+        d = _get(f"/series/{tag}/videos")
+        return d.get("series", {}), d.get("videos", [])
     return _cached(f"eps:{tag}", fetch)
 
 
@@ -74,28 +122,80 @@ def get_video(video_id: str) -> dict:
     return _get(f"/videos/{video_id}").get("video", {})
 
 
-# ---------------- authed download ----------------
+# ---------------- signed URL via Camoufox interception ----------------
 
-def _signed_source(video_id: str) -> str:
-    """Ask mde.tv to sign the video and return a downloadable URL."""
-    data = _get(f"/videos/{video_id}/sign", auth=True)
-    # the response shape isn't documented; accept the common fields
-    for k in ("url", "source", "video", "signedUrl", "signed_url", "hls", "mp4", "playlist"):
-        v = data.get(k)
-        if isinstance(v, str) and v.startswith("http"):
-            return v
-    # sometimes nested under "video" / "sources"
-    for parent in ("video", "data", "result"):
-        node = data.get(parent)
-        if isinstance(node, dict):
-            for k in ("url", "source", "hls", "mp4", "signedUrl"):
-                if isinstance(node.get(k), str) and node[k].startswith("http"):
-                    return node[k]
-    raise MdeError(f"sign response had no downloadable URL: keys={list(data.keys())}")
+def _signed_playlist(series_tag: str, video_tag: str) -> str:
+    """Open the watch page in a real browser and intercept the Bunny player's
+    request for the signed master playlist.m3u8."""
+    at = access_token()
+    _, rt = db.get_mde_tokens()
+    watch_url = f"https://www.mde.tv/series/{series_tag}/{video_tag}"
+    cookies = [{"name": n, "value": v, "domain": ".mde.tv", "path": "/"}
+               for n, v in (("mde-access-token", at), ("mde-refresh-token", rt)) if v]
 
+    from camoufox.sync_api import Camoufox
+    found = {"url": None}
+    with Camoufox(headless=True) as browser:
+        page = browser.new_page()
+        page.context.add_cookies(cookies)
+
+        def on_req(req):
+            u = req.url
+            if "stream.mde.tv" in u and "playlist.m3u8" in u and not found["url"]:
+                found["url"] = u
+        page.on("request", on_req)
+
+        page.goto(watch_url, wait_until="commit", timeout=60000)
+        for _ in range(25):                       # ~50s max
+            if found["url"]:
+                break
+            page.wait_for_timeout(2000)
+            # nudge any play button (Bunny iframe usually loads the manifest on
+            # init, but click a visible play control just in case)
+            try:
+                page.locator("button:has-text('play'), .play, video").first.click(
+                    timeout=500, no_wait_after=True)
+            except Exception:                     # noqa: BLE001
+                pass
+        browser.close()
+    if not found["url"]:
+        raise MdeError("could not capture the signed playlist URL from the player "
+                       "(watch page/player may have changed, or token invalid).")
+    return found["url"]
+
+
+def _pick_variant(master_url: str) -> tuple[str, str]:
+    """Fetch the master playlist and return (video_variant_url, audio_url) for the
+    best rendition <= 1080p."""
+    r = requests.get(master_url, headers={"User-Agent": _UA, "Referer": _BUNNY_REFERER},
+                     timeout=30)
+    r.raise_for_status()
+    base = master_url.rsplit("/", 1)[0] + "/"
+    lines = r.text.splitlines()
+    audio_uri = None
+    for ln in lines:
+        m = re.search(r'TYPE=AUDIO[^\n]*URI="([^"]+)"', ln)
+        if m:
+            audio_uri = m.group(1)
+    best = None  # (height, url)
+    for i, ln in enumerate(lines):
+        if ln.startswith("#EXT-X-STREAM-INF"):
+            hm = re.search(r"RESOLUTION=\d+x(\d+)", ln)
+            h = int(hm.group(1)) if hm else 0
+            uri = lines[i + 1].strip() if i + 1 < len(lines) else ""
+            if uri and h <= 1080 and (best is None or h > best[0]):
+                best = (h, uri)
+    if not best:
+        raise MdeError("no <=1080p rendition found in playlist")
+    v = best[1] if best[1].startswith("http") else base + best[1]
+    a = (audio_uri if audio_uri and audio_uri.startswith("http")
+         else base + audio_uri) if audio_uri else None
+    return v, a
+
+
+# ---------------- download job ----------------
 
 def run() -> int:
-    """Process every queued ('pending') download. Returns count attempted."""
     pending = db.list_mde_pending()
     for row in pending:
         download(row["video_id"])
@@ -103,10 +203,8 @@ def run() -> int:
 
 
 def download(video_id: str) -> None:
-    """Download one video to R2 and mark it ready. Serialized (one at a time) so
-    a big file can't stack with another on the small box. Updates mde_downloads."""
     if not _DL_LOCK.acquire(blocking=False):
-        log.info("mde download already running; %s will be picked up next.", video_id)
+        log.info("mde download already running; %s queued for next run.", video_id)
         return
     try:
         _download(video_id)
@@ -118,23 +216,36 @@ def _download(video_id: str) -> None:
     row = db.get_mde_download(video_id)
     if not row or row["status"] == "ready":
         return
+    db.set_mde_status(video_id, "downloading")
     try:
-        src = _signed_source(video_id)
-        if ".m3u8" in src.lower():
-            raise MdeError("video is HLS (segmented) — single-file download not "
-                           "supported yet; needs ffmpeg remux.")
-        ext = (urlparse(src).path.rsplit(".", 1)[-1] or "mp4").lower()
-        ext = ext if len(ext) <= 4 else "mp4"
-        key = f"mde/{row['series_tag']}/{video_id}.{ext}"
-        headers = {"User-Agent": _UA, "Referer": "https://www.mde.tv/"}
-        with requests.get(src, stream=True, timeout=120, headers=headers) as resp:
-            resp.raise_for_status()
-            mime = resp.headers.get("Content-Type", "video/mp4").split(";")[0]
-            size = int(resp.headers.get("Content-Length", 0))
-            resp.raw.decode_content = True
-            storage.upload_stream(resp.raw, key, mime)
-        db.finish_mde_download(video_id, r2_key=key, size_bytes=size)
-        log.info("mde: downloaded %s -> %s (%d bytes)", video_id, key, size)
-    except Exception as e:                                      # noqa: BLE001
+        v = get_video(video_id)
+        video_tag = v.get("tag")
+        series_tag = row["series_tag"] or v.get("series_tag")
+        if not video_tag or not series_tag:
+            raise MdeError("missing series/video tag")
+        master = _signed_playlist(series_tag, video_tag)
+        video_url, audio_url = _pick_variant(master)
+
+        key = f"mde/{series_tag}/{video_id}.mp4"
+        hdr = f"Referer: {_BUNNY_REFERER}\r\nUser-Agent: {_UA}\r\n"
+        cmd = ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
+               "-headers", hdr, "-i", video_url]
+        if audio_url:
+            cmd += ["-headers", hdr, "-i", audio_url]
+        # fragmented mp4 streamed to stdout (no temp file — disk on the box is tight)
+        cmd += ["-c", "copy", "-f", "mp4",
+                "-movflags", "frag_keyframe+empty_moov+default_base_moof", "pipe:1"]
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            storage.upload_stream(proc.stdout, key, "video/mp4")
+        finally:
+            proc.stdout.close()
+            err = proc.stderr.read().decode("utf-8", "replace")[-500:]
+            rc = proc.wait()
+        if rc != 0:
+            raise MdeError(f"ffmpeg failed (rc={rc}): {err}")
+        db.finish_mde_download(video_id, r2_key=key, size_bytes=0)
+        log.info("mde: downloaded %s -> %s", video_id, key)
+    except Exception as e:                                     # noqa: BLE001
         db.set_mde_status(video_id, f"failed: {e}"[:300])
         log.warning("mde download failed for %s: %s", video_id, e)

@@ -89,6 +89,13 @@ CREATE TABLE IF NOT EXISTS mde_downloads (
     created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS mde_auth (
+    id INTEGER PRIMARY KEY CHECK (id = 1),   -- single row
+    access_token TEXT,
+    refresh_token TEXT,                       -- rotates every refresh; persist it
+    updated_at TEXT
+);
+
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL COLLATE NOCASE,
@@ -1238,3 +1245,21 @@ def list_mde_ready() -> list:
         return c.execute(
             "SELECT video_id, series_name, title, episode, duration, thumbnail, slug "
             "FROM mde_downloads WHERE status = 'ready' ORDER BY created_at DESC").fetchall()
+
+
+# ---------- mde.tv auth tokens (single row, refresh rotates) ----------
+
+def get_mde_tokens() -> tuple[str, str]:
+    with conn() as c:
+        r = c.execute("SELECT access_token, refresh_token FROM mde_auth WHERE id = 1").fetchone()
+        return (r["access_token"] or "", r["refresh_token"] or "") if r else ("", "")
+
+
+def set_mde_tokens(access_token: str, refresh_token: str) -> None:
+    with conn() as c:
+        c.execute(
+            "INSERT INTO mde_auth (id, access_token, refresh_token, updated_at) "
+            "VALUES (1, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET "
+            "access_token = excluded.access_token, refresh_token = excluded.refresh_token, "
+            "updated_at = excluded.updated_at",
+            (access_token, refresh_token, now_iso()))

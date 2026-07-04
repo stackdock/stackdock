@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # the browser reaper. Then fetch the Camoufox browser binary + GeoIP dataset
 # (retry — the GitHub release CDN flakes and a failure would abort the deploy).
 RUN apt-get update \
- && apt-get install -y --no-install-recommends firefox-esr procps \
+ && apt-get install -y --no-install-recommends firefox-esr procps ffmpeg \
  && rm -rf /var/lib/apt/lists/* \
  && for i in 1 2 3 4 5 6; do python -m camoufox fetch && break || { echo "camoufox fetch retry $i"; sleep 12; }; done \
  && test -d /root/.cache/camoufox
