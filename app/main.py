@@ -139,6 +139,12 @@ async def lifespan(app: FastAPI):
                       minutes=config.YOUTUBE_POLL_MINUTES, id="youtube",
                       max_instances=1, coalesce=True,
                       next_run_time=now + timedelta(seconds=110))
+    # mde.tv: periodic sweep so any queued ('pending') download gets picked up
+    # even if its on-demand trigger was dropped while another was in flight.
+    scheduler.add_job(_tracked("mde"), "interval",
+                      minutes=config.MDE_POLL_MINUTES, id="mde",
+                      max_instances=1, coalesce=True,
+                      next_run_time=now + timedelta(seconds=75))
     scheduler.start()
     log.info("Stackdock started. Feed: %s/feed/%s/all.xml", config.PUBLIC_BASE_URL, config.FEED_TOKEN)
     yield
@@ -803,6 +809,11 @@ def mde_watch(request: Request, slug: str, user=Depends(auth.current_user)):
     except Exception:  # noqa: BLE001
         src = None
     return render(request, "mde_watch.html", user=user, d=d, src=src)
+
+
+@app.get("/felix", response_class=HTMLResponse)
+def felix_zone(request: Request, user=Depends(auth.current_user)):
+    return render(request, "felix.html", user=user)
 
 
 @app.get("/listen/{slug}", response_class=HTMLResponse)

@@ -227,11 +227,22 @@ def _pick_variant(master_url: str) -> tuple[str, str]:
 
 # ---------------- download job ----------------
 
+_RUN_LOCK = threading.Lock()
+
+
 def run() -> int:
-    pending = db.list_mde_pending()
-    for row in pending:
-        download(row["video_id"])
-    return len(pending)
+    """Process every queued ('pending'/'downloading') row. Non-blocking lock so a
+    periodic sweep and an on-demand trigger can't iterate at once."""
+    if not _RUN_LOCK.acquire(blocking=False):
+        log.info("mde run already in progress; skipping overlapping run.")
+        return 0
+    try:
+        pending = db.list_mde_pending()
+        for row in pending:
+            download(row["video_id"])
+        return len(pending)
+    finally:
+        _RUN_LOCK.release()
 
 
 def download(video_id: str) -> None:
