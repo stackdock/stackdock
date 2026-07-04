@@ -152,29 +152,38 @@ def _signed_playlist(series_tag: str, video_tag: str) -> str:
 
     from camoufox.sync_api import Camoufox
     found = {"url": None}
-    with Camoufox(headless=True) as browser:
-        page = browser.new_page()
-        page.context.add_cookies(cookies)
+    try:
+        with Camoufox(headless=True) as browser:
+            page = browser.new_page()
+            page.context.add_cookies(cookies)
 
-        def on_req(req):
-            u = req.url
-            if "stream.mde.tv" in u and "playlist.m3u8" in u and not found["url"]:
-                found["url"] = u
-        page.on("request", on_req)
+            def on_req(req):
+                u = req.url
+                if "stream.mde.tv" in u and "playlist.m3u8" in u and not found["url"]:
+                    found["url"] = u
+            page.on("request", on_req)
 
-        page.goto(watch_url, wait_until="commit", timeout=60000)
-        for _ in range(25):                       # ~50s max
-            if found["url"]:
-                break
-            page.wait_for_timeout(2000)
-            # nudge any play button (Bunny iframe usually loads the manifest on
-            # init, but click a visible play control just in case)
+            page.goto(watch_url, wait_until="commit", timeout=60000)
+            for _ in range(25):                       # ~50s max
+                if found["url"]:
+                    break
+                page.wait_for_timeout(2000)
+                # nudge any play button (Bunny iframe usually loads the manifest on
+                # init, but click a visible play control just in case)
+                try:
+                    page.locator("button:has-text('play'), .play, video").first.click(
+                        timeout=500, no_wait_after=True)
+                except Exception:                     # noqa: BLE001
+                    pass
+            browser.close()
+    finally:
+        # Camoufox leaves headless Firefox procs behind (like the NYT engine); reap
+        # them so they don't accumulate + OOM the box before ffmpeg runs.
+        for pat in ("camoufox", "firefox"):
             try:
-                page.locator("button:has-text('play'), .play, video").first.click(
-                    timeout=500, no_wait_after=True)
-            except Exception:                     # noqa: BLE001
+                subprocess.run(["pkill", "-9", "-f", pat], timeout=10, check=False)
+            except Exception:                         # noqa: BLE001
                 pass
-        browser.close()
     if not found["url"]:
         raise MdeError("could not capture the signed playlist URL from the player "
                        "(watch page/player may have changed, or token invalid).")
@@ -249,8 +258,10 @@ def _download(video_id: str) -> None:
                "-headers", hdr, "-i", video_url]
         if audio_url:
             cmd += ["-headers", hdr, "-i", audio_url]
-        # fragmented mp4 streamed to stdout (no temp file — disk on the box is tight)
-        cmd += ["-c", "copy", "-f", "mp4",
+        cmd += ["-map", "0:v:0"] + (["-map", "1:a:0"] if audio_url else [])
+        # aac_adtstoasc converts the HLS AAC bitstream so it muxes into mp4;
+        # fragmented mp4 streamed to stdout (no temp file — disk is tight).
+        cmd += ["-c", "copy", "-bsf:a", "aac_adtstoasc", "-f", "mp4",
                 "-movflags", "frag_keyframe+empty_moov+default_base_moof", "pipe:1"]
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         try:
