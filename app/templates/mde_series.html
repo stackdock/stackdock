@@ -27,8 +27,10 @@
           <span class="row-meta">
             {% if st and st[0] == 'ready' %}
               <a class="badge paid-open" href="/mde/watch/{{ st[1] }}">▶ Watch (saved)</a>
-            {% elif st and (st[0] == 'pending' or st[0] == 'downloading') %}
+            {% elif st and st[0] == 'downloading' %}
               <span class="badge">downloading…</span>
+            {% elif st and st[0] == 'pending' %}
+              <span class="badge">queued…</span>
             {% else %}
               {% if st and st[0] and st[0].startswith('failed') %}<span class="added-by" title="{{ st[0] }}">failed</span>{% endif %}
               <form method="post" action="/mde/download" class="inline-form">
