@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+{% block title %}Felix Bussy Zone · Members Only{% endblock %}
+{% block content %}
+<style>
+  /* self-contained ashemaletube-style theme — fixed dark purple/magenta,
+     independent of the app's light/dark theme */
+  .fbz{--a:#a020f0;--a2:#ff2d95;--ok:#2ecc71;--bg:#0e0714;--panel:#1b0f28;
+    --panel2:#23142f;--paper:#0f0716;--rule:#38214f;--ink:#efe6f7;--dim:#a08bb8;
+    --mono:ui-monospace,Menlo,Consolas,monospace;
+    background:var(--bg);color:var(--ink);margin:-1rem -1rem 0;padding:0 0 2.5rem;
+    font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;border-radius:8px;overflow:hidden}
+  .fbz-topbar{display:flex;align-items:center;justify-content:center;gap:.5rem;
+    background:linear-gradient(90deg,#0a050e,#1c0a2b,#0a050e);color:var(--ok);
+    font-size:.7rem;letter-spacing:.04em;padding:.4rem;border-bottom:1px solid #2a1636}
+  .fbz-topbar b{color:var(--ink)}
+  .fbz-hero{text-align:center;padding:1.9rem 1rem 1.2rem;
+    background:radial-gradient(120% 150% at 50% 0%,#2c0f40,var(--bg) 68%)}
+  .fbz-brand{font-size:2.3rem;font-weight:900;line-height:1;letter-spacing:-.02em;
+    background:linear-gradient(90deg,var(--a),var(--a2));-webkit-background-clip:text;
+    background-clip:text;color:transparent;text-shadow:0 0 40px rgba(160,32,240,.35)}
+  .fbz-brand .z{color:#ffc234;-webkit-text-fill-color:#ffc234}
+  .fbz-live{color:var(--dim);margin-top:.5rem;font-size:.9rem}
+  .fbz-live .dot{color:#ff4d4d}
+  .fbz-live b{color:var(--ink)}
+  .fbz-trust{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;margin:1rem auto 0;
+    max-width:760px;padding:0 1rem}
+  .fbz-trust span{font-size:.7rem;color:var(--dim);border:1px solid var(--rule);
+    border-radius:999px;padding:.22rem .6rem;background:#160c1f;white-space:nowrap}
+  .fbz-trust span b{color:var(--ok);font-weight:700}
+  .fbz-inner{max-width:960px;margin:0 auto;padding:0 1rem}
+  /* blurred locked preview grid */
+  .fbz-lockhdr{display:flex;align-items:center;gap:.5rem;justify-content:center;
+    margin:1.6rem 0 .9rem;font-weight:700;color:var(--ink)}
+  .fbz-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.65rem;
+    margin-bottom:1.6rem}
+  .fbz-tile{position:relative;aspect-ratio:16/10;border-radius:8px;overflow:hidden;
+    background:linear-gradient(135deg,#3a1550,#241033 60%,#140a1a);border:1px solid var(--rule)}
+  .fbz-tile::before{content:"";position:absolute;inset:0;
+    background:repeating-linear-gradient(45deg,rgba(160,32,240,.10) 0 12px,transparent 12px 24px);filter:blur(2px)}
+  .fbz-tile .lk{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:.3rem;background:rgba(10,5,15,.5);backdrop-filter:blur(10px);color:#d9c8ec}
+  .fbz-tile .lk span{font-size:1.4rem}
+  .fbz-tile .lk small{font-size:.6rem;letter-spacing:.08em;color:var(--a);font-weight:800}
+  .fbz-tile .dur{position:absolute;bottom:.35rem;right:.4rem;background:rgba(0,0,0,.65);
+    color:#cbb6e0;font-size:.6rem;padding:.05rem .3rem;border-radius:3px;z-index:2}
+  .fbz-tile .hd{position:absolute;top:.35rem;left:.4rem;background:var(--a2);color:#fff;
+    font-size:.56rem;font-weight:800;padding:.05rem .3rem;border-radius:3px;z-index:2}
+  /* the gate card */
+  .fbz-card{position:relative;overflow:hidden;max-width:560px;margin:0 auto;
+    background:linear-gradient(180deg,var(--panel2),var(--panel));
+    border:1px solid var(--rule);border-radius:16px;box-shadow:0 16px 50px rgba(0,0,0,.5)}
+  .fbz-band{background:linear-gradient(120deg,var(--a),var(--a2));color:#fff;
+    padding:1.3rem 1.5rem 1.1rem;text-align:center}
+  .fbz-lock{font-size:2.1rem;line-height:1}
+  .fbz-band h1{margin:.35rem 0 .1rem;font-size:1.45rem;color:#fff}
+  .fbz-band .sub{font-size:.8rem;opacity:.95;margin:0}
+  .fbz-restricted{display:inline-block;margin-top:.55rem;font-size:.64rem;font-weight:800;
+    letter-spacing:.12em;background:rgba(0,0,0,.3);color:#fff;padding:.2rem .6rem;border-radius:6px}
+  .fbz-body{padding:1.2rem 1.5rem 1.5rem}
+  .fbz-lead{color:var(--dim);font-size:.86rem;margin:0 0 1.05rem;text-align:center}
+  .fbz-tiers{display:grid;gap:.5rem;margin-bottom:1.1rem}
+  .fbz-tier{display:flex;align-items:baseline;justify-content:space-between;gap:.5rem;
+    padding:.65rem .85rem;cursor:pointer;border:1.5px solid var(--rule);border-radius:10px;
+    background:var(--paper);transition:border-color .12s,box-shadow .12s}
+  .fbz-tier:hover{border-color:var(--a)}
+  .fbz-tier.sel{border-color:var(--a);box-shadow:0 0 0 3px rgba(160,32,240,.2)}
+  .fbz-tier .n{font-weight:700;font-size:.9rem}
+  .fbz-tier .n small{display:block;font-weight:400;color:var(--dim);font-size:.72rem}
+  .fbz-tier .p{font-weight:800;font-size:1rem;white-space:nowrap;color:#ffc234}
+  .fbz-tier .p small{font-weight:400;color:var(--dim);font-size:.7rem}
+  .fbz-ribbon{position:absolute;right:-30px;top:12px;transform:rotate(45deg);background:var(--a2);
+    color:#fff;font-size:.56rem;font-weight:800;letter-spacing:.1em;padding:.15rem 2.4rem}
+  .fbz-tierwrap{position:relative;overflow:hidden;border-radius:10px}
+  .fbz form label{display:block;font-size:.72rem;color:var(--dim);margin-bottom:.6rem;
+    letter-spacing:.03em}
+  .fbz form input{display:block;width:100%;box-sizing:border-box;margin-top:.22rem;
+    padding:.65rem .75rem;font-size:.95rem;border:1px solid var(--rule);border-radius:8px;
+    background:var(--paper);color:var(--ink)}
+  .fbz form input:focus{outline:none;border-color:var(--a);box-shadow:0 0 0 3px rgba(160,32,240,.2)}
+  .fbz-unlock{width:100%;margin-top:.4rem;padding:.82rem;font-size:1rem;font-weight:800;
+    letter-spacing:.02em;color:#fff;border:0;border-radius:9px;cursor:pointer;
+    background:linear-gradient(120deg,var(--a),var(--a2));box-shadow:0 6px 18px rgba(160,32,240,.35)}
+  .fbz-unlock:hover{filter:brightness(1.08)}
+  .fbz-unlock:disabled{opacity:.7;cursor:progress}
+  .fbz-secured{display:flex;align-items:center;justify-content:center;gap:.35rem;margin:.8rem 0 0;
+    font-size:.72rem;color:var(--dim)}
+  .fbz-secured b{color:var(--ok)}
+  .fbz-cards{display:flex;gap:.4rem;justify-content:center;margin-top:.7rem}
+  .fbz-cards span{font-size:.66rem;background:var(--paper);border:1px solid var(--rule);
+    border-radius:4px;padding:.15rem .4rem;color:#bfa9d6;font-weight:800}
+  .fbz-err{display:none;margin:1rem 0 0;padding:.7rem .85rem;border:1px solid #7a2233;
+    border-left:3px solid var(--a2);background:#2a0c14;border-radius:8px;font-size:.82rem;color:#ffbccb}
+  .fbz-err.show{display:block}
+  .fbz-err b{color:#ff5470}
+  .fbz-err code{font-family:var(--mono);font-size:.76rem;color:var(--a2)}
+  .fbz-social{text-align:center;font-size:.72rem;color:var(--dim);margin:1rem 0 0}
+  .fbz-social .dot{color:var(--ok)}
+  .fbz-fine{margin:1.6rem auto 0;max-width:640px;text-align:center;font-size:.66rem;
+    line-height:1.55;color:#6f5d84}
+  .fbz-fine a{color:#8b78a5}
+  .fbz-overlay{position:fixed;inset:0;z-index:50;display:none;align-items:center;
+    justify-content:center;background:rgba(6,4,10,.78);backdrop-filter:blur(3px)}
+  .fbz-overlay.show{display:flex}
+  .fbz-verify{background:var(--panel2);color:var(--ink);border:1px solid var(--rule);
+    border-radius:14px;padding:1.6rem 1.8rem;width:min(340px,86vw);text-align:center;
+    box-shadow:0 20px 60px rgba(0,0,0,.6)}
+  .fbz-spinner{width:34px;height:34px;margin:0 auto .9rem;border:3px solid var(--rule);
+    border-top-color:var(--a);border-radius:50%;animation:fbz-spin .8s linear infinite}
+  @keyframes fbz-spin{to{transform:rotate(360deg)}}
+  .fbz-step{font-size:.86rem;min-height:1.2em;color:var(--ink)}
+  .fbz-step small{display:block;color:var(--dim);font-size:.72rem;margin-top:.3rem;font-family:var(--mono)}
+</style>
+
+<div class="fbz">
+  <div class="fbz-topbar">🔒 <b>SECURE CONNECTION</b> · 256-bit SSL · TLS 1.3 · your privacy is protected</div>
+
+  <div class="fbz-hero">
+    <div class="fbz-brand">FELIX <span class="z">BUSSY</span> ZONE <span style="-webkit-text-fill-color:initial">🔞</span></div>
+    <div class="fbz-live"><span class="dot">●</span> LIVE · premium members-only content · <b id="fbz-online">2,847</b> members online now</div>
+    <div class="fbz-trust">
+      <span>🔒 <b>SSL</b> Secured · TLS 1.3</span>
+      <span>💳 <b>PCI-DSS</b> Level 1</span>
+      <span>🛡️ <b>Cloudflare</b> Protected</span>
+      <span>✓ <b>Verified</b> Secure Site</span>
+      <span>🔞 <b>18+</b> Age-Verified</span>
+    </div>
+  </div>
+
+  <div class="fbz-inner">
+    <div class="fbz-lockhdr">🔒 <span>THIS CONTENT IS LOCKED — MEMBERS ONLY</span></div>
+    <div class="fbz-grid">
+      {% for i in range(8) %}
+      <div class="fbz-tile">
+        <span class="hd">HD</span>
+        <span class="dur">{{ ['12:47','08:03','21:19','05:56','17:32','09:41','14:08','31:22'][i] }}</span>
+        <div class="lk"><span>🔒</span><small>MEMBERS ONLY</small></div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="fbz-card">
+      <div class="fbz-band">
+        <div class="fbz-lock">🔐</div>
+        <h1>Felix Bussy Zone</h1>
+        <p class="sub">Premium age-restricted content · verified members only</p>
+        <span class="fbz-restricted">RESTRICTED · ACCESS LOGGED</span>
+      </div>
+
+      <div class="fbz-body">
+        <p class="fbz-lead">This vault is locked. An active membership is required to decrypt and stream its contents. Select a plan and sign in to continue.</p>
+
+        <div class="fbz-tiers" id="fbz-tiers">
+          <label class="fbz-tier" data-tier="Monthly">
+            <span class="n">Bussy Pass<small>Monthly · cancel anytime</small></span>
+            <span class="p">$14.99<small>/mo</small></span>
+          </label>
+          <div class="fbz-tierwrap">
+            <span class="fbz-ribbon">POPULAR</span>
+            <label class="fbz-tier sel" data-tier="Annual">
+              <span class="n">Bussy Pass Annual<small>Save 34% · billed yearly</small></span>
+              <span class="p">$119<small>/yr</small></span>
+            </label>
+          </div>
+          <label class="fbz-tier" data-tier="Lifetime">
+            <span class="n">Lifetime Vault<small>One-time · permanent access</small></span>
+            <span class="p">$349<small> once</small></span>
+          </label>
+        </div>
+
+        <form id="fbz-form" autocomplete="off" novalidate>
+          <label>Member email
+            <input type="email" name="email" placeholder="you@example.com" required>
+          </label>
+          <label>Password
+            <input type="password" name="password" placeholder="••••••••••" required>
+          </label>
+          <button type="submit" class="fbz-unlock">🔓 Unlock the Zone</button>
+          <p class="fbz-secured">🔒 <span>Encrypted end-to-end ·</span> <b>256-bit SSL</b></p>
+          <div class="fbz-cards"><span>VISA</span><span>MASTERCARD</span><span>AMEX</span><span>DISCOVER</span></div>
+        </form>
+
+        <div class="fbz-err" id="fbz-err"></div>
+
+        <p class="fbz-social"><span class="dot">●</span> last unlock <span id="fbz-ago">2</span> min ago · billed discreetly as “FBZ MEDIA LLC”</p>
+      </div>
+    </div>
+
+    <p class="fbz-fine">
+      All models appearing on this site were <b>18 years of age or older</b> at the time of production.
+      <b>18 U.S.C. § 2257</b> Record-Keeping Requirements Compliance Statement on file. All access attempts
+      are recorded with timestamp and IP for security and billing-compliance purposes. Chargebacks are
+      contested. By continuing you consent to age verification.<br>
+      © 2026 Felix Bussy Zone™ · FBZ Media LLC · <a href="#">Terms</a> · <a href="#">Privacy</a> ·
+      <a href="#">2257</a> · <a href="#">Billing Support</a>
+    </p>
+  </div>
+</div>
+
+<div class="fbz-overlay" id="fbz-overlay" aria-hidden="true">
+  <div class="fbz-verify">
+    <div class="fbz-spinner"></div>
+    <div class="fbz-step" id="fbz-step">Establishing secure channel…</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var tiers = document.getElementById("fbz-tiers");
+  var form  = document.getElementById("fbz-form");
+  var err   = document.getElementById("fbz-err");
+  var ov    = document.getElementById("fbz-overlay");
+  var step  = document.getElementById("fbz-step");
+  var btn   = form.querySelector(".fbz-unlock");
+  var selectedTier = "Annual";
+  var attempts = 0;
+
+  tiers.addEventListener("click", function (e) {
+    var t = e.target.closest(".fbz-tier");
+    if (!t) return;
+    tiers.querySelectorAll(".fbz-tier").forEach(function (x) { x.classList.remove("sel"); });
+    t.classList.add("sel");
+    selectedTier = t.getAttribute("data-tier");
+  });
+
+  var online = document.getElementById("fbz-online");
+  var ago = document.getElementById("fbz-ago");
+  setInterval(function () {
+    var n = parseInt((online.textContent || "0").replace(/[^0-9]/g, ""), 10) + (Math.floor(Math.random() * 9) - 4);
+    online.textContent = Math.max(1800, n).toLocaleString();
+    ago.textContent = 1 + Math.floor(Math.random() * 6);
+  }, 4000);
+
+  var steps = [
+    ["Establishing secure channel…", "TLS 1.3 · handshake ok"],
+    ["Verifying age gate…", "age token: valid"],
+    ["Authenticating member credentials…", "auth.felixzone.io"],
+    ["Contacting payment processor…", "gateway: stripe-live"],
+    ["Validating subscription…", "plan: annual"]
+  ];
+  var codes = ["BUSSY_402", "AUTH_ERR_419", "SUB_NOT_FOUND", "PAY_DECLINED_51", "GATE_403"];
+  var msgs = [
+    "We couldn’t verify an active membership for this account. Your card issuer declined the transaction.",
+    "Authentication succeeded but no <b>" + "TIER" + "</b> subscription is attached to this member. Access denied.",
+    "Payment method rejected by the processor. The Zone remains locked.",
+    "This account is not authorized for the requested tier. Please contact billing.",
+    "Membership verification failed. Repeated attempts may trigger a temporary security hold."
+  ];
+
+  function denial() {
+    var code = codes[attempts % codes.length];
+    err.innerHTML = "❌ <b>Access Denied.</b> " +
+      msgs[attempts % msgs.length].replace("TIER", selectedTier) +
+      "<br><span style='opacity:.75'>Reference:</span> <code>" + code + "-" +
+      (Date.now() % 100000) + "</code>";
+    err.classList.add("show");
+  }
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    err.classList.remove("show");
+    btn.disabled = true;
+    ov.classList.add("show");
+    steps[4][1] = "plan: " + selectedTier.toLowerCase();
+    var i = 0;
+    (function tick() {
+      if (i < steps.length) {
+        step.innerHTML = steps[i][0] + "<small>" + steps[i][1] + "</small>";
+        i++;
+        setTimeout(tick, 600 + Math.random() * 500);
+      } else {
+        step.innerHTML = "Finalizing…<small>please wait</small>";
+        setTimeout(function () {
+          ov.classList.remove("show");
+          btn.disabled = false;
+          attempts++;
+          denial();
+          err.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 900);
+      }
+    })();
+  });
+})();
+</script>
+{% endblock %}

@@ -759,6 +759,11 @@ def youtube_watch(request: Request, slug: str, user=Depends(auth.current_user)):
     return render(request, "youtube_watch.html", user=user, v=v)
 
 
+@app.get("/felix", response_class=HTMLResponse)
+def felix(request: Request, user=Depends(auth.current_user)):
+    return render(request, "felix.html", user=user)
+
+
 @app.get("/mde", response_class=HTMLResponse)
 def mde_page(request: Request, user=Depends(auth.current_user), err: str | None = None):
     # lazy: only hits mde.tv when someone opens the tab (cached thereafter)
