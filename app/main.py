@@ -759,8 +759,8 @@ def youtube_watch(request: Request, slug: str, user=Depends(auth.current_user)):
     return render(request, "youtube_watch.html", user=user, v=v)
 
 
-@app.get("/felix", response_class=HTMLResponse)
-def felix(request: Request, user=Depends(auth.current_user)):
+@app.get("/bussy-zone", response_class=HTMLResponse)
+def bussy_zone(request: Request, user=Depends(auth.current_user)):
     return render(request, "felix.html", user=user)
 
 
