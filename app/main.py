@@ -816,11 +816,6 @@ def mde_watch(request: Request, slug: str, user=Depends(auth.current_user)):
     return render(request, "mde_watch.html", user=user, d=d, src=src)
 
 
-@app.get("/felix", response_class=HTMLResponse)
-def felix_zone(request: Request, user=Depends(auth.current_user)):
-    return render(request, "felix.html", user=user)
-
-
 @app.get("/listen/{slug}", response_class=HTMLResponse)
 def listen_episode(request: Request, slug: str, user=Depends(auth.current_user)):
     e = db.get_episode_by_slug(slug)
