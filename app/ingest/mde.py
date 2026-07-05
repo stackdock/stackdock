@@ -126,7 +126,11 @@ def _get(path: str) -> dict:
 
 
 def list_series() -> list[dict]:
-    return _cached("series", lambda: _get("/series").get("series", []))
+    # The /series list includes audio-only variants (type == "audio": podcast/OST
+    # feeds + a duplicate audio "pgl") that have NO videos endpoint and 404 when
+    # opened. This tab is for downloadable video, so keep only video series.
+    return _cached("series", lambda: [s for s in _get("/series").get("series", [])
+                                      if s.get("type") != "audio"])
 
 
 def list_episodes(tag: str):
