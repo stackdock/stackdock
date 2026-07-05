@@ -289,7 +289,9 @@
         setTimeout(tick, 600 + Math.random() * 500);
       } else {
         step.innerHTML = "Redirecting to secure checkout…<small>do not close this window</small>";
-        setTimeout(function () { location.href = "/bussy-zone/checkout"; }, 800);
+        setTimeout(function () {
+          location.href = "/bussy-zone/checkout?plan=" + encodeURIComponent(selectedTier.toLowerCase());
+        }, 800);
       }
     })();
   });

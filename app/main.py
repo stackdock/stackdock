@@ -765,10 +765,19 @@ def bussy_zone(request: Request, user=Depends(auth.current_user)):
 
 
 @app.get("/bussy-zone/checkout", response_class=HTMLResponse)
-def bussy_checkout(request: Request, user=Depends(auth.current_user)):
+def bussy_checkout(request: Request, user=Depends(auth.current_user), plan: str = "annual"):
     # Client-side only: the page never POSTs card data anywhere — its JS reads
     # ONLY the first 4 digits to sanity-check the card scheme, nothing else.
-    return render(request, "bussy_checkout.html", user=user)
+    plans = {
+        "monthly": {"name": "Bussy Pass — Monthly", "price": "14.99",
+                    "sub": "billed monthly · cancel anytime"},
+        "annual": {"name": "Bussy Pass — Annual", "price": "119.00",
+                   "sub": "billed yearly · cancel anytime"},
+        "lifetime": {"name": "Lifetime Vault", "price": "349.00",
+                     "sub": "one-time · permanent access"},
+    }
+    p = plans.get((plan or "").lower(), plans["annual"])
+    return render(request, "bussy_checkout.html", user=user, plan=p, plans=plans, plan_key=(plan or "annual").lower())
 
 
 @app.get("/bussy-zone/bussy", response_class=HTMLResponse)

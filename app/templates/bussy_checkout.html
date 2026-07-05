@@ -21,6 +21,14 @@
   .bzc-order .plan b{display:block}
   .bzc-order .plan small{color:var(--dim);font-size:.75rem}
   .bzc-order .amt{font-size:1.5rem;font-weight:900;color:#ffc234}
+  .bzc-plans{display:flex;gap:.5rem;margin-bottom:.8rem}
+  .bzc-plans button{flex:1;background:var(--paper);border:1.5px solid var(--rule);border-radius:9px;
+    padding:.55rem .3rem;color:var(--ink);cursor:pointer;font-size:.82rem;font-weight:700;
+    display:flex;flex-direction:column;gap:.15rem;line-height:1.1;text-align:center}
+  .bzc-plans button span{color:var(--dim);font-weight:400;font-size:.72rem}
+  .bzc-plans button:hover{border-color:var(--a)}
+  .bzc-plans button.sel{border-color:var(--a);box-shadow:0 0 0 3px rgba(160,32,240,.2)}
+  .bzc-plans button.sel span{color:#ffc234}
   .bzc-card{background:linear-gradient(180deg,var(--panel2),var(--panel));
     border:1px solid var(--rule);border-radius:14px;padding:1.3rem}
   .bzc-card label{display:block;font-size:.7rem;color:var(--dim);text-transform:uppercase;
@@ -59,9 +67,14 @@
     <div class="bzc-brand">Felix Bussy Zone</div>
     <div class="bzc-sub">Complete your membership to unlock instant access</div>
 
+    <div class="bzc-plans" id="bzc-plans">
+      <button type="button" data-plan="monthly">Monthly<span>$14.99/mo</span></button>
+      <button type="button" data-plan="annual">Annual<span>$119/yr</span></button>
+      <button type="button" data-plan="lifetime">Lifetime<span>$349</span></button>
+    </div>
     <div class="bzc-order">
-      <span class="plan"><b>Bussy Pass — Annual</b><small>billed yearly · cancel anytime</small></span>
-      <span class="amt">$119.00</span>
+      <span class="plan"><b id="bzc-plan-name">{{ plan.name }}</b><small id="bzc-plan-sub">{{ plan.sub }}</small></span>
+      <span class="amt" id="bzc-amt">${{ plan.price }}</span>
     </div>
 
     <form class="bzc-card" id="bzc-form" autocomplete="off" novalidate>
@@ -83,7 +96,7 @@
       <label for="bzc-name">Name on card</label>
       <div class="bzc-input"><input id="bzc-name" placeholder="Full name"></div>
 
-      <button class="bzc-pay" type="submit" id="bzc-pay">Pay $119.00</button>
+      <button class="bzc-pay" type="submit" id="bzc-pay">Pay ${{ plan.price }}</button>
       <div class="bzc-secure">🔒 <span>Payments are</span> <b>secured &amp; encrypted</b></div>
       <div class="bzc-cards"><span>VISA</span><span>MASTERCARD</span><span>AMEX</span><span>DISCOVER</span></div>
       <div class="bzc-err" id="bzc-err"></div>
@@ -102,6 +115,26 @@
   var form = document.getElementById("bzc-form");
   var err = document.getElementById("bzc-err");
   var pay = document.getElementById("bzc-pay");
+
+  // plan selector — pick monthly/annual/lifetime right here (carried from the
+  // landing page via ?plan=, changeable on this page too)
+  var PLANS = {{ plans|tojson }};
+  var plansEl = document.getElementById("bzc-plans");
+  function selectPlan(k) {
+    var p = PLANS[k]; if (!p) return;
+    document.getElementById("bzc-plan-name").textContent = p.name;
+    document.getElementById("bzc-plan-sub").textContent = p.sub;
+    document.getElementById("bzc-amt").textContent = "$" + p.price;
+    if (!pay.disabled) pay.textContent = "Pay $" + p.price;
+    plansEl.querySelectorAll("button").forEach(function (b) {
+      b.classList.toggle("sel", b.getAttribute("data-plan") === k);
+    });
+  }
+  plansEl.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-plan]");
+    if (b) selectPlan(b.getAttribute("data-plan"));
+  });
+  selectPlan("{{ plan_key }}");
 
   // NOTE: nothing on this page is stored or transmitted. Only the FIRST 4 digits
   // of the card number are ever read — purely to name the card scheme and gate
