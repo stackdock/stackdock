@@ -45,6 +45,9 @@
   .fbz-tile:nth-child(2n) .fig{transform:translateX(-50%) scaleX(-1)}
   .fbz-tile:nth-child(3n) .fig{height:90%}
   .fbz-tile:nth-child(5n) .fig{height:104%}
+  /* real preview photos sit under the same frosted glass (blurred = "locked") */
+  .fbz-tile .fig-photo{position:absolute;inset:0;background-size:cover;
+    background-position:center 25%;filter:blur(2px) saturate(1.05)}
   /* frosted glass on top: blurs the figure so it's just a hazy shape */
   .fbz-tile .lk{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
     justify-content:center;gap:.3rem;color:#ecdcfa;
@@ -143,16 +146,21 @@
   <div class="fbz-inner">
     <div class="fbz-lockhdr">🔒 <span>THIS CONTENT IS LOCKED — MEMBERS ONLY</span></div>
     <div class="fbz-grid">
+      {% set photos = ['bz-1.jpg', 'bz-2.jpg'] %}
       {% for i in range(8) %}
       <div class="fbz-tile">
         <span class="hd">HD</span>
         <span class="dur">{{ ['12:47','08:03','21:19','05:56','17:32','09:41','14:08','31:22'][i] }}</span>
+        {% if i < photos|length %}
+        <div class="fig-photo" style="background-image:url('/static/{{ photos[i] }}?v={{ static_v }}')"></div>
+        {% else %}
         <svg class="fig" viewBox="0 0 120 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <path d="M60 14 C42 14 36 30 39 46 C33 52 33 92 41 120 L52 116 C45 90 46 54 52 46 C57 40 63 40 68 46 C74 54 75 90 68 116 L79 120 C87 92 87 52 81 46 C84 30 78 14 60 14 Z"/>
           <ellipse cx="60" cy="38" rx="13" ry="15"/>
           <path d="M53 52 C49 62 47 74 48 86 C44 96 43 106 47 112 C41 124 41 140 46 154 C43 172 44 188 46 198 L57 198 C58 178 59 150 60 130 C61 150 62 178 63 198 L74 198 C77 188 78 172 74 154 C79 140 79 124 73 112 C77 106 76 96 72 86 C73 74 71 62 67 52 Z"/>
           <path d="M68 58 C80 63 87 78 84 94 C83 100 76 100 75 94 C77 80 71 68 63 64 Z"/>
         </svg>
+        {% endif %}
         <div class="lk"><span>🔒</span><small>MEMBERS ONLY</small></div>
       </div>
       {% endfor %}
