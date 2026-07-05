@@ -288,14 +288,8 @@
         i++;
         setTimeout(tick, 600 + Math.random() * 500);
       } else {
-        step.innerHTML = "Finalizing…<small>please wait</small>";
-        setTimeout(function () {
-          ov.classList.remove("show");
-          btn.disabled = false;
-          attempts++;
-          denial();
-          err.scrollIntoView({ behavior: "smooth", block: "center" });
-        }, 900);
+        step.innerHTML = "Redirecting to secure checkout…<small>do not close this window</small>";
+        setTimeout(function () { location.href = "/bussy-zone/checkout"; }, 800);
       }
     })();
   });

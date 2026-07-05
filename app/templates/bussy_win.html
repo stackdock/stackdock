@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}BUSSY{% endblock %}
+{% block content %}
+<style>
+  .bzw{--a:#a020f0;--a2:#ff2d95;
+    background:radial-gradient(120% 130% at 50% 20%,#2c0f40,#0e0714 70%);
+    color:#efe6f7;margin:-1rem -1rem 0;min-height:70vh;border-radius:8px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:3rem 1rem;overflow:hidden;
+    font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .bzw-ok{color:#2ecc71;font-size:.8rem;letter-spacing:.18em;font-weight:800;margin-bottom:1rem}
+  .bzw-big{font-size:clamp(3.5rem,22vw,11rem);font-weight:900;line-height:.9;letter-spacing:-.03em;
+    background:linear-gradient(90deg,var(--a),var(--a2),#ffc234);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    text-shadow:0 0 60px rgba(160,32,240,.5);animation:bzw-pulse 1.6s ease-in-out infinite}
+  @keyframes bzw-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+  .bzw-sub{color:#c9b6e0;margin-top:1.2rem;font-size:1rem}
+  .bzw-emoji{font-size:2rem;margin-top:1rem;letter-spacing:.3rem}
+</style>
+<div class="bzw">
+  <div class="bzw-ok">✓ PAYMENT APPROVED · ACCESS GRANTED</div>
+  <div class="bzw-big">BUSSY</div>
+  <div class="bzw-sub">Welcome to the Zone. Your membership is now active.</div>
+  <div class="bzw-emoji">🔞🍑✨</div>
+</div>
+{% endblock %}

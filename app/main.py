@@ -764,6 +764,18 @@ def bussy_zone(request: Request, user=Depends(auth.current_user)):
     return render(request, "felix.html", user=user)
 
 
+@app.get("/bussy-zone/checkout", response_class=HTMLResponse)
+def bussy_checkout(request: Request, user=Depends(auth.current_user)):
+    # Client-side only: the page never POSTs card data anywhere — its JS reads
+    # ONLY the first 4 digits to sanity-check the card scheme, nothing else.
+    return render(request, "bussy_checkout.html", user=user)
+
+
+@app.get("/bussy-zone/bussy", response_class=HTMLResponse)
+def bussy_win(request: Request, user=Depends(auth.current_user)):
+    return render(request, "bussy_win.html", user=user)
+
+
 @app.get("/mde", response_class=HTMLResponse)
 def mde_page(request: Request, user=Depends(auth.current_user), err: str | None = None):
     # lazy: only hits mde.tv when someone opens the tab (cached thereafter)

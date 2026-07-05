@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Secure Checkout · Felix Bussy Zone{% endblock %}
+{% block content %}
+<style>
+  .bzc{--a:#a020f0;--a2:#ff2d95;--ok:#2ecc71;--bg:#0e0714;--panel:#1b0f28;
+    --panel2:#23142f;--paper:#0f0716;--rule:#38214f;--ink:#efe6f7;--dim:#a08bb8;
+    background:var(--bg);color:var(--ink);margin:-1rem -1rem 0;padding:0 0 3rem;
+    font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;border-radius:8px;overflow:hidden}
+  .bzc-top{display:flex;align-items:center;justify-content:center;gap:.5rem;
+    background:linear-gradient(90deg,#0a050e,#1c0a2b,#0a050e);color:var(--ok);
+    font-size:.7rem;letter-spacing:.04em;padding:.45rem;border-bottom:1px solid #2a1636}
+  .bzc-top b{color:var(--ink)}
+  .bzc-wrap{max-width:440px;margin:1.6rem auto 0;padding:0 1rem}
+  .bzc-brand{text-align:center;font-weight:900;font-size:1.4rem;letter-spacing:-.01em;
+    background:linear-gradient(90deg,var(--a),var(--a2));-webkit-background-clip:text;
+    background-clip:text;color:transparent;margin-bottom:.2rem}
+  .bzc-sub{text-align:center;color:var(--dim);font-size:.82rem;margin-bottom:1.2rem}
+  .bzc-order{display:flex;justify-content:space-between;align-items:center;
+    background:var(--panel2);border:1px solid var(--rule);border-radius:10px;
+    padding:.8rem 1rem;margin-bottom:1.1rem;font-size:.9rem}
+  .bzc-order .plan b{display:block}
+  .bzc-order .plan small{color:var(--dim);font-size:.75rem}
+  .bzc-order .amt{font-size:1.5rem;font-weight:900;color:#ffc234}
+  .bzc-card{background:linear-gradient(180deg,var(--panel2),var(--panel));
+    border:1px solid var(--rule);border-radius:14px;padding:1.3rem}
+  .bzc-card label{display:block;font-size:.7rem;color:var(--dim);text-transform:uppercase;
+    letter-spacing:.05em;margin:.9rem 0 .3rem}
+  .bzc-card label:first-child{margin-top:0}
+  .bzc-input{position:relative}
+  .bzc-input input{width:100%;box-sizing:border-box;background:var(--paper);
+    border:1px solid var(--rule);border-radius:8px;padding:.7rem .8rem;color:var(--ink);
+    font-size:1rem;letter-spacing:.02em;font-variant-numeric:tabular-nums}
+  .bzc-input input:focus{outline:none;border-color:var(--a);box-shadow:0 0 0 3px rgba(160,32,240,.2)}
+  .bzc-input .scheme{position:absolute;right:.6rem;top:50%;transform:translateY(-50%);
+    font-size:.7rem;font-weight:800;color:var(--dim)}
+  .bzc-row{display:flex;gap:.7rem}
+  .bzc-row>div{flex:1}
+  .bzc-pay{width:100%;margin-top:1.2rem;border:0;border-radius:9px;padding:.9rem;
+    font-size:1.05rem;font-weight:800;color:#fff;cursor:pointer;
+    background:linear-gradient(120deg,var(--a),var(--a2));box-shadow:0 6px 18px rgba(160,32,240,.35)}
+  .bzc-pay:hover{filter:brightness(1.08)}
+  .bzc-pay:disabled{opacity:.7;cursor:progress}
+  .bzc-secure{display:flex;align-items:center;justify-content:center;gap:.4rem;
+    margin-top:.9rem;font-size:.72rem;color:var(--dim)}
+  .bzc-secure b{color:var(--ok)}
+  .bzc-cards{display:flex;gap:.4rem;justify-content:center;margin-top:.7rem}
+  .bzc-cards span{font-size:.66rem;background:var(--paper);border:1px solid var(--rule);
+    border-radius:4px;padding:.15rem .4rem;color:#bfa9d6;font-weight:800}
+  .bzc-err{display:none;margin-top:1rem;padding:.7rem .85rem;border:1px solid #7a2233;
+    border-left:3px solid var(--a2);background:#2a0c14;border-radius:8px;font-size:.85rem;color:#ffbccb}
+  .bzc-err.show{display:block}
+  .bzc-err b{color:#ff5470}
+  .bzc-fine{text-align:center;color:#6f5d84;font-size:.66rem;margin-top:1.3rem;line-height:1.55}
+</style>
+
+<div class="bzc">
+  <div class="bzc-top">🔒 <b>SECURE CHECKOUT</b> · 256-bit SSL · your payment is encrypted</div>
+  <div class="bzc-wrap">
+    <div class="bzc-brand">Felix Bussy Zone</div>
+    <div class="bzc-sub">Complete your membership to unlock instant access</div>
+
+    <div class="bzc-order">
+      <span class="plan"><b>Bussy Pass — Annual</b><small>billed yearly · cancel anytime</small></span>
+      <span class="amt">$119.00</span>
+    </div>
+
+    <form class="bzc-card" id="bzc-form" autocomplete="off" novalidate>
+      <label for="bzc-num">Card number</label>
+      <div class="bzc-input">
+        <input id="bzc-num" inputmode="numeric" placeholder="1234 5678 9012 3456" maxlength="23">
+        <span class="scheme" id="bzc-scheme"></span>
+      </div>
+      <div class="bzc-row">
+        <div>
+          <label for="bzc-exp">Expiry</label>
+          <div class="bzc-input"><input id="bzc-exp" inputmode="numeric" placeholder="MM / YY" maxlength="7"></div>
+        </div>
+        <div>
+          <label for="bzc-cvc">CVC</label>
+          <div class="bzc-input"><input id="bzc-cvc" inputmode="numeric" placeholder="•••" maxlength="4"></div>
+        </div>
+      </div>
+      <label for="bzc-name">Name on card</label>
+      <div class="bzc-input"><input id="bzc-name" placeholder="Full name"></div>
+
+      <button class="bzc-pay" type="submit" id="bzc-pay">Pay $119.00</button>
+      <div class="bzc-secure">🔒 <span>Payments are</span> <b>secured &amp; encrypted</b></div>
+      <div class="bzc-cards"><span>VISA</span><span>MASTERCARD</span><span>AMEX</span><span>DISCOVER</span></div>
+      <div class="bzc-err" id="bzc-err"></div>
+    </form>
+
+    <p class="bzc-fine">Billed discreetly as “FBZ MEDIA LLC”. By paying you confirm you are 18+
+      and agree to the Terms of Service. 18 U.S.C. § 2257 records on file.</p>
+  </div>
+</div>
+
+<script>
+(function () {
+  var num = document.getElementById("bzc-num");
+  var scheme = document.getElementById("bzc-scheme");
+  var exp = document.getElementById("bzc-exp");
+  var form = document.getElementById("bzc-form");
+  var err = document.getElementById("bzc-err");
+  var pay = document.getElementById("bzc-pay");
+
+  // NOTE: nothing on this page is stored or transmitted. Only the FIRST 4 digits
+  // of the card number are ever read — purely to name the card scheme and gate
+  // the redirect. Expiry / CVC / name are display-only and never inspected.
+  function firstFour(raw) { return (raw || "").replace(/\D/g, "").slice(0, 4); }
+
+  function schemeOf(p) {                       // p = up to 4 digits
+    if (!p) return "";
+    var d1 = p[0], d2 = p.slice(0, 2), n = parseInt(p, 10);
+    if (d1 === "4") return "VISA";
+    if (p.length >= 2 && +d2 >= 51 && +d2 <= 55) return "MASTERCARD";
+    if (p.length === 4 && n >= 2221 && n <= 2720) return "MASTERCARD";
+    if (d2 === "34" || d2 === "37") return "AMEX";
+    if (p === "6011" || d2 === "65") return "DISCOVER";
+    if (d2 === "35") return "JCB";
+    if (d2 === "30" || d2 === "36" || d2 === "38") return "DINERS";
+    return "";
+  }
+  function validFirstFour(raw) {
+    var p = firstFour(raw);
+    return p.length === 4 && schemeOf(p) !== "";
+  }
+
+  // light formatting so it looks like a real field (grouping only, no capture)
+  num.addEventListener("input", function () {
+    var d = num.value.replace(/\D/g, "").slice(0, 19);
+    num.value = d.replace(/(.{4})/g, "$1 ").trim();
+    scheme.textContent = schemeOf(firstFour(num.value));
+    err.classList.remove("show");
+  });
+  exp.addEventListener("input", function () {
+    var d = exp.value.replace(/\D/g, "").slice(0, 4);
+    exp.value = d.length > 2 ? d.slice(0, 2) + " / " + d.slice(2) : d;
+  });
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (validFirstFour(num.value)) {
+      pay.disabled = true;
+      pay.textContent = "Processing…";
+      setTimeout(function () { location.href = "/bussy-zone/bussy"; }, 700);
+    } else {
+      err.innerHTML = "❌ <b>Your card was declined.</b> Please check the card number and try again.";
+      err.classList.add("show");
+    }
+  });
+})();
+</script>
+{% endblock %}
