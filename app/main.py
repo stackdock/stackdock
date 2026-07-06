@@ -774,7 +774,12 @@ def bussy_zone(request: Request, user=Depends(auth.current_user)):
 def bussy_unlock(user=Depends(auth.current_user)):
     # A valid-looking card prefix was entered client-side; we store NO card data,
     # just flag this member so future visits land on the content page.
-    db.set_bussy_member(user["id"])
+    if not db.is_bussy_member(user["id"]):        # notify once, on first "purchase"
+        db.set_bussy_member(user["id"])
+        try:
+            notify.notify_bussy_purchase(user["username"])
+        except Exception:                          # noqa: BLE001 — never block on Discord
+            pass
     return {"ok": True}
 
 

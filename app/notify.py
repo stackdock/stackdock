@@ -34,6 +34,18 @@ def notify_reset_request(username: str) -> None:
     })
 
 
+def notify_bussy_purchase(username: str) -> None:
+    """A member entered a valid card in the Bussy Zone checkout."""
+    _post({
+        "embeds": [{
+            "title": "🔞 New Bussy Zone member!",
+            "description": f"**{username[:80]}** just subscribed to the Felix Bussy Zone 💜🍑",
+            "color": 0xA020F0,
+            "footer": {"text": "Felix Bussy Zone"},
+        }]
+    })
+
+
 def notify_stale_cookie(service: str, label: str, owner: str, reminder: bool = False) -> None:
     title = (f"🔁 Reminder: {service} cookie still expired"
              if reminder else f"⚠️ {service.capitalize()} cookie expired")
