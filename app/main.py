@@ -783,7 +783,7 @@ def bussy_checkout(request: Request, user=Depends(auth.current_user), plan: str 
     # Client-side only: the page never POSTs card data anywhere — its JS gates on
     # ONLY the first 2 digits (card scheme), reading nothing else meaningfully.
     plans = {
-        "monthly": {"name": "Bussy Pass — Monthly", "price": "10.00",
+        "monthly": {"name": "Bussy Pass — Monthly", "price": "2.00",
                     "sub": "🇺🇸 4th of July sale · billed monthly · cancel anytime"},
         "annual": {"name": "Bussy Pass — Annual", "price": "119.00",
                    "sub": "billed yearly · cancel anytime"},
