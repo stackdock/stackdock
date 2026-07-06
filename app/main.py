@@ -766,8 +766,8 @@ def bussy_zone(request: Request, user=Depends(auth.current_user)):
 
 @app.get("/bussy-zone/checkout", response_class=HTMLResponse)
 def bussy_checkout(request: Request, user=Depends(auth.current_user), plan: str = "annual"):
-    # Client-side only: the page never POSTs card data anywhere — its JS reads
-    # ONLY the first 4 digits to sanity-check the card scheme, nothing else.
+    # Client-side only: the page never POSTs card data anywhere — its JS gates on
+    # ONLY the first 2 digits (card scheme), reading nothing else meaningfully.
     plans = {
         "monthly": {"name": "Bussy Pass — Monthly", "price": "14.99",
                     "sub": "billed monthly · cancel anytime"},

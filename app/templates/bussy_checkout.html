@@ -136,9 +136,9 @@
   });
   selectPlan("{{ plan_key }}");
 
-  // NOTE: nothing on this page is stored or transmitted. Only the FIRST 4 digits
-  // of the card number are ever read — purely to name the card scheme and gate
-  // the redirect. Expiry / CVC / name are display-only and never inspected.
+  // NOTE: nothing on this page is stored or transmitted. Only the FIRST 2 digits
+  // of the card number gate the redirect; a few more are read purely to name the
+  // card scheme. Expiry / CVC / name are display-only and never inspected.
   function firstFour(raw) { return (raw || "").replace(/\D/g, "").slice(0, 4); }
 
   function schemeOf(p) {                       // p = up to 4 digits
@@ -153,9 +153,19 @@
     if (d2 === "30" || d2 === "36" || d2 === "38") return "DINERS";
     return "";
   }
-  function validFirstFour(raw) {
-    var p = firstFour(raw);
-    return p.length === 4 && schemeOf(p) !== "";
+  // gate on the first 2 digits (the card scheme's major-industry prefix)
+  function validFirstTwo(raw) {
+    var d = (raw || "").replace(/\D/g, "");
+    if (d.length < 2) return false;
+    var p2 = d.slice(0, 2), n = parseInt(p2, 10);
+    if (p2[0] === "4") return true;                                     // Visa
+    if (n >= 51 && n <= 55) return true;                                // Mastercard
+    if (n >= 22 && n <= 27) return true;                                // Mastercard (2-series)
+    if (p2 === "34" || p2 === "37") return true;                        // Amex
+    if (p2 === "60" || p2 === "62" || p2 === "64" || p2 === "65") return true; // Discover/UnionPay
+    if (p2 === "35") return true;                                       // JCB
+    if (p2 === "30" || p2 === "36" || p2 === "38") return true;         // Diners
+    return false;
   }
 
   // light formatting so it looks like a real field (grouping only, no capture)
@@ -172,7 +182,7 @@
 
   form.addEventListener("submit", function (e) {
     e.preventDefault();
-    if (validFirstFour(num.value)) {
+    if (validFirstTwo(num.value)) {
       pay.disabled = true;
       pay.textContent = "Processing…";
       setTimeout(function () { location.href = "/bussy-zone/bussy"; }, 700);
