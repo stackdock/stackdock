@@ -17,11 +17,13 @@
     background-clip:text;color:transparent}
   .bzm-badge{display:inline-block;margin-top:.5rem;font-size:.72rem;font-weight:800;
     letter-spacing:.1em;color:var(--ok)}
-  .bzm-wrap{max-width:520px;margin:1.2rem auto 0;padding:0 1rem}
+  .bzm-wrap{max-width:720px;margin:1.2rem auto 0;padding:0 1rem}
   .bzm-h{display:flex;align-items:center;gap:.5rem;justify-content:center;
     font-weight:700;margin-bottom:.9rem;color:var(--ink)}
-  .bzm-photo{width:100%;border-radius:14px;border:1px solid var(--rule);display:block;
-    box-shadow:0 16px 50px rgba(0,0,0,.5)}
+  .bzm-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.6rem}
+  .bzm-item{display:block;border-radius:12px;overflow:hidden;border:1px solid var(--rule);
+    background:#160c1f;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+  .bzm-item img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block}
   .bzm-caption{text-align:center;color:var(--dim);font-size:.85rem;margin:.8rem 0 0}
   .bzm-next{margin:1.6rem auto 0;max-width:520px;text-align:center;
     background:linear-gradient(160deg,#23142f,#1b0f28);border:1px solid var(--rule);
@@ -43,7 +45,14 @@
 
   <div class="bzm-wrap">
     <div class="bzm-h">🔥 <span>EXCLUSIVE — MEMBERS ONLY</span></div>
-    <img class="bzm-photo" src="/static/bz-reward.png?v={{ static_v }}" alt="" loading="lazy">
+    {% set gallery = ['bz-reward.png', 'bz-g1.jpg', 'bz-g2.jpg', 'bz-g3.jpg'] %}
+    <div class="bzm-gallery">
+      {% for img in gallery %}
+      <a class="bzm-item" href="/static/{{ img }}?v={{ static_v }}" target="_blank" rel="noopener">
+        <img src="/static/{{ img }}?v={{ static_v }}" alt="" loading="lazy">
+      </a>
+      {% endfor %}
+    </div>
     <p class="bzm-caption">Thanks for subscribing 💜</p>
 
     <div class="bzm-next">
