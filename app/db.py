@@ -1282,3 +1282,8 @@ def is_bussy_member(user_id: int) -> bool:
     with conn() as c:
         return c.execute("SELECT 1 FROM bussy_members WHERE user_id = ?",
                          (user_id,)).fetchone() is not None
+
+
+def count_bussy_members() -> int:
+    with conn() as c:
+        return c.execute("SELECT COUNT(*) FROM bussy_members").fetchone()[0]

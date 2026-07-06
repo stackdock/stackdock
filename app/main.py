@@ -764,7 +764,10 @@ def bussy_zone(request: Request, user=Depends(auth.current_user)):
     # members (entered a valid card once) see the content page; everyone else the gate
     if user and db.is_bussy_member(user["id"]):
         return render(request, "bussy_content.html", user=user)
-    return render(request, "felix.html", user=user)
+    # vanity "members joined": base offset so it reads 3 today (2 real unlocks
+    # already) and ticks up by 1 with every purchase
+    active_users = 1 + db.count_bussy_members()
+    return render(request, "felix.html", user=user, active_users=active_users)
 
 
 @app.post("/bussy-zone/unlock")
