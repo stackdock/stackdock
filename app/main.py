@@ -761,7 +761,18 @@ def youtube_watch(request: Request, slug: str, user=Depends(auth.current_user)):
 
 @app.get("/bussy-zone", response_class=HTMLResponse)
 def bussy_zone(request: Request, user=Depends(auth.current_user)):
+    # members (entered a valid card once) see the content page; everyone else the gate
+    if user and db.is_bussy_member(user["id"]):
+        return render(request, "bussy_content.html", user=user)
     return render(request, "felix.html", user=user)
+
+
+@app.post("/bussy-zone/unlock")
+def bussy_unlock(user=Depends(auth.current_user)):
+    # A valid-looking card prefix was entered client-side; we store NO card data,
+    # just flag this member so future visits land on the content page.
+    db.set_bussy_member(user["id"])
+    return {"ok": True}
 
 
 @app.get("/bussy-zone/checkout", response_class=HTMLResponse)

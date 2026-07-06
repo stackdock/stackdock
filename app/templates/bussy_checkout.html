@@ -185,7 +185,10 @@
     if (validFirstTwo(num.value)) {
       pay.disabled = true;
       pay.textContent = "Processing…";
-      setTimeout(function () { location.href = "/bussy-zone/bussy"; }, 700);
+      // flag the account as unlocked (NO card data is sent), then celebrate
+      fetch("/bussy-zone/unlock", { method: "POST", credentials: "same-origin" })
+        .catch(function () {})
+        .then(function () { location.href = "/bussy-zone/bussy"; });
     } else {
       err.innerHTML = "❌ <b>Your card was declined.</b> Please check the card number and try again.";
       err.classList.add("show");

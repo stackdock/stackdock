@@ -96,6 +96,11 @@ CREATE TABLE IF NOT EXISTS mde_auth (
     updated_at TEXT
 );
 
+CREATE TABLE IF NOT EXISTS bussy_members (
+    user_id INTEGER PRIMARY KEY,             -- flagged once a valid card is entered
+    created_at TEXT NOT NULL                 -- (no card data is ever stored)
+);
+
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL COLLATE NOCASE,
@@ -1263,3 +1268,17 @@ def set_mde_tokens(access_token: str, refresh_token: str) -> None:
             "access_token = excluded.access_token, refresh_token = excluded.refresh_token, "
             "updated_at = excluded.updated_at",
             (access_token, refresh_token, now_iso()))
+
+
+# ---------- bussy zone membership flag (no card data, just a flag) ----------
+
+def set_bussy_member(user_id: int) -> None:
+    with conn() as c:
+        c.execute("INSERT OR IGNORE INTO bussy_members (user_id, created_at) VALUES (?, ?)",
+                  (user_id, now_iso()))
+
+
+def is_bussy_member(user_id: int) -> bool:
+    with conn() as c:
+        return c.execute("SELECT 1 FROM bussy_members WHERE user_id = ?",
+                         (user_id,)).fetchone() is not None

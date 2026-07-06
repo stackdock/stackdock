@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Felix Bussy Zone · Members{% endblock %}
+{% block content %}
+<style>
+  .bzm{--a:#a020f0;--a2:#ff2d95;--ok:#2ecc71;--bg:#0e0714;--panel:#1b0f28;
+    --rule:#38214f;--ink:#efe6f7;--dim:#a08bb8;
+    background:var(--bg);color:var(--ink);margin:-1rem -1rem 0;padding:0 0 3rem;
+    font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;border-radius:8px;overflow:hidden}
+  .bzm-top{display:flex;align-items:center;justify-content:center;gap:.5rem;
+    background:linear-gradient(90deg,#0a050e,#1c0a2b,#0a050e);color:var(--ok);
+    font-size:.72rem;letter-spacing:.04em;padding:.45rem;border-bottom:1px solid #2a1636}
+  .bzm-top b{color:var(--ink)}
+  .bzm-hero{text-align:center;padding:1.8rem 1rem 1rem;
+    background:radial-gradient(120% 140% at 50% 0%,#2c0f40,var(--bg) 70%)}
+  .bzm-brand{font-size:1.9rem;font-weight:900;letter-spacing:-.02em;
+    background:linear-gradient(90deg,var(--a),var(--a2));-webkit-background-clip:text;
+    background-clip:text;color:transparent}
+  .bzm-badge{display:inline-block;margin-top:.5rem;font-size:.72rem;font-weight:800;
+    letter-spacing:.1em;color:var(--ok)}
+  .bzm-wrap{max-width:520px;margin:1.2rem auto 0;padding:0 1rem}
+  .bzm-h{display:flex;align-items:center;gap:.5rem;justify-content:center;
+    font-weight:700;margin-bottom:.9rem;color:var(--ink)}
+  .bzm-photo{width:100%;border-radius:14px;border:1px solid var(--rule);display:block;
+    box-shadow:0 16px 50px rgba(0,0,0,.5)}
+  .bzm-caption{text-align:center;color:var(--dim);font-size:.85rem;margin:.8rem 0 0}
+  .bzm-next{margin:1.6rem auto 0;max-width:520px;text-align:center;
+    background:linear-gradient(160deg,#23142f,#1b0f28);border:1px solid var(--rule);
+    border-radius:12px;padding:1.3rem}
+  .bzm-next .big{font-size:1.2rem;font-weight:800;
+    background:linear-gradient(90deg,var(--a),var(--a2),#ffc234);-webkit-background-clip:text;
+    background-clip:text;color:transparent}
+  .bzm-next small{display:block;color:var(--dim);margin-top:.4rem;font-size:.82rem}
+  .bzm-fine{text-align:center;color:#6f5d84;font-size:.68rem;margin-top:1.4rem}
+</style>
+
+<div class="bzm">
+  <div class="bzm-top">🔓 <b>MEMBER ACCESS</b> · your subscription is active</div>
+
+  <div class="bzm-hero">
+    <div class="bzm-brand">Felix Bussy Zone 🔞</div>
+    <div class="bzm-badge">✓ VERIFIED MEMBER</div>
+  </div>
+
+  <div class="bzm-wrap">
+    <div class="bzm-h">🔥 <span>EXCLUSIVE — MEMBERS ONLY</span></div>
+    <img class="bzm-photo" src="/static/bz-4.jpg?v={{ static_v }}" alt="" loading="lazy">
+    <p class="bzm-caption">Thanks for subscribing 💜</p>
+
+    <div class="bzm-next">
+      <div class="big">More coming next month 🍑</div>
+      <small>New exclusive content drops for members every month. Stay tuned.</small>
+    </div>
+
+    <p class="bzm-fine">© 2026 Felix Bussy Zone™ · FBZ Media LLC · members area · 18+</p>
+  </div>
+</div>
+{% endblock %}
