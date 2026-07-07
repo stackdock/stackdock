@@ -579,9 +579,13 @@ def refresh_locked() -> int:
     """Re-fetch locked previews in publications a connected account now PAYS for
     and upgrade them to full in place. Upgrade-only — it never downgrades or
     deletes, so it's safe to run on a schedule. Shares the sync lock so it can't
-    stack on a live sync (or another refresh). Returns count upgraded."""
-    if not _RUN_LOCK.acquire(blocking=False):
-        log.info("%s busy; skipping paid refresh.", __name__)
+    stack on a live sync (or another refresh), but WAITS for it rather than
+    skipping: this pass fires only every SUBSTACK_REFRESH_HOURS, and a
+    non-blocking skip meant a tick landing mid-sync never ran at all — leaving
+    locked previews for pubs a member pays for (but whose sync discovery misses)
+    permanently locked. Returns count upgraded."""
+    if not _RUN_LOCK.acquire(timeout=config.SUBSTACK_LOCK_WAIT):
+        log.info("%s busy > %ss; skipping paid refresh.", __name__, config.SUBSTACK_LOCK_WAIT)
         return 0
     try:
         return _refresh_locked()
@@ -658,8 +662,9 @@ def verify_paid_access() -> int:
     article_sources definitely does (deduped posts credit co-subscribers, not the
     payer). It also catches paid subs hidden behind a private reading list.
     Returns the total number of (account, publication) paid pairs confirmed."""
-    if not _RUN_LOCK.acquire(blocking=False):
-        log.info("%s busy; skipping paid-access verification.", __name__)
+    if not _RUN_LOCK.acquire(timeout=config.SUBSTACK_LOCK_WAIT):
+        log.info("%s busy > %ss; skipping paid-access verification.",
+                 __name__, config.SUBSTACK_LOCK_WAIT)
         return 0
     try:
         return _verify_paid_access()

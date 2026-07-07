@@ -51,6 +51,11 @@ SUBSTACK_POLL_MINUTES = int(os.getenv("SUBSTACK_POLL_MINUTES", "60"))
 # MAX caps how many locked posts to re-fetch per run so it can't hammer Substack.
 SUBSTACK_REFRESH_HOURS = int(os.getenv("SUBSTACK_REFRESH_HOURS", "12"))
 SUBSTACK_REFRESH_MAX = int(os.getenv("SUBSTACK_REFRESH_MAX", "150"))
+# The periodic maintenance passes (paid refresh, paid-access verify) share the
+# sync lock. They WAIT up to this long for an in-flight sync to finish rather
+# than skipping outright — a non-blocking skip meant a 12h/24h tick that landed
+# mid-sync never ran at all, so locked previews for now-paid pubs stayed locked.
+SUBSTACK_LOCK_WAIT = int(os.getenv("SUBSTACK_LOCK_WAIT", "900"))
 
 # ---- Patreon cookie sync (session_id; fetched via curl_cffi past Cloudflare) ----
 PATREON_BACKFILL_POSTS = int(os.getenv("PATREON_BACKFILL_POSTS", "50"))
