@@ -451,6 +451,25 @@ html[data-theme="brimstone"] .episode-art { opacity: 0.9; }
   /* the floating theme picker sits closer to the corner and stays out of the
      reading column on narrow screens */
   .theme-dropdown { font-size: 0.68rem; padding: 0.3rem 0.4rem; opacity: 0.92; }
+
+  /* Publications/Shows filter as a clean vertical LIST on phones: the wrapped
+     pills + floating stars read as clutter and it was hard to tell which star
+     belonged to which chip. One publication per row, pill left, star pinned
+     right with a real tap target. (Your Stuff sub-tabs keep their own layout.) */
+  .filter-box .pub-filter { flex-direction: column; align-items: stretch; gap: 0.15rem; }
+  .filter-box .pub-filter > a { align-self: flex-start; }   /* the "All" pill stays compact */
+  .filter-box .pub-filter .chip-wrap {
+    display: flex; width: 100%; align-items: center; justify-content: space-between;
+    gap: 0.5rem; border-bottom: 1px solid var(--rule);
+  }
+  .filter-box .pub-filter .chip-wrap:last-child { border-bottom: 0; }
+  .filter-box .pub-filter .chip-wrap > a {
+    flex: 1; text-align: left; white-space: normal; word-break: break-word;
+    padding: 0.6rem 0.8rem; font-size: 0.8rem; line-height: 1.35;
+  }
+  .filter-box .pub-filter .chip-wrap .star {
+    flex: 0 0 auto; min-width: 44px; min-height: 44px; margin: 0;
+  }
 }
 
 /* follow stars + chips */
