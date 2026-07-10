@@ -186,7 +186,7 @@
         <span class="card-body">
           <span class="spine">{{ e.feed_name }}</span>
           <span class="card-title">{{ e.title }}</span>
-          <span class="row-meta">{% if e.duration %}<span class="added-by">{{ e.duration }}</span> · {% endif %}<time>{{ (e.published_at or e.created_at)[:16] }}</time></span>
+          <span class="row-meta">{% if e.duration %}<span class="added-by">{{ e.duration }}</span> · {% endif %}<time>{{ (e.published_at or e.created_at)[:10] }}</time></span>
         </span>
       </a>
       <form method="post" action="/mine/hide" class="card-hide">
@@ -254,7 +254,7 @@
           <span class="card-title">{{ e.title }}</span>
           <span class="row-meta">
             {% if e.duration %}<span class="added-by">{{ e.duration }}</span> · {% endif %}
-            <time>{{ (e.published_at or e.created_at)[:16] }}</time>
+            <time>{{ (e.published_at or e.created_at)[:10] }}</time>
           </span>
         </span>
       </a>

@@ -4,7 +4,7 @@
 <article class="reader">
   <p class="spine">{{ e.feed_name }}</p>
   <h1>{{ e.title }}</h1>
-  <p class="meta">{{ (e.published_at or e.created_at)[:16] }}{% if e.duration %} · {{ e.duration }}{% endif %}</p>
+  <p class="meta">{{ (e.published_at or e.created_at)[:10] }}{% if e.duration %} · {{ e.duration }}{% endif %}</p>
 
   {% if e.image_url %}<img class="episode-art" id="ep-art" src="{{ e.image_url }}" alt="">{% endif %}
 
