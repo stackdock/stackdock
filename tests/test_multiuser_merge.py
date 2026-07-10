@@ -272,3 +272,54 @@ def test_recurring_titles_do_not_swallow_new_posts(world):
                             html="<p>email copy</p>", published_at=None)
     m = db.find_article_match(publication="Blog X", title="Open Thread")
     assert m and m["id"] == aid
+
+
+def test_payer_priority_new_post_lands_full_via_verified_payer(world):
+    """bob PAYS for Blog X but his discovery never sees it (private reading
+    list, no pubs); verify_paid_access has stamped paid_json. alice (free)
+    discovers the post first — her sync must pull the body with bob's cookie
+    and store it unlocked immediately, credited to bob."""
+    alice = _member(world, "alice", "c1", [("Blog X", X)], paid=[])
+    bob = _member(world, "bob", "c2", [], paid=[X])
+    db.set_account_paid_verified(bob["id"], ["Blog X"])
+
+    substack.sync_account(alice)
+    art = db.find_article_match(f"{X}/p/paid-post")
+    assert art["is_locked"] == 0 and "full body" in art["html"]
+    assert art["added_by"] == "bob's account"          # the payer supplied the body
+    assert {"alice's account", "bob's account"} <= set(db.list_article_sources(art["id"]))
+
+
+def test_payer_priority_upgrades_existing_locked_row(world):
+    """A locked preview stored BEFORE verification exists gets upgraded by the
+    next sync of ANY account once a payer is verified."""
+    alice = _member(world, "alice", "c1", [("Blog X", X)], paid=[])
+    bob = _member(world, "bob", "c2", [], paid=[X])
+
+    substack.sync_account(alice)                       # nobody verified yet
+    art = db.find_article_match(f"{X}/p/paid-post")
+    assert art["is_locked"] == 1 and "teaser" in art["html"]
+
+    db.set_account_paid_verified(bob["id"], ["Blog X"])
+    substack.sync_account(alice)                       # alice again, not bob
+    art = db.get_article(art["id"])
+    assert art["is_locked"] == 0 and "full body" in art["html"]
+    assert "bob's account" in db.list_article_sources(art["id"])
+
+
+def test_payer_priority_downloads_full_podcast_audio(world):
+    """A paid episode first seen by a free member downloads the FULL audio via
+    the verified payer's cookie (paid_access=1), not the preview clip."""
+    alice = _member(world, "alice", "c1", [("Blog X", X)], paid=[])
+    bob = _member(world, "bob", "c2", [], paid=[X])
+    db.set_account_paid_verified(bob["id"], ["Blog X"])
+
+    substack.sync_account(alice)
+    ep = db.get_episode_by_guid("substack:3")
+    assert ep["paid_access"] == 1
+    assert world.downloads == ["podcasts/blog-x/paid-pod.mp3"]   # full, once
+    assert "-preview" not in world.downloads[0]
+
+    # resync is a no-op: it's already full
+    substack.sync_account(alice)
+    assert len(world.downloads) == 1

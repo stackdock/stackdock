@@ -131,10 +131,16 @@ async def lifespan(app: FastAPI):
                           max_instances=1, coalesce=True,
                           next_run_time=now + timedelta(seconds=200))
     # Verify who actually pays for what (real access test) — drives the /status
-    # subscriptions breakdown. Daily is plenty; also a manual "verify_paid" job.
+    # subscriptions breakdown AND the payer-priority fetch in sync_account (via
+    # paid_json). Daily is plenty; also a manual "verify_paid" job. First run is
+    # 6h after boot, NOT seconds like the jobs above: 12h/24h intervals anchored
+    # to the same boot instant put verify's daily tick right after a refresh
+    # tick FOREVER, and the refresh's rate-limited probes (plus the hourly sync)
+    # hold the sync lock past SUBSTACK_LOCK_WAIT — verify was starved daily.
+    # 6h is maximally far from the 12h refresh ticks.
     scheduler.add_job(_tracked("verify_paid"), "interval",
                       hours=24, id="verify_paid", max_instances=1, coalesce=True,
-                      next_run_time=now + timedelta(seconds=260))
+                      next_run_time=now + timedelta(hours=6))
     scheduler.add_job(_tracked("youtube"), "interval",
                       minutes=config.YOUTUBE_POLL_MINUTES, id="youtube",
                       max_instances=1, coalesce=True,

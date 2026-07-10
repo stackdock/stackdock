@@ -21,6 +21,7 @@ publication) and does not send Discord notifications; later syncs notify
 normally. These endpoints are unofficial; if Substack changes them, the JSON
 walking below is written defensively and is the place to fix.
 """
+import json
 import logging
 import threading
 import random
@@ -322,6 +323,28 @@ def _stub_html(url: str) -> str:
 def sync_account(account) -> tuple[int, str, list[dict]]:
     """Sync one connected account. Returns (new_articles, status_message, notify_items)."""
     s = _session(account["cookie"])
+
+    # Payer-priority: an account VERIFIED to pay for a publication (by the daily
+    # verify_paid_access run -> connected_accounts.paid_json) outranks this cookie
+    # for paid content it can't open, so a post lands full the first time ANY
+    # account sees it instead of waiting up to SUBSTACK_REFRESH_HOURS for the
+    # refresh pass. Verification can be up to a day stale, so text bodies fetched
+    # this way are still checked with _is_locked before being trusted.
+    _payers: dict[str, tuple | None] = {}
+
+    def payer_for(pub_name: str):
+        """(account_row, session) for another account verified to pay for
+        pub_name, or None. Cached per publication for this run."""
+        if pub_name not in _payers:
+            found = None
+            for other in db.list_accounts(service="substack"):
+                if (other["id"] != account["id"]
+                        and pub_name in json.loads(other["paid_json"] or "[]")):
+                    found = (other, _session(other["cookie"]))
+                    break
+            _payers[pub_name] = found
+        return _payers[pub_name]
+
     manual = [{"name": m["name"], "base_url": m["base_url"]}
               for m in db.list_tracked_publications(user_id=account["user_id"])]
     try:
@@ -385,21 +408,29 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
             if post.get("type") == "podcast":
                 is_paid = post.get("audience") == "only_paid"
                 account_pays = bool(pub.get("paid"))
+                # payer-priority: a paid episode this account would only get the
+                # preview clip of is fetched with a verified payer's cookie instead
+                fetch_acct, fetch_s = account, s
+                if is_paid and not account_pays:
+                    payer = payer_for(pub["name"])
+                    if payer:
+                        fetch_acct, fetch_s = payer
+                        account_pays = True
                 existing_ep = db.get_episode_by_guid(guid)
                 if existing_ep:
                     db.set_episode_paid(guid, is_paid)   # keep green flag current (cheap)
                     if existing_ep["paid_access"] or not account_pays:
-                        continue   # already full, or this account can't get a better version
-                    # else: we hold a preview AND this account pays -> upgrade below
-                full = _post_by_id(s, post_id) or {}
+                        continue   # already full, or no available cookie gets a better version
+                    # else: we hold a preview AND a paying cookie is available -> upgrade below
+                full = _post_by_id(fetch_s, post_id) or {}
                 audio_url = full.get("podcast_url") or post.get("podcast_url")
                 if not audio_url:
                     continue
                 ext = audio_url.split("?")[0].rsplit(".", 1)
                 ext = ext[1].lower() if len(ext) == 2 and len(ext[1]) <= 4 else "mp3"
                 key = f"podcasts/{_slug(pub['name'])}/{_slug(title)}.{ext}"
-                dl_headers = {"Cookie": f"substack.sid={account['cookie']}",
-                              "User-Agent": s.headers["User-Agent"]}
+                dl_headers = {"Cookie": f"substack.sid={fetch_acct['cookie']}",
+                              "User-Agent": fetch_s.headers["User-Agent"]}
                 size = mime = None
                 for attempt in range(MAX_RETRIES):
                     try:
@@ -473,26 +504,56 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
                 # link-only row, and this account might have full access
                 needs_body = bool(existing["is_locked"] or not existing["html"]
                                   or 'class="stub"' in (existing["html"] or ""))
-                new_body = None
+                new_body, body_via = None, account["label"]
                 if needs_body:
                     full = _post_by_id(s, post_id)
                     if full and full.get("body_html") and (pub.get("paid") or not _is_locked(full)):
                         new_body = _clean_body(full["body_html"])
-                        log.info("[%s] upgraded existing post to full body: %s",
-                                 account["label"], title)
+                    elif is_paid:
+                        # payer-priority: this account can't open it — try an
+                        # account verified to pay for this publication
+                        payer = payer_for(pub["name"])
+                        if payer:
+                            p_acct, p_s = payer
+                            try:
+                                p_full = _post_by_id(p_s, post_id)
+                            except Exception:                       # noqa: BLE001
+                                p_full = None
+                            if p_full and p_full.get("body_html") and not _is_locked(p_full):
+                                new_body = _clean_body(p_full["body_html"])
+                                body_via = p_acct["label"]
+                    if new_body:
+                        log.info("[%s] upgraded existing post to full body (via %s): %s",
+                                 account["label"], body_via, title)
                 db.absorb_article(
                     existing["id"], message_id=guid, html=new_body,
                     cover_image=post.get("cover_image"),
                     author=(post.get("publishedBylines") or [{}])[0].get("name"),
                     published_at=post.get("post_date"), original_url=url,
                     is_paid=is_paid, source_label=account["label"])
+                if new_body and body_via != account["label"]:
+                    db.add_article_source(existing["id"], body_via)
                 continue
 
             full = _post_by_id(s, post_id)
-            body = _clean_body((full or {}).get("body_html"))
             # A confirmed paid subscriber (pub["paid"]) always has full access;
             # fall back to the body heuristic only when membership is unknown.
             locked = bool(is_paid and not pub.get("paid") and (_is_locked(full) if full else True))
+            body_via = account["label"]
+            if locked:
+                # payer-priority: pull the body with a verified payer's cookie so
+                # the post lands full NOW instead of as a locked preview that
+                # waits up to SUBSTACK_REFRESH_HOURS for the refresh pass
+                payer = payer_for(pub["name"])
+                if payer:
+                    p_acct, p_s = payer
+                    try:
+                        p_full = _post_by_id(p_s, post_id)
+                    except Exception:                               # noqa: BLE001
+                        p_full = None
+                    if p_full and p_full.get("body_html") and not _is_locked(p_full):
+                        full, locked, body_via = p_full, False, p_acct["label"]
+            body = _clean_body((full or {}).get("body_html"))
             if body:
                 mirrored += 1
             else:
@@ -507,7 +568,7 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
                 original_url=url,
                 html=body,
                 published_at=post.get("post_date"),
-                added_by=account["label"],
+                added_by=body_via,   # whoever's cookie supplied the body
                 cover_image=post.get("cover_image"),
                 is_paid=is_paid,
                 is_locked=locked,
@@ -515,6 +576,8 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
             )
             if article_id:
                 db.add_article_source(article_id, account["label"])
+                if body_via != account["label"]:
+                    db.add_article_source(article_id, body_via)
                 new_count += 1
                 if not is_backfill:
                     items.append({
