@@ -78,11 +78,25 @@
       if (r.ok) server = await r.json();
     } catch { return; }
     for (const slug of slugs) {
-      const local = parseFloat(localStorage.getItem("pos:" + slug) || "0");
-      const done = !!localStorage.getItem("done:" + slug);
       const sp = server[slug] || {};
-      if (done && !sp.done) { pushServer(slug, 0, sp.duration || 0, true, false); continue; }
-      if ((sp.position || 0) > local && !done) {            // server further -> adopt locally
+      const doneLocal = localStorage.getItem("done:" + slug);   // "1"|"pending"|null
+      if (doneLocal === "pending") {
+        // finished offline, not yet synced -> push; promote to synced on success
+        pushServer(slug, 0, parseFloat(localStorage.getItem("dur:" + slug) || sp.duration || 0), true, false);
+        try { localStorage.setItem("done:" + slug, "1"); } catch {}
+        continue;
+      }
+      if (doneLocal === "1" && !sp.done) {
+        // server was un-done elsewhere (another device resumed) -> defer to server
+        try {
+          localStorage.removeItem("done:" + slug);
+          if (sp.position) localStorage.setItem("pos:" + slug, String(sp.position));
+        } catch {}
+        continue;
+      }
+      if (sp.done) { try { localStorage.setItem("done:" + slug, "1"); } catch {} continue; }
+      const local = parseFloat(localStorage.getItem("pos:" + slug) || "0");
+      if ((sp.position || 0) > local) {                     // server further -> adopt locally
         try { localStorage.setItem("pos:" + slug, String(sp.position));
               if (sp.duration) localStorage.setItem("dur:" + slug, String(sp.duration)); } catch {}
       } else if (local > (sp.position || 0) + 2 && local > 5) {   // offline gains -> push up
@@ -112,7 +126,11 @@
     } catch {}
   }
 
-  const slugs = [];
+  // resolve slugs up front and pull server positions into localStorage BEFORE
+  // building the list, so each element resumes from the freshest known position
+  const slugs = keys.map((req) => new URL(req.url).pathname.replace("/offline-audio/", ""));
+  await flushPositions(slugs);
+
   let savedBytes = 0;   // total size of the saved episode audio (summed below)
 
   for (const req of keys) {
@@ -127,11 +145,14 @@
       (meta.savedAt ? " · saved " + new Date(meta.savedAt).toLocaleDateString() : "");
     const audio = document.createElement("audio");
     audio.controls = true; audio.preload = "metadata";
-    const resp = await c.match(req);
-    const blob = await resp.blob();
-    savedBytes += blob.size;
-    audio.src = URL.createObjectURL(blob);
-    slugs.push(slug);
+    // size from the cached response's Content-Length header — reading it does NOT
+    // pull the whole blob into memory (loading every blob OOM-crashed the page).
+    const cached = await c.match(req);
+    const clen = parseFloat(cached.headers.get("content-length") || "0");
+    savedBytes += clen > 0 ? clen : (await cached.blob()).size;  // blob only if header absent
+    // stream from the SW's /offline-audio/ handler (served out of AUDIO_CACHE)
+    // instead of a giant object URL — one episode's bytes in memory at a time
+    audio.src = "/offline-audio/" + slug;
     // resume from the same per-episode position the main player uses
     const pos = parseFloat(localStorage.getItem("pos:" + slug) || "0");
     audio.addEventListener("loadedmetadata", () => {
@@ -176,13 +197,17 @@
     window.addEventListener("pagehide", onLeave);
     document.addEventListener("visibilitychange", () => { if (document.hidden) onLeave(); });
     audio.addEventListener("ended", () => {
-      try { localStorage.setItem("done:" + slug, "1");
+      // "pending" if offline (usual case here) — the flusher promotes to "1" once
+      // the push lands, so a synced done can't later re-clobber another device
+      try { localStorage.setItem("done:" + slug, navigator.onLine ? "1" : "pending");
             localStorage.removeItem("pos:" + slug); } catch {}
       pushServer(slug, 0, audio.duration || 0, true, false);
     });
     const del = document.createElement("button");
     del.textContent = "Remove";
     del.onclick = async () => {
+      audio.pause();                 // stop a card that's mid-playback before it vanishes
+      audio.removeAttribute("src"); audio.load();
       await c.delete(req);
       try { localStorage.removeItem("offline:" + slug); } catch {}
       li.remove();
@@ -191,9 +216,8 @@
     list.append(li);
   }
 
-  // flush offline-accumulated positions up to the server now (if online) and
-  // again whenever connectivity returns (e.g. landing after a flight)
-  flushPositions(slugs);
+  // an initial flush already ran before building the list; re-flush whenever
+  // connectivity returns (e.g. landing after a flight)
   window.addEventListener("online", () => flushPositions(slugs));
   // mobile may fire neither `online` nor `load` reliably after a freeze/resume —
   // retry the flush whenever the page is brought back to the foreground

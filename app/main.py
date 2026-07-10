@@ -15,13 +15,26 @@ from fastapi.responses import (FileResponse, HTMLResponse, JSONResponse,
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import auth, config, db, feedgen, metrics, notify, storage
+from . import auth, config, db, feedgen, metrics, notify, sanitize, storage
 from .ingest import email_ingest, mde, nyt, patreon, podcast_rss, substack, youtube
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger("stackdock")
 
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
+# Scrub remote HTML (article bodies, episode notes) at render time — use
+# `{{ value | sanitize }}` instead of `| safe` for anything third-party.
+templates.env.filters["sanitize"] = sanitize.clean
+
+
+def _safe_url(url: str | None) -> str:
+    """Only allow http(s) links from remote-controlled URL fields (an original_url
+    could be a stored `javascript:` scheme). Everything else collapses to '#'."""
+    u = (url or "").strip()
+    return u if u[:7].lower() == "http://" or u[:8].lower() == "https://" else "#"
+
+
+templates.env.filters["safe_url"] = _safe_url
 scheduler = BackgroundScheduler()
 
 START_TIME = datetime.now(timezone.utc)
@@ -164,6 +177,23 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title=config.SITE_TITLE, lifespan=lifespan)
 STATIC_DIR = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+@app.middleware("http")
+async def csrf_guard(request: Request, call_next):
+    """Reject state-changing requests that a browser marks as coming from another
+    site. The app's real defense used to be only SameSite=Lax, which does NOT
+    stop a SAME-SITE origin — and status.<domain> (uptime-kuma, admin claimed by
+    whoever visits first) is same-site. Sec-Fetch-Site lets us block both
+    same-site and cross-site POSTs while allowing our own forms (same-origin) and
+    direct user actions (none). Absent header (old browsers) is allowed so we
+    don't break them — the modern-browser attack surface is what matters."""
+    if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+        site = request.headers.get("sec-fetch-site")
+        if site in ("cross-site", "same-site"):
+            return JSONResponse({"detail": "cross-origin request blocked"},
+                                status_code=403)
+    return await call_next(request)
 
 
 def _static_version() -> str:
@@ -542,11 +572,12 @@ async def api_save_position(slug: str, request: Request, user=Depends(auth.curre
         position = float(data.get("position", 0))
         duration = float(data.get("duration", 0))
         done = bool(data.get("done", False))
+        override = bool(data.get("override", False))
     except (ValueError, TypeError):
         raise HTTPException(400, "bad payload")
     if position < 0 or position > 60 * 60 * 24 or duration < 0 or duration > 60 * 60 * 24:
         raise HTTPException(400, "out of range")
-    db.upsert_listen_position(user["id"], slug, position, duration, done)
+    db.upsert_listen_position(user["id"], slug, position, duration, done, override)
     return {"ok": True}
 
 

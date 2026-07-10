@@ -109,15 +109,32 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
       for (var j = 0; j < slugs.length; j++) {
         var slug = slugs[j];
         var sp = server[slug] || {};
-        var done = !!localStorage.getItem("done:" + slug);
-        if (done && !sp.done) {
-          await pushPos(slug, 0, parseFloat(localStorage.getItem("dur:" + slug) || sp.duration || 0), true);
+        var doneLocal = localStorage.getItem("done:" + slug);   // "1" | "pending" | null
+        if (doneLocal === "pending") {
+          // reached done offline, not yet synced -> push; promote to "1" on success
+          (function (s) {
+            pushPos(s, 0, parseFloat(localStorage.getItem("dur:" + s) || sp.duration || 0), true)
+              .then(function (ok) { if (ok) try { localStorage.setItem("done:" + s, "1"); } catch (e) {} });
+          })(slug);
           continue;
         }
+        if (doneLocal === "1" && !sp.done) {
+          // server was un-done on another device (it resumed the episode) -> defer
+          // to the server instead of re-pushing done=true forever (the fight loop)
+          try {
+            localStorage.removeItem("done:" + slug);
+            if (sp.position) localStorage.setItem("pos:" + slug, String(sp.position));
+          } catch (e) {}
+          continue;
+        }
+        if (sp.done) { try { localStorage.setItem("done:" + slug, "1"); } catch (e) {} continue; }
         var local = localPos(slug);
         // push only when the device is genuinely ahead (>2s guard against jitter)
-        if (!done && local > 5 && local > (sp.position || 0) + 2) {
-          await pushPos(slug, local, parseFloat(localStorage.getItem("dur:" + slug) || 0), false);
+        if (local > 5 && local > (sp.position || 0) + 2) {
+          pushPos(slug, local, parseFloat(localStorage.getItem("dur:" + slug) || 0), false);
+        } else if ((sp.position || 0) > local) {                // server ahead -> adopt locally
+          try { localStorage.setItem("pos:" + slug, String(sp.position));
+                if (sp.duration) localStorage.setItem("dur:" + slug, String(sp.duration)); } catch (e) {}
         }
       }
     } catch (e) { /* offline / transient — retried on next load or `online` */ }
@@ -128,7 +145,7 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
       method: "POST", credentials: "same-origin", keepalive: true,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ position: position || 0, duration: duration || 0, done: !!done }),
-    }).catch(function () {});
+    }).then(function (r) { return r && r.ok; }).catch(function () { return false; });
   }
   // a tick after load (let the page settle), on reconnect, and when refocused
   // (mobile often fires neither `load` nor `online` reliably after a freeze)

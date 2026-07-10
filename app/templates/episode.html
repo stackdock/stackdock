@@ -44,7 +44,7 @@
   <p class="empty">Audio storage isn't configured, so this episode can't be streamed right now.</p>
   {% endif %}
 
-  {% if e.description %}<div class="body">{{ e.description | safe }}</div>{% endif %}
+  {% if e.description %}<div class="body">{{ e.description | sanitize | safe }}</div>{% endif %}
 </article>
 
 {% if audio_url %}
@@ -131,11 +131,15 @@
   if (a.readyState >= 1) onMeta();             // metadata beat us to it
   else a.addEventListener("loadedmetadata", onMeta, { once: true });
 
-  const payload = (done) => JSON.stringify({
-    position: a.currentTime || 0, duration: a.duration || 0, done: !!done });
+  const payload = (done, override) => JSON.stringify({
+    position: a.currentTime || 0, duration: a.duration || 0,
+    done: !!done, override: !!override });
   let lastPush = 0;
-  const pushServer = (done, useBeacon) => {
-    const body = payload(done);
+  // override=true means "set this exact position" (a deliberate scrub/restart);
+  // otherwise the server keeps positions MONOTONIC so a stale still-open tab
+  // can't rewind progress made on another device.
+  const pushServer = (done, useBeacon, override) => {
+    const body = payload(done, override);
     if (useBeacon && navigator.sendBeacon) {
       navigator.sendBeacon("/api/positions/" + slug, new Blob([body], { type: "text/plain" }));
       return;
@@ -158,7 +162,7 @@
     if (t > 5 && t < floor - 30 && !userScrubbed) return;
     if (t > 5 && (leaving || Date.now() - lastPush > 10000)) {
       lastPush = Date.now();
-      pushServer(false, leaving);
+      pushServer(false, leaving, userScrubbed);
     }
   };
   let lastSave = 0;
@@ -176,7 +180,10 @@
     if (document.hidden) save({ leaving: true });
   });
   a.addEventListener("ended", () => {
-    store.set(K_DONE, "1"); store.del(K_POS); setPlayIcon();
+    // "pending" until the server confirms: if we finished offline, the base.html
+    // / shelf flusher promotes it to "1" once the push lands. Prevents a synced
+    // "1" from later re-clobbering another device that resumed the episode.
+    store.set(K_DONE, navigator.onLine ? "1" : "pending"); store.del(K_POS); setPlayIcon();
     pushServer(true, false);
   });
 
@@ -188,6 +195,11 @@
     try { sessionStorage.setItem("pp-reloaded:" + slug, "1"); } catch {}
     save({ leaving: true });
     setTimeout(() => location.reload(), 300);
+  });
+  // clear the one-shot reload guard once playback actually resumes, so a SECOND
+  // presign expiry later in a very long-lived tab can reload again
+  a.addEventListener("playing", () => {
+    try { sessionStorage.removeItem("pp-reloaded:" + slug); } catch {}
   });
 
   // ---- controls ----
@@ -206,7 +218,8 @@
     a.currentTime = 0; store.del(K_DONE); a.play();
   };
   $("pp-done").onclick = (e) => {
-    e.preventDefault(); store.set(K_DONE, "1"); store.del(K_POS); a.pause();
+    e.preventDefault(); store.set(K_DONE, navigator.onLine ? "1" : "pending");
+    store.del(K_POS); a.pause();
     pushServer(true, false);
   };
 
@@ -250,7 +263,7 @@
 
   // ---- keyboard: space, arrows ----
   document.addEventListener("keydown", (e) => {
-    if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+    if (["INPUT", "TEXTAREA"].includes((document.activeElement || {}).tagName)) return;
     if (e.code === "Space") { e.preventDefault(); $("pp-play").click(); }
     if (e.code === "ArrowLeft") $("pp-back").click();
     if (e.code === "ArrowRight") $("pp-fwd").click();
@@ -284,8 +297,14 @@
       offMsg("Saving" + (mb > 0 ? " ~" + mb + " MB" : "") + "… keep this page open");
       try {
         if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
-        const resp = await fetch("/audio/" + slug, { credentials: "same-origin" });
-        if (!resp.ok) throw new Error("HTTP " + resp.status);
+        const resp = await fetch("/audio/" + slug, { credentials: "same-origin", redirect: "follow" });
+        // Guard against caching the LOGIN page as audio: an expired session makes
+        // /audio 303 -> /login (a 200 HTML page). Reject anything that redirected
+        // or isn't an audio content-type, so we never "save" a broken file.
+        const ctype = (resp.headers.get("content-type") || "").toLowerCase();
+        if (!resp.ok || resp.redirected || !/^audio\/|octet-stream/.test(ctype)) {
+          throw new Error(resp.redirected ? "not logged in" : "unexpected response");
+        }
         await c.put(cacheKey, resp);
         store.set("offline:" + slug, JSON.stringify({
           title: box.dataset.title, show: box.dataset.show,

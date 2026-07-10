@@ -957,16 +957,22 @@ def list_hidden_refs(user_id: int, kind: str) -> set[str]:
 
 
 def upsert_listen_position(user_id: int, slug: str, position: float,
-                           duration: float, done: bool) -> None:
+                           duration: float, done: bool, override: bool = False) -> None:
+    """Store a listening position. By default the stored position is MONOTONIC
+    (never regressed) so a stale still-open tab that beacons an old position on
+    blur can't rewind progress made on another device. override=True (a deliberate
+    scrub-back / restart) or done (mark-played, position 0) sets the exact value."""
     with conn() as c:
         c.execute(
             """INSERT INTO listen_positions (user_id, slug, position, duration, done, updated_at)
                VALUES (?,?,?,?,?,?)
                ON CONFLICT(user_id, slug) DO UPDATE SET
-                 position = excluded.position, duration = excluded.duration,
+                 position = CASE WHEN ? OR excluded.done = 1 THEN excluded.position
+                                 ELSE MAX(listen_positions.position, excluded.position) END,
+                 duration = MAX(listen_positions.duration, excluded.duration),
                  done = excluded.done, updated_at = excluded.updated_at""",
             (user_id, slug, max(0.0, float(position)), max(0.0, float(duration)),
-             1 if done else 0, now_iso()))
+             1 if done else 0, now_iso(), 1 if override else 0))
 
 
 def get_listen_positions(user_id: int) -> dict:

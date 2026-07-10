@@ -24,7 +24,11 @@ main { max-width: 880px; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
 
 .masthead {
   display: flex; align-items: center; justify-content: space-between;
-  max-width: 880px; margin: 0 auto; padding: 1.1rem 1.25rem;
+  max-width: 880px; margin: 0 auto;
+  /* keep clear of the iOS status bar in the installed PWA (black-translucent +
+     viewport-fit=cover lays content under the notch) — the plain `header`
+     safe-area rule below is overridden by this more-specific selector */
+  padding: max(1.1rem, env(safe-area-inset-top)) 1.25rem 1.1rem;
   border-bottom: 3px solid var(--ink);
 }
 .wordmark {
@@ -428,9 +432,11 @@ html[data-theme="brimstone"] .episode-art { opacity: 0.9; }
 
 /* ---------- mobile: nav fits, tap targets are thumb-sized ---------- */
 @media (max-width: 640px) {
-  .masthead { flex-wrap: wrap; row-gap: 0.3rem; padding: 0.9rem 1rem; }
+  .masthead { flex-wrap: wrap; row-gap: 0.3rem; padding: max(0.9rem, env(safe-area-inset-top)) 1rem 0.9rem; }
   .masthead nav { width: 100%; justify-content: flex-start; gap: 0.1rem 0.15rem; }
-  .masthead nav a { padding: 0.5rem 0.55rem; min-height: 40px; display: inline-flex; align-items: center; }
+  .masthead nav a,
+  .masthead nav .logout-form button { padding: 0.5rem 0.55rem; min-height: 40px; display: inline-flex; align-items: center; }
+  .star { min-width: 40px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
 }
 
 /* follow stars + chips */

@@ -13,7 +13,12 @@
     <code id="feed-everything">{{ feed_base }}/everything.xml</code>
     <button onclick="copyFeed('feed-everything')">Copy</button></div>
   <p class="hint">Each URL aggregates all blogs from all members. Keep them private.</p>
-  <script>function copyFeed(id){navigator.clipboard.writeText(document.getElementById(id).textContent)}</script>
+  <script>function copyFeed(id){
+    var txt=document.getElementById(id).textContent;
+    // navigator.clipboard is undefined on insecure origins (LAN/dev over http)
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).catch(function(){prompt("Copy this feed URL:",txt)});}
+    else{prompt("Copy this feed URL:",txt);}
+  }</script>
 </details>
 
 <nav class="tabs">
@@ -271,17 +276,17 @@
   } catch {}
   document.querySelectorAll("[data-ep-slug]").forEach((card) => {
     const slug = card.dataset.epSlug;
-    let pos = 0, dur = 0, done = false;
+    let pos = 0, dur = 0, localDone = null;
     try {
       pos = parseFloat(localStorage.getItem("pos:" + slug) || "0");
       dur = parseFloat(localStorage.getItem("dur:" + slug) || "0");
-      done = !!localStorage.getItem("done:" + slug);
+      localDone = localStorage.getItem("done:" + slug);   // "1" | "pending" | null
     } catch {}
     const sp = server[slug];
-    if (sp) {
-      done = done || sp.done;
-      if (sp.position > pos) { pos = sp.position; dur = sp.duration || dur; }
-    }
+    // server is authoritative for done-ness; an unsynced local finish ("pending")
+    // still shows as played until the flusher pushes it
+    let done = sp ? (sp.done || localDone === "pending") : !!localDone;
+    if (sp && sp.position > pos) { pos = sp.position; dur = sp.duration || dur; }
     if (done) {
       card.querySelector(".ep-played").hidden = false;
       card.classList.add("played");

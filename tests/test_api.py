@@ -66,3 +66,32 @@ def test_admin_route_forbidden_for_member(client, user, monkeypatch):
     client.post("/login", data={"username": "alice", "password": "hunter2"})
     r = client.get("/admin", follow_redirects=False)
     assert r.status_code == 403
+
+
+@pytest.mark.parametrize("path,data", [
+    ("/admin/sync/substack", {}),
+    ("/admin/invite", {}),
+    ("/article/1/hide", {"unhide": "0"}),
+])
+def test_admin_post_routes_forbidden_for_member(client, user, path, data):
+    """State-changing admin POSTs must reject a plain member, not just /admin GET."""
+    client.post("/login", data={"username": "alice", "password": "hunter2"})
+    r = client.post(path, data=data, follow_redirects=False)
+    assert r.status_code == 403
+
+
+def test_signup_atomic_on_duplicate_username(client, monkeypatch):
+    """A signup racing an existing username must not burn the invite (it stays
+    usable) and must not 500 — the invite claim + user insert are one transaction."""
+    from app import auth
+    db.create_user("taken", auth.hash_password("whatever1"))
+    code = auth.new_invite_code()
+    r = client.post("/signup", data={"invite": code, "username": "taken",
+                                     "password": "hunter2xyz", "password2": "hunter2xyz"})
+    assert "taken" in r.text.lower()
+    # invite was NOT consumed — a fresh signup with a new name still works
+    r2 = client.post("/signup", data={"invite": code, "username": "fresh",
+                                      "password": "hunter2xyz", "password2": "hunter2xyz"},
+                     follow_redirects=False)
+    assert r2.status_code == 303
+    assert db.get_user_by_name("fresh") is not None

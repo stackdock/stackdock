@@ -28,10 +28,26 @@ def test_follow_toggle_and_db(client):
     assert client.post("/follow", data={"kind": "nope", "name": "x"}).status_code == 400
 
 
-def test_open_redirect_blocked(client):
-    r = client.post("/follow", data={"kind": "pub", "name": "Blog A",
-                                     "back": "//evil.example"}, follow_redirects=False)
+@pytest.mark.parametrize("bad", ["//evil.example", "/\\evil.example",
+                                 "https://evil.example", "\\/evil.example",
+                                 "/\tevil"])
+def test_open_redirect_blocked(client, bad):
+    r = client.post("/follow", data={"kind": "pub", "name": "Blog A", "back": bad},
+                    follow_redirects=False)
     assert r.headers["location"] == "/"
+
+
+def test_safe_next_allows_real_paths(client):
+    r = client.post("/follow", data={"kind": "pub", "name": "Blog A", "back": "/?tab=audio"},
+                    follow_redirects=False)
+    assert r.headers["location"] == "/?tab=audio"
+
+
+def test_logout_is_post_only(client):
+    # GET must not log out (CSRF-able top-level navigation); POST does
+    assert client.get("/logout", follow_redirects=False).status_code == 405
+    r = client.post("/logout", follow_redirects=False)
+    assert r.status_code == 303 and "/login" in r.headers["location"]
 
 
 def test_mine_tab_filters_to_follows(client):

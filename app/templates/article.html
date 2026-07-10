@@ -8,10 +8,10 @@
   <h1>{{ a.title }}</h1>
   <p class="meta">
     {{ (a.published_at or a.created_at)[:10] }}
-    {% if a.original_url %} · <a href="{{ a.original_url }}" rel="noopener">original</a>{% endif %}
+    {% if a.original_url %} · <a href="{{ a.original_url | safe_url }}" rel="noopener">original</a>{% endif %}
     {% if sources %} · via {% for src in sources %}<span class="added-by">{{ src }}</span> {% endfor %}{% endif %}
   </p>
-  {% if a.is_paid and a.is_locked %}<p class="form-error">Preview only — the connected account doesn't pay for this publication. <a href="{{ a.original_url }}" rel="noopener">Read the full post →</a></p>{% endif %}
+  {% if a.is_paid and a.is_locked %}<p class="form-error">Preview only — the connected account doesn't pay for this publication. <a href="{{ a.original_url | safe_url }}" rel="noopener">Read the full post →</a></p>{% endif %}
   {# the cover image is the post's first image, which the mirrored body already
      contains — only show it for link-only stubs that have no body images #}
   {% if a.media_key %}
@@ -28,6 +28,6 @@
     })();
   </script>
   {% elif a.cover_image and a.html and 'class="stub"' in a.html %}<img class="episode-art" src="{{ a.cover_image }}" alt="">{% endif %}
-  <div class="body">{{ a.html | safe }}</div>
+  <div class="body">{{ a.html | sanitize | safe }}</div>
 </article>
 {% endblock %}
