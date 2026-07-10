@@ -65,8 +65,10 @@ class World:
 
     def post_by_id(self, s, post_id):
         acct = self.accounts[s.cookie]
+        # real _post_by_id builds a URL, so it's id-type-agnostic; the archive
+        # passes ints but refresh/verify pass the string half of 'substack:{id}'
         post = next((p for posts in self.posts.values() for p in posts
-                     if p["id"] == post_id), None)
+                     if str(p["id"]) == str(post_id)), None)
         if post is None:
             return None
         paid_ok = any(post in self.posts.get(b, []) for b in acct["paid"])
@@ -88,7 +90,7 @@ class World:
                 full["podcast_duration"] = 1800
         return full
 
-    def download(self, url, key, headers=None):
+    def download(self, url, key, headers=None, cookies=None):
         self.downloads.append(key)
         return 999, "audio/mpeg"
 
@@ -317,9 +319,101 @@ def test_payer_priority_downloads_full_podcast_audio(world):
     substack.sync_account(alice)
     ep = db.get_episode_by_guid("substack:3")
     assert ep["paid_access"] == 1
-    assert world.downloads == ["podcasts/blog-x/paid-pod.mp3"]   # full, once
+    assert world.downloads == ["podcasts/blog-x/3-paid-pod.mp3"]   # id-keyed, full, once
     assert "-preview" not in world.downloads[0]
 
     # resync is a no-op: it's already full
     substack.sync_account(alice)
     assert len(world.downloads) == 1
+
+
+def test_payer_podcast_skips_when_payer_fetch_fails(world, monkeypatch):
+    """If the paying cookie's by-id fetch fails, we must NOT download the archive
+    PREVIEW url and stamp it paid_access=1 (that would freeze the preview forever,
+    since later syncs skip paid_access=1 rows). We skip and retry next run."""
+    alice = _member(world, "alice", "c1", [("Blog X", X)], paid=[])
+    bob = _member(world, "bob", "c2", [], paid=[X])
+    db.set_account_paid_verified(bob["id"], ["Blog X"])
+
+    real_by_id = world.post_by_id
+
+    def flaky(s, post_id):
+        # bob's cookie (the payer) can't reach the paid podcast this run
+        if post_id == 3 and s.cookie == "c2":
+            return None
+        return real_by_id(s, post_id)
+    monkeypatch.setattr(substack, "_post_by_id", flaky)
+
+    substack.sync_account(alice)
+    ep = db.get_episode_by_guid("substack:3")
+    assert ep is None                       # nothing stored — no frozen preview
+    assert world.downloads == []
+
+    # payer recovers -> next sync stores FULL audio with paid_access=1
+    monkeypatch.setattr(substack, "_post_by_id", real_by_id)
+    substack.sync_account(alice)
+    ep = db.get_episode_by_guid("substack:3")
+    assert ep and ep["paid_access"] == 1
+
+
+def test_verify_paid_access_confirms_payer_only(world):
+    """verify_paid_access stamps paid_json from REAL access: the payer gets the
+    pub, the free member doesn't."""
+    alice = _member(world, "alice", "c1", [("Blog X", X)], paid=[])
+    bob = _member(world, "bob", "c2", [("Blog X", X)], paid=[X])
+    substack.run()                          # backfill: creates the paid article
+
+    substack.verify_paid_access()
+    import json as _json
+    bob_paid = _json.loads(_account_row("bob's account")["paid_json"] or "[]")
+    alice_paid = _json.loads(_account_row("alice's account")["paid_json"] or "[]")
+    assert "Blog X" in bob_paid
+    assert "Blog X" not in alice_paid
+
+
+def test_verify_does_not_wipe_paid_json_on_probe_failure(world, monkeypatch):
+    """A stale/rate-limited cookie (every by-id errors) must leave existing
+    paid_json intact, not blank the whole fleet's payer list."""
+    alice = _member(world, "alice", "c1", [("Blog X", X)], paid=[])
+    bob = _member(world, "bob", "c2", [("Blog X", X)], paid=[X])
+    substack.run()
+    db.set_account_paid_verified(bob["id"], ["Blog X"])
+
+    monkeypatch.setattr(substack, "_post_by_id",
+                        lambda s, pid: (_ for _ in ()).throw(RuntimeError("rate limited")))
+    substack.verify_paid_access()
+
+    import json as _json
+    assert _json.loads(_account_row("bob's account")["paid_json"] or "[]") == ["Blog X"]
+
+
+def test_verify_removes_pub_on_proven_loss_of_access(world):
+    """When a probe SUCCEEDS and reads only a preview, that pub is removed from
+    the account's verified list (genuine unsubscribe)."""
+    alice = _member(world, "alice", "c1", [("Blog X", X)], paid=[])
+    bob = _member(world, "bob", "c2", [("Blog X", X)], paid=[])   # bob no longer pays
+    substack.run()
+    db.set_account_paid_verified(bob["id"], ["Blog X"])           # stale prior belief
+
+    substack.verify_paid_access()
+    import json as _json
+    assert _json.loads(_account_row("bob's account")["paid_json"] or "[]") == []
+
+
+def test_same_titled_paid_episodes_get_distinct_audio_keys(world):
+    """Two episodes with the SAME title must not collide on one R2 key (which
+    would make one overwrite the other's audio)."""
+    world.posts[X] = [
+        dict(id=41, slug="q-and-a-1", title="Q&A", type="podcast",
+             audience="only_paid", canonical_url=f"{X}/p/q-and-a-1",
+             post_date="2026-02-01T00:00:00"),
+        dict(id=42, slug="q-and-a-2", title="Q&A", type="podcast",
+             audience="only_paid", canonical_url=f"{X}/p/q-and-a-2",
+             post_date="2026-02-08T00:00:00"),
+    ]
+    _member(world, "bob", "c2", [("Blog X", X)], paid=[X])
+    substack.sync_account(_account_row("bob's account"))
+
+    keys = [db.get_episode_by_guid(f"substack:{i}")["audio_key"] for i in (41, 42)]
+    assert keys[0] != keys[1]                 # distinct objects
+    assert len(set(world.downloads)) == 2     # two separate uploads

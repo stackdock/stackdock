@@ -49,11 +49,18 @@ main { max-width: 880px; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
   display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end;
   gap: 0.2rem 0.95rem;
 }
-.masthead nav a {
+.masthead nav a,
+.masthead nav .logout-form button {
   color: var(--ink-soft); text-decoration: none;
   font-family: var(--mono); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em;
 }
-.masthead nav a:hover { color: var(--shelf); }
+.masthead nav a:hover,
+.masthead nav .logout-form button:hover { color: var(--shelf); }
+/* logout is a POST (CSRF-safe) styled to sit inline with the nav links */
+.masthead nav .logout-form { display: inline; margin: 0; }
+.masthead nav .logout-form button {
+  background: none; border: 0; padding: 0; cursor: pointer;
+}
 
 h2 {
   font-family: var(--serif); font-size: 1.2rem; margin: 2.5rem 0 0.75rem;

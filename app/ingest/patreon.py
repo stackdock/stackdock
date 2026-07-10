@@ -11,10 +11,10 @@ is_paid + current_user_can_view drive the paid/locked flags. First sync per
 account is a silent backfill (notified=1); later syncs notify via notify.flush().
 """
 import html as _htmlmod
-import io
 import json
 import logging
 import random
+import tempfile
 import threading
 import time
 
@@ -110,9 +110,10 @@ def _audio_url(attrs):
 
 
 def _teaser_stub(url, teaser) -> str:
-    t = (teaser or "").strip()
+    t = _htmlmod.escape((teaser or "").strip())
     head = f"<p>{t}</p>" if t else ""
-    return head + f'<p class="stub"><a href="{url}">Read on Patreon →</a></p>'
+    safe = _htmlmod.escape(url or "", quote=True)
+    return head + f'<p class="stub"><a href="{safe}">Read on Patreon →</a></p>'
 
 
 def _thumb_url(a):
@@ -256,16 +257,33 @@ def sync_account(account) -> tuple[int, str]:
                 db.set_episode_paid(guid, is_paid)
                 continue
             try:
-                resp = s.get(audio)
-                if resp.status_code != 200 or not resp.content:
-                    raise RuntimeError(f"audio HTTP {resp.status_code}")
-                mime = resp.headers.get("content-type") or "audio/mpeg"
-                key = f"patreon/{db.slugify(pub)}/{db.slugify(title)}.mp3"
-                storage.upload_stream(io.BytesIO(resp.content), key, mime)
+                # include the post id so same-titled posts don't collide on one key
+                key = f"patreon/{db.slugify(pub)}/{pid}-{db.slugify(title)}.mp3"
+                # stream to a spooled temp file (spills to disk past 8 MB) instead
+                # of buffering the whole episode in RAM — a multi-hour patron
+                # podcast is 100-300 MB and would OOM the 1 GB droplet.
+                with s.get(audio, stream=True) as resp:
+                    if resp.status_code != 200:
+                        raise RuntimeError(f"audio HTTP {resp.status_code}")
+                    mime = resp.headers.get("content-type") or "audio/mpeg"
+                    spool = tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024)
+                    size = 0
+                    for chunk in resp.iter_content(chunk_size=256 * 1024):
+                        if chunk:
+                            spool.write(chunk)
+                            size += len(chunk)
+                    if not size:
+                        spool.close()
+                        raise RuntimeError("empty audio body")
+                    spool.seek(0)
+                    try:
+                        storage.upload_stream(spool, key, mime)
+                    finally:
+                        spool.close()
                 eid = db.insert_episode(
                     guid=guid, feed_name=pub, title=title,
                     description=a.get("teaser_text") or "", audio_key=key,
-                    audio_bytes=len(resp.content), audio_mime=mime, duration="",
+                    audio_bytes=size, audio_mime=mime, duration="",
                     published_at=published, image_url=None,
                     paid_access=1, is_paid=1 if is_paid else 0, notified=notified)
                 if eid:

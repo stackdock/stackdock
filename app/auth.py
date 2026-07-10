@@ -9,12 +9,17 @@
 import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
+from urllib.parse import quote
 
 import bcrypt
 from fastapi import HTTPException, Request
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from . import config, db
+
+# Verified against when a login names a nonexistent user, so the response takes
+# one bcrypt check either way (no username enumeration via timing).
+_DUMMY_HASH = bcrypt.hashpw(b"stackdock-timing-pad", bcrypt.gensalt()).decode()
 
 SESSION_COOKIE = "stackdock_session"
 SESSION_MAX_AGE = 30 * 24 * 3600  # 30 days
@@ -34,6 +39,15 @@ def verify_password(password: str, password_hash: str) -> bool:
         return bcrypt.checkpw(password.encode(), password_hash.encode())
     except ValueError:
         return False
+
+
+def check_login(user, password: str) -> bool:
+    """verify_password with a constant-time shape: unknown usernames still pay
+    one bcrypt check so response timing doesn't reveal which usernames exist."""
+    if user is None:
+        verify_password(password, _DUMMY_HASH)
+        return False
+    return verify_password(password, user["password_hash"])
 
 
 # ---------- sessions ----------
@@ -68,9 +82,16 @@ def clear_session_cookie(response) -> None:
 # ---------- FastAPI dependencies ----------
 
 def _redirect_to_login(request: Request):
+    # API/beacon clients must get a real error, not a 303: fetch() follows the
+    # redirect to /login and reports a misleading 200, so an expired session
+    # would silently "succeed" (and the offline saver would cache the login
+    # page as audio).
+    if request.url.path.startswith("/api/"):
+        raise HTTPException(status_code=401, detail="Session expired")
+    target = request.url.path + (f"?{request.url.query}" if request.url.query else "")
     raise HTTPException(
         status_code=303,
-        headers={"Location": f"/login?next={request.url.path}"},
+        headers={"Location": f"/login?next={quote(target, safe='/?&=')}"},
     )
 
 

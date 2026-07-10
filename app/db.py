@@ -199,6 +199,16 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _expired(iso_ts: str) -> bool:
+    """True if an ISO timestamp is in the past. Compares parsed datetimes, not
+    strings: isoformat() drops the fractional part when microsecond==0, so a
+    lexicographic compare isn't chronological near second boundaries."""
+    try:
+        return datetime.fromisoformat(iso_ts) < datetime.now(timezone.utc)
+    except (TypeError, ValueError):
+        return True  # unparseable expiry -> treat as expired (fail safe)
+
+
 def slugify(text: str) -> str:
     """'My Great Post!' -> 'my-great-post'. ASCII-ish, max 80 chars."""
     s = unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode()
@@ -294,6 +304,19 @@ def init():
         for handle in config.YOUTUBE_DEFAULT_CHANNELS:
             c.execute("INSERT OR IGNORE INTO youtube_channels (handle, added_by, created_at) "
                       "VALUES (?, 'system', ?)", (handle, now_iso()))
+        # indexes for the hot paths: slug lookups on every /read, /listen, /audio
+        # hit; the paginated index sorts by COALESCE(published_at, created_at).
+        # slug is app-unique (not a UNIQUE column), so index it explicitly.
+        for stmt in (
+            "CREATE INDEX IF NOT EXISTS idx_articles_slug ON articles(slug)",
+            "CREATE INDEX IF NOT EXISTS idx_episodes_slug ON episodes(slug)",
+            "CREATE INDEX IF NOT EXISTS idx_articles_order ON articles(COALESCE(published_at, created_at) DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_episodes_order ON episodes(COALESCE(published_at, created_at) DESC)",
+        ):  # message_id/guid are already UNIQUE (auto-indexed); listen_positions PK covers user_id
+            try:
+                c.execute(stmt)
+            except sqlite3.OperationalError:
+                pass  # column/table not present in an older shape; harmless
 
 
 # ---------- articles ----------
@@ -344,11 +367,18 @@ def find_article_match(original_url: str | None = None, publication: str | None 
 
 def absorb_article(article_id: int, *, message_id=None, html=None, cover_image=None,
                    author=None, published_at=None, original_url=None, is_paid=None,
-                   source_label=None) -> None:
+                   source_label=None, unlock=True) -> None:
     """Merge a duplicate sighting of an article into the existing row:
     fill in metadata the existing row is missing, upgrade the body when the new
-    source has full access (html given -> also clears is_locked), and adopt the
-    canonical substack:{id} message_id so future syncs dedupe on the fast path."""
+    source has full access (html given -> also clears is_locked, UNLESS
+    unlock=False), and adopt the canonical substack:{id} message_id so future
+    syncs dedupe on the fast path.
+
+    unlock=False is for sources that can't prove full access (email ingest: a
+    Substack email to a free subscriber is itself a truncated preview). Such a
+    source may fill an EMPTY/stub body but must not clear is_locked on a paid
+    preview — otherwise refresh_locked (which only revisits is_locked=1 rows)
+    would never replace it with the real full body from a paying cookie."""
     with conn() as c:
         row = c.execute("SELECT * FROM articles WHERE id = ?", (article_id,)).fetchone()
         if not row:
@@ -364,7 +394,10 @@ def absorb_article(article_id: int, *, message_id=None, html=None, cover_image=N
             updates.append("message_id = ?"); args.append(message_id)
         if html:
             updates.append("html = ?"); args.append(html)
-            updates.append("is_locked = 0")
+            # only declare the post unlocked when the source proves full access;
+            # a not-unlock source that fills a body leaves is_locked as it was
+            if unlock:
+                updates.append("is_locked = 0")
         fill("cover_image", cover_image)
         fill("author", author)
         fill("published_at", published_at)
@@ -545,6 +578,15 @@ def get_article_by_slug(slug: str):
 def episode_exists(guid: str) -> bool:
     with conn() as c:
         r = c.execute("SELECT 1 FROM episodes WHERE guid = ?", (guid,)).fetchone()
+        return r is not None
+
+
+def feed_has_episodes(feed_name: str) -> bool:
+    """Whether we've ever stored an episode for this feed — used to make the
+    FIRST poll of a new podcast feed a silent backfill (no Discord blast)."""
+    with conn() as c:
+        r = c.execute("SELECT 1 FROM episodes WHERE feed_name = ? LIMIT 1",
+                      (feed_name,)).fetchone()
         return r is not None
 
 
@@ -749,6 +791,32 @@ def consume_invite(code: str, username: str) -> bool:
         return cur.rowcount == 1
 
 
+class SignupError(Exception):
+    """Signup failed for a user-presentable reason (message is safe to show)."""
+
+
+def create_user_with_invite(username: str, password_hash: str, code: str) -> int:
+    """Claim the invite and create the user in ONE transaction so neither a
+    duplicate-username race (two signups, same name) nor a concurrent invite
+    claim can burn an invite without producing an account or 500 on the UNIQUE
+    constraint. Raises SignupError(message) on either failure; returns user_id."""
+    with conn() as c:
+        claimed = c.execute(
+            "UPDATE invites SET used_by = ? WHERE code = ? AND used_by IS NULL",
+            (username, code)).rowcount == 1
+        if not claimed:
+            raise SignupError("Invalid or already-used invite code.")
+        try:
+            cur = c.execute(
+                "INSERT INTO users (username, password_hash, is_admin, created_at) "
+                "VALUES (?,?,0,?)", (username, password_hash, now_iso()))
+        except sqlite3.IntegrityError:
+            # username taken (UNIQUE NOCASE) — roll the whole tx back so the
+            # invite stays unclaimed and reusable
+            raise SignupError("That username is taken.")
+        return cur.lastrowid
+
+
 def delete_invite(code: str) -> None:
     with conn() as c:
         c.execute("DELETE FROM invites WHERE code = ?", (code,))
@@ -776,7 +844,7 @@ def consume_reset_token(token_hash: str):
             "SELECT user_id, expires_at, used FROM reset_tokens WHERE token_hash = ?",
             (token_hash,),
         ).fetchone()
-        if not row or row["used"] or row["expires_at"] < now_iso():
+        if not row or row["used"] or _expired(row["expires_at"]):
             return None
         c.execute("UPDATE reset_tokens SET used = 1 WHERE token_hash = ?", (token_hash,))
         return row["user_id"]

@@ -8,9 +8,10 @@ from app import config, notify
 
 @pytest.fixture
 def captured(monkeypatch):
-    """Capture every Discord payload instead of hitting the network."""
+    """Capture every Discord payload instead of hitting the network. _post now
+    returns a delivered? bool, so the fake must report success."""
     calls = []
-    monkeypatch.setattr(notify, "_post", lambda payload: calls.append(payload))
+    monkeypatch.setattr(notify, "_post", lambda payload: calls.append(payload) or True)
     return calls
 
 
@@ -141,3 +142,26 @@ def test_flush_is_resilient_and_exactly_once(fresh_db, captured):
     assert "Fresh" in desc and "Already announced" not in desc
     notify.flush()                                         # nothing left to send
     assert len(captured) == 1                              # not re-announced
+
+
+def test_flush_keeps_items_pending_when_discord_fails(fresh_db, monkeypatch):
+    """A failed Discord post must NOT mark items notified — the next run retries,
+    so an outage/429 never silently drops a digest."""
+    from app import db
+    db.insert_article("m-fail", "Pub", "Undelivered", "a", None, "<p>x</p>", None, notified=0)
+
+    attempts = []
+    monkeypatch.setattr(notify, "_post",
+                        lambda payload: attempts.append(payload) or False)  # delivery fails
+    notify.flush()
+    assert len(attempts) == 1
+    assert db.list_unnotified_items()                      # still pending, not lost
+
+    # webhook recovers → next run delivers and marks
+    monkeypatch.setattr(notify, "_post",
+                        lambda payload: attempts.append(payload) or True)
+    notify.flush()
+    assert len(attempts) == 2
+    assert not db.list_unnotified_items()                  # now cleared
+    notify.flush()
+    assert len(attempts) == 2                              # nothing re-sent

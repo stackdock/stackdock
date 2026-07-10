@@ -82,12 +82,23 @@ def test_follows_are_per_user(client):
 
 
 def test_audio_proxy(client, monkeypatch):
+    # open_stream returns the raw boto StreamingBody (read()-able, close()-able);
+    # the route streams it in chunks and must close it when done.
+    class FakeBody:
+        def __init__(self, data): self._data, self.closed = data, False
+        def read(self, n=-1):
+            chunk, self._data = self._data[:n], self._data[n:]
+            return chunk
+        def close(self): self.closed = True
+
+    body = FakeBody(b"abcdef")
     monkeypatch.setattr(storage, "open_stream",
-                        lambda key: (iter([b"abc", b"def"]), "audio/mpeg", 6))
+                        lambda key: (body, "audio/mpeg", 6))
     r = client.get("/audio/alpha-episode")
     assert r.status_code == 200 and r.content == b"abcdef"
     assert r.headers["content-type"].startswith("audio/mpeg")
     assert r.headers["cache-control"] == "no-store"
+    assert body.closed          # connection released after streaming
     assert client.get("/audio/nope").status_code == 404
 
 

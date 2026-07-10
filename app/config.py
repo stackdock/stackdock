@@ -104,7 +104,10 @@ S3_BUCKET = os.getenv("S3_BUCKET", "stackdock")
 # Optional: if the bucket is served from a public/custom domain (e.g. R2 custom domain),
 # set it here and enclosure links will be plain URLs. Otherwise presigned URLs are used.
 S3_PUBLIC_BASE_URL = os.getenv("S3_PUBLIC_BASE_URL", "").rstrip("/")
-PRESIGN_EXPIRY_SECONDS = int(os.getenv("PRESIGN_EXPIRY_SECONDS", str(7 * 24 * 3600)))
+# 7 days is the SigV4 hard maximum; a larger value produces URLs R2/S3 reject at
+# fetch time, so clamp rather than trust the env blindly.
+PRESIGN_EXPIRY_SECONDS = min(7 * 24 * 3600,
+                             int(os.getenv("PRESIGN_EXPIRY_SECONDS", str(7 * 24 * 3600))))
 
 # ---- Cloud provider metrics (optional, for /status) ----
 # Cloudflare: read-only token with Account Analytics:Read. Account ID is on the R2 page.

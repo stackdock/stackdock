@@ -6,6 +6,7 @@ import shutil
 from datetime import datetime, timedelta, timezone
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, Response
@@ -57,43 +58,46 @@ def _tracked(job_id: str):
     return runner
 
 
-def _trigger_nyt_pull():
-    """Kick a NYT pull off the request thread (Playwright is slow). run() takes a
-    non-blocking lock, so a one-shot firing while one is in flight just no-ops."""
+def _trigger_job(job_id: str):
+    """Kick an ingest job off the request thread so a slow/rate-limited sync
+    (Substack's jittered gaps, Playwright, large downloads) never blocks the HTTP
+    response past a browser/Caddy timeout. The ingesters take non-blocking locks,
+    so a one-shot firing while one is in flight just no-ops (coalesce collapses
+    stacked triggers). Returns True if it was scheduled."""
     try:
-        scheduler.add_job(_tracked("nyt"), id="nyt_now", replace_existing=True,
+        scheduler.add_job(_tracked(job_id), id=f"{job_id}_now", replace_existing=True,
                           max_instances=1, coalesce=True,
                           next_run_time=datetime.now(timezone.utc))
+        return True
     except Exception:
-        log.exception("could not schedule NYT pull")
+        log.exception("could not schedule %s", job_id)
+        return False
+
+
+def _trigger_nyt_pull():
+    _trigger_job("nyt")
 
 
 def _trigger_mde():
-    """Kick an mde.tv download off the request thread (video files are large)."""
-    try:
-        scheduler.add_job(_tracked("mde"), id="mde_now", replace_existing=True,
-                          max_instances=1, coalesce=True,
-                          next_run_time=datetime.now(timezone.utc))
-    except Exception:
-        log.exception("could not schedule mde download")
+    _trigger_job("mde")
 
 
 def _trigger_youtube():
-    """Kick a YouTube poll off the request thread (resolving a new channel +
-    fetching its feed shouldn't block the response)."""
-    try:
-        scheduler.add_job(_tracked("youtube"), id="youtube_now", replace_existing=True,
-                          max_instances=1, coalesce=True,
-                          next_run_time=datetime.now(timezone.utc))
-    except Exception:
-        log.exception("could not schedule YouTube poll")
+    _trigger_job("youtube")
 
 
-def _safe_next(next_url: str | None) -> str:
-    """Only allow same-site relative redirect targets."""
-    if next_url and next_url.startswith("/") and not next_url.startswith("//"):
-        return next_url
-    return "/"
+def _safe_next(next_url: str | None, fallback: str = "/") -> str:
+    """Only allow same-site relative redirect targets. Rejects protocol-relative
+    (`//host`) and backslash (`/\\host`, which browsers normalize to `//host`)
+    targets, and anything the URL parser reads as having a scheme or netloc."""
+    if not next_url or not next_url.startswith("/") or next_url.startswith("//"):
+        return fallback
+    if "\\" in next_url or "\t" in next_url or "\n" in next_url or "\r" in next_url:
+        return fallback
+    p = urlsplit(next_url)
+    if p.scheme or p.netloc:
+        return fallback
+    return next_url
 
 
 @asynccontextmanager
@@ -213,14 +217,14 @@ def login_page(request: Request, next: str = "/"):
 @app.post("/login")
 def login(request: Request, username: str = Form(...), password: str = Form(...), next: str = Form("/")):
     user = db.get_user_by_name(username.strip())
-    if not user or not auth.verify_password(password, user["password_hash"]):
+    if not auth.check_login(user, password):
         return render(request, "login.html", next=next, error="Wrong username or password.")
     resp = RedirectResponse(_safe_next(next), status_code=303)
     auth.set_session_cookie(resp, user["id"])
     return resp
 
 
-@app.get("/logout")
+@app.post("/logout")
 def logout():
     resp = RedirectResponse("/login", status_code=303)
     auth.clear_session_cookie(resp)
@@ -245,12 +249,15 @@ def signup(request: Request, invite: str = Form(...), username: str = Form(...),
         return fail("Passwords don't match.")
     if len(password) < 8:
         return fail("Password must be at least 8 characters.")
-    if db.get_user_by_name(username):
-        return fail("That username is taken.")
-    if not db.consume_invite(invite.strip(), username):
-        return fail("Invalid or already-used invite code.")
 
-    user_id = db.create_user(username, auth.hash_password(password))
+    # Claim the invite and create the user atomically: a duplicate-username race
+    # or concurrent invite claim rolls the whole thing back (invite stays
+    # reusable) instead of 500ing on the UNIQUE constraint with the invite burnt.
+    try:
+        user_id = db.create_user_with_invite(
+            username, auth.hash_password(password), invite.strip())
+    except db.SignupError as e:
+        return fail(str(e))
     resp = RedirectResponse("/", status_code=303)
     auth.set_session_cookie(resp, user_id)
     return resp
@@ -355,10 +362,11 @@ def admin_reset_link(request: Request, user=Depends(auth.current_admin), user_id
 def manual_sync(job: str, user=Depends(auth.current_admin)):
     if job not in JOBS:
         raise HTTPException(404)
-    n = run_job(job)   # records JOB_STATE so /status reflects this manual run
-    state = JOB_STATE.get(job, {})
-    return {"job": job, "ok": state.get("ok", n is not None),
-            "new_items": n, "result": state.get("result")}
+    # Offload to the scheduler: a full Substack sync sleeps 0.8-2.2s between
+    # requests and can run for minutes — running it inline would tie up an HTTP
+    # worker and blow past browser/Caddy timeouts. /status reflects the outcome.
+    scheduled = _trigger_job(job)
+    return {"job": job, "scheduled": scheduled}
 
 
 # ---------------- connected accounts (substack) ----------------
@@ -427,20 +435,22 @@ def accounts_delete(request: Request, user=Depends(auth.current_user),
 
 @app.post("/status/sync")
 def status_sync(user=Depends(auth.current_user)):
-    """Sync-now button on /status: run the cookie syncs, then land back on /status."""
+    """Sync-now button on /status: kick the cookie syncs off the request thread
+    (a full Substack sync runs for minutes) and land back on /status, which
+    shows the outcome once each job records JOB_STATE."""
     for j in ("substack", "patreon"):
-        run_job(j)
+        _trigger_job(j)
     return RedirectResponse("/status", status_code=303)
 
 
 @app.post("/accounts/sync")
 def accounts_sync(request: Request, user=Depends(auth.current_user)):
-    """Any member can trigger a sync of all connected accounts (Substack + Patreon)."""
-    counts = [run_job(j) for j in ("substack", "patreon")]   # each records JOB_STATE
-    if all(c is None for c in counts):
-        msg = "Sync failed — see Status for details."
-    else:
-        msg = f"Sync finished: {sum(c for c in counts if c)} new item(s)."
+    """Any member can trigger a sync of all connected accounts (Substack + Patreon).
+    Offloaded to the scheduler so the response returns immediately instead of
+    blocking on the (minutes-long, rate-limited) sync."""
+    scheduled = [_trigger_job(j) for j in ("substack", "patreon")]
+    msg = ("Sync started — new items will appear shortly; see Status for progress."
+           if any(scheduled) else "Could not start sync — see Status for details.")
     return render(request, "accounts.html", **_accounts_ctx(user, message=msg))
 
 
@@ -450,9 +460,7 @@ def follow_toggle(request: Request, user=Depends(auth.current_user),
     if kind not in ("pub", "show") or not name.strip():
         raise HTTPException(400)
     db.toggle_follow(user["id"], kind, name.strip())
-    if not back.startswith("/") or back.startswith("//"):
-        back = "/"
-    return RedirectResponse(back, status_code=303)
+    return RedirectResponse(_safe_next(back), status_code=303)
 
 
 @app.get("/audio/{slug}")
@@ -467,10 +475,23 @@ def audio_proxy(slug: str, user=Depends(auth.current_user)):
         body, ctype, length = storage.open_stream(e["audio_key"])
     except Exception:
         raise HTTPException(503, "storage unavailable")
+
+    def _stream():
+        # close the R2 connection on normal completion AND on client abort
+        # (Starlette calls .close() on the generator when the client disconnects)
+        try:
+            for chunk in iter(lambda: body.read(256 * 1024), b""):
+                yield chunk
+        finally:
+            close = getattr(body, "close", None)
+            if callable(close):
+                close()
+
     headers = {"Cache-Control": "no-store"}
     if length:
         headers["Content-Length"] = str(length)
-    return StreamingResponse(body, media_type=e["audio_mime"] or ctype, headers=headers)
+    return StreamingResponse(_stream(), media_type=e["audio_mime"] or ctype,
+                             headers=headers)
 
 
 @app.get("/media/{slug}")
@@ -636,7 +657,9 @@ def index(request: Request, user=Depends(auth.current_user),
 
 
 @app.post("/article/{article_id}/hide")
-def hide_article(article_id: int, user=Depends(auth.current_user), unhide: int = Form(0)):
+def hide_article(article_id: int, user=Depends(auth.current_admin), unhide: int = Form(0)):
+    # This is a GLOBAL hide (no user_id column) — admin-only so one member can't
+    # hide an article for everyone. Per-user hiding lives at /mine/hide.
     db.set_article_hidden(article_id, not unhide)
     return RedirectResponse(f"/?tab=text{'&hidden=1' if unhide else ''}", status_code=303)
 
@@ -649,9 +672,7 @@ def hide_mine_item(user=Depends(auth.current_user), kind: str = Form(...),
     if kind not in ("article", "episode") or not ref.strip():
         raise HTTPException(400)
     db.set_hidden_item(user["id"], kind, ref.strip(), not unhide)
-    if not back.startswith("/") or back.startswith("//"):
-        back = "/?tab=mine"
-    return RedirectResponse(back, status_code=303)
+    return RedirectResponse(_safe_next(back, "/?tab=mine"), status_code=303)
 
 
 @app.get("/read/{slug}", response_class=HTMLResponse)

@@ -21,6 +21,7 @@ publication) and does not send Discord notifications; later syncs notify
 normally. These endpoints are unofficial; if Substack changes them, the JSON
 walking below is written defensively and is the place to fix.
 """
+import html
 import json
 import logging
 import threading
@@ -79,6 +80,8 @@ def polite_get(s: requests.Session, url: str, **kwargs) -> requests.Response:
         r = s.get(url, **kwargs)
         if r.status_code not in (429, 503):
             return r
+        if attempt == MAX_RETRIES - 1:
+            return r   # out of retries — don't sleep out a backoff we won't use
         ra = r.headers.get("Retry-After", "")
         wait = (int(ra) if ra.isdigit() else min(BACKOFF_CAP_S, 5 * 2 ** attempt))
         wait += random.uniform(0, 3)
@@ -316,8 +319,9 @@ def _clean_body(html: str | None) -> str | None:
 
 
 def _stub_html(url: str) -> str:
+    safe = html.escape(url or "", quote=True)
     return (f'<p class="stub">Full text couldn\'t be mirrored for this post. '
-            f'<a href="{url}" rel="noopener">Read it on the original site →</a></p>')
+            f'<a href="{safe}" rel="noopener">Read it on the original site →</a></p>')
 
 
 def sync_account(account) -> tuple[int, str, list[dict]]:
@@ -423,18 +427,41 @@ def sync_account(account) -> tuple[int, str, list[dict]]:
                         continue   # already full, or no available cookie gets a better version
                     # else: we hold a preview AND a paying cookie is available -> upgrade below
                 full = _post_by_id(fetch_s, post_id) or {}
-                audio_url = full.get("podcast_url") or post.get("podcast_url")
-                if not audio_url:
-                    continue
+                # For a paid episode pulled with a PAYING cookie, the full audio
+                # only comes from the by-id response fetched with that cookie. The
+                # archive post["podcast_url"] was fetched with the (possibly
+                # non-paying) syncing account and may be the short preview — never
+                # fall back to it here, or we'd download a preview and stamp it
+                # paid_access=1, which future syncs skip forever (frozen preview).
+                if is_paid and account_pays:
+                    audio_url = full.get("podcast_url")
+                    if not audio_url:
+                        log.info("[%s] paid podcast audio unavailable (by-id fetch "
+                                 "failed) — will retry next sync: %s",
+                                 fetch_acct["label"], title)
+                        continue
+                else:
+                    audio_url = full.get("podcast_url") or post.get("podcast_url")
+                    if not audio_url:
+                        continue
                 ext = audio_url.split("?")[0].rsplit(".", 1)
                 ext = ext[1].lower() if len(ext) == 2 and len(ext[1]) <= 4 else "mp3"
-                key = f"podcasts/{_slug(pub['name'])}/{_slug(title)}.{ext}"
-                dl_headers = {"Cookie": f"substack.sid={fetch_acct['cookie']}",
-                              "User-Agent": fetch_s.headers["User-Agent"]}
+                # include the post id so two episodes with the SAME title (common
+                # on these feeds: "Open Thread", "Weekly Q&A") don't collide on
+                # one R2 key and overwrite each other's audio. Stable per post, so
+                # the preview->full upgrade still replaces in place.
+                key = f"podcasts/{_slug(pub['name'])}/{post_id}-{_slug(title)}.{ext}"
+                dl_headers = {"User-Agent": fetch_s.headers["User-Agent"]}
+                # scope the session cookie to substack.com via a jar so it is NOT
+                # leaked to a third-party CDN the podcast_url may redirect to
+                dl_jar = requests.cookies.RequestsCookieJar()
+                dl_jar.set("substack.sid", fetch_acct["cookie"],
+                           domain=".substack.com", path="/")
                 size = mime = None
                 for attempt in range(MAX_RETRIES):
                     try:
-                        size, mime = _download_to_storage(audio_url, key, headers=dl_headers)
+                        size, mime = _download_to_storage(audio_url, key,
+                                                          headers=dl_headers, cookies=dl_jar)
                         break
                     except requests.HTTPError as e:
                         code = getattr(e.response, "status_code", None)
@@ -709,6 +736,7 @@ def _refresh_locked() -> int:
                 body = _clean_body(full["body_html"])
                 if body:
                     db.upgrade_article_body(art["id"], body, account["label"])
+                    db.add_article_source(art["id"], account["label"])  # credit the unlocker
                     upgraded += 1
                     log.info("[%s] paid-refresh upgraded: %s",
                              account["label"], art["title"])
@@ -740,43 +768,58 @@ def _verify_paid_access() -> int:
     accounts = [(a, _session(a["cookie"])) for a in db.list_accounts(service="substack")]
     if not accounts:
         return 0
-    _, s0 = accounts[0]
 
     # For each pub, pick a probe post that is CURRENTLY only_paid (audience is a
     # property of the post, not the viewer — our stored is_paid can be stale, so
     # a "paid" post may since have been un-paywalled and would read for everyone).
+    # Try each account's session in turn so one stale/rate-limited cookie can't
+    # blank probe discovery for the whole fleet.
     probe_by_pub: dict[str, str] = {}
     for pub, mids in probes.items():
         for mid in mids:
             pid = mid.split(":", 1)[1]
-            try:
-                f = _post_by_id(s0, pid)
-            except Exception:                                   # noqa: BLE001
-                continue
+            f = None
+            for _, s in accounts:
+                try:
+                    f = _post_by_id(s, pid)
+                except Exception:                               # noqa: BLE001
+                    continue
+                if f is not None:
+                    break
             if f and f.get("audience") == "only_paid":
                 probe_by_pub[pub] = pid
                 break   # found a genuinely paywalled post to test this pub with
 
-    verified_by_acct: dict[int, list[str]] = {a["id"]: [] for a, _ in accounts}
+    # Verification is EVIDENCE-POSITIVE: we only add a pub on proof of access and
+    # only REMOVE one on proof of no-access (a successful fetch that read a
+    # preview). A fetch that errors, or a pub with no usable probe, leaves that
+    # account's existing verified entry untouched — otherwise one stale cookie or
+    # a transient rate-limit would wipe everyone's paid_json (breaking
+    # payer-priority fleet-wide until the next daily run).
+    confirmed: dict[int, set[str]] = {a["id"]: set() for a, _ in accounts}
+    disproven: dict[int, set[str]] = {a["id"]: set() for a, _ in accounts}
     for pub, pid in probe_by_pub.items():
         for account, s in accounts:
             try:
                 f = _post_by_id(s, pid)
             except Exception:                                   # noqa: BLE001
-                continue
-            # PROOF of payment: the post is still only_paid AND this cookie reads
-            # the full body (not a hidden preview).
-            if (f and f.get("audience") == "only_paid"
-                    and f.get("body_html") and not _is_locked(f)):
-                verified_by_acct[account["id"]].append(pub)
+                continue   # transient — no evidence either way, leave as-is
+            if not f or f.get("audience") != "only_paid":
+                continue   # couldn't read it / post changed — inconclusive
+            if f.get("body_html") and not _is_locked(f):
+                confirmed[account["id"]].add(pub)     # proof of payment
+            else:
+                disproven[account["id"]].add(pub)     # read only a preview -> no access
 
     total = 0
     for account, _ in accounts:
-        names = verified_by_acct[account["id"]]
-        db.set_account_paid_verified(account["id"], names)
+        prior = set(json.loads(account["paid_json"] or "[]"))
+        names = (prior - disproven[account["id"]]) | confirmed[account["id"]]
+        db.set_account_paid_verified(account["id"], sorted(names))
         total += len(names)
-        log.info("[%s] verified paid access: %d publication(s)",
-                 account["label"], len(names))
+        log.info("[%s] verified paid access: %d publication(s) "
+                 "(+%d confirmed, -%d disproven)", account["label"], len(names),
+                 len(confirmed[account["id"]]), len(disproven[account["id"]]))
     return total
 
 

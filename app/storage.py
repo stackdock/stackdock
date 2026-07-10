@@ -52,11 +52,14 @@ def url_for(key: str, download_name: str | None = None) -> str:
 
 
 def open_stream(key: str):
-    """(iterator, content_type, content_length) streaming the object — used by
-    the same-origin /audio proxy so page JS can cache episodes for offline
-    (cross-origin presigned URLs can't be fetch()ed from JS without CORS)."""
+    """(body, content_type, content_length) for the object — used by the
+    same-origin /audio proxy so page JS can cache episodes for offline
+    (cross-origin presigned URLs can't be fetch()ed from JS without CORS).
+
+    `body` is the raw boto StreamingBody; the caller MUST close it (stream it
+    inside a try/finally) so an aborted download doesn't leak the connection
+    to R2."""
     obj = client().get_object(Bucket=config.S3_BUCKET, Key=key)
-    body = obj["Body"]
-    return (iter(lambda: body.read(256 * 1024), b""),
+    return (obj["Body"],
             obj.get("ContentType") or "application/octet-stream",
             obj.get("ContentLength"))

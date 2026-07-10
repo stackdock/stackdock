@@ -62,7 +62,7 @@
         <a href="/status">Status</a>
         <a href="/account">Account</a>
         {% if user.is_admin %}<a href="/admin">Admin</a>{% endif %}
-        <a href="/logout">Log out</a>
+        <form method="post" action="/logout" class="logout-form"><button type="submit">Log out</button></form>
       {% endif %}
     </nav>
   </header>

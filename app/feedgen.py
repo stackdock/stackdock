@@ -4,9 +4,16 @@ Subscribe to {PUBLIC_BASE_URL}/feed/{FEED_TOKEN}/all.xml in any podcast app.
 """
 from email.utils import format_datetime
 from datetime import datetime, timezone
-from xml.sax.saxutils import escape
+from xml.sax.saxutils import escape, quoteattr
 
 from . import config, db, storage
+
+
+def _attr(value: str) -> str:
+    """XML attribute value WITH surrounding quotes, fully escaped. escape() alone
+    does not escape `"`, so a quote in a URL or a remote Content-Type header would
+    break the enclosure element (a dead feed for every podcast app)."""
+    return quoteattr(value or "")
 
 
 def _audio_url(row) -> str:
@@ -40,7 +47,7 @@ def build_feed(feed_filter: str | None = None) -> str:
       <guid isPermaLink="false">{escape(e["guid"])}</guid>
       <description>{escape((e["description"] or "")[:2000])}</description>
       <pubDate>{escape(_rfc2822(e["published_at"] or e["created_at"]))}</pubDate>
-      <enclosure url="{escape(url)}" length="{e["audio_bytes"] or 0}" type="{escape(e["audio_mime"] or "audio/mpeg")}"/>
+      <enclosure url={_attr(url)} length="{e["audio_bytes"] or 0}" type={_attr(e["audio_mime"] or "audio/mpeg")}/>
       <itunes:author>{escape(e["feed_name"])}</itunes:author>
     </item>""")
 
@@ -109,7 +116,7 @@ def build_combined_feed(limit: int = 200) -> str:
       <pubDate>{escape(_rfc2822(row["published_at"] or row["created_at"]))}</pubDate>
       <category>{escape(row["feed_name"])}</category>
       <description>{escape((row["description"] or "")[:2000])}</description>
-      <enclosure url="{escape(url)}" length="{row["audio_bytes"] or 0}" type="{escape(row["audio_mime"] or "audio/mpeg")}"/>
+      <enclosure url={_attr(url)} length="{row["audio_bytes"] or 0}" type={_attr(row["audio_mime"] or "audio/mpeg")}/>
     </item>""")
 
     return f"""<?xml version="1.0" encoding="UTF-8"?>

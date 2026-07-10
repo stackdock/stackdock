@@ -66,10 +66,18 @@
   </div>
   <script>
     async function sync(job) {
-      document.getElementById('sync-result').textContent = 'Running ' + job + '…';
-      const r = await fetch('/admin/sync/' + job, {method: 'POST'});
-      const d = await r.json();
-      document.getElementById('sync-result').textContent = job + ': ' + d.new_items + ' new item(s)';
+      const out = document.getElementById('sync-result');
+      out.textContent = 'Starting ' + job + '…';
+      try {
+        const r = await fetch('/admin/sync/' + job, {method: 'POST'});
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const d = await r.json();
+        out.textContent = d.scheduled
+          ? job + ' started — watch Status for the result.'
+          : job + ' could not start (see logs).';
+      } catch (e) {
+        out.textContent = job + ': failed to start (' + e.message + ')';
+      }
     }
   </script>
 </section>

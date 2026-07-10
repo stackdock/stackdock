@@ -7,6 +7,7 @@ extracts the HTML body, cleans it, and stores it as an article.
 """
 import email
 import email.policy
+import hashlib
 import imaplib
 import logging
 import re
@@ -73,8 +74,10 @@ def run() -> int:
         log.info("IMAP not configured; skipping email ingest.")
         return 0
 
-    new_count, items = 0, []
-    M = imaplib.IMAP4_SSL(config.IMAP_HOST, config.IMAP_PORT)
+    new_count = 0
+    # timeout so a stalled Gmail connection can't wedge this thread (and its
+    # 10-min scheduled reruns) forever
+    M = imaplib.IMAP4_SSL(config.IMAP_HOST, config.IMAP_PORT, timeout=60)
     try:
         M.login(config.IMAP_USER, config.IMAP_PASS)
         M.select(config.IMAP_FOLDER)
@@ -95,7 +98,14 @@ def run() -> int:
                 # Leave non-newsletter mail untouched but mark seen so we don't loop on it
                 continue
 
-            message_id = msg.get("Message-ID", "").strip() or f"no-id-{num.decode()}"
+            raw_mid = msg.get("Message-ID", "").strip()
+            if not raw_mid:
+                # No Message-ID: derive a STABLE id from the mail's own headers.
+                # IMAP sequence numbers are session-relative and reused, so the
+                # old f"no-id-{num}" both collided across runs and re-ingested.
+                sig = f"{from_addr}|{msg.get('Date','')}|{msg.get('Subject','')}"
+                raw_mid = "email-" + hashlib.sha1(sig.encode("utf-8", "replace")).hexdigest()[:24]
+            message_id = raw_mid
             if db.article_exists(message_id):
                 continue
 
@@ -113,15 +123,17 @@ def run() -> int:
             publication = display_name or from_addr.split("@")[0]
 
             # Cookie sync may already have this post under substack:{id} — merge
-            # instead of duplicating. Email bodies are full text, so they can
-            # also upgrade a locked/stub row.
+            # instead of duplicating. A Substack email to a FREE subscriber is a
+            # truncated preview, so we can only fill an empty/stub body and must
+            # NOT clear is_locked (unlock=False) — the paying-cookie path is the
+            # authoritative unlock, and refresh_locked must still revisit the row.
             match = db.find_article_match(original_url, publication, title)
             if match:
-                needs_body = bool(match["is_locked"] or not match["html"]
+                needs_body = bool(not match["html"]
                                   or 'class="stub"' in (match["html"] or ""))
                 db.absorb_article(match["id"], html=clean if needs_body else None,
                                   published_at=published_at, original_url=original_url,
-                                  source_label="email")
+                                  source_label="email", unlock=False)
                 continue
 
             article_id = db.insert_article(
@@ -136,14 +148,6 @@ def run() -> int:
             if article_id:
                 new_count += 1
                 log.info("New article: [%s] %s", publication, title)
-                items.append({
-                    "type": "article",
-                    "source": publication,
-                    "title": title,
-                    "url": f"{config.PUBLIC_BASE_URL}/read/{db.get_article(article_id)['slug']}",
-                    "original_url": original_url,
-                    "published_at": published_at,
-                })
 
         notify.flush()   # resilient digest (DB-driven; survives interrupted runs)
         return new_count
