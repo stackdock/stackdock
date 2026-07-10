@@ -122,8 +122,9 @@ DO_DROPLET_ID = os.getenv("DO_DROPLET_ID", "")
 # file names as they live in .github/workflows/. Private-repo badges only render
 # for viewers signed in to GitHub.
 GITHUB_REPO = os.getenv("GITHUB_REPO", "stackdock/stackdock")
-# ci.yml runs the test suite on every push (incl. main); deploy.yml runs on a
-# published release. Both badges are meaningful. Override via GITHUB_WORKFLOWS.
+# ci.yml runs the test suite on PRs + non-main pushes; deploy.yml tests AND
+# deploys on every push to main. Both badges are meaningful. Override via
+# GITHUB_WORKFLOWS.
 GITHUB_WORKFLOWS = [w.strip() for w in
                     os.getenv("GITHUB_WORKFLOWS", "ci.yml,deploy.yml").split(",") if w.strip()]
 

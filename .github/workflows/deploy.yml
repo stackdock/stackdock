@@ -10,13 +10,16 @@ on:
 
 concurrency:
   group: deploy
-  cancel-in-progress: true
+  # QUEUE deploys, don't cancel: cancelling mid-run can kill the SSH script
+  # between `git reset --hard` and `docker compose up`, leaving the droplet on
+  # new code with old containers. The group already serializes runs.
+  cancel-in-progress: false
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

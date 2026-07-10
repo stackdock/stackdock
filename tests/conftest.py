@@ -17,6 +17,13 @@ os.environ.setdefault("BASIC_AUTH_PASS", "admin-pass")
 os.environ.setdefault("PUBLIC_BASE_URL", "http://testserver")
 os.environ.setdefault("DISCORD_WEBHOOK_URL", "")  # disabled -> notify is a no-op
 os.environ.setdefault("STALE_REMINDER_HOURS", "24")
+# Hard-blank every outbound integration so a developer's real .env can never
+# leak a live webhook/bucket/inbox into a test run. config.load_dotenv() won't
+# override an already-set var, and these are set before the app import above.
+for _leaky in ("OUTBOUND_WEBHOOK_URL", "S3_ENDPOINT_URL", "S3_ACCESS_KEY_ID",
+               "S3_SECRET_ACCESS_KEY", "S3_PUBLIC_BASE_URL", "PODCAST_FEEDS",
+               "IMAP_HOST", "IMAP_USER", "IMAP_PASS"):
+    os.environ[_leaky] = ""
 
 from app import config, db  # noqa: E402
 

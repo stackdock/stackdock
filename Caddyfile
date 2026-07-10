@@ -1,11 +1,31 @@
 # Replace example.com with your domain (DNS A record must point at the server).
 # Caddy obtains and renews the TLS certificate automatically.
+
+# Compression + security headers, shared by both sites.
+(common) {
+    encode zstd gzip
+    header {
+        # force HTTPS for 2 years (preload-eligible)
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        # don't let the browser MIME-sniff a mistyped response
+        X-Content-Type-Options "nosniff"
+        # private, cookie-authed app — never allow framing (clickjacking, incl.
+        # from the same-site status. subdomain)
+        X-Frame-Options "DENY"
+        Referrer-Policy "no-referrer"
+        # drop Caddy's version banner
+        -Server
+    }
+}
+
 chudcrushers.com {
+    import common
     reverse_proxy stackdock:8000
 }
 
 # Uptime Kuma (open-source uptime monitor). Add a DNS A record for this
 # subdomain pointing at the same droplet IP.
 status.chudcrushers.com {
+    import common
     reverse_proxy uptime-kuma:3001
 }

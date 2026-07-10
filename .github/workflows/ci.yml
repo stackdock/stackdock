@@ -1,17 +1,18 @@
 name: CI
 
-# Runs the test suite on every push (including main) and on pull requests.
-# Deploys no longer happen on push — they're gated on publishing a release
-# (see deploy.yml) — so CI is what keeps main green between releases.
+# Runs the test suite on pull requests and non-main pushes. Pushes to main are
+# already tested by deploy.yml's `test` job (which gates the deploy on green),
+# so we skip main here to avoid running the whole suite twice on every push.
 on:
   pull_request: {}
-  push: {}
+  push:
+    branches-ignore: [main]
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

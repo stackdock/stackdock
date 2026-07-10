@@ -16,6 +16,9 @@ RUN apt-get update \
  && for i in 1 2 3 4 5 6; do python -m camoufox fetch && break || { echo "camoufox fetch retry $i"; sleep 12; }; done \
  && test -d /root/.cache/camoufox
 COPY app ./app
+# scripts/ holds the on-droplet debug tools (debug_substack.py etc.) that
+# CLAUDE.md tells operators to run via `docker compose exec` — ship them too
+COPY scripts ./scripts
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 VOLUME /data
