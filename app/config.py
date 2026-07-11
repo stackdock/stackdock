@@ -150,9 +150,11 @@ MDE_EMAIL = os.getenv("MDE_EMAIL", "")
 MDE_PASSWORD = os.getenv("MDE_PASSWORD", "")
 # Catalogue responses are cached this long so browsing doesn't hammer mde.tv.
 MDE_CACHE_SECONDS = int(os.getenv("MDE_CACHE_SECONDS", "1800"))
-# Periodic sweep so a queued download always gets picked up (the on-demand
-# trigger can be dropped if another download is mid-flight).
-MDE_POLL_MINUTES = int(os.getenv("MDE_POLL_MINUTES", "5"))
+# Periodic safety-net sweep to retry any download stranded by a crash or by
+# being queued while a run held the lock. The happy path is immediate: clicking
+# Download fires an on-demand trigger, so this only needs to catch stragglers —
+# once a day is plenty (the catalogue itself is lazy/on-tab-open, never polled).
+MDE_POLL_MINUTES = int(os.getenv("MDE_POLL_MINUTES", "1440"))
 
 # ---- YouTube (channel upload notifications via per-channel RSS) ----
 # Default channels seeded on startup (handles, without the leading @). Members can
