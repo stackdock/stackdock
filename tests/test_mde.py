@@ -67,6 +67,37 @@ def test_no_change_no_ping(fresh_db, monkeypatch):
     assert sent == []
 
 
+def test_entitled_rules():
+    # free content is always watchable
+    assert mde._entitled({"free": True, "access": "big"}, {"regular"})
+    # tier the account holds
+    assert mde._entitled({"free": False, "access": "regular"}, {"regular"})
+    # tier the account does NOT hold -> not entitled
+    assert not mde._entitled({"free": False, "access": "big"}, {"regular"})
+    # unknown products (couldn't read auth) -> don't block, let it try
+    assert mde._entitled({"free": False, "access": "big"}, set())
+
+
+def test_download_fails_fast_on_tier_gap(fresh_db, monkeypatch):
+    from app import db
+    db.request_mde_download(
+        video_id="vBIG", series_tag="tubi-poops", series_name="Tubi Poops",
+        title="Housewives", episode=2, duration=577, thumbnail="", added_by="a")
+    # a 'big'-tier video, account only has 'regular'
+    monkeypatch.setattr(mde, "get_video",
+                        lambda vid: {"tag": "hh", "access": "big", "free": False})
+    monkeypatch.setattr(mde, "account_products", lambda: {"regular"})
+    # if the gate fails, this would be reached and blow up (no browser in tests)
+    monkeypatch.setattr(mde, "_signed_playlist",
+                        lambda *a, **k: (_ for _ in ()).throw(AssertionError("launched browser")))
+
+    mde.download("vBIG")
+
+    status = db.get_mde_download("vBIG")["status"]
+    assert status.startswith("failed: needs 'big' tier")
+    assert "regular" in status
+
+
 def test_webhook_outage_leaves_pending(fresh_db, monkeypatch):
     base = ({"tag": "tow", "name": "Tales of Wape"},
             [{"id": "v1", "tag": "e1", "title": "One", "episode": 1}])

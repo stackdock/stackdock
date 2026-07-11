@@ -104,6 +104,37 @@ def access_token() -> str:
         return _login()[0]
 
 
+def account_products() -> set:
+    """The tiers the stored mde.tv account is entitled to (user.products from
+    GET /v1/auth, e.g. {'regular'} or {'regular','big'}). Cached briefly. A video
+    is watchable/downloadable only if it's free or its `access` tier is in here —
+    otherwise mde.tv bounces the watch page to a Stripe upgrade flow and there's
+    no video to intercept. Empty set on any error (treated as 'unknown', so we
+    don't wrongly block)."""
+    def fetch():
+        at = access_token()
+        _, rt = db.get_mde_tokens()
+        try:
+            r = requests.get("https://api.mde.tv/v1/auth", headers=_MDE_HDRS,
+                             cookies={"mde-access-token": at, "mde-refresh-token": rt},
+                             timeout=25)
+            return set((r.json().get("user") or {}).get("products") or [])
+        except Exception as e:                                 # noqa: BLE001
+            log.info("mde: couldn't read account products (%s)", e)
+            return set()
+    return _cached("products", fetch)
+
+
+def _entitled(video: dict, products: set) -> bool:
+    """Can the stored account actually watch this video? Free content is always
+    watchable; otherwise its `access` tier must be one the account holds. If we
+    couldn't read products (empty set), don't block — let the download try."""
+    if video.get("free"):
+        return True
+    access = video.get("access")
+    return (not products) or (access in products)
+
+
 # ---------------- public catalogue ----------------
 
 def _cached(key: str, fn, force: bool = False):
@@ -166,31 +197,14 @@ def _signed_playlist(series_tag: str, video_tag: str) -> str:
                    "(watch page/player changed, or token not subscribed).")
 
 
-# We only need the player JS to FIRE the request for the signed playlist.m3u8 —
-# we capture the URL off the 'request' event and never touch the video bytes,
-# images, or GPU. So launch Firefox as lean as possible: this droplet is small
-# (~1GB) and a default Camoufox (~500MB across content processes + a GPU proc)
-# was OOM/swap-thrashing and crashing mid-interception ("browser has been
-# closed"). Single content process + no Fission + no GPU/WebGL/WebRTC + blocked
-# images roughly halves the footprint so the download stops crashing.
-_LEAN_PREFS = {
-    "fission.autostart": False,               # cross-origin iframes share a proc
-    "dom.ipc.processCount": 1,                # one content process, not many
-    "browser.tabs.remote.autostart": False,
-    "browser.cache.disk.enable": False,
-    "browser.cache.memory.enable": False,
-    "media.memory_cache_max_size": 8192,      # KB — cap buffered media
-    "gfx.webrender.all": False,
-    "layers.acceleration.disabled": True,
-}
-
-
 def _intercept_once(watch_url: str, cookies: list) -> str | None:
     from camoufox.sync_api import Camoufox
     found = {"url": None}
     try:
-        with Camoufox(headless=True, block_images=True, block_webrtc=True,
-                      block_webgl=True, firefox_user_prefs=_LEAN_PREFS) as browser:
+        # Default (fingerprint-consistent) Camoufox on purpose: leaner prefs
+        # (single-process / no-WebGL / blocked-images) trip WAF bot detection
+        # per Camoufox's own warnings, and memory was never the bottleneck here.
+        with Camoufox(headless=True) as browser:
             page = browser.new_page()
             page.context.add_cookies(cookies)
             page.on("request", lambda r: found.__setitem__("url", found["url"]
@@ -362,6 +376,22 @@ def _download(video_id: str) -> None:
     db.set_mde_status(video_id, "downloading")
     try:
         v = get_video(video_id)
+        # Pre-flight entitlement check: if the account isn't on this video's tier
+        # (e.g. 'big' content on a 'regular' subscription), mde.tv redirects the
+        # watch page to a Stripe upgrade flow — there's no player to intercept, so
+        # a browser launch is doomed. Fail fast with a clear, actionable reason
+        # instead of burning a ~500MB Camoufox run on a "browser closed" error.
+        products = account_products()
+        if not _entitled(v, products):
+            need = v.get("access") or "paid"
+            have = ", ".join(sorted(products)) or "none"
+            db.set_mde_status(
+                video_id,
+                f"failed: needs '{need}' tier — account has [{have}]. "
+                f"Upgrade the mde.tv subscription to download this.")
+            log.info("mde: %s requires '%s' tier; account has [%s] — skipping.",
+                     video_id, need, have)
+            return
         video_tag = v.get("tag")
         series_tag = row["series_tag"] or v.get("series_tag")
         if not video_tag or not series_tag:
