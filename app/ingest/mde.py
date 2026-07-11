@@ -112,9 +112,9 @@ def account_products() -> set:
     no video to intercept. Empty set on any error (treated as 'unknown', so we
     don't wrongly block)."""
     def fetch():
-        at = access_token()
-        _, rt = db.get_mde_tokens()
         try:
+            at = access_token()
+            _, rt = db.get_mde_tokens()
             r = requests.get("https://api.mde.tv/v1/auth", headers=_MDE_HDRS,
                              cookies={"mde-access-token": at, "mde-refresh-token": rt},
                              timeout=25)
@@ -302,6 +302,11 @@ def _flush_mde() -> None:
 
 
 _CATALOGUE_LOCK = threading.Lock()
+# A single refresh should never ping more than a handful of episodes — a real
+# hourly delta is 0-5. More than this means a catch-up (an interrupted first
+# backfill, or the table got wiped and re-populated), which is NOT news, so we
+# record it silently instead of blasting hundreds of Discord pings.
+_MAX_NEW_PINGS = 25
 
 
 def refresh() -> int:
@@ -330,7 +335,7 @@ def _refresh_catalogue() -> int:
         return 0
     first_run = db.mde_catalogue_count() == 0
     seen = db.mde_catalogue_seen_ids()
-    added = 0
+    new_ids = []
     for s in series:
         tag = s.get("tag")
         if not tag:
@@ -350,11 +355,17 @@ def _refresh_catalogue() -> int:
                 title=v.get("title") or "", episode=v.get("episode"),
                 notified=1 if first_run else 0)
             seen.add(vid)
-            added += 1
-    _flush_mde()
+            new_ids.append(vid)
+    added = len(new_ids)
+    # A big jump that ISN'T the first run = a catch-up (interrupted first backfill
+    # or a wiped table), not news — mark it seen silently so we never blast it.
+    if not first_run and added > _MAX_NEW_PINGS:
+        db.mark_mde_notified(new_ids)
+        log.info("mde catalogue: silent catch-up of %d episode(s)", added)
+    _flush_mde()      # pings genuine small deltas; also retries any prior failure
     if first_run:
         log.info("mde catalogue: silent first backfill of %d episode(s)", added)
-    elif added:
+    elif 0 < added <= _MAX_NEW_PINGS:
         log.info("mde catalogue: %d new episode(s)", added)
     return added
 

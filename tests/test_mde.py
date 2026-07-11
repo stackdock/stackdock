@@ -55,6 +55,25 @@ def test_only_new_episodes_ping(fresh_db, monkeypatch):
     assert db.list_unnotified_mde() == []   # marked after successful post
 
 
+def test_large_catchup_is_silent(fresh_db, monkeypatch):
+    # first run: tiny backfill (silent)
+    base = ({"tag": "pgl", "name": "Perfect Guy Life"},
+            [{"id": "v0", "tag": "e0", "title": "Zero", "episode": 0}])
+    _fake_catalogue(monkeypatch, [base])
+    sent = _capture_pings(monkeypatch)
+    mde.refresh()
+    assert sent == []
+
+    # a huge batch shows up at once (e.g. interrupted first backfill / table wipe)
+    for i in range(1, mde._MAX_NEW_PINGS + 6):
+        base[1].append({"id": f"v{i}", "tag": f"e{i}", "title": f"Ep {i}", "episode": i})
+    added = mde.refresh()
+
+    assert added == mde._MAX_NEW_PINGS + 5
+    assert sent == []                       # catch-up is NEVER pinged
+    assert db.list_unnotified_mde() == []   # all marked seen silently
+
+
 def test_no_change_no_ping(fresh_db, monkeypatch):
     _fake_catalogue(monkeypatch, [
         ({"tag": "shs", "name": "Sam Hyde Show"},
