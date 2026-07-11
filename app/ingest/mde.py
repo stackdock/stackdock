@@ -166,11 +166,31 @@ def _signed_playlist(series_tag: str, video_tag: str) -> str:
                    "(watch page/player changed, or token not subscribed).")
 
 
+# We only need the player JS to FIRE the request for the signed playlist.m3u8 —
+# we capture the URL off the 'request' event and never touch the video bytes,
+# images, or GPU. So launch Firefox as lean as possible: this droplet is small
+# (~1GB) and a default Camoufox (~500MB across content processes + a GPU proc)
+# was OOM/swap-thrashing and crashing mid-interception ("browser has been
+# closed"). Single content process + no Fission + no GPU/WebGL/WebRTC + blocked
+# images roughly halves the footprint so the download stops crashing.
+_LEAN_PREFS = {
+    "fission.autostart": False,               # cross-origin iframes share a proc
+    "dom.ipc.processCount": 1,                # one content process, not many
+    "browser.tabs.remote.autostart": False,
+    "browser.cache.disk.enable": False,
+    "browser.cache.memory.enable": False,
+    "media.memory_cache_max_size": 8192,      # KB — cap buffered media
+    "gfx.webrender.all": False,
+    "layers.acceleration.disabled": True,
+}
+
+
 def _intercept_once(watch_url: str, cookies: list) -> str | None:
     from camoufox.sync_api import Camoufox
     found = {"url": None}
     try:
-        with Camoufox(headless=True) as browser:
+        with Camoufox(headless=True, block_images=True, block_webrtc=True,
+                      block_webgl=True, firefox_user_prefs=_LEAN_PREFS) as browser:
             page = browser.new_page()
             page.context.add_cookies(cookies)
             page.on("request", lambda r: found.__setitem__("url", found["url"]
@@ -267,12 +287,28 @@ def _flush_mde() -> None:
         log.warning("mde ping delivery failed; %d episode(s) stay pending.", len(rows))
 
 
+_CATALOGUE_LOCK = threading.Lock()
+
+
 def refresh() -> int:
     """Poll the live mde.tv catalogue (forced, so it's genuinely fresh AND the
     browse cache is re-warmed), record any NEW episode under its show in the
     shadow index, and Discord-ping the new ones. The FIRST run silently backfills
     the whole catalogue (notified=1) so we don't blast every existing episode.
-    Returns the count of newly-seen episodes."""
+    Returns the count of newly-seen episodes.
+
+    Non-blocking lock so the hourly job and a manual /admin sync can't run the
+    first_run/diff logic concurrently (which could ping part of a backfill)."""
+    if not _CATALOGUE_LOCK.acquire(blocking=False):
+        log.info("mde catalogue refresh already in progress; skipping.")
+        return 0
+    try:
+        return _refresh_catalogue()
+    finally:
+        _CATALOGUE_LOCK.release()
+
+
+def _refresh_catalogue() -> int:
     try:
         series = list_series(force=True)
     except Exception as e:                                     # noqa: BLE001
