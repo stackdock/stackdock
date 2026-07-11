@@ -227,6 +227,28 @@ def notify_youtube(priority: list[dict], normal: list[dict]) -> None:
         })
 
 
+def notify_mde(episodes: list[dict]) -> bool:
+    """ONE embed listing new mde.tv catalogue episodes. Returns whether delivered
+    (True also when there's nothing to send), so the caller marks them seen only
+    on a successful post. Each item: {"series", "title", "url"}."""
+    if not episodes:
+        return True
+    n = len(episodes)
+    lines = [f"🎬 **{e['series'][:60]}** — [{e['title'][:150]}]({e['url']})"
+             for e in episodes[:DIGEST_MAX_LINES]]
+    if n > DIGEST_MAX_LINES:
+        lines.append(f"…and **{n - DIGEST_MAX_LINES} more** on the site")
+    return _post({
+        "embeds": [{
+            "title": f"New on mde.tv: {n} episode{'s' if n != 1 else ''}",
+            "url": f"{config.PUBLIC_BASE_URL}/mde",
+            "description": "\n".join(lines)[:4000],
+            "color": 0x6A0DAD,
+            "footer": {"text": f"{config.SITE_TITLE} · mde.tv"},
+        }]
+    })
+
+
 _FLUSH_LOCK = threading.Lock()
 
 

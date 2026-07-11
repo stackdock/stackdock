@@ -96,6 +96,20 @@ CREATE TABLE IF NOT EXISTS mde_auth (
     updated_at TEXT
 );
 
+-- Shadow index of every episode ever seen in the mde.tv catalogue, so the hourly
+-- refresh can tell what's NEW (to Discord-ping it once). NOT the browse UI — the
+-- /mde tab still lists live from the API; this only drives new-episode pings.
+CREATE TABLE IF NOT EXISTS mde_catalogue (
+    video_id TEXT PRIMARY KEY,
+    video_tag TEXT,                           -- /mde/{series_tag}/{video_tag} link
+    series_tag TEXT,
+    series_name TEXT,
+    title TEXT,
+    episode INTEGER,
+    notified INTEGER DEFAULT 0,               -- 0 = new, not yet pinged
+    first_seen TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS bussy_members (
     user_id INTEGER PRIMARY KEY,             -- flagged once a valid card is entered
     created_at TEXT NOT NULL                 -- (no card data is ever stored)
@@ -1324,6 +1338,45 @@ def list_mde_ready() -> list:
         return c.execute(
             "SELECT video_id, series_name, title, episode, duration, thumbnail, slug "
             "FROM mde_downloads WHERE status = 'ready' ORDER BY created_at DESC").fetchall()
+
+
+# ---------- mde.tv catalogue shadow index (drives new-episode pings) ----------
+
+def mde_catalogue_count() -> int:
+    with conn() as c:
+        return c.execute("SELECT COUNT(*) AS n FROM mde_catalogue").fetchone()["n"]
+
+
+def mde_catalogue_seen_ids() -> set:
+    with conn() as c:
+        return {r["video_id"] for r in c.execute("SELECT video_id FROM mde_catalogue")}
+
+
+def add_mde_catalogue_item(*, video_id: str, video_tag: str, series_tag: str,
+                           series_name: str, title: str, episode, notified: int) -> None:
+    """Record a catalogue episode. INSERT OR IGNORE — an already-seen video_id is
+    never re-inserted (so it's never re-pinged)."""
+    with conn() as c:
+        c.execute(
+            "INSERT OR IGNORE INTO mde_catalogue (video_id, video_tag, series_tag, "
+            "series_name, title, episode, notified, first_seen) VALUES (?,?,?,?,?,?,?,?)",
+            (video_id, video_tag, series_tag, series_name, title, episode,
+             notified, now_iso()))
+
+
+def list_unnotified_mde() -> list:
+    with conn() as c:
+        return c.execute(
+            "SELECT video_id, video_tag, series_tag, series_name, title, episode "
+            "FROM mde_catalogue WHERE notified = 0 ORDER BY first_seen ASC").fetchall()
+
+
+def mark_mde_notified(video_ids: list) -> None:
+    if not video_ids:
+        return
+    with conn() as c:
+        c.executemany("UPDATE mde_catalogue SET notified = 1 WHERE video_id = ?",
+                      [(v,) for v in video_ids])
 
 
 # ---------- mde.tv auth tokens (single row, refresh rotates) ----------

@@ -46,7 +46,7 @@ JOBS = {"email": email_ingest.run, "podcasts": podcast_rss.run,
         "substack": substack.run, "patreon": patreon.run, "nyt": nyt.run,
         "substack_refresh": substack.refresh_locked,
         "verify_paid": substack.verify_paid_access, "youtube": youtube.run,
-        "mde": mde.run}
+        "mde": mde.run, "mde_catalogue": mde.refresh}
 
 
 def run_job(job_id: str) -> int | None:
@@ -168,6 +168,12 @@ async def lifespan(app: FastAPI):
                       minutes=config.MDE_POLL_MINUTES, id="mde",
                       max_instances=1, coalesce=True,
                       next_run_time=now + timedelta(seconds=75))
+    # mde.tv catalogue: slower poll that files any NEW episode under its show in
+    # the shadow index and Discord-pings it (browse tab still lists live).
+    scheduler.add_job(_tracked("mde_catalogue"), "interval",
+                      minutes=config.MDE_CATALOGUE_MINUTES, id="mde_catalogue",
+                      max_instances=1, coalesce=True,
+                      next_run_time=now + timedelta(seconds=130))
     scheduler.start()
     log.info("Stackdock started. Feed: %s/feed/%s/all.xml", config.PUBLIC_BASE_URL, config.FEED_TOKEN)
     yield

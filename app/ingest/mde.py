@@ -106,12 +106,12 @@ def access_token() -> str:
 
 # ---------------- public catalogue ----------------
 
-def _cached(key: str, fn):
+def _cached(key: str, fn, force: bool = False):
     now = time.time()
     hit = _cache.get(key)
-    if hit and now - hit[0] < config.MDE_CACHE_SECONDS:
+    if not force and hit and now - hit[0] < config.MDE_CACHE_SECONDS:
         return hit[1]
-    val = fn()
+    val = fn()                      # a forced fetch also re-warms the cache below
     _cache[key] = (now, val)
     return val
 
@@ -125,19 +125,19 @@ def _get(path: str) -> dict:
     return r.json()
 
 
-def list_series() -> list[dict]:
+def list_series(force: bool = False) -> list[dict]:
     # The /series list includes audio-only variants (type == "audio": podcast/OST
     # feeds + a duplicate audio "pgl") that have NO videos endpoint and 404 when
     # opened. This tab is for downloadable video, so keep only video series.
     return _cached("series", lambda: [s for s in _get("/series").get("series", [])
-                                      if s.get("type") != "audio"])
+                                      if s.get("type") != "audio"], force=force)
 
 
-def list_episodes(tag: str):
+def list_episodes(tag: str, force: bool = False):
     def fetch():
         d = _get(f"/series/{tag}/videos")
         return d.get("series", {}), d.get("videos", [])
-    return _cached(f"eps:{tag}", fetch)
+    return _cached(f"eps:{tag}", fetch, force=force)
 
 
 def get_video(video_id: str) -> dict:
@@ -247,6 +247,66 @@ def run() -> int:
         return len(pending)
     finally:
         _RUN_LOCK.release()
+
+
+def _flush_mde() -> None:
+    """Post any not-yet-pinged catalogue episodes to Discord, and mark them ONLY
+    on a successful post — a webhook outage leaves them pending for the next run
+    (same crash-safe contract as notify.flush)."""
+    from .. import notify
+    rows = db.list_unnotified_mde()
+    if not rows:
+        return
+    eps = [{"series": r["series_name"] or r["series_tag"] or "mde.tv",
+            "title": (f"{r['title']}" if r["episode"] in (None, "")
+                      else f"#{r['episode']} {r['title']}").strip(),
+            "url": f"{config.PUBLIC_BASE_URL}/mde/{r['series_tag']}"} for r in rows]
+    if notify.notify_mde(eps):
+        db.mark_mde_notified([r["video_id"] for r in rows])
+    else:
+        log.warning("mde ping delivery failed; %d episode(s) stay pending.", len(rows))
+
+
+def refresh() -> int:
+    """Poll the live mde.tv catalogue (forced, so it's genuinely fresh AND the
+    browse cache is re-warmed), record any NEW episode under its show in the
+    shadow index, and Discord-ping the new ones. The FIRST run silently backfills
+    the whole catalogue (notified=1) so we don't blast every existing episode.
+    Returns the count of newly-seen episodes."""
+    try:
+        series = list_series(force=True)
+    except Exception as e:                                     # noqa: BLE001
+        log.info("mde catalogue refresh: couldn't list series (%s)", e)
+        return 0
+    first_run = db.mde_catalogue_count() == 0
+    seen = db.mde_catalogue_seen_ids()
+    added = 0
+    for s in series:
+        tag = s.get("tag")
+        if not tag:
+            continue
+        try:
+            _, videos = list_episodes(tag, force=True)
+        except Exception as e:                                 # noqa: BLE001
+            log.info("mde catalogue: skipping show %s (%s)", tag, e)
+            continue
+        for v in videos:
+            vid = v.get("id")
+            if not vid or vid in seen:
+                continue
+            db.add_mde_catalogue_item(
+                video_id=vid, video_tag=v.get("tag") or "", series_tag=tag,
+                series_name=s.get("name") or s.get("title") or tag,
+                title=v.get("title") or "", episode=v.get("episode"),
+                notified=1 if first_run else 0)
+            seen.add(vid)
+            added += 1
+    _flush_mde()
+    if first_run:
+        log.info("mde catalogue: silent first backfill of %d episode(s)", added)
+    elif added:
+        log.info("mde catalogue: %d new episode(s)", added)
+    return added
 
 
 def download(video_id: str) -> None:
