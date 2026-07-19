@@ -92,6 +92,20 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
     var p = parseFloat(localStorage.getItem("pos:" + slug) || "0");
     return isFinite(p) ? p : 0;
   }
+  // An expired session must be VISIBLE: every position push 401s silently
+  // otherwise, and the member loses offline progress without knowing why.
+  function sessionBanner() {
+    if (document.getElementById("session-banner")) return;
+    var b = document.createElement("a");
+    b.id = "session-banner";
+    b.href = "/login?next=" + encodeURIComponent(location.pathname + location.search);
+    b.textContent = "⚠ Session expired — tap to log in so listening progress syncs again";
+    b.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:99;display:block;" +
+      "text-align:center;padding:0.7rem 1rem;background:#a33;color:#fff;" +
+      "font:600 0.9rem system-ui;text-decoration:none;" +
+      "padding-bottom:max(0.7rem, env(safe-area-inset-bottom));";
+    document.body.appendChild(b);
+  }
   async function flush() {
     if (syncing || !navigator.onLine) return;
     syncing = true;
@@ -103,9 +117,12 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
         else if (k && k.indexOf("done:") === 0) slugs.push(k.slice(5));
       }
       if (!slugs.length) return;
-      var server = {};
       var r = await fetch("/api/positions", { credentials: "same-origin" });
-      if (r.ok) server = await r.json();
+      // A failed GET is NOT an empty server: proceeding with {} makes every
+      // synced local done-flag look like "server was un-done elsewhere" and
+      // deletes it (the July 2026 expired-session data-loss bug). Abort.
+      if (!r.ok) { if (r.status === 401) sessionBanner(); return; }
+      var server = await r.json();
       for (var j = 0; j < slugs.length; j++) {
         var slug = slugs[j];
         var sp = server[slug] || {};

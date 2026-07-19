@@ -56,34 +56,42 @@
   // accumulated offline must still reach listen_positions so they survive the
   // iOS PWA<->Safari storage split and follow you to other devices. These calls
   // no-op/fail silently with no connection and flush when you're back online.
+  // Resolves true only when the server CONFIRMED the write — a beacon can't
+  // confirm, so it resolves false and the flag stays "pending" for the flusher.
+  // No navigator.onLine gate: it gives false negatives; a truly-offline fetch
+  // just rejects (caught) and resolves false.
   function pushServer(slug, position, duration, done, useBeacon) {
-    if (!navigator.onLine) return;
     const body = JSON.stringify({ position: position || 0, duration: duration || 0, done: !!done });
     try {
       if (useBeacon && navigator.sendBeacon) {
         navigator.sendBeacon("/api/positions/" + slug, new Blob([body], { type: "text/plain" }));
-        return;
+        return Promise.resolve(false);
       }
-      fetch("/api/positions/" + slug, { method: "POST", credentials: "same-origin",
-        keepalive: true, headers: { "Content-Type": "application/json" }, body }).catch(() => {});
-    } catch {}
+      return fetch("/api/positions/" + slug, { method: "POST", credentials: "same-origin",
+        keepalive: true, headers: { "Content-Type": "application/json" }, body })
+        .then((r) => !!(r && r.ok)).catch(() => false);
+    } catch { return Promise.resolve(false); }
   }
   async function flushPositions(slugs) {
     if (!slugs.length) return;
-    // Don't trust navigator.onLine to gate the fetch — it gives false negatives;
-    // the request just rejects (caught) when there's truly no connection.
     let server = {};
     try {
       const r = await fetch("/api/positions", { credentials: "same-origin" });
-      if (r.ok) server = await r.json();
+      // A failed GET is NOT an empty server: proceeding with {} would make every
+      // synced done-flag look "un-done elsewhere" and delete it (the expired-
+      // session data-loss bug). 401 here = logged out; bail entirely.
+      if (!r.ok) return;
+      server = await r.json();
     } catch { return; }
     for (const slug of slugs) {
       const sp = server[slug] || {};
       const doneLocal = localStorage.getItem("done:" + slug);   // "1"|"pending"|null
       if (doneLocal === "pending") {
-        // finished offline, not yet synced -> push; promote to synced on success
-        pushServer(slug, 0, parseFloat(localStorage.getItem("dur:" + slug) || sp.duration || 0), true, false);
-        try { localStorage.setItem("done:" + slug, "1"); } catch {}
+        // finished offline, not yet synced -> push; promote ONLY on confirmed
+        // success (an unconditional promote here + a dropped push = the server
+        // never learns, then the "1"-vs-server branch erases the local flag)
+        pushServer(slug, 0, parseFloat(localStorage.getItem("dur:" + slug) || sp.duration || 0), true, false)
+          .then((ok) => { if (ok) try { localStorage.setItem("done:" + slug, "1"); } catch {} });
         continue;
       }
       if (doneLocal === "1" && !sp.done) {
@@ -106,14 +114,36 @@
     }
   }
 
+  // Safari 16.4+: declare playback intent — the only sanctioned audio-session
+  // lever on iOS; harmless elsewhere.
+  try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
+
   // Point the OS "now playing" session at whichever episode is currently playing.
+  // `bound` remembers it so a return to foreground can re-assert the session —
+  // iOS drops the Now Playing entry ~30s after pause and only a clean rebuild
+  // on reopen brings the controls back promptly.
+  let bound = null;
+  function positionState(audio) {
+    if (!("mediaSession" in navigator) || !navigator.mediaSession.setPositionState) return;
+    if (!isFinite(audio.duration)) return;
+    try {
+      navigator.mediaSession.setPositionState({
+        duration: audio.duration,
+        position: Math.min(audio.currentTime || 0, audio.duration),
+        playbackRate: audio.playbackRate || 1 });
+    } catch {}
+  }
   function bindMedia(audio, meta) {
     if (!("mediaSession" in navigator)) return;
+    bound = { audio: audio, meta: meta };
     try {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: meta.title || "Saved episode",
         artist: meta.show || "Chudstack (offline)",
-        artwork: meta.art ? [{ src: meta.art, sizes: "512x512" }] : [],
+        // two declared sizes of the same art: pre-iOS-18 the compact player
+        // wants a small entry; iOS 18+ uses the large one properly
+        artwork: meta.art ? [{ src: meta.art, sizes: "128x128" },
+                             { src: meta.art, sizes: "512x512" }] : [],
       });
       navigator.mediaSession.setActionHandler("play", () => audio.play());
       navigator.mediaSession.setActionHandler("pause", () => audio.pause());
@@ -123,8 +153,16 @@
         audio.currentTime = Math.min(audio.duration || 1e9, audio.currentTime + 30); });
       try { navigator.mediaSession.setActionHandler("seekto", (d) => {
         if (d.seekTime != null) audio.currentTime = d.seekTime; }); } catch {}
+      try { navigator.mediaSession.playbackState = audio.paused ? "paused" : "playing"; } catch {}
+      positionState(audio);
     } catch {}
   }
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && bound) bindMedia(bound.audio, bound.meta);
+  });
+  window.addEventListener("pageshow", () => {
+    if (bound) bindMedia(bound.audio, bound.meta);
+  });
 
   // resolve slugs up front and pull server positions into localStorage BEFORE
   // building the list, so each element resumes from the freshest known position
@@ -183,25 +221,33 @@
     });
     audio.addEventListener("timeupdate", () => {
       if (Date.now() - last > 4000) { last = Date.now(); persist(false); }
-      if ("mediaSession" in navigator && !audio.paused && navigator.mediaSession.metadata
-          && navigator.mediaSession.metadata.title === (meta.title || slug)) {
-        try {
-          if (isFinite(audio.duration))
-            navigator.mediaSession.setPositionState({
-              duration: audio.duration, position: audio.currentTime, playbackRate: audio.playbackRate });
-        } catch {}
+      if (bound && bound.audio === audio && !audio.paused) positionState(audio);
+    });
+    audio.addEventListener("play", () => {
+      if (bound && bound.audio === audio) {
+        try { navigator.mediaSession.playbackState = "playing"; } catch {}
       }
     });
-    audio.addEventListener("pause", () => { if (played) persist(true); });
+    audio.addEventListener("pause", () => {
+      if (played) persist(true);
+      if (bound && bound.audio === audio) {
+        try { navigator.mediaSession.playbackState = "paused"; } catch {}
+        positionState(audio);   // freshest paused position on the lock screen
+      }
+    });
+    audio.addEventListener("seeked", () => {
+      if (bound && bound.audio === audio) positionState(audio);
+    });
     const onLeave = () => { if (played) persist(true); };
     window.addEventListener("pagehide", onLeave);
     document.addEventListener("visibilitychange", () => { if (document.hidden) onLeave(); });
     audio.addEventListener("ended", () => {
-      // "pending" if offline (usual case here) — the flusher promotes to "1" once
-      // the push lands, so a synced done can't later re-clobber another device
-      try { localStorage.setItem("done:" + slug, navigator.onLine ? "1" : "pending");
+      // Always "pending" until the server CONFIRMS — navigator.onLine=true with
+      // an expired session used to mark it synced while the push 401ed away.
+      try { localStorage.setItem("done:" + slug, "pending");
             localStorage.removeItem("pos:" + slug); } catch {}
-      pushServer(slug, 0, audio.duration || 0, true, false);
+      pushServer(slug, 0, audio.duration || 0, true, false)
+        .then((ok) => { if (ok) try { localStorage.setItem("done:" + slug, "1"); } catch {} });
     });
     const del = document.createElement("button");
     del.textContent = "Remove";

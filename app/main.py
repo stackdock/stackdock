@@ -202,6 +202,24 @@ async def csrf_guard(request: Request, call_next):
     return await call_next(request)
 
 
+@app.middleware("http")
+async def session_refresh(request: Request, call_next):
+    """Sliding session expiry: re-sign the cookie once a day of active use, so a
+    member who opens the app at least monthly never crosses the fixed 30-day
+    signature cliff (which made every position push 401 silently on installed
+    PWAs). Skips responses that already touch the cookie (login/logout) so we
+    never resurrect a cookie that logout just deleted."""
+    response = await call_next(request)
+    value = request.cookies.get(auth.SESSION_COOKIE)
+    if value and not any(auth.SESSION_COOKIE in c
+                         for c in response.headers.getlist("set-cookie")):
+        uid, issued = auth.read_session_timestamped(value)
+        if uid and issued and db.get_user(uid) and \
+                (datetime.now(timezone.utc) - issued).total_seconds() > auth.SESSION_REFRESH_AFTER:
+            auth.set_session_cookie(response, uid)
+    return response
+
+
 def _static_version() -> str:
     """Content hash of style.css, used as a ?v= cache-buster so a CSS change is
     fetched immediately (the service worker keys its cache by full URL, so a new

@@ -23,6 +23,11 @@ _DUMMY_HASH = bcrypt.hashpw(b"stackdock-timing-pad", bcrypt.gensalt()).decode()
 
 SESSION_COOKIE = "stackdock_session"
 SESSION_MAX_AGE = 30 * 24 * 3600  # 30 days
+# Sliding expiry: a request whose session is older than this gets a re-signed
+# cookie, so anyone who opens the app at least monthly never hits the 30-day
+# cliff. (Expired sessions made every /api/positions push 401 SILENTLY — the
+# installed-PWA position-sync data loss of July 2026.)
+SESSION_REFRESH_AFTER = 24 * 3600
 RESET_TTL_HOURS = 1
 
 _serializer = URLSafeTimedSerializer(config.SECRET_KEY, salt="stackdock-session")
@@ -62,6 +67,17 @@ def read_session_value(value: str):
         return data.get("uid")
     except BadSignature:
         return None
+
+
+def read_session_timestamped(value: str):
+    """(uid, issued_at) for a valid session, else (None, None). issued_at is
+    tz-aware UTC — used by the sliding-refresh middleware."""
+    try:
+        data, issued = _serializer.loads(value, max_age=SESSION_MAX_AGE,
+                                         return_timestamp=True)
+        return data.get("uid"), issued
+    except BadSignature:
+        return None, None
 
 
 def set_session_cookie(response, user_id: int) -> None:

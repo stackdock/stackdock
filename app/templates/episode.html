@@ -138,16 +138,18 @@
   // override=true means "set this exact position" (a deliberate scrub/restart);
   // otherwise the server keeps positions MONOTONIC so a stale still-open tab
   // can't rewind progress made on another device.
+  // Resolves true only when the server CONFIRMED the write (a beacon can't
+  // confirm → false; done-flags then stay "pending" for the flushers).
   const pushServer = (done, useBeacon, override) => {
     const body = payload(done, override);
     if (useBeacon && navigator.sendBeacon) {
       navigator.sendBeacon("/api/positions/" + slug, new Blob([body], { type: "text/plain" }));
-      return;
+      return Promise.resolve(false);
     }
-    fetch("/api/positions/" + slug, {
+    return fetch("/api/positions/" + slug, {
       method: "POST", credentials: "same-origin", keepalive: true,
       headers: { "Content-Type": "application/json" }, body,
-    }).catch(() => {});
+    }).then((r) => !!(r && r.ok)).catch(() => false);
   };
   const save = (opts) => {
     if (!engaged) return;                      // never played this visit
@@ -179,13 +181,14 @@
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) save({ leaving: true });
   });
-  a.addEventListener("ended", () => {
-    // "pending" until the server confirms: if we finished offline, the base.html
-    // / shelf flusher promotes it to "1" once the push lands. Prevents a synced
-    // "1" from later re-clobbering another device that resumed the episode.
-    store.set(K_DONE, navigator.onLine ? "1" : "pending"); store.del(K_POS); setPlayIcon();
-    pushServer(true, false);
-  });
+  // "pending" until the server CONFIRMS the push (navigator.onLine can't tell
+  // us the session is still valid — an expired cookie 401s while "online", and
+  // a local "1" the server never heard of gets erased by the flusher later).
+  const markDone = () => {
+    store.set(K_DONE, "pending"); store.del(K_POS);
+    pushServer(true, false).then((ok) => { if (ok) store.set(K_DONE, "1"); });
+  };
+  a.addEventListener("ended", () => { markDone(); setPlayIcon(); });
 
   // 3) presigned audio URLs expire (default 7 days): if playback errors after
   // we've started, save and reload once — the fresh page presigns a new URL
@@ -218,9 +221,7 @@
     a.currentTime = 0; store.del(K_DONE); a.play();
   };
   $("pp-done").onclick = (e) => {
-    e.preventDefault(); store.set(K_DONE, navigator.onLine ? "1" : "pending");
-    store.del(K_POS); a.pause();
-    pushServer(true, false);
+    e.preventDefault(); a.pause(); markDone();
   };
 
   // ---- playback speed (persisted globally) ----
@@ -320,19 +321,64 @@
   }
 
   // ---- lock screen / media keys (Media Session API) ----
+  // iOS deactivates the web audio session ~30s after pause and drops the Now
+  // Playing entry — no web API prevents that (Apple forums thread 762582,
+  // WebKit bug 261858). What we CAN do: keep setPositionState fresh so the
+  // lock-screen scrubber/timestamps track (mandatory at non-1× speed), and
+  // re-assert the whole session on foreground so controls come back the moment
+  // the app reopens instead of "whenever".
   if ("mediaSession" in navigator) {
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: box.dataset.title,
-      artist: box.dataset.show,
-      artwork: box.dataset.art ? [{ src: box.dataset.art, sizes: "512x512" }] : [],
+    const ms = navigator.mediaSession;
+    // Safari 16.4+: declare playback intent — the only sanctioned audio-session
+    // lever on iOS; harmless elsewhere.
+    try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
+    // Two declared sizes of the same art: pre-iOS-18 the compact player wants a
+    // small entry (or may render none); iOS 18+ uses the large one properly.
+    const art = box.dataset.art
+      ? [{ src: box.dataset.art, sizes: "128x128" }, { src: box.dataset.art, sizes: "512x512" }]
+      : [];
+    const positionState = () => {
+      if (!ms.setPositionState || !isFinite(a.duration)) return;
+      try {
+        ms.setPositionState({ duration: a.duration,
+                              position: Math.min(a.currentTime || 0, a.duration),
+                              playbackRate: a.playbackRate || 1 });
+      } catch {}
+    };
+    const assertSession = () => {
+      ms.metadata = new MediaMetadata({
+        title: box.dataset.title, artist: box.dataset.show, artwork: art });
+      ms.setActionHandler("play", () => a.play());
+      ms.setActionHandler("pause", () => a.pause());
+      ms.setActionHandler("seekbackward", () => $("pp-back").click());
+      ms.setActionHandler("seekforward", () => $("pp-fwd").click());
+      try { ms.setActionHandler("seekto", (d) => { a.currentTime = d.seekTime; }); } catch {}
+      try { ms.playbackState = a.paused ? "paused" : "playing"; } catch {}
+      positionState();
+    };
+    assertSession();
+    a.addEventListener("play", () => {
+      try { ms.playbackState = "playing"; } catch {}
+      positionState();
     });
-    navigator.mediaSession.setActionHandler("play", () => a.play());
-    navigator.mediaSession.setActionHandler("pause", () => a.pause());
-    navigator.mediaSession.setActionHandler("seekbackward", () => $("pp-back").click());
-    navigator.mediaSession.setActionHandler("seekforward", () => $("pp-fwd").click());
-    try {
-      navigator.mediaSession.setActionHandler("seekto", (d) => { a.currentTime = d.seekTime; });
-    } catch {}
+    a.addEventListener("pause", () => {
+      try { ms.playbackState = "paused"; } catch {}
+      positionState();   // freshest position on the lock screen while paused
+    });
+    a.addEventListener("loadedmetadata", positionState);
+    a.addEventListener("seeked", positionState);
+    a.addEventListener("ratechange", positionState);
+    let lastPosState = 0;
+    a.addEventListener("timeupdate", () => {
+      const now = Date.now();
+      if (now - lastPosState > 4000) { lastPosState = now; positionState(); }
+    });
+    // Recovery path for the iOS pause-deactivation: on return to foreground,
+    // re-assert metadata/handlers/position so Now Playing rebuilds cleanly.
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) assertSession();
+    });
+    window.addEventListener("pageshow", assertSession);
   }
 })();
 </script>
