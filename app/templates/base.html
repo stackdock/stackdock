@@ -226,25 +226,35 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
     };
   }
 
-  // click the header chud to toggle spinning <-> still (persisted), without
-  // following the home link it sits inside
+  // the header logo stays the wojak by default; typing the secret combo
+  // anywhere on the page (outside text fields) toggles the spinning chud
+  // (persisted, same chudstill key as before)
   var chud = document.querySelector(".brand-chud");
   if (chud) {
     var still = store.get("chudstill") === "1";
     function applyChud() {
       if (still) html.dataset.chud = "still"; else delete html.dataset.chud;
-      // toggle the HEADER logo only: wojak (default) <-> spinning chud (alt).
-      // The login-page figures always stay the tumbling wojak.
+      // toggle the HEADER logo (wojak <-> spinning chud) and the login-page
+      // tumbling figures (wojak <-> chud) together.
       chud.src = still ? "/static/chud-spin-clear.svg" : "/static/wojak-figure.svg";
+      document.querySelectorAll(".tumbler img").forEach(function (img) {
+        img.src = still ? "/static/chud.svg" : "/static/wojak-figure.svg";
+      });
     }
     applyChud();
-    chud.style.cursor = "pointer";
-    chud.title = "click me";
-    chud.addEventListener("click", function (e) {
-      e.preventDefault(); e.stopPropagation();
-      still = !still;
-      if (still) store.set("chudstill", "1"); else store.del("chudstill");
-      applyChud();
+    var combo = "chud", buf = "";
+    document.addEventListener("keydown", function (e) {
+      var t = e.target;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" ||
+                t.tagName === "SELECT" || t.isContentEditable)) { buf = ""; return; }
+      if (e.key.length !== 1) { if (e.key !== "Shift") buf = ""; return; }
+      buf = (buf + e.key.toLowerCase()).slice(-combo.length);
+      if (buf === combo) {
+        buf = "";
+        still = !still;
+        if (still) store.set("chudstill", "1"); else store.del("chudstill");
+        applyChud();
+      }
     });
   }
 
