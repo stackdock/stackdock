@@ -322,6 +322,12 @@ def account_page(request: Request, user=Depends(auth.current_user)):
     return render(request, "account.html", user=user, message=None, error=None)
 
 
+@app.get("/help", response_class=HTMLResponse)
+def help_page(request: Request, user=Depends(auth.current_user)):
+    """Member guide: install on mobile, connect a Substack cookie, offline saves."""
+    return render(request, "help.html", user=user)
+
+
 @app.post("/account/password")
 def change_password(request: Request, user=Depends(auth.current_user),
                     current: str = Form(...), new: str = Form(...), new2: str = Form(...)):

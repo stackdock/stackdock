@@ -37,7 +37,6 @@ main { max-width: 880px; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
   text-transform: uppercase; letter-spacing: -0.01em;
   color: #fff; text-decoration: none;
   display: inline-flex; align-items: center; gap: 0.4rem;
-  transform: rotate(-2.5deg);
   /* chunky impact-meme outline + hard offset shadow */
   -webkit-text-stroke: 2.5px #000;
   paint-order: stroke fill;
@@ -46,7 +45,6 @@ main { max-width: 880px; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
 .wordmark:hover { color: #fff; transform: rotate(-2.5deg) scale(1.03); }
 .brand-chud {
   height: 2.6em; width: auto; display: block;
-  transform: rotate(5deg);
   filter: drop-shadow(2px 2px 0 #000);
 }
 .masthead nav {
@@ -297,11 +295,10 @@ footer {
   .meme-stage .scene .tumbler { animation: none; }
 }
 
-/* header logo in "alt" (wojak) mode: straighten the wordmark + logo.
-   The login figures keep tumbling regardless. */
+/* header logo in chud mode: also suppress the hover wiggle (the resting
+   wordmark/logo are straight by default now) */
 html[data-chud="still"] .wordmark,
 html[data-chud="still"] .wordmark:hover { transform: none !important; }
-html[data-chud="still"] .brand-chud { transform: none; }
 
 /* TempleOS footer credit */
 .footer-temple { color: var(--shelf); }

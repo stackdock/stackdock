@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}Help · {{ site_title }}{% endblock %}
+{% block content %}
+<style>
+  .help-wrap { max-width: 780px; margin: 0 auto; }
+  .help-wrap > h1 { margin-bottom: 0.2rem; }
+  .help-intro { color: var(--ink-soft); margin-top: 0; }
+  .help-card {
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 1.1rem 1.4rem 1.3rem; margin: 1.3rem 0;
+  }
+  .help-card h2 { margin: 0 0 0.6rem; }
+  .help-steps { padding-left: 1.3rem; }
+  .help-steps li { margin: 0.5rem 0; line-height: 1.55; }
+  .help-fig { margin: 1.1rem 0 0.4rem; text-align: center; }
+  .help-fig svg { max-width: 100%; height: auto; }
+  .help-fig figcaption { font-size: 0.85rem; color: var(--ink-soft); margin-top: 0.45rem; }
+  .help-note {
+    border-left: 4px solid var(--shelf); background: var(--shelf-soft);
+    padding: 0.6rem 0.9rem; border-radius: 0 6px 6px 0; margin: 0.9rem 0; line-height: 1.5;
+  }
+  .help-warn { border-left-color: #c0392b; background: var(--panel); border-top: 1px solid var(--rule); border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+  .help-wrap kbd {
+    font-family: var(--mono); font-size: 0.88em; background: var(--shelf-soft);
+    border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 4px; padding: 0 0.4em;
+  }
+  .help-wrap code { font-family: var(--mono); font-size: 0.9em; background: var(--shelf-soft); padding: 0.05em 0.35em; border-radius: 3px; }
+</style>
+
+<div class="help-wrap">
+  <h1>Help</h1>
+  <p class="help-intro">How to put {{ site_title }} on your phone, connect your Substack, and keep episodes for flights.</p>
+
+  <div class="help-card" id="install-ios">
+    <h2>📱 Add to your iPhone</h2>
+    <ol class="help-steps">
+      <li>Open <strong>{{ request.url.hostname }}</strong> in <strong>Safari</strong> (it has to be Safari — in-app browsers like the ones inside Discord or Instagram can't install it) and log in.</li>
+      <li>Tap the <strong>Share</strong> button — the square with the arrow pointing up, in the bar at the bottom.</li>
+      <li>Scroll down the share sheet and tap <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</li>
+      <li>Launch it from the new home-screen icon — it opens full screen like a real app.</li>
+    </ol>
+    <figure class="help-fig">
+      <svg viewBox="0 0 560 390" role="img" aria-label="Two iPhone screens: first tap the Share button in Safari's bottom toolbar, then choose Add to Home Screen from the share sheet">
+        <g font-family="var(--sans)" font-size="13" fill="var(--ink)">
+          <rect x="20" y="12" width="230" height="340" rx="22" fill="var(--panel)" stroke="var(--ink)" stroke-width="2"/>
+          <rect x="45" y="30" width="180" height="22" rx="11" fill="var(--paper)" stroke="var(--rule)"/>
+          <text x="135" y="45" text-anchor="middle" font-size="11" fill="var(--ink-soft)">{{ request.url.hostname }}</text>
+          <rect x="45" y="72" width="180" height="10" rx="3" fill="var(--shelf-soft)"/>
+          <rect x="45" y="92" width="150" height="10" rx="3" fill="var(--shelf-soft)"/>
+          <rect x="45" y="112" width="166" height="10" rx="3" fill="var(--shelf-soft)"/>
+          <rect x="45" y="132" width="120" height="10" rx="3" fill="var(--shelf-soft)"/>
+          <line x1="22" y1="300" x2="248" y2="300" stroke="var(--rule)"/>
+          <text x="52" y="331" font-size="18" fill="var(--ink-soft)">‹</text>
+          <text x="84" y="331" font-size="18" fill="var(--ink-soft)">›</text>
+          <g stroke="var(--shelf)" stroke-width="2" fill="none">
+            <rect x="127" y="315" width="18" height="15" rx="2"/>
+            <line x1="136" y1="304" x2="136" y2="321"/>
+            <path d="M130 310 L136 304 L142 310"/>
+          </g>
+          <circle cx="136" cy="317" r="18" fill="none" stroke="var(--shelf)" stroke-width="2" stroke-dasharray="4 3"/>
+          <text x="196" y="330" font-size="14" fill="var(--ink-soft)">▢▢</text>
+          <text x="135" y="376" text-anchor="middle" font-size="12" fill="var(--ink-soft)">1 · tap Share in Safari</text>
+          <path d="M262 186 h32 m-8 -6 l8 6 l-8 6" stroke="var(--ink-soft)" stroke-width="2" fill="none"/>
+          <rect x="308" y="12" width="230" height="340" rx="22" fill="var(--panel)" stroke="var(--ink)" stroke-width="2"/>
+          <rect x="311" y="15" width="224" height="120" rx="19" fill="var(--rule)" opacity="0.35"/>
+          <rect x="316" y="118" width="214" height="226" rx="14" fill="var(--paper)" stroke="var(--rule)"/>
+          <rect x="404" y="126" width="38" height="4" rx="2" fill="var(--rule)"/>
+          <text x="332" y="150" font-size="12">{{ site_title }}</text>
+          <text x="332" y="165" font-size="10" fill="var(--ink-soft)">{{ request.url.hostname }}</text>
+          <line x1="316" y1="176" x2="530" y2="176" stroke="var(--rule)"/>
+          <text x="332" y="198" font-size="12">Copy</text>
+          <line x1="316" y1="210" x2="530" y2="210" stroke="var(--rule)"/>
+          <text x="332" y="232" font-size="12">Add Bookmark</text>
+          <line x1="316" y1="244" x2="530" y2="244" stroke="var(--rule)"/>
+          <rect x="320" y="252" width="206" height="30" rx="6" fill="var(--shelf-soft)" stroke="var(--shelf)" stroke-width="2"/>
+          <text x="332" y="272" font-size="12" font-weight="bold">Add to Home Screen</text>
+          <g stroke="var(--ink)" fill="none">
+            <rect x="497" y="258" width="18" height="18" rx="4"/>
+            <line x1="506" y1="262" x2="506" y2="272"/>
+            <line x1="501" y1="267" x2="511" y2="267"/>
+          </g>
+          <line x1="316" y1="292" x2="530" y2="292" stroke="var(--rule)"/>
+          <text x="332" y="314" font-size="12">Markup</text>
+          <text x="423" y="376" text-anchor="middle" font-size="12" fill="var(--ink-soft)">2 · Add to Home Screen → Add</text>
+        </g>
+      </svg>
+      <figcaption>Safari's share sheet — the install option is a few rows down.</figcaption>
+    </figure>
+    <p class="help-note">The installed app keeps its own login, so you'll sign in once more the first time you open it. Your listening positions follow you automatically — they sync through your account, not the browser.</p>
+  </div>
+
+  <div class="help-card" id="install-android">
+    <h2>🤖 Add to Android</h2>
+    <ol class="help-steps">
+      <li>Open <strong>{{ request.url.hostname }}</strong> in <strong>Chrome</strong> and log in.</li>
+      <li>Tap the <strong>⋮</strong> menu (top-right).</li>
+      <li>Tap <strong>Add to Home screen</strong> — on some phones it says <strong>Install app</strong>. Confirm.</li>
+    </ol>
+    <figure class="help-fig">
+      <svg viewBox="0 0 280 330" role="img" aria-label="Android Chrome: open the three-dot menu and choose Add to Home screen">
+        <g font-family="var(--sans)" font-size="12" fill="var(--ink)">
+          <rect x="25" y="10" width="230" height="305" rx="18" fill="var(--panel)" stroke="var(--ink)" stroke-width="2"/>
+          <rect x="40" y="26" width="200" height="24" rx="12" fill="var(--paper)" stroke="var(--rule)"/>
+          <text x="52" y="42" font-size="11" fill="var(--ink-soft)">{{ request.url.hostname }}</text>
+          <circle cx="227" cy="32" r="1.7" fill="var(--ink)"/>
+          <circle cx="227" cy="38" r="1.7" fill="var(--ink)"/>
+          <circle cx="227" cy="44" r="1.7" fill="var(--ink)"/>
+          <circle cx="227" cy="38" r="11" fill="none" stroke="var(--shelf)" stroke-width="2" stroke-dasharray="4 3"/>
+          <rect x="40" y="66" width="55" height="9" rx="3" fill="var(--shelf-soft)"/>
+          <rect x="40" y="84" width="48" height="9" rx="3" fill="var(--shelf-soft)"/>
+          <rect x="105" y="58" width="140" height="230" rx="8" fill="var(--paper)" stroke="var(--rule)"/>
+          <text x="120" y="82">New tab</text>
+          <text x="120" y="112">History</text>
+          <text x="120" y="142">Downloads</text>
+          <text x="120" y="172">Share…</text>
+          <rect x="110" y="184" width="130" height="28" rx="6" fill="var(--shelf-soft)" stroke="var(--shelf)" stroke-width="2"/>
+          <text x="120" y="203" font-weight="bold">Add to Home screen</text>
+          <text x="120" y="236">Desktop site</text>
+          <text x="120" y="266">Settings</text>
+        </g>
+      </svg>
+      <figcaption>Chrome's ⋮ menu — "Add to Home screen" or "Install app".</figcaption>
+    </figure>
+  </div>
+
+  <div class="help-card" id="cookie">
+    <h2>🍪 Connect your Substack (get your cookie)</h2>
+    <p>Connecting your Substack account is what lets {{ site_title }} mirror your subscriptions. It works by borrowing your Substack login cookie — a long code your browser holds after you sign in. Grab it on a <strong>computer</strong>:</p>
+    <ol class="help-steps">
+      <li>In Chrome (or Firefox), go to <strong>substack.com</strong> and make sure you're logged in.</li>
+      <li>Press <kbd>F12</kbd> (or right-click the page → <strong>Inspect</strong>) to open the developer tools.</li>
+      <li>Chrome: open the <strong>Application</strong> tab → under <em>Storage</em> choose <strong>Cookies → https://substack.com</strong>.<br>Firefox: it's the <strong>Storage</strong> tab → <strong>Cookies</strong>.</li>
+      <li>In the table, find the row named <code>substack.sid</code>. Double-click its <strong>Value</strong>, select all of it (it's long, often starting with <code>s%3A</code>), and copy.</li>
+      <li>Back here, open <a href="/accounts"><strong>Accounts</strong></a> → paste the cookie, enter your Substack <strong>@handle</strong>, and hit Connect.</li>
+    </ol>
+    <figure class="help-fig">
+      <svg viewBox="0 0 640 290" role="img" aria-label="Browser developer tools, Application tab, Cookies for substack.com selected, with the substack.sid row highlighted">
+        <g font-family="var(--sans)" font-size="12" fill="var(--ink)">
+          <rect x="8" y="8" width="624" height="272" rx="10" fill="var(--panel)" stroke="var(--ink)" stroke-width="2"/>
+          <circle cx="28" cy="26" r="5" fill="#e0655a"/><circle cx="46" cy="26" r="5" fill="#e0b23c"/><circle cx="64" cy="26" r="5" fill="#69b36b"/>
+          <rect x="90" y="16" width="280" height="20" rx="10" fill="var(--paper)" stroke="var(--rule)"/>
+          <text x="102" y="30" font-size="11" fill="var(--ink-soft)">substack.com — logged in</text>
+          <line x1="8" y1="44" x2="632" y2="44" stroke="var(--rule)"/>
+          <text x="24" y="64" fill="var(--ink-soft)">Elements</text>
+          <text x="94" y="64" fill="var(--ink-soft)">Console</text>
+          <text x="158" y="64" fill="var(--ink-soft)">Network</text>
+          <text x="224" y="64" font-weight="bold">Application</text>
+          <rect x="222" y="70" width="78" height="3" fill="var(--shelf)"/>
+          <line x1="8" y1="78" x2="632" y2="78" stroke="var(--rule)"/>
+          <line x1="170" y1="78" x2="170" y2="278" stroke="var(--rule)"/>
+          <text x="20" y="100" fill="var(--ink-soft)">Storage</text>
+          <text x="28" y="122" fill="var(--ink-soft)">▸ Local storage</text>
+          <text x="28" y="144">▾ Cookies</text>
+          <rect x="24" y="152" width="142" height="22" rx="4" fill="var(--shelf-soft)" stroke="var(--shelf)"/>
+          <text x="38" y="167" font-size="11">https://substack.com</text>
+          <text x="190" y="98" font-weight="bold" font-size="11">Name</text>
+          <text x="400" y="98" font-weight="bold" font-size="11">Value</text>
+          <line x1="170" y1="106" x2="632" y2="106" stroke="var(--rule)"/>
+          <g font-family="var(--mono)" font-size="11">
+            <text x="190" y="126" fill="var(--ink-soft)">ajs_anonymous_id</text><text x="400" y="126" fill="var(--ink-soft)">c2f81a0e…</text>
+            <text x="190" y="150" fill="var(--ink-soft)">__cf_bm</text><text x="400" y="150" fill="var(--ink-soft)">tGb9Qk2j…</text>
+            <rect x="176" y="160" width="448" height="24" rx="4" fill="var(--shelf-soft)" stroke="var(--shelf)" stroke-width="2"/>
+            <text x="190" y="177" font-weight="bold">substack.sid</text><text x="400" y="177">s%3Aexample-fake-value…</text>
+            <text x="190" y="204" fill="var(--ink-soft)">substack.lli</text><text x="400" y="204" fill="var(--ink-soft)">1</text>
+            <text x="190" y="228" fill="var(--ink-soft)">intro_popup_seen</text><text x="400" y="228" fill="var(--ink-soft)">true</text>
+          </g>
+          <path d="M470 246 L490 188" stroke="var(--shelf)" stroke-width="2" fill="none"/>
+          <path d="M484 196 L490 188 L493 197" stroke="var(--shelf)" stroke-width="2" fill="none"/>
+          <text x="330" y="262" font-size="12" fill="var(--shelf)" font-weight="bold">double-click the Value, select it all, copy</text>
+        </g>
+      </svg>
+      <figcaption>Illustration of Chrome's DevTools — your real cookie value will be much longer.</figcaption>
+    </figure>
+    <p class="help-note help-warn"><strong>Treat the cookie like a password.</strong> Anyone holding it can use your Substack account. Only ever paste it into the <a href="/accounts">Accounts</a> page here. If it ever leaks, log out of Substack in that browser (or sign out of all sessions in Substack's settings) — that instantly kills the old cookie — then reconnect a fresh one.</p>
+    <p class="help-note"><strong>After copying: just close the tab.</strong> Don't log out of substack.com in that browser — logging out invalidates the cookie and your syncing stops until you reconnect.</p>
+    <p class="help-note"><strong>Make your reading list public.</strong> In your Substack profile settings, set your reads/subscriptions to visible — that's how your full subscription list gets discovered. If it's private, only a partial list syncs; you can always add missing publications by URL on the Accounts page.</p>
+  </div>
+
+  <div class="help-card" id="offline">
+    <h2>✈️ Keep episodes for offline</h2>
+    <ol class="help-steps">
+      <li>Open any episode and tap <strong>📦 Save for offline</strong>.</li>
+      <li>Find everything you've saved under <strong>📦 Saved</strong> in the header — it works with no connection at all (airplane mode included).</li>
+      <li>Saved audio survives updates and stays until you remove it (<em>🗑 Remove offline copy</em> on the episode page).</li>
+    </ol>
+    <p class="help-note">Save episodes <em>while you still have internet</em> — at home before the flight, not at the gate.</p>
+  </div>
+</div>
+{% endblock %}
