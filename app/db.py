@@ -5,7 +5,7 @@ import sqlite3
 import threading
 import unicodedata
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from . import config
 
@@ -186,6 +186,13 @@ CREATE TABLE IF NOT EXISTS article_sources (
     article_id INTEGER NOT NULL,       -- content is deduped; this maps it to every
     label TEXT NOT NULL,               -- connected account that also has it (shown as badges)
     UNIQUE(article_id, label)
+);
+
+CREATE TABLE IF NOT EXISTS patreon_campaigns (
+    id TEXT PRIMARY KEY,               -- Patreon campaign id
+    name TEXT,
+    backfilled_at TEXT NOT NULL        -- last full back-catalog sweep; swept again when
+                                       -- stale so later access changes unlock old stubs
 );
 
 CREATE TABLE IF NOT EXISTS episodes (
@@ -927,6 +934,30 @@ def delete_account(account_id: int, user_id: int) -> bool:
             (account_id, user_id),
         )
         return cur.rowcount == 1
+
+
+def patreon_campaign_needs_backfill(campaign_id: str, max_age_days: int) -> bool:
+    """True until the campaign's back catalog has been swept, and again once the
+    sweep is older than max_age_days (so access changes unlock old stubs)."""
+    with conn() as c:
+        row = c.execute("SELECT backfilled_at FROM patreon_campaigns WHERE id = ?",
+                        (campaign_id,)).fetchone()
+    if not row:
+        return True
+    try:
+        done = datetime.fromisoformat(row["backfilled_at"])
+    except (ValueError, TypeError):
+        return True
+    return datetime.now(timezone.utc) - done > timedelta(days=max_age_days)
+
+
+def mark_patreon_campaign_backfilled(campaign_id: str, name: str | None) -> None:
+    with conn() as c:
+        c.execute("""INSERT INTO patreon_campaigns (id, name, backfilled_at)
+                     VALUES (?, ?, ?)
+                     ON CONFLICT(id) DO UPDATE SET name = excluded.name,
+                                                   backfilled_at = excluded.backfilled_at""",
+                  (campaign_id, name, now_iso()))
 
 
 def toggle_follow(user_id: int, kind: str, name: str) -> bool:

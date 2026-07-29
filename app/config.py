@@ -60,6 +60,10 @@ SUBSTACK_LOCK_WAIT = int(os.getenv("SUBSTACK_LOCK_WAIT", "900"))
 # ---- Patreon cookie sync (session_id; fetched via curl_cffi past Cloudflare) ----
 PATREON_BACKFILL_POSTS = int(os.getenv("PATREON_BACKFILL_POSTS", "50"))
 PATREON_POLL_MINUTES = int(os.getenv("PATREON_POLL_MINUTES", "60"))
+# Per-campaign back-catalog sweep: max posts pulled per campaign, and how often the
+# sweep is repeated (it retries locked stubs, so a new pledge/trial unlocks history).
+PATREON_CAMPAIGN_BACKFILL_POSTS = int(os.getenv("PATREON_CAMPAIGN_BACKFILL_POSTS", "500"))
+PATREON_BACKFILL_REFRESH_DAYS = int(os.getenv("PATREON_BACKFILL_REFRESH_DAYS", "7"))
 # Publications Substack's subscriptions API doesn't return (some paid / podcast
 # subs). JSON list of {"name": ..., "base_url": ...} synced for EVERY connected
 # account, in addition to the auto-discovered list.

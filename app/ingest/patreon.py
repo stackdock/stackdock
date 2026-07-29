@@ -97,6 +97,38 @@ def fetch_stream(s, max_posts: int):
     return posts[:max_posts], campaigns
 
 
+def fetch_campaign_posts(s, campaign_id: str, max_posts: int):
+    """A campaign's back catalog, newest first (cursor-paginated). The stream only
+    surfaces recent posts across all campaigns — this is how old posts (and posts
+    unlocked later, e.g. by a free trial) get mirrored at all."""
+    posts = []
+    params = {
+        "filter[campaign_id]": campaign_id,
+        "sort": "-published_at",
+        "fields[post]": _POST_FIELDS,
+        "page[count]": "30",
+        "json-api-use-default-includes": "false",
+    }
+    cursor = None
+    while len(posts) < max_posts:
+        p = dict(params)
+        if cursor:
+            p["page[cursor]"] = cursor
+        data = _get(s, f"{API}/posts", p)
+        if not data:
+            break
+        batch = data.get("data") or []
+        if not batch:
+            break
+        posts.extend(batch)
+        cursor = (((data.get("meta") or {}).get("pagination") or {})
+                  .get("cursors") or {}).get("next")
+        if not cursor:
+            break
+        time.sleep(random.uniform(0.8, 1.8))
+    return posts[:max_posts]
+
+
 def _campaign_name(post, campaigns) -> str:
     rel = ((post.get("relationships") or {}).get("campaign") or {}).get("data") or {}
     return campaigns.get(rel.get("id")) or "Patreon"
@@ -224,6 +256,113 @@ def _needs_body(existing) -> bool:
     return bool(existing["is_locked"]) or 'class="stub"' in h or len(h) < 200
 
 
+def _ingest_post(s, account, post, campaigns, notified: int) -> int:
+    """Ingest one JSON:API post dict (from the stream or a campaign back-catalog).
+    Returns 1 if a new article/episode was stored, else 0."""
+    pid = post.get("id")
+    if not pid:
+        return 0
+    a = post.get("attributes") or {}
+    guid = f"patreon:{pid}"
+    title = a.get("title") or "(untitled)"
+    pub = _campaign_name(post, campaigns)
+    url = a.get("url") or a.get("patreon_url") or "https://www.patreon.com"
+    can_view = bool(a.get("current_user_can_view"))
+    # Patreon's is_paid does NOT mean patron-gated (gated posts routinely report
+    # is_paid=false — it's closer to "pay-per-post"). Anything we can't view IS
+    # gated: mark it paid+locked so it badges red 🔒 instead of posing as free.
+    locked = not can_view
+    is_paid = bool(a.get("is_paid")) or locked
+    published = a.get("published_at")
+    audio = _audio_url(a)
+
+    # ---- audio/podcast post -> episode (only when we can actually view it) ----
+    if audio and can_view:
+        if db.episode_exists(guid):
+            db.set_episode_paid(guid, is_paid)
+            return 0
+        try:
+            # include the post id so same-titled posts don't collide on one key
+            key = f"patreon/{db.slugify(pub)}/{pid}-{db.slugify(title)}.mp3"
+            # stream to a spooled temp file (spills to disk past 8 MB) instead
+            # of buffering the whole episode in RAM — a multi-hour patron
+            # podcast is 100-300 MB and would OOM the 1 GB droplet.
+            with s.get(audio, stream=True) as resp:
+                if resp.status_code != 200:
+                    raise RuntimeError(f"audio HTTP {resp.status_code}")
+                mime = resp.headers.get("content-type") or "audio/mpeg"
+                spool = tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024)
+                size = 0
+                for chunk in resp.iter_content(chunk_size=256 * 1024):
+                    if chunk:
+                        spool.write(chunk)
+                        size += len(chunk)
+                if not size:
+                    spool.close()
+                    raise RuntimeError("empty audio body")
+                spool.seek(0)
+                try:
+                    storage.upload_stream(spool, key, mime)
+                finally:
+                    spool.close()
+            eid = db.insert_episode(
+                guid=guid, feed_name=pub, title=title,
+                description=a.get("teaser_text") or "", audio_key=key,
+                audio_bytes=size, audio_mime=mime, duration="",
+                published_at=published, image_url=None,
+                paid_access=1, is_paid=1 if is_paid else 0, notified=notified)
+            return 1 if eid else 0
+        except Exception as e:
+            log.warning("[%s] Patreon audio download failed (%s): %s",
+                        account["label"], title, e)
+            # fall through and store it as an article instead
+
+    # ---- everything else (text / video / image / link) -> article ----
+    # The stream omits the body; the full text lives in content_json_string on
+    # the per-post endpoint, which we fetch (only for new posts or stub/locked
+    # ones we want to upgrade) and render to HTML.
+    # A video post is an article that plays inline: media_key = the post id, so
+    # /media/{slug} can fetch a fresh signed HLS playlist on demand (Patreon
+    # videos are Mux HLS — streamed straight to the browser, not downloaded).
+    is_video = (a.get("post_type") or "") == "video_external_file"
+    video_key = pid if (is_video and can_view) else None
+    thumb = _thumb_url(a)
+    existing = db.get_article_by_message_id(guid)
+    if existing:
+        if video_key and not existing["media_key"]:
+            db.set_article_media(existing["id"], video_key)   # flag old video rows as playable
+        if not _needs_body(existing):
+            db.add_article_source(existing["id"], account["label"])
+            return 0
+
+    content_html = ""
+    if can_view:
+        detail = _post_detail(s, pid)
+        content_html = _render_doc((detail or {}).get("content_json_string"))
+        time.sleep(random.uniform(0.5, 1.2))   # polite between per-post fetches
+    body = content_html
+    if is_video and not video_key:
+        body = (f'<p class="stub">🎬 <a href="{url}">Watch this video on Patreon →</a></p>'
+                + (content_html or ""))
+    if not (body or "").strip():
+        body = _teaser_stub(url, None)
+
+    if existing:
+        if content_html:
+            db.upgrade_article_body(existing["id"], body, account["label"])
+        db.add_article_source(existing["id"], account["label"])
+        return 0
+    aid = db.insert_article(
+        message_id=guid, publication=pub, title=title, author=pub,
+        original_url=url, html=body, published_at=published,
+        added_by=account["label"], cover_image=thumb, media_key=video_key,
+        is_paid=1 if is_paid else 0, is_locked=1 if locked else 0, notified=notified)
+    if aid:
+        db.add_article_source(aid, account["label"])
+        return 1
+    return 0
+
+
 def sync_account(account) -> tuple[int, str]:
     """Sync one Patreon account. Returns (new_count, status_message)."""
     s = _session(account["cookie"])
@@ -238,109 +377,33 @@ def sync_account(account) -> tuple[int, str]:
 
     new = 0
     for post in posts:
-        pid = post.get("id")
-        if not pid:
+        new += _ingest_post(s, account, post, campaigns, notified)
+
+    # ---- per-campaign back-catalog backfill ----
+    # The stream only reaches the most recent posts across every campaign, so a
+    # campaign's history (or posts a new free trial just unlocked) never shows up
+    # there. Sweep each discovered campaign's full catalog once, silently
+    # (notified=1 — never Discord-blast a back catalog), and re-sweep when the
+    # marker goes stale (PATREON_BACKFILL_REFRESH_DAYS) so locked stubs get
+    # upgrade attempts after access changes.
+    backfilled = 0
+    for cid, cname in campaigns.items():
+        if not db.patreon_campaign_needs_backfill(cid, config.PATREON_BACKFILL_REFRESH_DAYS):
             continue
-        a = post.get("attributes") or {}
-        guid = f"patreon:{pid}"
-        title = a.get("title") or "(untitled)"
-        pub = _campaign_name(post, campaigns)
-        url = a.get("url") or a.get("patreon_url") or "https://www.patreon.com"
-        is_paid = bool(a.get("is_paid"))
-        can_view = bool(a.get("current_user_can_view"))
-        published = a.get("published_at")
-        audio = _audio_url(a)
-
-        # ---- audio/podcast post -> episode (only when we can actually view it) ----
-        if audio and can_view:
-            if db.episode_exists(guid):
-                db.set_episode_paid(guid, is_paid)
-                continue
-            try:
-                # include the post id so same-titled posts don't collide on one key
-                key = f"patreon/{db.slugify(pub)}/{pid}-{db.slugify(title)}.mp3"
-                # stream to a spooled temp file (spills to disk past 8 MB) instead
-                # of buffering the whole episode in RAM — a multi-hour patron
-                # podcast is 100-300 MB and would OOM the 1 GB droplet.
-                with s.get(audio, stream=True) as resp:
-                    if resp.status_code != 200:
-                        raise RuntimeError(f"audio HTTP {resp.status_code}")
-                    mime = resp.headers.get("content-type") or "audio/mpeg"
-                    spool = tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024)
-                    size = 0
-                    for chunk in resp.iter_content(chunk_size=256 * 1024):
-                        if chunk:
-                            spool.write(chunk)
-                            size += len(chunk)
-                    if not size:
-                        spool.close()
-                        raise RuntimeError("empty audio body")
-                    spool.seek(0)
-                    try:
-                        storage.upload_stream(spool, key, mime)
-                    finally:
-                        spool.close()
-                eid = db.insert_episode(
-                    guid=guid, feed_name=pub, title=title,
-                    description=a.get("teaser_text") or "", audio_key=key,
-                    audio_bytes=size, audio_mime=mime, duration="",
-                    published_at=published, image_url=None,
-                    paid_access=1, is_paid=1 if is_paid else 0, notified=notified)
-                if eid:
-                    new += 1
-                continue
-            except Exception as e:
-                log.warning("[%s] Patreon audio download failed (%s): %s",
-                            account["label"], title, e)
-                # fall through and store it as an article instead
-
-        # ---- everything else (text / video / image / link) -> article ----
-        # The stream omits the body; the full text lives in content_json_string on
-        # the per-post endpoint, which we fetch (only for new posts or stub/locked
-        # ones we want to upgrade) and render to HTML. Videos are expiring,
-        # Cloudflare-protected HLS streams that can't be embedded, so a video post
-        # becomes an article that links out to watch on Patreon.
-        # A video post is an article that plays inline: media_key = the post id, so
-        # /media/{slug} can fetch a fresh signed HLS playlist on demand (Patreon
-        # videos are Mux HLS — streamed straight to the browser, not downloaded).
-        is_video = (a.get("post_type") or "") == "video_external_file"
-        video_key = pid if (is_video and can_view) else None
-        thumb = _thumb_url(a)
-        existing = db.get_article_by_message_id(guid)
-        if existing:
-            if video_key and not existing["media_key"]:
-                db.set_article_media(existing["id"], video_key)   # flag old video rows as playable
-            if not _needs_body(existing):
-                db.add_article_source(existing["id"], account["label"])
-                continue
-
-        content_html = ""
-        if can_view:
-            detail = _post_detail(s, pid)
-            content_html = _render_doc((detail or {}).get("content_json_string"))
-            time.sleep(random.uniform(0.5, 1.2))   # polite between per-post fetches
-        body = content_html
-        if is_video and not video_key:
-            body = (f'<p class="stub">🎬 <a href="{url}">Watch this video on Patreon →</a></p>'
-                    + (content_html or ""))
-        if not (body or "").strip():
-            body = _teaser_stub(url, None)
-        locked = is_paid and not can_view
-
-        if existing:
-            if content_html:
-                db.upgrade_article_body(existing["id"], body, account["label"])
-            db.add_article_source(existing["id"], account["label"])
-            continue
-        aid = db.insert_article(
-            message_id=guid, publication=pub, title=title, author=pub,
-            original_url=url, html=body, published_at=published,
-            added_by=account["label"], cover_image=thumb, media_key=video_key,
-            is_paid=1 if is_paid else 0, is_locked=1 if locked else 0, notified=notified)
-        if aid:
-            db.add_article_source(aid, account["label"])
-            new += 1
-    return new, f"OK: {len(campaigns)} campaign(s), {new} new"
+        catalog = fetch_campaign_posts(s, cid, config.PATREON_CAMPAIGN_BACKFILL_POSTS)
+        if not catalog:
+            continue   # fetch failed — leave unmarked so the next run retries
+        if len(catalog) >= config.PATREON_CAMPAIGN_BACKFILL_POSTS:
+            log.warning("Campaign %s (%s) catalog hit the %d-post backfill cap",
+                        cid, cname, config.PATREON_CAMPAIGN_BACKFILL_POSTS)
+        got = sum(_ingest_post(s, account, p, campaigns, notified=1) for p in catalog)
+        db.mark_patreon_campaign_backfilled(cid, cname)
+        log.info("[%s] backfilled campaign %s (%s): %d/%d post(s) new",
+                 account["label"], cname, cid, got, len(catalog))
+        backfilled += got
+    new += backfilled
+    extra = f" ({backfilled} from back catalog)" if backfilled else ""
+    return new, f"OK: {len(campaigns)} campaign(s), {new} new{extra}"
 
 
 def run() -> int:

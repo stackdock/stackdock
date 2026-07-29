@@ -56,6 +56,7 @@ def world(fresh_db, monkeypatch):
               "4": _doc("Video recipe text")}
     monkeypatch.setattr(patreon, "_authenticated", lambda s: True)
     monkeypatch.setattr(patreon, "fetch_stream", lambda s, n: _stream())
+    monkeypatch.setattr(patreon, "fetch_campaign_posts", lambda s, cid, n: [])
     monkeypatch.setattr(patreon, "_post_detail",
                         lambda s, pid: {"content_json_string": bodies.get(pid)})
     monkeypatch.setattr(patreon.time, "sleep", lambda *_: None)
@@ -77,6 +78,52 @@ def test_patreon_pulls_full_body_and_flags(world):
     assert "Video recipe text" in arts["Video One"]["html"]       # video posts carry their text too
     pubs = {p["publication"]: p["paid"] for p in db.list_publications()}
     assert pubs.get("Frienji") == 1                               # Patreon pubs are always green/paid
+
+
+def test_gated_post_with_false_is_paid_flag_stores_as_locked(world, monkeypatch):
+    # Patreon reports is_paid=false on patron-gated posts (it means pay-per-post,
+    # not "gated") — anything we can't view must badge paid+locked, not free.
+    monkeypatch.setattr(patreon, "fetch_stream", lambda s, n: (
+        [_post("9", "Gated Video", False, False, ptype="video_external_file")],
+        {"c1": "Frienji"}))
+    patreon.sync_account({"cookie": "c", "label": "erin", "last_sync": None})
+    row = next(x for x in db.list_articles(publications=["Frienji"]))
+    a = db.get_article_by_slug(row["slug"])
+    assert (a["is_paid"], a["is_locked"]) == (1, 1)
+    assert a["media_key"] is None                      # not playable while locked
+    assert "Watch this video on Patreon" in a["html"]
+
+
+def test_campaign_back_catalog_backfills_once_and_silently(world, monkeypatch):
+    # Old posts never surface in the stream — the per-campaign sweep mirrors them
+    # (silently), marks the campaign done, and doesn't re-sweep next sync.
+    calls = []
+
+    def catalog(s, cid, n):
+        calls.append(cid)
+        return [_post("old1", "Ancient Report", False, True),
+                _post("old2", "Ancient Gated", False, False)]
+
+    monkeypatch.setattr(patreon, "fetch_campaign_posts", catalog)
+    new, status = patreon.sync_account({"cookie": "c", "label": "erin",
+                                        "last_sync": "2026-01-01T00:00:00+00:00"})
+    assert calls == ["c1"]
+    assert "back catalog" in status
+    titles = {a["title"] for a in db.list_articles(publications=["Frienji"])}
+    assert {"Ancient Report", "Ancient Gated"} <= titles
+    old2 = next(a for a in db.list_articles(publications=["Frienji"])
+                if a["title"] == "Ancient Gated")
+    assert (old2["is_paid"], old2["is_locked"]) == (1, 1)
+    # backfilled rows are silent: nothing from the catalog queued for the digest
+    pending = {i["title"] for i in db.list_unnotified_items()}
+    assert not {"Ancient Report", "Ancient Gated"} & pending
+    # second sync: campaign already swept -> no re-fetch
+    patreon.sync_account({"cookie": "c", "label": "erin",
+                          "last_sync": "2026-01-01T00:00:00+00:00"})
+    assert calls == ["c1"]
+    # a fresh marker suppresses the sweep; a stale one (0-day max age) re-arms it
+    assert not db.patreon_campaign_needs_backfill("c1", 7)
+    assert db.patreon_campaign_needs_backfill("c1", 0)
 
 
 def test_patreon_upgrades_stub_body_on_resync(world):
