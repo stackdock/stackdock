@@ -105,6 +105,8 @@ def fetch_campaign_posts(s, campaign_id: str, max_posts: int):
     params = {
         "filter[campaign_id]": campaign_id,
         "sort": "-published_at",
+        "include": "campaign",             # without this the posts carry NO
+        "fields[campaign]": "name,url",    # relationships block at all
         "fields[post]": _POST_FIELDS,
         "page[count]": "30",
         "json-api-use-default-includes": "false",
@@ -129,9 +131,9 @@ def fetch_campaign_posts(s, campaign_id: str, max_posts: int):
     return posts[:max_posts]
 
 
-def _campaign_name(post, campaigns) -> str:
+def _campaign_name(post, campaigns, default: str = "Patreon") -> str:
     rel = ((post.get("relationships") or {}).get("campaign") or {}).get("data") or {}
-    return campaigns.get(rel.get("id")) or "Patreon"
+    return campaigns.get(rel.get("id")) or default
 
 
 def _audio_url(attrs):
@@ -256,16 +258,19 @@ def _needs_body(existing) -> bool:
     return bool(existing["is_locked"]) or 'class="stub"' in h or len(h) < 200
 
 
-def _ingest_post(s, account, post, campaigns, notified: int) -> int:
+def _ingest_post(s, account, post, campaigns, notified: int,
+                 default_pub: str = "Patreon") -> int:
     """Ingest one JSON:API post dict (from the stream or a campaign back-catalog).
-    Returns 1 if a new article/episode was stored, else 0."""
+    Returns 1 if a new article/episode was stored, else 0. default_pub is the
+    publication when the post's campaign relationship can't be resolved (back-
+    catalog sweeps pass the swept campaign's name)."""
     pid = post.get("id")
     if not pid:
         return 0
     a = post.get("attributes") or {}
     guid = f"patreon:{pid}"
     title = a.get("title") or "(untitled)"
-    pub = _campaign_name(post, campaigns)
+    pub = _campaign_name(post, campaigns, default_pub)
     url = a.get("url") or a.get("patreon_url") or "https://www.patreon.com"
     can_view = bool(a.get("current_user_can_view"))
     # Patreon's is_paid does NOT mean patron-gated (gated posts routinely report
@@ -329,6 +334,8 @@ def _ingest_post(s, account, post, campaigns, notified: int) -> int:
     thumb = _thumb_url(a)
     existing = db.get_article_by_message_id(guid)
     if existing:
+        if existing["publication"] == "Patreon" and pub != "Patreon":
+            db.set_article_publication(existing["id"], pub)   # heal fallback-named rows
         if video_key and not existing["media_key"]:
             db.set_article_media(existing["id"], video_key)   # flag old video rows as playable
         if not _needs_body(existing):
@@ -396,7 +403,8 @@ def sync_account(account) -> tuple[int, str]:
         if len(catalog) >= config.PATREON_CAMPAIGN_BACKFILL_POSTS:
             log.warning("Campaign %s (%s) catalog hit the %d-post backfill cap",
                         cid, cname, config.PATREON_CAMPAIGN_BACKFILL_POSTS)
-        got = sum(_ingest_post(s, account, p, campaigns, notified=1) for p in catalog)
+        got = sum(_ingest_post(s, account, p, campaigns, notified=1,
+                               default_pub=cname or "Patreon") for p in catalog)
         db.mark_patreon_campaign_backfilled(cid, cname)
         log.info("[%s] backfilled campaign %s (%s): %d/%d post(s) new",
                  account["label"], cname, cid, got, len(catalog))

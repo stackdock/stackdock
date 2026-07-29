@@ -492,6 +492,15 @@ def insert_article(message_id, publication, title, author, original_url, html,
         return cur.lastrowid or 0
 
 
+def set_article_publication(article_id: int, publication: str) -> None:
+    """Re-home an article whose publication was stored under a fallback name.
+    Also rewrites author, so only call where author mirrors the publication
+    (the Patreon ingester stores author = campaign name)."""
+    with conn() as c:
+        c.execute("UPDATE articles SET publication = ?, author = ? WHERE id = ?",
+                  (publication, publication, article_id))
+
+
 def set_article_media(article_id: int, media_key: str) -> None:
     with conn() as c:
         c.execute("UPDATE articles SET media_key = ? WHERE id = ?", (media_key, article_id))

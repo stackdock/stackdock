@@ -101,8 +101,14 @@ def test_campaign_back_catalog_backfills_once_and_silently(world, monkeypatch):
 
     def catalog(s, cid, n):
         calls.append(cid)
-        return [_post("old1", "Ancient Report", False, True),
+        # real /api/posts catalog entries carry NO relationships block unless
+        # include=campaign is sent — the ingester must still attribute them to
+        # the swept campaign, not the "Patreon" fallback
+        bare = [_post("old1", "Ancient Report", False, True),
                 _post("old2", "Ancient Gated", False, False)]
+        for p in bare:
+            p.pop("relationships")
+        return bare
 
     monkeypatch.setattr(patreon, "fetch_campaign_posts", catalog)
     new, status = patreon.sync_account({"cookie": "c", "label": "erin",
@@ -124,6 +130,20 @@ def test_campaign_back_catalog_backfills_once_and_silently(world, monkeypatch):
     # a fresh marker suppresses the sweep; a stale one (0-day max age) re-arms it
     assert not db.patreon_campaign_needs_backfill("c1", 7)
     assert db.patreon_campaign_needs_backfill("c1", 0)
+
+
+def test_resweep_heals_fallback_named_rows(world, monkeypatch):
+    # rows stored under the "Patreon" fallback publication get re-homed to the
+    # campaign name when a sweep sees them again
+    db.insert_article("patreon:old1", "Patreon", "Ancient Report", "Patreon",
+                      "https://www.patreon.com/posts/old1", "<p>" + "x" * 300 + "</p>",
+                      "2026-06-01", added_by="erin", notified=1)
+    monkeypatch.setattr(patreon, "fetch_campaign_posts",
+                        lambda s, cid, n: [_post("old1", "Ancient Report", False, True)])
+    patreon.sync_account({"cookie": "c", "label": "erin",
+                          "last_sync": "2026-01-01T00:00:00+00:00"})
+    a = db.get_article_by_message_id("patreon:old1")
+    assert a["publication"] == "Frienji" and a["author"] == "Frienji"
 
 
 def test_patreon_upgrades_stub_body_on_resync(world):
