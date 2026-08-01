@@ -163,6 +163,9 @@ window.addEventListener("pagehide", function () { diag.flush("pagehide", true); 
   }
   async function flush() {
     if (syncing || !navigator.onLine) return;
+    // auth pages: a 401 is guaranteed here — no positions to sync, and the
+    // "session expired" banner would sit ON the login form
+    if (/^\/(login|signup|forgot|reset)/.test(location.pathname)) return;
     syncing = true;
     try {
       var slugs = [];

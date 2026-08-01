@@ -451,7 +451,16 @@
     const k = keeperEl();
     const p = k.play();
     if (p && p.then) {
-      p.then(() => dlog("keeper playing")).catch((e) => { dlog("keeper refused: " + e.name); diagFlush("keeper"); });
+      p.then(() => dlog("keeper playing")).catch((e) => {
+        dlog("keeper refused: " + e.name);
+        diagFlush("keeper");
+        // AbortError = a racing pause() interrupted this play(); if the keeper
+        // is still wanted (audio playing, or paused within the grace window),
+        // one retry keeps that pause protected (seen live 1 Aug 2026)
+        if (e.name === "AbortError") setTimeout(() => {
+          if (!a.paused || keeperTimer) keeperEl().play().catch(() => {});
+        }, 400);
+      });
     }
   };
   const stopKeeper = (why) => {
