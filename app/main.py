@@ -611,6 +611,22 @@ async def api_save_position(slug: str, request: Request, user=Depends(auth.curre
     return {"ok": True}
 
 
+@app.post("/api/diag/{slug}")
+async def api_player_diag(slug: str, request: Request, user=Depends(auth.current_user)):
+    """Player event traces beaconed from installed PWAs — an installed iOS web
+    app can't be remotely inspected, so the player ships its event ring here.
+    Logged only (docker logs), never stored."""
+    try:
+        data = json.loads((await request.body()) or b"{}")
+        why = str(data.get("why", ""))[:40]
+        events = [str(e)[:200] for e in list(data.get("events", []))[:100]]
+    except (ValueError, TypeError):
+        raise HTTPException(400, "bad payload")
+    log.info("PLAYER DIAG [%s] %s (%s)\n%s",
+             user["username"], slug, why, "\n".join(events))
+    return {"ok": True}
+
+
 @app.post("/publications/add")
 def publications_add(request: Request, user=Depends(auth.current_user),
                      name: str = Form(...), base_url: str = Form(...)):

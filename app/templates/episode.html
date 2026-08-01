@@ -320,6 +320,30 @@
     offBtn.style.display = "none";
   }
 
+  // ---- remote diagnostics ----
+  // An installed iOS web app can't be remotely inspected, so keep a small ring
+  // of player events and beacon it to the server (lands in docker logs) — this
+  // is how we see what happens at the moment of a lock-screen pause.
+  const diag = [];
+  const dlog = (m) => {
+    diag.push(Math.round(Date.now() / 1000) + " " + m + (document.hidden ? " [hidden]" : ""));
+    if (diag.length > 80) diag.shift();
+  };
+  const diagFlush = (why) => {
+    if (!diag.length) return;
+    try {
+      navigator.sendBeacon("/api/diag/" + slug,
+        new Blob([JSON.stringify({ why, events: diag.splice(0) })], { type: "text/plain" }));
+    } catch {}
+  };
+  a.addEventListener("error", () => dlog("audio error code=" + (a.error && a.error.code)));
+  document.addEventListener("visibilitychange", () => {
+    dlog("visibility -> " + (document.hidden ? "hidden" : "visible"));
+    diagFlush("visibility");
+  });
+  window.addEventListener("pagehide", () => { dlog("pagehide"); diagFlush("pagehide"); });
+  window.addEventListener("pageshow", () => dlog("pageshow"));
+
   // ---- lock screen / media keys (Media Session API) ----
   // iOS deactivates the web audio session ~30s after pause and drops the Now
   // Playing entry — no web API prevents that (Apple forums thread 762582,
@@ -348,8 +372,12 @@
     const assertSession = () => {
       ms.metadata = new MediaMetadata({
         title: box.dataset.title, artist: box.dataset.show, artwork: art });
-      ms.setActionHandler("play", () => a.play());
-      ms.setActionHandler("pause", () => a.pause());
+      ms.setActionHandler("play", () => {
+        dlog("ms action: play");
+        const p = a.play();
+        if (p && p.catch) p.catch((e) => { dlog("ms play refused: " + e.name); diagFlush("play-refused"); });
+      });
+      ms.setActionHandler("pause", () => { dlog("ms action: pause"); a.pause(); });
       ms.setActionHandler("seekbackward", () => $("pp-back").click());
       ms.setActionHandler("seekforward", () => $("pp-fwd").click());
       try { ms.setActionHandler("seekto", (d) => { a.currentTime = d.seekTime; }); } catch {}
@@ -391,7 +419,7 @@
   // the keeper holds audio focus (other apps' audio fights it) and burns
   // battery. Deliberate reversal of the earlier no-keepalive stance (Aug 2026).
   const KEEP_MS = 5 * 60 * 1000;
-  let keeper = null, keeperTimer = 0, keeperPrimed = false;
+  let keeper = null, keeperTimer = 0;
   const silentWav = () => {
     const rate = 8000, bytes = rate * 2;               // 1s mono 16-bit silence
     const b = new DataView(new ArrayBuffer(44 + bytes));
@@ -407,31 +435,35 @@
     if (!keeper) { keeper = new Audio(silentWav()); keeper.loop = true; }
     return keeper;
   };
-  // A separate element needs its own user-gesture unlock, and a lock-screen
-  // pause is NOT a gesture — so prime it during the in-app play tap (playback
-  // always starts with one; priming earlier would steal audio focus from
-  // whatever the phone was playing before the user pressed play here).
-  const primeKeeper = () => {
-    if (keeperPrimed) return;
-    keeperPrimed = true;
+  // The keeper runs from the FIRST play onward (not started at pause time): a
+  // lock-screen pause happens while the page is hidden, where starting NEW
+  // audio can be refused — but audio that is ALREADY playing just continues.
+  // A silent element playing alongside real playback costs nothing audible.
+  const startKeeper = () => {
+    dlog("audio play t=" + Math.round(a.currentTime));
+    clearTimeout(keeperTimer);
     const k = keeperEl();
-    k.play().then(() => { k.pause(); k.currentTime = 0; })
-            .catch(() => { keeperPrimed = false; });
+    const p = k.play();
+    if (p && p.then) {
+      p.then(() => dlog("keeper playing")).catch((e) => { dlog("keeper refused: " + e.name); diagFlush("keeper"); });
+    }
   };
-  $("pp-play").addEventListener("click", primeKeeper);
-  const stopKeeper = () => {
+  const stopKeeper = (why) => {
     clearTimeout(keeperTimer);
-    if (keeper) keeper.pause();
+    if (keeper && !keeper.paused) { keeper.pause(); dlog("keeper stopped: " + why); }
   };
+  a.addEventListener("play", startKeeper);
   a.addEventListener("pause", () => {
-    if (!engaged || a.ended) return;
-    keeperEl().play().catch(() => {});
+    dlog("audio pause t=" + Math.round(a.currentTime));
+    if (!engaged || a.ended) { stopKeeper("ended"); return; }
     clearTimeout(keeperTimer);
-    keeperTimer = setTimeout(stopKeeper, KEEP_MS);
+    keeperTimer = setTimeout(() => stopKeeper("grace over"), KEEP_MS);
+    // flush shortly after: while the keeper holds the session alive, timers
+    // still run in the background, so this beacon shows us the locked state
+    setTimeout(() => diagFlush("post-pause"), 2500);
   });
-  a.addEventListener("play", stopKeeper);
-  $("pp-done").addEventListener("click", stopKeeper);  // marked done: nothing to resume
-  window.addEventListener("pagehide", stopKeeper);
+  $("pp-done").addEventListener("click", () => stopKeeper("done"));
+  window.addEventListener("pagehide", () => stopKeeper("pagehide"));
 })();
 </script>
 {% endif %}
