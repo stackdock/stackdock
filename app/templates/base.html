@@ -37,6 +37,53 @@
       } catch (e) {}
     })();
   </script>
+  <script>
+  // App-wide diagnostics (kept deliberately — installed iOS web apps can't be
+  // remotely inspected). Every page shares a localStorage-persisted event ring
+  // (survives crashes and offline sessions) flushed to POST /api/diag/app,
+  // which lands in docker logs. Any script: window.diag.log("..."); JS errors
+  // and unhandled rejections are captured automatically. Flush-on-visibility
+  // hooks are registered in the bottom-of-body script so page scripts get to
+  // log their own visibility events first.
+  window.diag = (function () {
+    var KEY = "diag:pending", MAX = 200;
+    var ring = [];
+    try { ring = JSON.parse(localStorage.getItem(KEY) || "[]") || []; } catch (e) {}
+    function persist() { try { localStorage.setItem(KEY, JSON.stringify(ring)); } catch (e) {} }
+    function log(m) {
+      ring.push(Math.round(Date.now() / 1000) + " [" + location.pathname + "] " + m +
+                (document.hidden ? " [hidden]" : ""));
+      if (ring.length > MAX) ring = ring.slice(-MAX);
+      persist();
+    }
+    function flush(why, useBeacon) {
+      if (!ring.length || !navigator.onLine) return;
+      var batch = ring.slice(0, 100);
+      var body = JSON.stringify({ why: why || "", events: batch });
+      function sent() { ring = ring.slice(batch.length); persist(); }
+      if (useBeacon && navigator.sendBeacon) {
+        try {
+          if (navigator.sendBeacon("/api/diag/app", new Blob([body], { type: "text/plain" }))) sent();
+        } catch (e) {}
+        return;
+      }
+      fetch("/api/diag/app", { method: "POST", credentials: "same-origin", keepalive: true,
+        headers: { "Content-Type": "application/json" }, body: body })
+        .then(function (r) { if (r && r.ok) sent(); }).catch(function () {});
+    }
+    window.addEventListener("error", function (e) {
+      if (!e.message) return;   // resource load errors carry no message; skip
+      log("js error: " + e.message +
+          (e.filename ? " @" + e.filename.split("/").pop() + ":" + e.lineno : ""));
+    });
+    window.addEventListener("unhandledrejection", function (e) {
+      var r = e.reason || {};
+      log("unhandled rejection: " + ((r.name || "") + " " + (r.message || String(e.reason))).slice(0, 150));
+    });
+    setTimeout(function () { flush("leftovers"); }, 3000);   // prior crash/offline traces
+    return { log: log, flush: flush };
+  })();
+  </script>
   <link rel="stylesheet" href="/static/style.css?v={{ static_v }}">
   <link rel="manifest" href="/static/manifest.webmanifest">
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="#2e6e4e">
@@ -80,6 +127,13 @@
 <script>
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
 
+// diag flush hooks — registered after page scripts so their own visibility
+// logging lands in the ring before it ships
+document.addEventListener("visibilitychange", function () {
+  diag.flush(document.hidden ? "hidden" : "visible", document.hidden);
+});
+window.addEventListener("pagehide", function () { diag.flush("pagehide", true); });
+
 // Global listening-position sync. Positions accrued while OFFLINE only live in
 // this device's localStorage (the player's server push no-ops with no network).
 // This flushes any local position that's ahead of the server up to /api/positions
@@ -122,7 +176,11 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
       // A failed GET is NOT an empty server: proceeding with {} makes every
       // synced local done-flag look like "server was un-done elsewhere" and
       // deletes it (the July 2026 expired-session data-loss bug). Abort.
-      if (!r.ok) { if (r.status === 401) sessionBanner(); return; }
+      if (!r.ok) {
+        diag.log("positions GET failed: " + r.status + (r.status === 401 ? " (session expired banner shown)" : ""));
+        if (r.status === 401) sessionBanner();
+        return;
+      }
       var server = await r.json();
       for (var j = 0; j < slugs.length; j++) {
         var slug = slugs[j];
@@ -132,13 +190,17 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
           // reached done offline, not yet synced -> push; promote to "1" on success
           (function (s) {
             pushPos(s, 0, parseFloat(localStorage.getItem("dur:" + s) || sp.duration || 0), true)
-              .then(function (ok) { if (ok) try { localStorage.setItem("done:" + s, "1"); } catch (e) {} });
+              .then(function (ok) {
+                if (ok) { try { localStorage.setItem("done:" + s, "1"); } catch (e) {} }
+                else diag.log("done push failed for " + s + " (stays pending)");
+              });
           })(slug);
           continue;
         }
         if (doneLocal === "1" && !sp.done) {
           // server was un-done on another device (it resumed the episode) -> defer
           // to the server instead of re-pushing done=true forever (the fight loop)
+          diag.log("done flag dropped for " + slug + " (server says not-done)");
           try {
             localStorage.removeItem("done:" + slug);
             if (sp.position) localStorage.setItem("pos:" + slug, String(sp.position));

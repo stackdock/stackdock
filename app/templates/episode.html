@@ -196,6 +196,7 @@
   a.addEventListener("error", () => {
     if (!engaged || sessionStorage.getItem("pp-reloaded:" + slug)) return;
     try { sessionStorage.setItem("pp-reloaded:" + slug, "1"); } catch {}
+    diag.log("player presign-expiry reload (audio error after engagement)");
     save({ leaving: true });
     setTimeout(() => location.reload(), 300);
   });
@@ -313,6 +314,7 @@
         }));
         setOffUi(true); offMsg("Saved ✓ — playable from the 📦 offline shelf with no connection.");
       } catch (err) {
+        diag.log("offline save failed: " + err.message);
         offMsg("Save failed (" + err.message + "). Try again on good wifi.");
       }
     };
@@ -321,27 +323,15 @@
   }
 
   // ---- remote diagnostics ----
-  // An installed iOS web app can't be remotely inspected, so keep a small ring
-  // of player events and beacon it to the server (lands in docker logs) — this
-  // is how we see what happens at the moment of a lock-screen pause.
-  const diag = [];
-  const dlog = (m) => {
-    diag.push(Math.round(Date.now() / 1000) + " " + m + (document.hidden ? " [hidden]" : ""));
-    if (diag.length > 80) diag.shift();
-  };
-  const diagFlush = (why) => {
-    if (!diag.length) return;
-    try {
-      navigator.sendBeacon("/api/diag/" + slug,
-        new Blob([JSON.stringify({ why, events: diag.splice(0) })], { type: "text/plain" }));
-    } catch {}
-  };
+  // Delegates to the app-wide window.diag ring (base.html head) — player events
+  // land in docker logs via /api/diag. Base flushes on visibility/pagehide; the
+  // player adds its own flush points for moments that happen while hidden.
+  const dlog = (m) => diag.log("player " + m);
+  const diagFlush = (why) => diag.flush(why);
   a.addEventListener("error", () => dlog("audio error code=" + (a.error && a.error.code)));
-  document.addEventListener("visibilitychange", () => {
-    dlog("visibility -> " + (document.hidden ? "hidden" : "visible"));
-    diagFlush("visibility");
-  });
-  window.addEventListener("pagehide", () => { dlog("pagehide"); diagFlush("pagehide"); });
+  document.addEventListener("visibilitychange", () =>
+    dlog("visibility -> " + (document.hidden ? "hidden" : "visible")));
+  window.addEventListener("pagehide", () => dlog("pagehide"));
   window.addEventListener("pageshow", () => dlog("pageshow"));
 
   // ---- lock screen / media keys (Media Session API) ----

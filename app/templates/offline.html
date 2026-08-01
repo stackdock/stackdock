@@ -52,6 +52,20 @@
     return (b / 1099511627776).toFixed(2) + " TB";
   }
 
+  // Offline-shelf diagnostics: append into the SAME localStorage ring the rest
+  // of the app uses (base.html window.diag). This page must work with zero
+  // network, so it never flushes itself — base.html's "leftovers" flush ships
+  // these the next time any signed-in page opens.
+  function olog(m) {
+    try {
+      const ring = JSON.parse(localStorage.getItem("diag:pending") || "[]") || [];
+      ring.push(Math.round(Date.now() / 1000) + " [/offline] " + m +
+                (document.hidden ? " [hidden]" : ""));
+      localStorage.setItem("diag:pending", JSON.stringify(ring.slice(-200)));
+    } catch {}
+  }
+  window.addEventListener("error", (e) => { if (e.message) olog("js error: " + e.message + ":" + e.lineno); });
+
   // Best-effort server sync. The page renders fully offline, but positions
   // accumulated offline must still reach listen_positions so they survive the
   // iOS PWA<->Safari storage split and follow you to other devices. These calls
@@ -96,6 +110,7 @@
       }
       if (doneLocal === "1" && !sp.done) {
         // server was un-done elsewhere (another device resumed) -> defer to server
+        olog("done flag dropped for " + slug + " (server says not-done)");
         try {
           localStorage.removeItem("done:" + slug);
           if (sp.position) localStorage.setItem("pos:" + slug, String(sp.position));
@@ -191,6 +206,8 @@
     // stream from the SW's /offline-audio/ handler (served out of AUDIO_CACHE)
     // instead of a giant object URL — one episode's bytes in memory at a time
     audio.src = "/offline-audio/" + slug;
+    audio.addEventListener("error", () =>
+      olog("shelf audio error " + slug + " code=" + (audio.error && audio.error.code)));
     // resume from the same per-episode position the main player uses
     const pos = parseFloat(localStorage.getItem("pos:" + slug) || "0");
     audio.addEventListener("loadedmetadata", () => {
