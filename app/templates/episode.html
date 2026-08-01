@@ -380,6 +380,58 @@
     });
     window.addEventListener("pageshow", assertSession);
   }
+
+  // ---- pause keepalive (iOS) ----
+  // iOS tears down a home-screen web app's audio session after pause (observed
+  // IMMEDIATE on iOS 26; ~30s on 17/18 — WebKit bug 261858) and the lock-screen
+  // play button goes dead until the app is foregrounded. The only lever that
+  // works is not letting the session go silent: while paused, loop an inaudible
+  // WAV (silent SAMPLES, not volume=0 — iOS ignores programmatic volume) for a
+  // bounded grace window so a lock-screen resume keeps working. Bounded because
+  // the keeper holds audio focus (other apps' audio fights it) and burns
+  // battery. Deliberate reversal of the earlier no-keepalive stance (Aug 2026).
+  const KEEP_MS = 5 * 60 * 1000;
+  let keeper = null, keeperTimer = 0, keeperPrimed = false;
+  const silentWav = () => {
+    const rate = 8000, bytes = rate * 2;               // 1s mono 16-bit silence
+    const b = new DataView(new ArrayBuffer(44 + bytes));
+    const str = (o, s) => { for (let i = 0; i < s.length; i++) b.setUint8(o + i, s.charCodeAt(i)); };
+    str(0, "RIFF"); b.setUint32(4, 36 + bytes, true); str(8, "WAVEfmt ");
+    b.setUint32(16, 16, true); b.setUint16(20, 1, true); b.setUint16(22, 1, true);
+    b.setUint32(24, rate, true); b.setUint32(28, rate * 2, true);
+    b.setUint16(32, 2, true); b.setUint16(34, 16, true);
+    str(36, "data"); b.setUint32(40, bytes, true);
+    return URL.createObjectURL(new Blob([b.buffer], { type: "audio/wav" }));
+  };
+  const keeperEl = () => {
+    if (!keeper) { keeper = new Audio(silentWav()); keeper.loop = true; }
+    return keeper;
+  };
+  // A separate element needs its own user-gesture unlock, and a lock-screen
+  // pause is NOT a gesture — so prime it during the in-app play tap (playback
+  // always starts with one; priming earlier would steal audio focus from
+  // whatever the phone was playing before the user pressed play here).
+  const primeKeeper = () => {
+    if (keeperPrimed) return;
+    keeperPrimed = true;
+    const k = keeperEl();
+    k.play().then(() => { k.pause(); k.currentTime = 0; })
+            .catch(() => { keeperPrimed = false; });
+  };
+  $("pp-play").addEventListener("click", primeKeeper);
+  const stopKeeper = () => {
+    clearTimeout(keeperTimer);
+    if (keeper) keeper.pause();
+  };
+  a.addEventListener("pause", () => {
+    if (!engaged || a.ended) return;
+    keeperEl().play().catch(() => {});
+    clearTimeout(keeperTimer);
+    keeperTimer = setTimeout(stopKeeper, KEEP_MS);
+  });
+  a.addEventListener("play", stopKeeper);
+  $("pp-done").addEventListener("click", stopKeeper);  // marked done: nothing to resume
+  window.addEventListener("pagehide", stopKeeper);
 })();
 </script>
 {% endif %}
