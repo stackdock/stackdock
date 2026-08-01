@@ -363,11 +363,12 @@
       : [];
     const positionState = () => {
       if (!ms.setPositionState || !isFinite(a.duration)) return;
-      try {
-        ms.setPositionState({ duration: a.duration,
-                              position: Math.min(a.currentTime || 0, a.duration),
-                              playbackRate: a.playbackRate || 1 });
-      } catch {}
+      const st = { duration: a.duration,
+                   position: Math.min(a.currentTime || 0, a.duration) };
+      // rate 0 while paused, else the lock-screen scrubber keeps advancing
+      // (the silent keeper makes iOS believe playback continues)
+      try { ms.setPositionState({ ...st, playbackRate: a.paused ? 0 : (a.playbackRate || 1) }); }
+      catch { try { ms.setPositionState({ ...st, playbackRate: a.playbackRate || 1 }); } catch {} }
     };
     const assertSession = () => {
       ms.metadata = new MediaMetadata({
@@ -377,7 +378,22 @@
         const p = a.play();
         if (p && p.catch) p.catch((e) => { dlog("ms play refused: " + e.name); diagFlush("play-refused"); });
       });
-      ms.setActionHandler("pause", () => { dlog("ms action: pause"); a.pause(); });
+      // While the silent keeper plays through a pause, iOS decides the session
+      // is "playing" (actual audio output beats our declared playbackState), so
+      // the lock screen shows only the ⏸ button and every tap arrives as a
+      // "pause" action — including the tap meant to RESUME (proven by device
+      // trace: two pause actions 4s apart, no play action, 1 Aug 2026). The
+      // button is a toggle, so treat pause-while-paused as play.
+      ms.setActionHandler("pause", () => {
+        if (a.paused) {
+          dlog("ms action: pause while paused -> resuming");
+          const p = a.play();
+          if (p && p.catch) p.catch((e) => { dlog("resume refused: " + e.name); diagFlush("resume-refused"); });
+        } else {
+          dlog("ms action: pause");
+          a.pause();
+        }
+      });
       ms.setActionHandler("seekbackward", () => $("pp-back").click());
       ms.setActionHandler("seekforward", () => $("pp-fwd").click());
       try { ms.setActionHandler("seekto", (d) => { a.currentTime = d.seekTime; }); } catch {}
