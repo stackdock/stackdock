@@ -622,8 +622,10 @@ async def api_player_diag(slug: str, request: Request, user=Depends(auth.current
         events = [str(e)[:200] for e in list(data.get("events", []))[:100]]
     except (ValueError, TypeError):
         raise HTTPException(400, "bad payload")
+    # indent every client-supplied line so a crafted event can't masquerade as
+    # a server log line
     log.info("PLAYER DIAG [%s] %s (%s)\n%s",
-             user["username"], slug, why, "\n".join(events))
+             user["username"], slug, why, "\n".join("  | " + e for e in events))
     return {"ok": True}
 
 

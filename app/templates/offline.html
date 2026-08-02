@@ -160,8 +160,12 @@
         artwork: meta.art ? [{ src: meta.art, sizes: "128x128" },
                              { src: meta.art, sizes: "512x512" }] : [],
       });
-      navigator.mediaSession.setActionHandler("play", () => audio.play());
-      navigator.mediaSession.setActionHandler("pause", () => audio.pause());
+      // both actions toggle — iOS's playing/paused model drifts from reality
+      // (device-trace-proven on the main player, Aug 2026), so map every tap
+      // to "flip playback" instead of trusting which action iOS delivers
+      const toggle = () => { audio.paused ? audio.play().catch(() => {}) : audio.pause(); };
+      navigator.mediaSession.setActionHandler("play", toggle);
+      navigator.mediaSession.setActionHandler("pause", toggle);
       navigator.mediaSession.setActionHandler("seekbackward", () => {
         audio.currentTime = Math.max(0, audio.currentTime - 15); });
       navigator.mediaSession.setActionHandler("seekforward", () => {

@@ -56,8 +56,10 @@
       if (ring.length > MAX) ring = ring.slice(-MAX);
       persist();
     }
+    var inflight = false;   // overlapping flushes would double-slice the ring:
+                            // duplicate sends + silently dropped newer events
     function flush(why, useBeacon) {
-      if (!ring.length || !navigator.onLine) return;
+      if (inflight || !ring.length || !navigator.onLine) return;
       var batch = ring.slice(0, 100);
       var body = JSON.stringify({ why: why || "", events: batch });
       function sent() { ring = ring.slice(batch.length); persist(); }
@@ -67,9 +69,11 @@
         } catch (e) {}
         return;
       }
+      inflight = true;
       fetch("/api/diag/app", { method: "POST", credentials: "same-origin", keepalive: true,
         headers: { "Content-Type": "application/json" }, body: body })
-        .then(function (r) { if (r && r.ok) sent(); }).catch(function () {});
+        .then(function (r) { if (r && r.ok) sent(); }).catch(function () {})
+        .finally(function () { inflight = false; });
     }
     window.addEventListener("error", function (e) {
       if (!e.message) return;   // resource load errors carry no message; skip

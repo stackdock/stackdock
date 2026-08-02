@@ -387,7 +387,9 @@
       ms.setActionHandler("pause", () => msToggle("pause"));
       ms.setActionHandler("seekbackward", () => $("pp-back").click());
       ms.setActionHandler("seekforward", () => $("pp-fwd").click());
-      try { ms.setActionHandler("seekto", (d) => { a.currentTime = d.seekTime; }); } catch {}
+      // a lock-screen scrub is as deliberate as an in-app one: without the
+      // flag the monotonic guard suppresses server pushes after a scrub-back
+      try { ms.setActionHandler("seekto", (d) => { userScrubbed = true; a.currentTime = d.seekTime; }); } catch {}
       // declare what iOS actually HEARS: while the keeper plays through a
       // pause the session is audibly playing — declaring "paused" then makes
       // iOS's model oscillate between our word and its ears (the inverted-icon
@@ -462,16 +464,18 @@
         dlog("keeper refused: " + e.name);
         diagFlush("keeper");
         // AbortError = a racing pause() interrupted this play(); if the keeper
-        // is still wanted (audio playing, or paused within the grace window),
-        // one retry keeps that pause protected (seen live 1 Aug 2026)
+        // is still wanted (keeperAlive: playing, or paused within the grace
+        // window — NOT the stale timer id, which outlives clearTimeout and
+        // would revive a stopped keeper with no grace timer), retry once
         if (e.name === "AbortError") setTimeout(() => {
-          if (!a.paused || keeperTimer) keeperEl().play().catch(() => {});
+          if (keeperAlive) keeperEl().play().catch(() => {});
         }, 400);
       });
     }
   };
   const stopKeeper = (why) => {
     clearTimeout(keeperTimer);
+    keeperTimer = 0;
     keeperAlive = false;
     if (keeper && !keeper.paused) { keeper.pause(); dlog("keeper stopped: " + why); }
     // the session is now genuinely silent — align the declared state
