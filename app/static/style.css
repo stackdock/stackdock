@@ -482,7 +482,13 @@ html[data-theme="brimstone"] .episode-art { opacity: 0.9; }
   .star { min-width: 40px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
   /* the floating theme picker sits closer to the corner and stays out of the
      reading column on narrow screens */
-  .theme-dropdown { font-size: 0.68rem; padding: 0.3rem 0.4rem; opacity: 0.92; }
+  /* the bottom dock owns the bottom edge now — float the picker top-right
+     instead (clear of the left-aligned wordmark, under the iOS status bar) */
+  .theme-dropdown {
+    font-size: 0.68rem; padding: 0.3rem 0.4rem; opacity: 0.92;
+    bottom: auto; top: calc(0.6rem + env(safe-area-inset-top, 0px));
+    right: 0.6rem;
+  }
 
   /* Publications/Shows filter as a clean vertical LIST on phones: the wrapped
      pills + floating stars read as clutter and it was hard to tell which star
