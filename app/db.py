@@ -308,6 +308,26 @@ def init():
             for row in c.execute(f"SELECT id, title FROM {table} WHERE slug IS NULL").fetchall():
                 c.execute(f"UPDATE {table} SET slug = ? WHERE id = ?",
                           (_unique_slug(c, table, row["title"]), row["id"]))
+        # Merge case-variant publication/show names: Substack pubs occasionally
+        # re-capitalize themselves, and per-post name stamping then splits one
+        # source into two filter chips (e.g. GrimDarkEnlightenment vs
+        # GrimdarkEnlightenment, Aug 2026). Each case-insensitive group merges
+        # to the spelling of its newest item; follows come along (OR IGNORE:
+        # a user following both variants keeps one).
+        for table, col, kind in (("articles", "publication", "pub"),
+                                 ("episodes", "feed_name", "show")):
+            dupes = c.execute(
+                f"SELECT LOWER({col}) lo FROM {table} GROUP BY lo "
+                f"HAVING COUNT(DISTINCT {col}) > 1").fetchall()
+            for d in dupes:
+                canon = c.execute(
+                    f"SELECT {col} FROM {table} WHERE LOWER({col}) = ? "
+                    "ORDER BY published_at DESC LIMIT 1", (d["lo"],)).fetchone()[0]
+                c.execute(f"UPDATE {table} SET {col} = ? WHERE LOWER({col}) = ? AND {col} <> ?",
+                          (canon, d["lo"], canon))
+                c.execute("UPDATE OR IGNORE follows SET name = ? "
+                          "WHERE kind = ? AND LOWER(name) = ? AND name <> ?",
+                          (canon, kind, d["lo"], canon))
         # normalize legacy RFC-822 episode dates ("Wed, 04 Jun ...") to ISO so
         # date sorting works; new inserts are normalized at ingest
         from email.utils import parsedate_to_datetime

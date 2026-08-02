@@ -314,3 +314,19 @@ def test_init_keeps_known_services_drops_removed(fresh_db):
     db.init()              # runs the startup cleanup
     services = {a["service"] for a in db.list_accounts(user_id=uid)}
     assert "patreon" in services and "gumroad" not in services
+
+
+def test_init_merges_case_variant_publications(fresh_db):
+    # a pub that re-capitalized itself: old row under the old spelling
+    db.insert_article("old", "GrimDarkEnlightenment", "Old post", "a", None, "<p>x</p>",
+                      "2022-10-22T17:28:59Z")
+    db.insert_article("new", "GrimdarkEnlightenment", "New post", "a", None, "<p>x</p>",
+                      "2026-01-21T23:09:23Z")
+    uid = db.create_user("m", "h")
+    db.toggle_follow(uid, "pub", "GrimDarkEnlightenment")   # follow under the OLD name
+    db.init()   # runs the merge migration
+    pubs = {p["publication"] for p in db.list_publications()}
+    assert "GrimdarkEnlightenment" in pubs and "GrimDarkEnlightenment" not in pubs
+    with db.conn() as c:
+        names = [r["name"] for r in c.execute("SELECT name FROM follows WHERE user_id=?", (uid,))]
+    assert names == ["GrimdarkEnlightenment"]               # follow migrated too

@@ -121,6 +121,22 @@
   <main>
     {% block content %}{% endblock %}
   </main>
+  <!-- mobile bottom dock: replaces the top tab row on phones (app-style nav
+       with thumb-reach targets); hidden on wide screens via CSS -->
+  <nav class="dock" id="dock" aria-label="Primary">
+    <a href="/" data-dock="text"><span class="dock-ico">📰</span><span>Articles</span></a>
+    <a href="/?tab=audio" data-dock="audio"><span class="dock-ico">🎧</span><span>Podcasts</span></a>
+    <a href="/?tab=mine" data-dock="mine"><span class="dock-ico">⭐</span><span>Yours</span></a>
+    <a href="/offline" data-dock="offline"><span class="dock-ico">📦</span><span>Saved</span></a>
+  </nav>
+  <script>
+  (function () {
+    var t = new URLSearchParams(location.search).get("tab")
+            || (location.pathname === "/" ? "text" : location.pathname.replace(/^\//, ""));
+    var el = document.querySelector('#dock a[data-dock="' + CSS.escape(t) + '"]');
+    if (el) el.classList.add("active");
+  })();
+  </script>
   <footer><span class="fun-label">Chud Use ONLY | Enforced by Sovereign Citizen Maritime Law<br>
     <span class="footer-temple">✝ running on TempleOS v5.03</span></span></footer>
   <select id="theme-select" class="theme-dropdown" aria-label="Theme">

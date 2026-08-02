@@ -212,6 +212,41 @@ footer {
   .rows li { grid-template-columns: 1fr; gap: 0.1rem; }
 }
 
+/* ---------- mobile bottom dock (hidden on wide screens) ---------- */
+.dock { display: none; }
+@media (max-width: 640px) {
+  .tabs { display: none; }               /* the dock replaces the top tab row */
+  main { padding-bottom: calc(4.6rem + env(safe-area-inset-bottom)); }
+  .dock {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+    display: flex; align-items: stretch;
+    background: var(--panel); border-top: 1px solid var(--rule);
+    padding: 0.2rem 0 max(0.2rem, env(safe-area-inset-bottom));
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+  }
+  .dock a {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 0.15rem; min-height: 48px; padding: 0.3rem 0;
+    font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.05em;
+    text-transform: uppercase; text-decoration: none; color: var(--ink-soft);
+  }
+  .dock a .dock-ico { font-size: 1.2rem; line-height: 1; }
+  .dock a.active { color: var(--shelf); font-weight: 700; }
+}
+
+/* Your Stuff sub-tabs as a segmented control: clearer active state and real
+   tap targets, instead of two floating pills */
+.pub-filter.subtabs {
+  display: flex; gap: 0; max-width: 420px; overflow: hidden;
+  border: 1px solid var(--rule); border-radius: 8px; background: var(--panel);
+}
+.pub-filter.subtabs a {
+  flex: 1; text-align: center; border: 0; border-radius: 0;
+  padding: 0.55rem 0.5rem; font-size: 0.72rem;
+}
+.pub-filter.subtabs a + a { border-left: 1px solid var(--rule); }
+.pub-filter.subtabs a.active { background: var(--shelf); color: #fff; }
+
 /* Auth forms */
 .auth-card {
   max-width: 380px; margin: 3rem auto 0; padding: 1.5rem;
