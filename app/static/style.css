@@ -212,21 +212,20 @@ footer {
   .rows li { grid-template-columns: 1fr; gap: 0.1rem; }
 }
 
-/* ---------- OS-style back pill (installed app on phones only) ---------- */
+/* ---------- OS-style back button (installed app on phones only) ----------
+   Lives IN the masthead flow (first element, before the wordmark) — nothing
+   floats and nothing shifts; it scrolls away with the header like a native
+   nav bar. */
 .back-pill { display: none; }
 @media (max-width: 640px) and (display-mode: standalone) {
   .back-pill {
-    position: fixed; z-index: 60;
-    top: calc(0.6rem + env(safe-area-inset-top, 0px)); left: 0.6rem;
-    display: inline-flex; align-items: center; min-height: 40px;
-    font-family: var(--mono); font-size: 0.72rem; text-decoration: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    align-self: center; flex: 0 0 auto;
+    width: 40px; height: 40px; margin-right: 0.4rem;
+    font-size: 1.5rem; line-height: 1; text-decoration: none;
     color: var(--ink); background: var(--panel);
-    border: 1px solid var(--rule); border-radius: 8px;
-    padding: 0.3rem 0.65rem; opacity: 0.92;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+    border: 1px solid var(--rule); border-radius: 50%;
   }
-  /* wordmark sits top-left too — shove the masthead right so they don't stack */
-  body.has-back .masthead { padding-left: 5.2rem; }
 }
 
 /* ---------- mobile bottom dock (hidden on wide screens) ---------- */
