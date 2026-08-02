@@ -41,6 +41,14 @@ try:
 except json.JSONDecodeError:
     PODCAST_FEEDS = {}
 
+# ---- Article feeds (any blog RSS/Atom with full-text items, e.g. a Hugo site) ----
+# JSON object: {"Publication display name": "https://...feed-url..."}
+try:
+    ARTICLE_FEEDS: dict[str, str] = json.loads(os.getenv("ARTICLE_FEEDS", "{}"))
+except json.JSONDecodeError:
+    ARTICLE_FEEDS = {}
+ARTICLE_POLL_MINUTES = int(os.getenv("ARTICLE_POLL_MINUTES", "60"))
+
 # ---- Substack cookie sync ----
 # Max posts to backfill per publication on an account's first sync
 SUBSTACK_BACKFILL_POSTS = int(os.getenv("SUBSTACK_BACKFILL_POSTS", "50"))

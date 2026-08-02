@@ -76,6 +76,9 @@ app/ingest/substack.py       PRIMARY source: per-user substack.sid cookies (adde
 app/ingest/email_ingest.py   optional fallback: IMAP poll → parse Substack emails → articles
 app/ingest/podcast_rss.py    poll PODCAST_FEEDS (Substack private podcast feeds, or any RSS)
                              → stream audio to R2 → episodes (with feed thumbnails)
+app/ingest/rss_articles.py   poll ARTICLE_FEEDS (JSON {name: url}; any full-text blog RSS/Atom,
+                             e.g. lukesmith.xyz/index.xml) → articles; dedupe rss:{guid};
+                             first sync per publication silent; job id "articles" (hourly)
 .github/workflows/deploy.yml SSH deploy: reset to origin/main, compose up, health check
 docker-compose.yml       stackdock (internal :8000) + caddy (80/443, auto-HTTPS) + uptime-kuma (status.<domain>, external healthz monitor — first visit creates its admin; point a monitor at /healthz and wire the Discord webhook in its UI)
 ```

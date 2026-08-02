@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import auth, config, db, feedgen, metrics, notify, sanitize, storage
-from .ingest import email_ingest, mde, nyt, patreon, podcast_rss, substack, youtube
+from .ingest import email_ingest, mde, nyt, patreon, podcast_rss, rss_articles, substack, youtube
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger("stackdock")
@@ -44,6 +44,7 @@ JOB_STATE: dict[str, dict] = {}   # job_id -> {last_run, result, ok}
 # through run_job() so /status reflects manual runs too (not just scheduled ones)
 JOBS = {"email": email_ingest.run, "podcasts": podcast_rss.run,
         "substack": substack.run, "patreon": patreon.run, "nyt": nyt.run,
+        "articles": rss_articles.run,
         "substack_refresh": substack.refresh_locked,
         "verify_paid": substack.verify_paid_access, "youtube": youtube.run,
         "mde": mde.run, "mde_catalogue": mde.refresh}
@@ -123,7 +124,8 @@ async def lifespan(app: FastAPI):
     # newly added cookie sits at "pending first sync"). Kick each job off shortly
     # after startup (staggered) so a fresh boot syncs within ~a minute.
     now = datetime.now(timezone.utc)
-    kickoff = {"email": 30, "substack": 60, "patreon": 90, "podcasts": 130}  # seconds after boot
+    kickoff = {"email": 30, "substack": 60, "patreon": 90, "podcasts": 130,
+               "articles": 170}  # seconds after boot
     scheduler.add_job(_tracked("email"), "interval",
                       minutes=config.EMAIL_POLL_MINUTES, id="email", max_instances=1,
                       coalesce=True, next_run_time=now + timedelta(seconds=kickoff["email"]))
@@ -136,6 +138,9 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(_tracked("patreon"), "interval",
                       minutes=config.PATREON_POLL_MINUTES, id="patreon", max_instances=1,
                       coalesce=True, next_run_time=now + timedelta(seconds=kickoff["patreon"]))
+    scheduler.add_job(_tracked("articles"), "interval",
+                      minutes=config.ARTICLE_POLL_MINUTES, id="articles", max_instances=1,
+                      coalesce=True, next_run_time=now + timedelta(seconds=kickoff["articles"]))
     # NYT retries any rows still 'pulling' (e.g. left over from a crash/restart).
     scheduler.add_job(_tracked("nyt"), "interval",
                       minutes=config.NYT_POLL_MINUTES, id="nyt", max_instances=1,

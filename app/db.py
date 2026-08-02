@@ -342,6 +342,12 @@ def init():
 
 # ---------- articles ----------
 
+def publication_has_articles(publication: str) -> bool:
+    with conn() as c:
+        return c.execute("SELECT 1 FROM articles WHERE publication = ? LIMIT 1",
+                         (publication,)).fetchone() is not None
+
+
 def article_exists(message_id: str) -> bool:
     with conn() as c:
         r = c.execute("SELECT 1 FROM articles WHERE message_id = ?", (message_id,)).fetchone()
