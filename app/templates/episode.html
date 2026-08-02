@@ -328,9 +328,6 @@
   // player adds its own flush points for moments that happen while hidden.
   const dlog = (m) => diag.log("player " + m);
   const diagFlush = (why) => diag.flush(why);
-  // true while the silent keepalive loop is (meant to be) playing — declared up
-  // here because the media-session block below reads it and runs first
-  let keeperAlive = false;
   a.addEventListener("error", () => dlog("audio error code=" + (a.error && a.error.code)));
   document.addEventListener("visibilitychange", () =>
     dlog("visibility -> " + (document.hidden ? "hidden" : "visible")));
@@ -388,11 +385,7 @@
       ms.setActionHandler("seekbackward", () => $("pp-back").click());
       ms.setActionHandler("seekforward", () => $("pp-fwd").click());
       try { ms.setActionHandler("seekto", (d) => { a.currentTime = d.seekTime; }); } catch {}
-      // declare what iOS actually HEARS: while the keeper plays through a
-      // pause the session is audibly playing — declaring "paused" then makes
-      // iOS's model oscillate between our word and its ears (the inverted-icon
-      // flip-flop, 2 Aug 2026)
-      try { ms.playbackState = (a.paused && !keeperAlive) ? "paused" : "playing"; } catch {}
+      try { ms.playbackState = a.paused ? "paused" : "playing"; } catch {}
       positionState();
     };
     assertSession();
@@ -401,8 +394,7 @@
       positionState();
     });
     a.addEventListener("pause", () => {
-      // keeper still audible -> stay "playing" (see assertSession comment)
-      try { ms.playbackState = keeperAlive ? "playing" : "paused"; } catch {}
+      try { ms.playbackState = "paused"; } catch {}
       positionState();   // freshest position on the lock screen while paused
     });
     a.addEventListener("loadedmetadata", positionState);
@@ -421,74 +413,59 @@
     window.addEventListener("pageshow", assertSession);
   }
 
-  // ---- pause keepalive (iOS) ----
+  // ---- pause keepalive (iOS), v3: silent AudioContext ----
   // iOS tears down a home-screen web app's audio session after pause (observed
   // IMMEDIATE on iOS 26; ~30s on 17/18 — WebKit bug 261858) and the lock-screen
-  // play button goes dead until the app is foregrounded. The only lever that
-  // works is not letting the session go silent: while paused, loop an inaudible
-  // WAV (silent SAMPLES, not volume=0 — iOS ignores programmatic volume) for a
-  // bounded grace window so a lock-screen resume keeps working. Bounded because
-  // the keeper holds audio focus (other apps' audio fights it) and burns
-  // battery. Deliberate reversal of the earlier no-keepalive stance (Aug 2026).
+  // play button goes dead until the app is foregrounded. v2 kept the session
+  // alive with a silent looping <audio> — but iOS could HEAR it, so its Now
+  // Playing playing/paused model drifted from reality (inverted icons,
+  // coin-flip taps; device traces 2 Aug 2026). v3: a running AudioContext
+  // rendering silence holds the audio session open WITHOUT being media
+  // playback, so the Now Playing model should track the real element alone.
+  // Runs from first play, suspends 5 min after pause (audio-focus + battery).
   const KEEP_MS = 5 * 60 * 1000;
-  let keeper = null, keeperTimer = 0;
-  const silentWav = () => {
-    const rate = 8000, bytes = rate * 2;               // 1s mono 16-bit silence
-    const b = new DataView(new ArrayBuffer(44 + bytes));
-    const str = (o, s) => { for (let i = 0; i < s.length; i++) b.setUint8(o + i, s.charCodeAt(i)); };
-    str(0, "RIFF"); b.setUint32(4, 36 + bytes, true); str(8, "WAVEfmt ");
-    b.setUint32(16, 16, true); b.setUint16(20, 1, true); b.setUint16(22, 1, true);
-    b.setUint32(24, rate, true); b.setUint32(28, rate * 2, true);
-    b.setUint16(32, 2, true); b.setUint16(34, 16, true);
-    str(36, "data"); b.setUint32(40, bytes, true);
-    return URL.createObjectURL(new Blob([b.buffer], { type: "audio/wav" }));
-  };
-  const keeperEl = () => {
-    if (!keeper) { keeper = new Audio(silentWav()); keeper.loop = true; }
-    return keeper;
-  };
-  // The keeper runs from the FIRST play onward (not started at pause time): a
-  // lock-screen pause happens while the page is hidden, where starting NEW
-  // audio can be refused — but audio that is ALREADY playing just continues.
-  // A silent element playing alongside real playback costs nothing audible.
-  const startKeeper = () => {
+  let ctx = null, ctxTimer = 0;
+  const keeperOn = () => {
     dlog("audio play t=" + Math.round(a.currentTime));
-    clearTimeout(keeperTimer);
-    keeperAlive = true;
-    const k = keeperEl();
-    const p = k.play();
-    if (p && p.then) {
-      p.then(() => dlog("keeper playing")).catch((e) => {
-        dlog("keeper refused: " + e.name);
-        diagFlush("keeper");
-        // AbortError = a racing pause() interrupted this play(); if the keeper
-        // is still wanted (audio playing, or paused within the grace window),
-        // one retry keeps that pause protected (seen live 1 Aug 2026)
-        if (e.name === "AbortError") setTimeout(() => {
-          if (!a.paused || keeperTimer) keeperEl().play().catch(() => {});
-        }, 400);
-      });
+    clearTimeout(ctxTimer);
+    try {
+      if (!ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        ctx = new AC();
+        ctx.onstatechange = () => dlog("ctx state: " + ctx.state);
+        const gain = ctx.createGain();
+        gain.gain.value = 0;
+        gain.connect(ctx.destination);
+        const src = ctx.createConstantSource ? ctx.createConstantSource() : ctx.createOscillator();
+        src.connect(gain);
+        src.start();
+      }
+      if (ctx.state !== "running") {
+        ctx.resume().then(() => dlog("ctx resumed"))
+                    .catch((e) => { dlog("ctx resume refused: " + e.name); diagFlush("ctx"); });
+      }
+    } catch (e) { dlog("ctx error: " + e.name); }
+  };
+  const keeperOff = (why) => {
+    clearTimeout(ctxTimer);
+    if (ctx && ctx.state === "running") {
+      ctx.suspend().catch(() => {});
+      dlog("ctx suspended: " + why);
     }
   };
-  const stopKeeper = (why) => {
-    clearTimeout(keeperTimer);
-    keeperAlive = false;
-    if (keeper && !keeper.paused) { keeper.pause(); dlog("keeper stopped: " + why); }
-    // the session is now genuinely silent — align the declared state
-    if (a.paused) try { navigator.mediaSession.playbackState = "paused"; } catch {}
-  };
-  a.addEventListener("play", startKeeper);
+  a.addEventListener("play", keeperOn);
   a.addEventListener("pause", () => {
     dlog("audio pause t=" + Math.round(a.currentTime));
-    if (!engaged || a.ended) { stopKeeper("ended"); return; }
-    clearTimeout(keeperTimer);
-    keeperTimer = setTimeout(() => stopKeeper("grace over"), KEEP_MS);
-    // flush shortly after: while the keeper holds the session alive, timers
+    if (!engaged || a.ended) { keeperOff("ended"); return; }
+    clearTimeout(ctxTimer);
+    ctxTimer = setTimeout(() => keeperOff("grace over"), KEEP_MS);
+    // flush shortly after: if the context is keeping the page alive, timers
     // still run in the background, so this beacon shows us the locked state
     setTimeout(() => diagFlush("post-pause"), 2500);
   });
-  $("pp-done").addEventListener("click", () => stopKeeper("done"));
-  window.addEventListener("pagehide", () => stopKeeper("pagehide"));
+  $("pp-done").addEventListener("click", () => keeperOff("done"));
+  window.addEventListener("pagehide", () => keeperOff("pagehide"));
 })();
 </script>
 {% endif %}
