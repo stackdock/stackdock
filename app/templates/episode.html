@@ -328,6 +328,9 @@
   // player adds its own flush points for moments that happen while hidden.
   const dlog = (m) => diag.log("player " + m);
   const diagFlush = (why) => diag.flush(why);
+  // true while the silent keepalive loop is (meant to be) playing — declared up
+  // here because the media-session block below reads it and runs first
+  let keeperAlive = false;
   a.addEventListener("error", () => dlog("audio error code=" + (a.error && a.error.code)));
   document.addEventListener("visibilitychange", () =>
     dlog("visibility -> " + (document.hidden ? "hidden" : "visible")));
@@ -363,31 +366,33 @@
     const assertSession = () => {
       ms.metadata = new MediaMetadata({
         title: box.dataset.title, artist: box.dataset.show, artwork: art });
-      ms.setActionHandler("play", () => {
-        dlog("ms action: play");
-        const p = a.play();
-        if (p && p.catch) p.catch((e) => { dlog("ms play refused: " + e.name); diagFlush("play-refused"); });
-      });
-      // While the silent keeper plays through a pause, iOS decides the session
-      // is "playing" (actual audio output beats our declared playbackState), so
-      // the lock screen shows only the ⏸ button and every tap arrives as a
-      // "pause" action — including the tap meant to RESUME (proven by device
-      // trace: two pause actions 4s apart, no play action, 1 Aug 2026). The
-      // button is a toggle, so treat pause-while-paused as play.
-      ms.setActionHandler("pause", () => {
+      // iOS keeps its own playing/paused model of the session, updated by the
+      // action it last SENT and by what it actually hears — and the silent
+      // keeper makes those disagree, so the model drifts: device traces
+      // (2 Aug 2026) show "play" arriving while audio is already playing and
+      // "pause" arriving while paused, with the icon inverting either way.
+      // The physical button is a TOGGLE, so treat every action as one: each
+      // tap flips playback no matter which icon iOS happens to be showing.
+      const msToggle = (action) => {
         if (a.paused) {
-          dlog("ms action: pause while paused -> resuming");
+          dlog("ms action: " + action + " -> play");
           const p = a.play();
           if (p && p.catch) p.catch((e) => { dlog("resume refused: " + e.name); diagFlush("resume-refused"); });
         } else {
-          dlog("ms action: pause");
+          dlog("ms action: " + action + " -> pause");
           a.pause();
         }
-      });
+      };
+      ms.setActionHandler("play", () => msToggle("play"));
+      ms.setActionHandler("pause", () => msToggle("pause"));
       ms.setActionHandler("seekbackward", () => $("pp-back").click());
       ms.setActionHandler("seekforward", () => $("pp-fwd").click());
       try { ms.setActionHandler("seekto", (d) => { a.currentTime = d.seekTime; }); } catch {}
-      try { ms.playbackState = a.paused ? "paused" : "playing"; } catch {}
+      // declare what iOS actually HEARS: while the keeper plays through a
+      // pause the session is audibly playing — declaring "paused" then makes
+      // iOS's model oscillate between our word and its ears (the inverted-icon
+      // flip-flop, 2 Aug 2026)
+      try { ms.playbackState = (a.paused && !keeperAlive) ? "paused" : "playing"; } catch {}
       positionState();
     };
     assertSession();
@@ -396,7 +401,8 @@
       positionState();
     });
     a.addEventListener("pause", () => {
-      try { ms.playbackState = "paused"; } catch {}
+      // keeper still audible -> stay "playing" (see assertSession comment)
+      try { ms.playbackState = keeperAlive ? "playing" : "paused"; } catch {}
       positionState();   // freshest position on the lock screen while paused
     });
     a.addEventListener("loadedmetadata", positionState);
@@ -448,6 +454,7 @@
   const startKeeper = () => {
     dlog("audio play t=" + Math.round(a.currentTime));
     clearTimeout(keeperTimer);
+    keeperAlive = true;
     const k = keeperEl();
     const p = k.play();
     if (p && p.then) {
@@ -465,7 +472,10 @@
   };
   const stopKeeper = (why) => {
     clearTimeout(keeperTimer);
+    keeperAlive = false;
     if (keeper && !keeper.paused) { keeper.pause(); dlog("keeper stopped: " + why); }
+    // the session is now genuinely silent — align the declared state
+    if (a.paused) try { navigator.mediaSession.playbackState = "paused"; } catch {}
   };
   a.addEventListener("play", startKeeper);
   a.addEventListener("pause", () => {
