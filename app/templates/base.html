@@ -121,6 +121,21 @@
   <main>
     {% block content %}{% endblock %}
   </main>
+  <!-- OS-style back pill: visible only in the installed app on phones (CSS
+       display-mode gate) — standalone mode has no browser chrome, so leaf
+       pages need a back affordance. history.back() when there is history,
+       else falls through to the index link. -->
+  <a class="back-pill" id="back-pill" href="/" aria-label="Back">‹ Back</a>
+  <script>
+  (function () {
+    var b = document.getElementById("back-pill");
+    if (location.pathname === "/") { b.remove(); return; }   // tabs live in the dock
+    document.body.classList.add("has-back");                 // masthead clears the pill
+    b.addEventListener("click", function (e) {
+      if (history.length > 1) { e.preventDefault(); history.back(); }
+    });
+  })();
+  </script>
   <!-- mobile bottom dock: replaces the top tab row on phones (app-style nav
        with thumb-reach targets); hidden on wide screens via CSS -->
   <nav class="dock" id="dock" aria-label="Primary">

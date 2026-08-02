@@ -29,7 +29,7 @@
 {% set pub_part = pns.s %}
 <section id="articles">
   {% if publications %}
-  <details class="filter-box"{% if active_pubs %} open{% endif %}>
+  <details class="filter-box">
     <summary><span class="fun-label">Publications</span><span class="work-label">Sources</span> <span class="count">{{ publications|length }}</span>{% if active_pubs %} · {{ active_pubs|length }} selected{% endif %}</summary>
     <div class="pub-filter">
       <a href="/?tab=text&clear=1{{ q_part }}{{ sort_part }}" class="{{ 'active' if not active_pubs }}">All</a>
@@ -192,7 +192,7 @@
 {% set show_part = sns.s %}
 <section id="audio">
   {% if episode_feeds %}
-  <details class="filter-box"{% if active_shows %} open{% endif %}>
+  <details class="filter-box">
     <summary><span class="fun-label">Shows</span><span class="work-label">Sources</span> <span class="count">{{ episode_feeds|length }}</span>{% if active_shows %} · {{ active_shows|length }} selected{% endif %}</summary>
     <div class="pub-filter">
       <a href="/?tab=audio&clear=1{{ psort_part }}" class="{{ 'active' if not active_shows }}">All</a>
