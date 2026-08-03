@@ -59,6 +59,10 @@ RADIO_PROXY_TRIES = int(os.getenv("RADIO_PROXY_TRIES", "3"))
 # How long a new song counts as "recently added" (played before the shuffled
 # catalogue, radio-style heavy rotation)
 RADIO_RECENT_HOURS = int(os.getenv("RADIO_RECENT_HOURS", "24"))
+# Spotify app credentials (developer.spotify.com -> Create app). Without them
+# playlist sync falls back to the embed page, which TRUNCATES long playlists.
+SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID", "").strip()
+SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET", "").strip()
 # Netscape cookies.txt from a youtube.com session (THROWAWAY account only).
 # OFF BY DEFAULT and measured, not assumed: cookies DO clear the bot-check, but
 # an authenticated session gets YouTube's SABR-only response — storyboards and

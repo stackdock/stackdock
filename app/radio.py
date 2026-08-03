@@ -255,16 +255,82 @@ def _download(query: str) -> dict:
     raise last_err if last_err else RuntimeError("download failed")
 
 
+_SPOTIFY_TOKEN: dict = {"value": None, "expires": 0.0}
+
+
+def _spotify_token() -> str | None:
+    """Client-credentials token (app-only, no user login). Spotify killed the
+    anonymous web-player token endpoint, so the embed page is the only no-auth
+    route — and it silently truncates long playlists (14 of a larger playlist,
+    3 Aug 2026). With SPOTIFY_CLIENT_ID/SECRET set we use the real API and get
+    everything."""
+    if not (config.SPOTIFY_CLIENT_ID and config.SPOTIFY_CLIENT_SECRET):
+        return None
+    if _SPOTIFY_TOKEN["value"] and time.time() < _SPOTIFY_TOKEN["expires"]:
+        return _SPOTIFY_TOKEN["value"]
+    try:
+        r = requests.post("https://accounts.spotify.com/api/token",
+                          data={"grant_type": "client_credentials"},
+                          auth=(config.SPOTIFY_CLIENT_ID, config.SPOTIFY_CLIENT_SECRET),
+                          timeout=20)
+        if r.status_code != 200:
+            log.warning("radio: Spotify token request failed (HTTP %s)", r.status_code)
+            return None
+        d = r.json()
+        _SPOTIFY_TOKEN.update(value=d["access_token"],
+                              expires=time.time() + float(d.get("expires_in", 3600)) - 60)
+        return _SPOTIFY_TOKEN["value"]
+    except (requests.RequestException, ValueError, KeyError) as e:
+        log.warning("radio: Spotify token error: %s", e.__class__.__name__)
+        return None
+
+
+def _spotify_api_tracks(pid: str) -> list[str] | None:
+    """Every track in the playlist via the Web API (paginated). None if the API
+    isn't usable, so the caller can fall back to the embed."""
+    token = _spotify_token()
+    if not token:
+        return None
+    out, url = [], f"https://api.spotify.com/v1/playlists/{pid}/tracks"
+    params = {"limit": 100, "offset": 0,
+              "fields": "total,next,items(track(name,artists(name)))"}
+    try:
+        while url:
+            r = requests.get(url, headers={"Authorization": f"Bearer {token}"},
+                             params=params if "offset" in str(params) else None, timeout=25)
+            if r.status_code != 200:
+                log.warning("radio: Spotify playlist %s -> HTTP %s", pid, r.status_code)
+                return None if not out else out
+            d = r.json()
+            for item in (d.get("items") or []):
+                tr = item.get("track") or {}
+                name = tr.get("name")
+                if not name:
+                    continue          # podcast episode / removed / local file
+                artists = " ".join(a.get("name", "") for a in (tr.get("artists") or []))
+                out.append(f"{name} {artists}".strip())
+            url, params = d.get("next"), None
+        log.info("radio: Spotify API returned %d track(s) for %s", len(out), pid)
+        return out
+    except (requests.RequestException, ValueError) as e:
+        log.warning("radio: Spotify API error: %s", e.__class__.__name__)
+        return out or None
+
+
 def _spotify_playlist_tracks(url: str) -> list[str]:
-    """Track queries ('title artist') from a PUBLIC Spotify playlist via the
-    no-auth embed page (__NEXT_DATA__ JSON; the embed lists up to ~100 tracks,
-    plenty for a station playlist)."""
+    """Track queries ('title artist') for a PUBLIC Spotify playlist. Prefers the
+    Web API (complete, paginated); falls back to the no-auth embed page, which
+    only exposes a truncated head of a long playlist."""
     import json as _json
 
-    pid = re.search(r"playlist/([A-Za-z0-9]+)", url)
-    if not pid:
+    m_id = re.search(r"playlist/([A-Za-z0-9]+)", url)
+    if not m_id:
         return []
-    r = requests.get(f"https://open.spotify.com/embed/playlist/{pid.group(1)}",
+    pid = m_id.group(1)
+    via_api = _spotify_api_tracks(pid)
+    if via_api is not None:
+        return via_api
+    r = requests.get(f"https://open.spotify.com/embed/playlist/{pid}",
                      timeout=20, headers={"User-Agent": "Mozilla/5.0"})
     m = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>',
                   r.text, re.S)
@@ -290,6 +356,8 @@ def _spotify_playlist_tracks(url: str) -> list[str]:
         title, artist = (e.get("title") or "").strip(), (e.get("subtitle") or "").strip()
         if title:
             out.append(f"{title} {artist}".strip())
+    log.info("radio: Spotify embed returned %d track(s) for %s (set SPOTIFY_CLIENT_ID/"
+             "SECRET for the full playlist — the embed truncates)", len(out), pid)
     return out
 
 
