@@ -930,7 +930,16 @@ def radio_page(request: Request, user=Depends(auth.current_user),
                msg: str | None = None):
     tracks = db.list_radio_tracks("ready")
     queue = [t for t in db.list_radio_tracks(None) if t["status"] != "ready"]
+    # the rotation, split into the blocks the station plays them in
+    order = radio.station_order()
+    promoted = [t for t in order if t["promoted_at"]]
+    fresh = [t for t in order if not t["promoted_at"]
+             and radio._age_hours(t["created_at"]) < config.RADIO_RECENT_HOURS]
+    catalogue = [t for t in order if not t["promoted_at"]
+                 and radio._age_hours(t["created_at"]) >= config.RADIO_RECENT_HOURS]
     return render(request, "radio.html", user=user, tracks=tracks,
+                  promoted=promoted, fresh=fresh, catalogue=catalogue,
+                  recent_hours=config.RADIO_RECENT_HOURS,
                   queue=queue, message=msg,
                   total_min=round(sum(t["duration"] or 0 for t in tracks) / 60))
 
@@ -999,6 +1008,17 @@ def radio_move(user=Depends(auth.current_user), track_id: int = Form(...),
     if dir not in ("up", "down"):
         raise HTTPException(400, "dir must be up or down")
     db.radio_move(track_id, -1 if dir == "up" else 1)
+    return RedirectResponse("/radio", status_code=303)
+
+
+@app.post("/radio/promote")
+def radio_promote(user=Depends(auth.current_user), track_id: int = Form(...),
+                  on: str = Form("1")):
+    """Pin a track to Up Next (plays before the new/catalogue blocks) or
+    release it back into rotation."""
+    if not db.get_radio_track(track_id):
+        raise HTTPException(404)
+    db.radio_promote(track_id, on == "1")
     return RedirectResponse("/radio", status_code=303)
 
 

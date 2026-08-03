@@ -20,6 +20,7 @@ import re
 import tempfile
 import threading
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
@@ -52,11 +53,40 @@ def art_for(track_id: int) -> str:
     return f"/static/radio-art/{(int(track_id) % ART_COUNT) + 1}.jpg"
 
 
+def _age_hours(iso: str | None) -> float:
+    try:
+        return (datetime.now(timezone.utc)
+                - datetime.fromisoformat(iso)).total_seconds() / 3600
+    except (TypeError, ValueError):
+        return 1e9          # unparsable -> treat as old
+
+
+def station_order() -> list:
+    """The rotation, in the order a station would run it:
+
+      1. UP NEXT — tracks members pinned (promoted_at), in pin order
+      2. NEW — added in the last RADIO_RECENT_HOURS, oldest first, so a fresh
+         submission lands at the BOTTOM of the new block and gets heavy play
+      3. THE CATALOGUE — everything older, SHUFFLED
+
+    The shuffle seed is the UTC date, so it reshuffles once a day and every
+    listener still derives the same order (the server is authoritative anyway,
+    but a stable seed keeps the timeline from jumping on every request).
+    """
+    tracks = [t for t in db.list_radio_tracks("ready") if (t["duration"] or 0) > 0]
+    promoted = [t for t in tracks if t["promoted_at"]]          # list order = position
+    rest = [t for t in tracks if not t["promoted_at"]]
+    fresh = [t for t in rest if _age_hours(t["created_at"]) < config.RADIO_RECENT_HOURS]
+    catalogue = [t for t in rest if _age_hours(t["created_at"]) >= config.RADIO_RECENT_HOURS]
+    random.Random(int(datetime.now(timezone.utc).strftime("%Y%m%d"))).shuffle(catalogue)
+    return promoted + fresh + catalogue
+
+
 def station_now() -> dict | None:
     """The SERVER decides what's on air. playhead = (wall clock + skip offset)
     modulo the station length; `cycle` counts complete passes so a skip vote
     belongs to one airing only. Returns None when there's nothing playable."""
-    tracks = [t for t in db.list_radio_tracks("ready") if (t["duration"] or 0) > 0]
+    tracks = station_order()
     if not tracks:
         return None
     total = sum(t["duration"] for t in tracks)
@@ -170,6 +200,12 @@ def _download(query: str) -> dict:
                     src = info.get("webpage_url") or info.get("original_url") or target
                     if db.radio_source_exists(src):
                         raise RuntimeError("already on the station")
+                    # same song, different YouTube upload/title — checked BEFORE
+                    # spending a download on it
+                    title = info.get("track") or info.get("title") or query
+                    artist = info.get("artist") or info.get("uploader") or ""
+                    if db.radio_title_exists(title, artist):
+                        raise RuntimeError("already on the station (same song)")
                     ydl.download([info.get("webpage_url") or target])
                 files = list(Path(tmpdir).iterdir())
                 if not files:
@@ -178,8 +214,7 @@ def _download(query: str) -> dict:
                 key = f"radio/{info['id']}.{f.suffix.lstrip('.') or 'm4a'}"
                 with open(f, "rb") as fh:
                     storage.upload_stream(fh, key, "audio/mp4")
-                return {"title": info.get("track") or info.get("title") or query,
-                        "artist": info.get("artist") or info.get("uploader") or "",
+                return {"title": title, "artist": artist,
                         "source_url": src, "audio_key": key, "duration": dur}
             except Exception as e:                            # noqa: BLE001
                 last_err = e

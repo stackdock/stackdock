@@ -59,10 +59,7 @@
   </ul>
   {% endif %}
 
-  {% if tracks %}
-  <h3 class="hub-title">On the station</h3>
-  <ul class="cards">
-    {% for t in tracks %}
+  {% macro track_row(t, block) -%}
     <li class="card" data-track-id="{{ t.id }}">
       <span class="thumb thumb-fallback">♪</span>
       <span class="card-body card-link">
@@ -72,16 +69,29 @@
           <time>{{ ((t.duration or 0) / 60) | round(1) }} min</time></span>
       </span>
       <span class="track-actions">
+        {% if block == 'up' %}
         <form method="post" action="/radio/move" class="inline-form">
           <input type="hidden" name="track_id" value="{{ t.id }}">
           <input type="hidden" name="dir" value="up">
-          <button type="submit" title="Move up"{{ ' disabled' if loop.first }}>↑</button>
+          <button type="submit" title="Earlier in Up Next"{{ ' disabled' if loop.first }}>↑</button>
         </form>
         <form method="post" action="/radio/move" class="inline-form">
           <input type="hidden" name="track_id" value="{{ t.id }}">
           <input type="hidden" name="dir" value="down">
-          <button type="submit" title="Move down"{{ ' disabled' if loop.last }}>↓</button>
+          <button type="submit" title="Later in Up Next"{{ ' disabled' if loop.last }}>↓</button>
         </form>
+        <form method="post" action="/radio/promote" class="inline-form">
+          <input type="hidden" name="track_id" value="{{ t.id }}">
+          <input type="hidden" name="on" value="0">
+          <button type="submit" title="Back into rotation">⤵</button>
+        </form>
+        {% else %}
+        <form method="post" action="/radio/promote" class="inline-form">
+          <input type="hidden" name="track_id" value="{{ t.id }}">
+          <input type="hidden" name="on" value="1">
+          <button type="submit" title="Promote to Up Next">⤴</button>
+        </form>
+        {% endif %}
         {% if user.is_admin or t.added_by == user.username %}
         <form method="post" action="/radio/delete" class="inline-form">
           <input type="hidden" name="track_id" value="{{ t.id }}">
@@ -90,9 +100,26 @@
         {% endif %}
       </span>
     </li>
-    {% endfor %}
-  </ul>
+  {%- endmacro %}
+
+  {% if promoted %}
+  <h3 class="hub-title">⤴ Up next <span class="count">{{ promoted|length }}</span></h3>
+  <p class="hint" style="margin:0">Pinned — plays before everything else, in this order.</p>
+  <ul class="cards">{% for t in promoted %}{{ track_row(t, 'up') }}{% endfor %}</ul>
   {% endif %}
+
+  {% if fresh %}
+  <h3 class="hub-title">🆕 New <span class="count">{{ fresh|length }}</span></h3>
+  <p class="hint" style="margin:0">Added in the last {{ recent_hours }}h — heavy rotation, newest at the bottom.</p>
+  <ul class="cards">{% for t in fresh %}{{ track_row(t, 'new') }}{% endfor %}</ul>
+  {% endif %}
+
+  {% if catalogue %}
+  <h3 class="hub-title">🎚 In rotation <span class="count">{{ catalogue|length }}</span></h3>
+  <p class="hint" style="margin:0">Shuffled daily, plays after the new stuff.</p>
+  <ul class="cards">{% for t in catalogue %}{{ track_row(t, 'cat') }}{% endfor %}</ul>
+  {% endif %}
+
 </section>
 
 {% if tracks %}

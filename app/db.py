@@ -108,7 +108,8 @@ CREATE TABLE IF NOT EXISTS radio_tracks (
     source_url TEXT,                   -- resolved YouTube watch URL (dedupe key)
     audio_key TEXT,                    -- R2 object
     duration REAL,                     -- seconds (the station math needs it)
-    position INTEGER,                   -- member-defined running order (NULL -> falls back to id)
+    position INTEGER,                   -- ordering within the Up Next block
+    promoted_at TEXT,                   -- non-NULL = pinned to Up Next (plays first)
     error TEXT,
     added_by TEXT,
     created_at TEXT NOT NULL
@@ -331,7 +332,8 @@ def init():
                            ("connected_accounts", "handle TEXT"),
                            ("connected_accounts", "subs_json TEXT"),
                            ("connected_accounts", "paid_json TEXT"),
-                           ("radio_tracks", "position INTEGER")]:
+                           ("radio_tracks", "position INTEGER"),
+                           ("radio_tracks", "promoted_at TEXT")]:
             try:
                 c.execute(f"ALTER TABLE {table} ADD COLUMN {col}")
             except sqlite3.OperationalError:
@@ -1037,16 +1039,69 @@ def radio_pending() -> list:
                          "ORDER BY id").fetchall()
 
 
-def radio_query_exists(query: str) -> bool:
-    """Any status counts: a failed playlist track must not re-queue forever.
-    Compared case/whitespace-insensitively so a playlist edit that only changes
-    punctuation spacing doesn't re-download the same song."""
-    norm = " ".join(query.lower().split())
+def radio_norm(text: str, drop_brackets: bool = False) -> str:
+    """Comparison key for song text. Normalization happens in PYTHON, never in
+    SQL: Spotify separates artists with a NON-BREAKING space (U+00A0), which
+    SQLite's LOWER/TRIM leave alone — so every multi-artist track slipped past
+    the old SQL dedupe and re-downloaded on each playlist sync (rows 8 & 17,
+    3 Aug 2026). NFKC folds those into plain spaces.
+    drop_brackets also removes '(Official Video)' / '[Audio]' / '| Live'
+    tails, which is what makes two YouTube titles for one song compare equal."""
+    s = unicodedata.normalize("NFKC", text or "").lower()
+    if drop_brackets:
+        s = re.sub(r"[\(\[\{].*?[\)\]\}]", " ", s)
+        s = s.split("|")[0]
+    s = re.sub(r"[^\w\s]", " ", s, flags=re.UNICODE)
+    return " ".join(s.split())
+
+
+def _radio_all_text(column: str) -> list[str]:
     with conn() as c:
-        return c.execute(
-            "SELECT 1 FROM radio_tracks WHERE LOWER(TRIM(query)) = ? "
-            "OR REPLACE(REPLACE(LOWER(TRIM(query)), '  ', ' '), '  ', ' ') = ?",
-            (norm, norm)).fetchone() is not None
+        return [r[0] for r in c.execute(
+            f"SELECT {column} FROM radio_tracks WHERE {column} IS NOT NULL")]
+
+
+def radio_query_exists(query: str) -> bool:
+    """Any status counts: a failed playlist track must not re-queue forever."""
+    norm = radio_norm(query)
+    return any(radio_norm(q) == norm for q in _radio_all_text("query"))
+
+
+def radio_title_exists(title: str, artist: str = "") -> bool:
+    """True if this song is already on the station under some other title.
+    YouTube gives the same song many titles ('X - Y', 'X - Y (Official Video)',
+    'Y'), so compare bracket-stripped keys and treat containment as a match —
+    with a length floor so short titles ('discard') can't swallow everything."""
+    key = radio_norm(f"{artist} {title}" if artist else title, drop_brackets=True)
+    bare = radio_norm(title, drop_brackets=True)
+    if not bare:
+        return False
+    with conn() as c:
+        rows = c.execute("SELECT title, artist FROM radio_tracks "
+                         "WHERE status='ready' AND title IS NOT NULL").fetchall()
+    for r in rows:
+        other = radio_norm(r["title"], drop_brackets=True)
+        other_full = radio_norm(f"{r['artist'] or ''} {r['title']}", drop_brackets=True)
+        if not other:
+            continue
+        if other == bare or other_full == key:
+            return True
+        for a, b in ((bare, other), (key, other), (bare, other_full)):
+            if len(a) >= 12 and len(b) >= 12 and (a in b or b in a):
+                return True
+    return False
+
+
+def radio_promote(track_id: int, on: bool) -> None:
+    """Pin a track to Up Next (or release it back into rotation)."""
+    with conn() as c:
+        if on:
+            nxt = c.execute("SELECT COALESCE(MAX(position), -1) + 1 p FROM radio_tracks "
+                            "WHERE promoted_at IS NOT NULL").fetchone()["p"]
+            c.execute("UPDATE radio_tracks SET promoted_at=?, position=? WHERE id=?",
+                      (now_iso(), nxt, track_id))
+        else:
+            c.execute("UPDATE radio_tracks SET promoted_at=NULL WHERE id=?", (track_id,))
 
 
 def radio_source_exists(source_url: str) -> bool:

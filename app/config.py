@@ -56,6 +56,9 @@ PLEX_PASSWORD = os.getenv("PLEX_PASSWORD", "")
 RADIO_MAX_MINUTES = int(os.getenv("RADIO_MAX_MINUTES", "15"))
 RADIO_POLL_MINUTES = int(os.getenv("RADIO_POLL_MINUTES", "5"))
 RADIO_PROXY_TRIES = int(os.getenv("RADIO_PROXY_TRIES", "3"))
+# How long a new song counts as "recently added" (played before the shuffled
+# catalogue, radio-style heavy rotation)
+RADIO_RECENT_HOURS = int(os.getenv("RADIO_RECENT_HOURS", "24"))
 # Netscape cookies.txt from a youtube.com session (THROWAWAY account only).
 # OFF BY DEFAULT and measured, not assumed: cookies DO clear the bot-check, but
 # an authenticated session gets YouTube's SABR-only response — storyboards and

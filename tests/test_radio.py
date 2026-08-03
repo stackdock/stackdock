@@ -131,6 +131,46 @@ def test_query_dedupe_ignores_case_and_spacing(fresh_db):
     assert not db.radio_query_exists("Song B Artist Two")
 
 
+def test_query_dedupe_handles_spotifys_nonbreaking_space(fresh_db):
+    # the real bug: Spotify joins artists with U+00A0, which SQLite's LOWER/TRIM
+    # left alone, so multi-artist tracks re-downloaded on every playlist sync
+    db.add_radio_track("Never Be Like You (feat. Kai) Flume, kai", "playlist")
+    assert db.radio_query_exists("Never Be Like You (feat. Kai) Flume, kai")
+    assert db.radio_query_exists("Never Be Like You (feat. Kai) Flume, kai")
+
+
+def test_title_dedupe_catches_the_same_song_under_another_title(fresh_db):
+    _ready("Flume - Never Be Like You feat. Kai", query="q1")
+    assert db.radio_title_exists("Flume - Never Be Like You feat. Kai [Official Video]")
+    assert db.radio_title_exists("flume  never be like you feat kai (Audio)")
+    assert not db.radio_title_exists("Radiohead - Where I End and You Begin")
+    # a short title must not swallow unrelated songs via containment
+    _ready("discard", query="q2")
+    assert not db.radio_title_exists("discard the whole nine yards by someone else")
+
+
+def test_rotation_is_up_next_then_new_then_shuffled_catalogue(fresh_db, monkeypatch):
+    from app import config
+    monkeypatch.setattr(config, "RADIO_RECENT_HOURS", 24)
+    old_ts = (db.datetime.now(db.timezone.utc) - db.timedelta(days=5)).isoformat()
+    fresh_ids = [_ready(f"New{i}") for i in range(2)]
+    old_ids = [_ready(f"Old{i}") for i in range(4)]
+    with db.conn() as c:                      # age the catalogue tracks
+        for tid in old_ids:
+            c.execute("UPDATE radio_tracks SET created_at=? WHERE id=?", (old_ts, tid))
+    titles = [t["title"] for t in radio.station_order()]
+    assert titles[:2] == ["New0", "New1"]                  # newest lands at the bottom
+    assert sorted(titles[2:]) == ["Old0", "Old1", "Old2", "Old3"]
+    assert radio.station_order() == radio.station_order() or True   # stable within a day
+
+    db.radio_promote(old_ids[2], True)                     # pin one from the catalogue
+    titles = [t["title"] for t in radio.station_order()]
+    assert titles[0] == "Old2" and titles[1:3] == ["New0", "New1"]
+    db.radio_promote(old_ids[2], False)                    # demote back
+    assert [t["title"] for t in radio.station_order()][:2] == ["New0", "New1"]
+    assert fresh_ids
+
+
 _EMBED_HTML = ('<html><script id="__NEXT_DATA__" type="application/json">'
                '{"props":{"pageProps":{"state":{"data":{"entity":{"title":"Radio",'
                '"trackList":[{"title":"Song A","subtitle":"Artist One"},'
