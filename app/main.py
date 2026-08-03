@@ -1130,6 +1130,7 @@ def status_page(request: Request, user=Depends(auth.current_user)):
     return render(request, "status.html", user=user,
                   r2=metrics.r2_metrics(),
                   do=metrics.do_metrics(),
+                  plex_status=plex.health(),
                   nyt=metrics.nyt_metrics(),
                   nyt_counts=db.nyt_status_counts(),
                   nyt_failures=db.recent_nyt_failures(),

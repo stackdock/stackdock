@@ -14,29 +14,81 @@ Every call soft-fails: an unreachable server / expired share raises PlexError,
 which the route renders as a message rather than a 500.
 """
 import logging
+import threading
 import time
 from urllib.parse import quote, urlencode
 
 import requests
 
-from . import config
+from . import config, db
 
 log = logging.getLogger("stackdock.plex")
 
 TIMEOUT = 15
 _CACHE: dict[str, tuple[float, object]] = {}
 CACHE_TTL = 120        # a library listing is cheap but the server is someone's home box
+_REFRESH_LOCK = threading.Lock()
 
 
 class PlexError(RuntimeError):
     pass
 
 
+def _token() -> str:
+    """The DB-stored token (written by the auto-refresher) wins over the .env
+    seed — the container can't rewrite .env, so refreshed tokens live in SQLite."""
+    return db.get_plex_token() or config.PLEX_TOKEN
+
+
 def configured() -> bool:
-    return bool(config.PLEX_URL and config.PLEX_TOKEN)
+    return bool(config.PLEX_URL and _token())
 
 
-def _get(path: str, params: dict | None = None, cache: bool = True):
+def _refresh_token() -> bool:
+    """Mint a fresh PER-SERVER token via a plex.tv sign-in (PLEX_EMAIL/PASSWORD)
+    and persist it. The password is only ever read from the environment and is
+    never logged; only the derived token is stored. A shared (owned=False)
+    server rejects plain account tokens, so the resources[].accessToken matching
+    PLEX_SERVER_ID is the credential that actually works."""
+    if not (config.PLEX_EMAIL and config.PLEX_PASSWORD and config.PLEX_SERVER_ID):
+        return False
+    with _REFRESH_LOCK:
+        try:
+            r = requests.post(
+                "https://plex.tv/users/sign_in.json",
+                headers={"X-Plex-Client-Identifier": "stackdock-server",
+                         "X-Plex-Product": "Stackdock", "X-Plex-Version": "1.0",
+                         "Accept": "application/json"},
+                data={"user[login]": config.PLEX_EMAIL,
+                      "user[password]": config.PLEX_PASSWORD},
+                timeout=20)
+            acct = ((r.json().get("user") or {}).get("authToken")
+                    if r.status_code < 300 else None)
+            if not acct:
+                log.warning("Plex token refresh: plex.tv sign-in failed (HTTP %s)",
+                            r.status_code)
+                return False
+            rr = requests.get(
+                "https://plex.tv/api/v2/resources", params={"includeHttps": 1},
+                headers={"X-Plex-Token": acct, "Accept": "application/json",
+                         "X-Plex-Client-Identifier": "stackdock-server"},
+                timeout=20)
+            for res in (rr.json() if rr.status_code == 200 else []):
+                if (res.get("clientIdentifier") == config.PLEX_SERVER_ID
+                        and res.get("accessToken")):
+                    db.set_plex_token(res["accessToken"])
+                    log.info("Plex per-server token refreshed.")
+                    return True
+            log.warning("Plex token refresh: server not in this account's resources "
+                        "(share revoked?)")
+            return False
+        except (requests.RequestException, ValueError) as e:
+            log.warning("Plex token refresh failed: %s", e.__class__.__name__)
+            return False
+
+
+def _get(path: str, params: dict | None = None, cache: bool = True,
+         _retried: bool = False):
     if not configured():
         raise PlexError("Plex isn't configured (PLEX_URL / PLEX_TOKEN).")
     key = path + "?" + urlencode(sorted((params or {}).items()))
@@ -47,13 +99,16 @@ def _get(path: str, params: dict | None = None, cache: bool = True):
     url = config.PLEX_URL.rstrip("/") + path
     try:
         r = requests.get(url, params=params or {}, timeout=TIMEOUT,
-                         headers={"X-Plex-Token": config.PLEX_TOKEN,
+                         headers={"X-Plex-Token": _token(),
                                   "Accept": "application/json"})
     except requests.RequestException as e:
         raise PlexError(f"couldn't reach the Plex server ({e.__class__.__name__})") from e
     if r.status_code == 401:
+        # stale/expired token: mint a fresh one from the login creds and retry ONCE
+        if not _retried and _refresh_token():
+            return _get(path, params, cache=cache, _retried=True)
         raise PlexError("Plex rejected the token — the share may have been revoked; "
-                        "re-run scripts/plex_token.sh")
+                        "re-run scripts/plex_token.sh or set PLEX_EMAIL/PLEX_PASSWORD")
     if r.status_code != 200:
         raise PlexError(f"Plex returned HTTP {r.status_code}")
     try:
@@ -63,6 +118,23 @@ def _get(path: str, params: dict | None = None, cache: bool = True):
     if cache:
         _CACHE[key] = (time.time(), data)
     return data
+
+
+def health() -> dict:
+    """Soft status snapshot for /status — never raises."""
+    out = {"configured": configured(), "ok": False, "server": None, "libraries": 0,
+           "auto_refresh": bool(config.PLEX_EMAIL and config.PLEX_PASSWORD
+                                and config.PLEX_SERVER_ID),
+           "error": None}
+    if not out["configured"]:
+        return out
+    try:
+        libs = libraries()
+        root = _get("/")
+        out.update(ok=True, libraries=len(libs), server=root.get("friendlyName"))
+    except PlexError as e:
+        out["error"] = str(e)
+    return out
 
 
 def _item(m: dict) -> dict:
@@ -142,7 +214,10 @@ def art(thumb_path: str, width: int | None = None) -> tuple[bytes, str]:
         url, params = base + thumb_path, {}
     try:
         r = requests.get(url, params=params, timeout=TIMEOUT,
-                         headers={"X-Plex-Token": config.PLEX_TOKEN})
+                         headers={"X-Plex-Token": _token()})
+        if r.status_code == 401 and _refresh_token():
+            r = requests.get(url, params=params, timeout=TIMEOUT,
+                             headers={"X-Plex-Token": _token()})
         r.raise_for_status()
     except requests.RequestException as e:
         raise PlexError("couldn't fetch artwork") from e
@@ -200,7 +275,7 @@ def stream_url(rating_key: str, session: str) -> str:
     info = stream_info(rating_key)
     base = config.PLEX_URL.rstrip("/")
     if info["direct"] and info.get("part_key"):
-        return f"{base}{info['part_key']}?X-Plex-Token={config.PLEX_TOKEN}"
+        return f"{base}{info['part_key']}?X-Plex-Token={_token()}"
     q = urlencode({
         "path": f"/library/metadata/{rating_key}",
         "mediaIndex": 0, "partIndex": 0, "protocol": "hls",
@@ -210,7 +285,7 @@ def stream_url(rating_key: str, session: str) -> str:
         # REQUIRED: without a platform the server can't pick a client profile
         # and 400s the transcode start (verified live, Aug 2026)
         "X-Plex-Platform": "Chrome",
-        "X-Plex-Token": config.PLEX_TOKEN,
+        "X-Plex-Token": _token(),
         "session": session,
     })
     return f"{base}/video/:/transcode/universal/start.m3u8?{q}"

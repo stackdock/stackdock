@@ -96,6 +96,15 @@ CREATE TABLE IF NOT EXISTS mde_auth (
     updated_at TEXT
 );
 
+-- Current Plex per-server access token. Lives in the DB (not .env) because the
+-- auto-refresher runs inside the container, which can't rewrite .env; .env's
+-- PLEX_TOKEN is the seed/fallback.
+CREATE TABLE IF NOT EXISTS plex_auth (
+    id INTEGER PRIMARY KEY CHECK (id = 1),   -- single row
+    token TEXT,
+    updated_at TEXT
+);
+
 -- Shadow index of every episode ever seen in the mde.tv catalogue, so the hourly
 -- refresh can tell what's NEW (to Discord-ping it once). NOT the browse UI — the
 -- /mde tab still lists live from the API; this only drives new-episode pings.
@@ -969,6 +978,20 @@ def delete_account(account_id: int, user_id: int) -> bool:
             (account_id, user_id),
         )
         return cur.rowcount == 1
+
+
+def get_plex_token() -> str | None:
+    with conn() as c:
+        row = c.execute("SELECT token FROM plex_auth WHERE id = 1").fetchone()
+        return row["token"] if row else None
+
+
+def set_plex_token(token: str) -> None:
+    with conn() as c:
+        c.execute("""INSERT INTO plex_auth (id, token, updated_at) VALUES (1, ?, ?)
+                     ON CONFLICT(id) DO UPDATE SET token = excluded.token,
+                                                   updated_at = excluded.updated_at""",
+                  (token, now_iso()))
 
 
 def patreon_campaign_needs_backfill(campaign_id: str, max_age_days: int) -> bool:

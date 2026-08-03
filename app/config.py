@@ -45,8 +45,12 @@ except json.JSONDecodeError:
 # PLEX_TOKEN must be the PER-SERVER access token when the server is shared with
 # the account rather than owned by it (scripts/plex_token.sh does the exchange).
 PLEX_URL = os.getenv("PLEX_URL", "").strip()
-PLEX_TOKEN = os.getenv("PLEX_TOKEN", "").strip()
-PLEX_SERVER_ID = os.getenv("PLEX_SERVER_ID", "").strip()   # for app.plex.tv deep links
+PLEX_TOKEN = os.getenv("PLEX_TOKEN", "").strip()           # seed; refreshed copy lives in DB
+PLEX_SERVER_ID = os.getenv("PLEX_SERVER_ID", "").strip()   # deep links + token refresh matching
+# Optional: with these set, a 401 from the server triggers an automatic plex.tv
+# sign-in that mints a fresh per-server token (stored in the DB, never logged).
+PLEX_EMAIL = os.getenv("PLEX_EMAIL", "").strip()
+PLEX_PASSWORD = os.getenv("PLEX_PASSWORD", "")
 
 # ---- Article feeds (any blog RSS/Atom with full-text items, e.g. a Hugo site) ----
 # JSON object: {"Publication display name": "https://...feed-url..."}

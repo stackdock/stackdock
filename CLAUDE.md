@@ -92,6 +92,11 @@ app/plex.py              Plex tab (/plex): libraries, recently-added, search,
                          401s the plain account token, scripts/plex_token.sh exchanges it).
                          Posters proxy through /plex/art (path-guarded to /library/*,
                          &w= uses Plex's photo transcoder to downscale).
+                         /status has a Plex panel (plex.health(), soft). Token AUTO-REFRESH:
+                         on 401, plex.tv sign-in with PLEX_EMAIL/PLEX_PASSWORD (env only, never
+                         logged) -> per-server accessToken matching PLEX_SERVER_ID -> stored in
+                         the plex_auth DB table (container can't rewrite .env; DB token wins
+                         over the .env seed), then the request retries once.
 .github/workflows/deploy.yml SSH deploy: reset to origin/main, compose up, health check
 docker-compose.yml       stackdock (internal :8000) + caddy (80/443, auto-HTTPS) + uptime-kuma (status.<domain>, external healthz monitor — first visit creates its admin; point a monitor at /healthz and wire the Discord webhook in its UI)
 ```

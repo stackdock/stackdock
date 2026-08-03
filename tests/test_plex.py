@@ -18,7 +18,8 @@ class _Resp:
 
 
 @pytest.fixture(autouse=True)
-def plex_env(monkeypatch):
+def plex_env(fresh_db, monkeypatch):
+    # fresh_db: _token() consults the plex_auth table on every call now
     monkeypatch.setattr(config, "PLEX_URL", "https://plex.test:32400")
     monkeypatch.setattr(config, "PLEX_TOKEN", "tok")
     monkeypatch.setattr(config, "PLEX_SERVER_ID", "machine123")
@@ -85,6 +86,42 @@ def test_search_filters_to_library_types(monkeypatch):
     items = plex.search("a")
     assert [i["title"] for i in items] == ["A Movie", "An Episode"]
     assert items[1]["sxe"] == "S02E05"
+
+
+def test_401_triggers_login_refresh_and_retry(monkeypatch):
+    # stale token -> plex.tv sign-in -> per-server accessToken stored -> retried OK
+    monkeypatch.setattr(config, "PLEX_EMAIL", "m@x.test")
+    monkeypatch.setattr(config, "PLEX_PASSWORD", "hunter2")
+    monkeypatch.setattr(config, "PLEX_SERVER_ID", "machine123")
+    calls = {"gets": []}
+
+    def fake_get(url, **kw):
+        calls["gets"].append(url)
+        token = (kw.get("headers") or {}).get("X-Plex-Token")
+        if "plex.tv/api/v2/resources" in url:
+            return _Resp([{"clientIdentifier": "machine123", "accessToken": "fresh-tok"}])
+        if token == "fresh-tok":
+            return _Resp({"MediaContainer": {"Directory": [{"key": "1", "title": "Movies"}]}})
+        return _Resp(status=401)
+
+    def fake_post(url, **kw):
+        assert "sign_in" in url
+        assert kw["data"]["user[password]"] == "hunter2"
+        return _Resp({"user": {"authToken": "acct-tok"}})
+
+    monkeypatch.setattr(plex.requests, "get", fake_get)
+    monkeypatch.setattr(plex.requests, "post", fake_post)
+    libs = plex.libraries()
+    assert libs[0]["title"] == "Movies"
+    from app import db
+    assert db.get_plex_token() == "fresh-tok"       # persisted for future requests
+    # and a refresh that can't find the server fails without looping
+    plex._CACHE.clear()
+    db.set_plex_token("")
+    monkeypatch.setattr(config, "PLEX_SERVER_ID", "other-machine")
+    monkeypatch.setattr(config, "PLEX_TOKEN", "stale")
+    with pytest.raises(plex.PlexError):
+        plex.libraries()
 
 
 def test_neighbors_finds_prev_next_within_season(monkeypatch):

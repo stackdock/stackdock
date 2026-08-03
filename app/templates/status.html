@@ -32,6 +32,20 @@
 </section>
 
 <section>
+  <h2>Plex</h2>
+  <ul class="rows">
+    {% if not plex_status.configured %}
+      <li><span class="spine">plex</span><span class="row-title">Not configured — set <code>PLEX_URL</code> + <code>PLEX_TOKEN</code> in .env</span><span></span></li>
+    {% elif not plex_status.ok %}
+      <li><span class="spine">plex</span><span class="row-title">❌ {{ plex_status.error }}</span><span></span></li>
+    {% else %}
+      <li><span class="spine">server</span><span class="row-title">✅ {{ plex_status.server or "reachable" }} · {{ plex_status.libraries }} libraries</span><span></span></li>
+    {% endif %}
+    <li><span class="spine">token</span><span class="row-title">{{ "✅ auto-refresh on 401" if plex_status.auto_refresh else "⚠️ static — expires whenever Plex rotates it (set PLEX_EMAIL/PLEX_PASSWORD to auto-refresh)" }}</span><span></span></li>
+  </ul>
+</section>
+
+<section>
   <h2>DigitalOcean droplet</h2>
   <ul class="rows">
     {% if not do.configured %}
