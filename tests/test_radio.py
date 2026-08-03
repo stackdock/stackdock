@@ -117,6 +117,22 @@ def test_playing_a_queued_track_pops_it_off_the_queue(fresh_db, monkeypatch):
     assert db.get_radio_track(a)["promoted_at"]               # A still queued
 
 
+def test_the_queue_plays_straight_through_without_ping_ponging(fresh_db, monkeypatch):
+    # regression: retiring the finished track BEFORE picking its successor moved
+    # it into the shuffled rotation first, so "the next track" was read off its
+    # new position — the station bounced between two songs
+    ids = [_ready(f"T{i}") for i in range(4)]
+    clock = {"t": 5000.0}
+    monkeypatch.setattr(radio.time, "time", lambda: clock["t"])
+    played = []
+    for _ in range(4):
+        played.append(radio.station_now()["track"]["title"])
+        clock["t"] += 101                     # let the current track finish
+    assert played == ["T0", "T1", "T2", "T3"]  # queue order, each exactly once
+    assert len(set(played)) == 4
+    assert ids
+
+
 def test_vote_skip_advances_the_station_for_everyone(fresh_db, monkeypatch):
     for t in ("A", "B", "C"):
         _ready(t)

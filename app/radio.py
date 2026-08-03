@@ -134,11 +134,18 @@ def station_now() -> dict | None:
             elapsed = now_ts - started
             if elapsed < cur["duration"]:
                 break
-            db.radio_mark_aired(cur["id"])        # graduates + un-pins
-            order = station_order()               # order may have just changed
+            # Pick the successor from the order the finished track is STILL in.
+            # Retiring it first would move it out of the queue and into the
+            # shuffled rotation, so "the track after it" would be computed
+            # against its new, unrelated position — which ping-ponged the
+            # station between two songs (3 Aug 2026).
+            nxt = _next_after(order, cur["id"])
+            db.radio_mark_aired(cur["id"])        # now retire it (queue -> rotation)
+            order = station_order()
             if not order:
                 return None
-            nxt = _next_after(order, cur["id"])
+            if nxt["id"] not in [t["id"] for t in order]:   # deleted meanwhile
+                nxt = order[0]
             started, cycle = started + cur["duration"], cycle + 1
             cur = nxt
             db.radio_set_state(cur["id"], started, cycle)
@@ -160,10 +167,12 @@ def station_skip() -> None:
         if not order:
             return
         st = db.radio_get_state()
+        nxt = _next_after(order, st["track_id"])   # successor first (see station_now)
         if st["track_id"]:
             db.radio_mark_aired(st["track_id"])
-            order = station_order() or order
-        nxt = _next_after(order, st["track_id"])
+            fresh = station_order()
+            if fresh and nxt["id"] not in [t["id"] for t in fresh]:
+                nxt = fresh[0]
         db.radio_set_state(nxt["id"], time.time(), st["cycle"] + 1)
 
 
