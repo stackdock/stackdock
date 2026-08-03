@@ -7,21 +7,49 @@ from app import db, radio
 
 
 def test_target_youtube_urls_pass_through():
-    assert radio._target("https://www.youtube.com/watch?v=abc") == "https://www.youtube.com/watch?v=abc"
-    assert radio._target("https://youtu.be/abc") == "https://youtu.be/abc"
-    assert radio._target("https://music.youtube.com/watch?v=abc").startswith("https://music.")
+    # a direct link means "play exactly this" — no match text, nothing to second-guess
+    assert radio._target("https://www.youtube.com/watch?v=abc") == (
+        "https://www.youtube.com/watch?v=abc", None)
+    assert radio._target("https://youtu.be/abc")[1] is None
+    assert radio._target("https://music.youtube.com/watch?v=abc")[0].startswith("https://music.")
 
 
 def test_target_text_becomes_search():
-    assert radio._target("purple rain prince") == f"ytsearch{radio.SEARCH_RESULTS}:purple rain prince"
+    assert radio._target("purple rain prince") == (
+        f"ytsearch{radio.SEARCH_RESULTS}:purple rain prince", "purple rain prince")
 
 
 def test_target_foreign_url_uses_page_title(monkeypatch):
     monkeypatch.setattr(radio, "_og_title", lambda u: "Song Name — Artist")
-    assert radio._target("https://open.spotify.com/track/xyz") == f"ytsearch{radio.SEARCH_RESULTS}:Song Name — Artist"
+    assert radio._target("https://open.spotify.com/track/xyz") == (
+        f"ytsearch{radio.SEARCH_RESULTS}:Song Name — Artist", "Song Name — Artist")
     monkeypatch.setattr(radio, "_og_title", lambda u: None)
     with pytest.raises(RuntimeError, match="paste the song name"):
         radio._target("https://open.spotify.com/track/xyz")
+
+
+def test_a_spotify_link_is_matched_on_the_song_not_the_url(fresh_db, monkeypatch):
+    # regression: relevance compared candidates against the raw URL, so every
+    # link was rejected with "search hit doesn't match the request"
+    monkeypatch.setattr(radio, "_og_title", lambda u: "Try Hard Fool The Growlers")
+    entries = [{"id": "hit", "duration": 200, "title": "The Growlers - Try Hard Fool",
+                "uploader": "The Growlers", "webpage_url": "https://yt/hit"}]
+    monkeypatch.setattr(radio, "_proxy", lambda: None)
+    monkeypatch.setattr(radio.storage, "upload_stream", lambda *a, **k: None)
+    import yt_dlp
+    monkeypatch.setattr(yt_dlp, "YoutubeDL", _fake_ydl_factory(entries))
+    out = radio._download("https://open.spotify.com/track/2RO4CbCaSq8vjrUOegjhyg?si=x")
+    assert out["source_url"] == "https://yt/hit"
+    assert out["title"] == "Try Hard Fool" and out["artist"] == "The Growlers"
+
+
+def test_page_title_picks_up_the_artist_from_og_description(monkeypatch):
+    class R:
+        text = ('<meta property="og:title" content="Try Hard Fool"/>'
+                '<meta property="og:description" content="The Growlers &#183; Natural Affair &#183; Song &#183; 2019"/>')
+    monkeypatch.setattr(radio.requests, "get", lambda *a, **k: R())
+    # a bare track name matches far too loosely, so the artist joins the query
+    assert radio._og_title("https://open.spotify.com/track/x") == "Try Hard Fool The Growlers"
 
 
 class _FakeYDL:

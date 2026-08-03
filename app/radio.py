@@ -254,29 +254,54 @@ def _is_url(s: str) -> bool:
 
 
 def _og_title(url: str) -> str | None:
-    """Best-effort page title for non-YouTube links (Spotify/SoundCloud/etc.
-    expose og:title), so a pasted link becomes a usable search query."""
+    """Search text for a non-YouTube link. Spotify (and most music sites) put
+    the track in og:title and the artist FIRST in og:description
+    ("The Growlers · Natural Affair · Song · 2019"), so both go into the query —
+    a bare track name matches far too loosely."""
     try:
         r = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
-        m = (re.search(r'<meta[^>]+property="og:title"[^>]+content="([^"]+)"', r.text)
-             or re.search(r"<title[^>]*>([^<]+)</title>", r.text))
-        return html.unescape(m.group(1)).strip() if m else None
+        body = r.text
+        m = (re.search(r'<meta[^>]+property="og:title"[^>]+content="([^"]+)"', body)
+             or re.search(r"<title[^>]*>([^<]+)</title>", body))
+        if not m:
+            return None
+        title = html.unescape(m.group(1)).strip()
+        d = re.search(r'<meta[^>]+property="og:description"[^>]+content="([^"]+)"', body)
+        artist = ""
+        if d:
+            # unescape FIRST: the separator is often served as &#183;, and
+            # checking the raw text would silently drop the artist
+            desc = html.unescape(d.group(1))
+            for sep in ("·", "•", "—"):
+                if sep in desc:
+                    artist = desc.split(sep)[0].strip()
+                    break
+        if artist and artist.lower() not in title.lower():
+            return f"{title} {artist}"
+        return title
     except requests.RequestException:
         return None
 
 
-def _target(query: str) -> str:
-    """What we hand yt-dlp."""
+def _target(query: str) -> tuple[str, str | None]:
+    """(what we hand yt-dlp, text to match hits against).
+
+    The match text is NOT the raw submission: for a link it's the resolved
+    song name, since comparing a candidate against 'https://open.spotify.com/
+    track/2RO4...' can never match and rejected every link (3 Aug 2026). A
+    direct YouTube link returns None — the member named that exact video, so
+    there is nothing to second-guess.
+    """
     q = query.strip()
     if _is_url(q):
         host = q.split("/")[2].lower().removeprefix("www.")
         if any(host == h or host.endswith("." + h) for h in _YT_HOSTS):
-            return q
+            return q, None
         title = _og_title(q)
         if not title:
             raise RuntimeError("couldn't read a title from that link — paste the song name instead")
-        return f"ytsearch{SEARCH_RESULTS}:{title}"
-    return f"ytsearch{SEARCH_RESULTS}:{q}"
+        return f"ytsearch{SEARCH_RESULTS}:{title}", title
+    return f"ytsearch{SEARCH_RESULTS}:{q}", q
 
 
 def _proxy() -> str | None:
@@ -336,7 +361,8 @@ def _relevant(query: str, info: dict) -> bool:
     return hits >= max(2, round(len(want) * 0.6)) or hits == len(want)
 
 
-def _try_fetch(ydl, url: str, query: str, tmpdir: str) -> dict:
+def _try_fetch(ydl, url: str, query: str, tmpdir: str,
+               match_text: str | None) -> dict:
     """Fully resolve + download ONE candidate URL. Raises on any problem —
     including the age gate, which is what makes the caller try the next hit."""
     info = ydl.extract_info(url, download=False)
@@ -344,7 +370,7 @@ def _try_fetch(ydl, url: str, query: str, tmpdir: str) -> dict:
     cap = config.RADIO_MAX_MINUTES * 60
     if dur > cap:
         raise RuntimeError(f"too long ({round(dur / 60)} min; cap is {config.RADIO_MAX_MINUTES})")
-    if not _relevant(query, info):
+    if match_text and not _relevant(match_text, info):
         raise RuntimeError("search hit doesn't match the request")
     src = info.get("webpage_url") or url
     if db.radio_source_exists(src):
@@ -380,7 +406,7 @@ def _download(query: str) -> dict:
     """
     import yt_dlp
 
-    target = _target(query)
+    target, match_text = _target(query)
     cap = config.RADIO_MAX_MINUTES * 60
     searching = target.startswith("ytsearch")
 
@@ -430,7 +456,8 @@ def _download(query: str) -> dict:
     last_err = None
     for i, cand in enumerate(candidates):
         try:
-            return with_retries(lambda ydl, tmpdir, u=cand: _try_fetch(ydl, u, query, tmpdir))
+            return with_retries(
+                lambda ydl, tmpdir, u=cand: _try_fetch(ydl, u, query, tmpdir, match_text))
         except Exception as e:                   # noqa: BLE001
             last_err = e
             msg = str(e).lower()
