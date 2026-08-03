@@ -56,11 +56,14 @@ PLEX_PASSWORD = os.getenv("PLEX_PASSWORD", "")
 RADIO_MAX_MINUTES = int(os.getenv("RADIO_MAX_MINUTES", "15"))
 RADIO_POLL_MINUTES = int(os.getenv("RADIO_POLL_MINUTES", "5"))
 RADIO_PROXY_TRIES = int(os.getenv("RADIO_PROXY_TRIES", "3"))
-# Netscape cookies.txt exported from a youtube.com browser session (use a
-# THROWAWAY Google account). Beats the bot-check without burning proxy traffic;
-# lives in the data volume so it survives deploys and yt-dlp can rewrite it
-# when YouTube rotates cookie values.
+# Netscape cookies.txt from a youtube.com session (THROWAWAY account only).
+# OFF BY DEFAULT and measured, not assumed: cookies DO clear the bot-check, but
+# an authenticated session gets YouTube's SABR-only response — storyboards and
+# ZERO audio formats, with or without a proxy (probed live 3 Aug 2026). The
+# anonymous-through-residential-proxy path is the one that actually downloads.
+# Flip RADIO_USE_COOKIES=1 to re-test if yt-dlp gains SABR support.
 RADIO_COOKIES_FILE = os.getenv("RADIO_COOKIES_FILE", str(DATA_DIR / "youtube-cookies.txt"))
+RADIO_USE_COOKIES = os.getenv("RADIO_USE_COOKIES", "0") == "1"
 # Public Spotify playlists to mirror onto the station (JSON list of URLs)
 try:
     RADIO_PLAYLISTS: list[str] = json.loads(os.getenv("RADIO_PLAYLISTS", "[]"))
