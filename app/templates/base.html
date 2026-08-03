@@ -102,15 +102,18 @@
   <header class="masthead">
     <a class="back-pill" id="back-pill" href="/" aria-label="Back">‹</a>
     <a class="wordmark" href="/"><img class="brand-chud" src="/static/wojak-figure.svg" alt="">{{ site_title }}</a>
+    {% if user is defined and user %}
+    <button id="nav-burger" aria-label="Menu" aria-expanded="false">☰</button>
+    {% endif %}
     <nav>
       {% if user is defined and user %}
-        <a href="/"><span class="fun-label">Articles</span><span class="work-label">Documents</span></a>
-        <a href="/?tab=audio"><span class="fun-label">Podcasts</span><span class="work-label">Briefings</span></a>
+        <a href="/" class="dock-dup"><span class="fun-label">Articles</span><span class="work-label">Documents</span></a>
+        <a href="/?tab=audio" class="dock-dup"><span class="fun-label">Podcasts</span><span class="work-label">Briefings</span></a>
         <a href="/nyt"><span class="fun-label">NYT</span><span class="work-label">Wire</span></a>
         <a href="/youtube"><span class="fun-label">YouTube</span><span class="work-label">Video</span></a>
         <a href="/mde"><span class="fun-label">mde.tv</span><span class="work-label">Archive</span></a>
         <a href="/plex">Plex</a>
-        <a href="/offline" title="Saved for offline">📦 <span class="fun-label">Saved</span><span class="work-label">Offline</span></a>
+        <a href="/offline" title="Saved for offline" class="dock-dup">📦 <span class="fun-label">Saved</span><span class="work-label">Offline</span></a>
         <a href="/accounts">Accounts</a>
         <a href="/help"><span class="fun-label">Help</span><span class="work-label">Docs</span></a>
         <a href="/status">Status</a>
@@ -160,6 +163,16 @@
   </select>
 <script>
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
+
+// mobile ☰: the masthead nav collapses on phones (the dock covers primary nav)
+(function () {
+  var b = document.getElementById("nav-burger");
+  if (!b) return;
+  b.addEventListener("click", function () {
+    var open = document.body.classList.toggle("nav-open");
+    b.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+})();
 
 // diag flush hooks — registered after page scripts so their own visibility
 // logging lands in the ring before it ships

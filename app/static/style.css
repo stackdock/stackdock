@@ -241,6 +241,23 @@ footer {
   border-radius: 8px; border: 1px solid var(--rule);
 }
 
+/* ---------- collapsed mobile header ---------- */
+#nav-burger { display: none; }
+@media (max-width: 640px) {
+  /* the dock owns primary nav on phones: masthead collapses to wordmark + ☰,
+     and the dock-duplicated links (Articles/Podcasts/Saved) vanish entirely */
+  #nav-burger {
+    display: inline-flex; align-items: center; justify-content: center;
+    align-self: center; margin-left: auto; margin-right: 4.4rem; /* clear the theme picker */
+    width: 40px; height: 40px; font-size: 1.15rem; cursor: pointer;
+    color: var(--ink); background: var(--panel);
+    border: 1px solid var(--rule); border-radius: 8px;
+  }
+  .masthead nav { display: none; }
+  body.nav-open .masthead nav { display: flex; }
+  .masthead nav .dock-dup { display: none; }
+}
+
 /* ---------- OS-style back button (installed app on phones only) ----------
    Lives IN the masthead flow (first element, before the wordmark) — nothing
    floats and nothing shifts; it scrolls away with the header like a native
