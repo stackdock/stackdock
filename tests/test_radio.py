@@ -496,6 +496,33 @@ def test_radio_page_renders_both_blocks(client, monkeypatch):
     assert queued and played
 
 
+def test_now_endpoint_ships_the_live_queue(client, monkeypatch):
+    from app import auth
+    db.create_user("m", auth.hash_password("pw12345678"), is_admin=True)
+    client.post("/login", data={"username": "m", "password": "pw12345678"})
+    monkeypatch.setattr(radio.storage, "url_for", lambda k, **kw: "https://r2/" + k)
+    playing, queued = _ready("Playing"), _ready("Queued")
+    body = client.get("/radio/now").json()
+    assert body["playing"]["title"] == "Playing"
+    # the on-air track is not listed as upcoming; the queued one is
+    assert [q["title"] for q in body["queue"]] == ["Queued"]
+    assert body["queue"][0]["can_remove"] is True      # admin can remove anything
+    assert playing and queued
+
+
+def test_now_endpoint_falls_back_to_a_rotation_lookahead(client, monkeypatch):
+    from app import auth
+    db.create_user("m", auth.hash_password("pw12345678"))
+    client.post("/login", data={"username": "m", "password": "pw12345678"})
+    monkeypatch.setattr(radio.storage, "url_for", lambda k, **kw: "https://r2/" + k)
+    for t in ("A", "B", "C"):
+        db.radio_mark_aired(_ready(t))                # nothing queued
+    body = client.get("/radio/now").json()
+    assert body["queue"] == []
+    assert 1 <= len(body["coming"]) <= 3               # shows what rotation plays next
+    assert body["playing"]["title"] not in [c["title"] for c in body["coming"]]
+
+
 def test_submit_route_queues_and_triggers(client, monkeypatch):
     from app import auth, main
     triggered = []

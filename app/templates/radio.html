@@ -28,6 +28,7 @@
         <span class="card-title" id="rp-title">tuning in…</span>
         <span class="row-meta" id="rp-artist"></span>
         <span class="row-meta" id="rp-listeners"></span>
+        <span class="row-meta" id="rp-coming"></span>
       </div>
     </div>
     <div class="pp-controls">
@@ -112,10 +113,10 @@
     </li>
   {%- endmacro %}
 
-  {% if promoted %}
-  <h3 class="hub-title">⤴ Up next <span class="count">{{ promoted|length }}</span></h3>
-  <ul class="cards">{% for t in promoted %}{{ track_row(t, 'up', loop.first, loop.last) }}{% endfor %}</ul>
-  {% endif %}
+  <div id="up-next-block"{% if not promoted %} hidden{% endif %}>
+    <h3 class="hub-title">⤴ Up next <span class="count" id="up-next-count">{{ promoted|length }}</span></h3>
+    <ul class="cards" id="up-next-list">{% for t in promoted %}{{ track_row(t, 'up', loop.first, loop.last) }}{% endfor %}</ul>
+  </div>
 
   {% if catalogue %}
   <h3 class="hub-title">🎚 In rotation <span class="count">{{ catalogue|length }}</span></h3>
@@ -151,6 +152,78 @@
     return r.json();
   }
 
+  // ---- live Up Next ----
+  // The queue changes constantly (tracks finish, downloads land, people
+  // promote), so it is re-rendered from every poll instead of being frozen at
+  // page load. Built with DOM APIs — titles come from YouTube, so never innerHTML.
+  async function act(url, trackId, extra) {
+    const body = new URLSearchParams(Object.assign({ track_id: trackId }, extra || {}));
+    try {
+      await fetch(url, { method: "POST", credentials: "same-origin",
+                         headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                         body });
+    } catch (e) { diag.log("radio action failed: " + url); }
+    sync(false);                       // reflect it immediately, no page reload
+  }
+
+  function queueRow(t, i, n, queued) {
+    const li = document.createElement("li");
+    li.className = "card";
+    const thumb = document.createElement("span");
+    thumb.className = "thumb thumb-fallback";
+    thumb.textContent = queued ? String(i + 1) : "♪";
+    const body = document.createElement("span");
+    body.className = "card-body card-link";
+    const spine = document.createElement("span");
+    spine.className = "spine";
+    spine.textContent = t.artist || "unknown artist";
+    const title = document.createElement("span");
+    title.className = "card-title";
+    title.textContent = t.title;
+    const meta = document.createElement("span");
+    meta.className = "row-meta";
+    const by = document.createElement("span");
+    by.className = "added-by";
+    by.textContent = t.added_by;
+    const dur = document.createElement("time");
+    dur.textContent = (t.duration / 60).toFixed(1) + " min";
+    meta.append(by, dur);
+    body.append(spine, title, meta);
+    const actions = document.createElement("span");
+    actions.className = "track-actions";
+    const mk = (label, hint, fn, disabled) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = label; b.title = hint; b.disabled = !!disabled;
+      b.onclick = fn;
+      actions.appendChild(b);
+    };
+    mk("⏭", "Play next", () => act("/radio/playnext", t.id), queued && i === 0);
+    if (queued) {
+      mk("↑", "Earlier in Up Next", () => act("/radio/move", t.id, { dir: "up" }), i === 0);
+      mk("↓", "Later in Up Next", () => act("/radio/move", t.id, { dir: "down" }), i === n - 1);
+      mk("⤵", "Back into rotation", () => act("/radio/promote", t.id, { on: "0" }));
+    } else {
+      mk("⤴", "Promote to Up Next", () => act("/radio/promote", t.id, { on: "1" }));
+    }
+    if (t.can_remove) mk("✕", "Remove from station", () => act("/radio/delete", t.id));
+    li.append(thumb, body, actions);
+    return li;
+  }
+
+  function renderQueue(s) {
+    const block = $("up-next-block"), list = $("up-next-list");
+    if (!block || !list) return;
+    const q = s.queue || [];
+    const rows = q.length ? q : (s.coming || []);
+    block.hidden = rows.length === 0;
+    $("up-next-count").textContent = q.length ? q.length : "";
+    const head = block.querySelector(".hub-title");
+    if (head) head.firstChild.textContent = q.length ? "⤴ Up next " : "🎚 Coming up ";
+    list.replaceChildren(...rows.map((t, i) => queueRow(t, i, rows.length, q.length > 0)));
+    const names = rows.slice(0, 2).map((t) => t.title).join(" · ");
+    $("rp-coming").textContent = names ? "then: " + names : "";
+  }
+
   function paint(s) {
     const p = s.playing;
     if (!p) { $("rp-title").textContent = "dead air"; return; }
@@ -164,6 +237,7 @@
     $("rp-vote").textContent = s.voted ? "⏭ voted " + s.votes + "/" + s.needed
                                        : "⏭ skip" + (s.votes ? " " + s.votes + "/" + s.needed : "");
     $("rp-vote").disabled = !!s.voted;
+    renderQueue(s);
     const art = $("rp-art");
     if (p.art && art.getAttribute("src") !== p.art) { art.src = p.art; art.hidden = false; }
     if ("mediaSession" in navigator) {

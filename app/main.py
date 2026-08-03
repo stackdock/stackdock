@@ -965,6 +965,18 @@ def radio_now(user=Depends(auth.current_user)):
         return {"playing": None, "listeners": listeners, "who": names}
     t = st["track"]
     votes = db.radio_vote_count(t["id"], st["cycle"])
+    # the live Up Next queue (and a lookahead into rotation when it's empty) so
+    # the page can keep the list fresh without a reload interrupting playback
+    order = radio.station_order()
+    cur_id = t["id"]
+
+    def row(x):
+        return {"id": x["id"], "title": x["title"], "artist": x["artist"],
+                "added_by": x["added_by"], "duration": x["duration"] or 0,
+                "can_remove": bool(user["is_admin"] or x["added_by"] == user["username"])}
+
+    queue = [row(x) for x in order if x["promoted_at"] and x["id"] != cur_id]
+    coming = [row(x) for x in order if not x["promoted_at"] and x["id"] != cur_id][:3]
     return {
         "playing": {
             "id": t["id"], "title": t["title"], "artist": t["artist"],
@@ -975,6 +987,8 @@ def radio_now(user=Depends(auth.current_user)):
         },
         "listeners": listeners,
         "who": names,
+        "queue": queue,
+        "coming": coming,
         "votes": votes,
         "needed": radio.votes_needed(listeners),
         "voted": db.radio_voted(user["id"], t["id"], st["cycle"]),
