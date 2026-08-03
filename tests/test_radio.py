@@ -25,7 +25,8 @@ def test_target_foreign_url_uses_page_title(monkeypatch):
 
 
 class _FakeYDL:
-    """Minimal yt-dlp stand-in: `gated` ids raise the age-gate error on download."""
+    """yt-dlp stand-in matching the real flow: a flat search listing first, then
+    a full extraction per candidate URL (where `gated` ids raise the age gate)."""
 
     def __init__(self, entries, gated=(), tmpdir=None):
         self.entries, self.gated, self.tmpdir = entries, set(gated), tmpdir
@@ -37,17 +38,31 @@ class _FakeYDL:
     def __exit__(self, *a):
         return False
 
-    def extract_info(self, target, download=False):
-        return {"entries": self.entries}
+    def _by_url(self, url):
+        vid = url.rsplit("/", 1)[-1]
+        return vid, next(e for e in self.entries if e["id"] == vid)
 
-    def download(self, urls):
-        vid = urls[0].rsplit("/", 1)[-1]
-        if vid in self.gated:
+    def extract_info(self, target, download=False):
+        if target.startswith("ytsearch"):
+            return {"entries": self.entries}
+        vid, entry = self._by_url(target)
+        if vid in self.gated:                 # full extraction hits the gate
             raise RuntimeError(
                 f"ERROR: [youtube] {vid}: Sign in to confirm your age. "
                 "This video may be inappropriate for some users.")
+        return entry
+
+    def download(self, urls):
+        vid, _ = self._by_url(urls[0])
         self.downloaded.append(vid)
         (pathlib.Path(self.tmpdir) / f"{vid}.m4a").write_bytes(b"audio")
+
+
+def _fake_ydl_factory(entries, gated=()):
+    def make(opts):
+        return _FakeYDL(entries, gated=gated,
+                        tmpdir=str(pathlib.Path(opts["outtmpl"]).parent))
+    return make
 
 
 def test_an_age_gated_hit_falls_through_to_the_next_result(fresh_db, monkeypatch):
@@ -59,17 +74,10 @@ def test_an_age_gated_hit_falls_through_to_the_next_result(fresh_db, monkeypatch
                 "webpage_url": "https://yt/gated2"},
                {"id": "clean", "duration": 205, "title": "Song A - Artist",
                 "webpage_url": "https://yt/clean"}]
-    made = {}
-
-    def fake_ydl(opts):
-        made["ydl"] = _FakeYDL(entries, gated=("gated1", "gated2"),
-                               tmpdir=str(pathlib.Path(opts["outtmpl"]).parent))
-        return made["ydl"]
-
     monkeypatch.setattr(radio, "_proxy", lambda: None)
     monkeypatch.setattr(radio.storage, "upload_stream", lambda *a, **k: None)
     import yt_dlp
-    monkeypatch.setattr(yt_dlp, "YoutubeDL", fake_ydl)
+    monkeypatch.setattr(yt_dlp, "YoutubeDL", _fake_ydl_factory(entries, ("gated1", "gated2")))
     out = radio._download("song a artist")
     assert out["source_url"] == "https://yt/clean"      # skipped both gated ones
     assert out["audio_key"] == "radio/clean.m4a"
@@ -78,16 +86,30 @@ def test_an_age_gated_hit_falls_through_to_the_next_result(fresh_db, monkeypatch
 def test_all_results_age_gated_gives_a_clear_message(fresh_db, monkeypatch):
     entries = [{"id": f"g{i}", "duration": 200, "title": "X",
                 "webpage_url": f"https://yt/g{i}"} for i in range(3)]
-
-    def fake_ydl(opts):
-        return _FakeYDL(entries, gated=[e["id"] for e in entries],
-                        tmpdir=str(pathlib.Path(opts["outtmpl"]).parent))
-
     monkeypatch.setattr(radio, "_proxy", lambda: None)
     import yt_dlp
-    monkeypatch.setattr(yt_dlp, "YoutubeDL", fake_ydl)
+    monkeypatch.setattr(yt_dlp, "YoutubeDL",
+                        _fake_ydl_factory(entries, [e["id"] for e in entries]))
     with pytest.raises(RuntimeError, match="age-restricted"):
         radio._download("x")
+
+
+def test_an_age_gate_never_burns_the_proxy_retries(fresh_db, monkeypatch):
+    # "Sign in to confirm your AGE" used to match the bot-check hint
+    # "sign in to confirm", so every proxy attempt was spent on a wall no
+    # exit can clear — and the next candidate was never reached
+    entries = [{"id": "gated", "duration": 200, "title": "X",
+                "webpage_url": "https://yt/gated"},
+               {"id": "ok", "duration": 200, "title": "X - A",
+                "webpage_url": "https://yt/ok"}]
+    proxies = []
+    monkeypatch.setattr(radio, "_proxy", lambda: proxies.append(1) or "http://p")
+    monkeypatch.setattr(radio.storage, "upload_stream", lambda *a, **k: None)
+    import yt_dlp
+    monkeypatch.setattr(yt_dlp, "YoutubeDL", _fake_ydl_factory(entries, ("gated",)))
+    out = radio._download("x")
+    assert out["source_url"] == "https://yt/ok"
+    assert proxies == []          # no proxy session wasted on the age gate
 
 
 def test_run_marks_ready_and_failed(fresh_db, monkeypatch):

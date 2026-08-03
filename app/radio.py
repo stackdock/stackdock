@@ -36,7 +36,9 @@ _YT_HOSTS = ("youtube.com", "youtu.be", "music.youtube.com", "m.youtube.com")
 _RETRY_HINTS = (
     # bot-checked (datacenter IP / burned proxy exit)
     "confirm you're not a bot", "confirm you are not a bot",
-    "sign in to confirm", "429", "captcha",
+    # NOT a bare "sign in to confirm" — that also matches the AGE gate, which
+    # a fresh proxy session can never fix (it burned every attempt, 3 Aug 2026)
+    "not a bot", "429", "captcha",
     # transient mid-download failures through a flaky proxy exit (seen live
     # 3 Aug 2026: SSL EOF and a 36 KB-short truncation) — a fresh session fixes
     "unexpected_eof", "eof occurred", "bytes read", "incompleteread",
@@ -275,7 +277,8 @@ def _proxy() -> str | None:
     return f"{scheme}://{user}:{config.NYT_PROXY_PASS}@{rest}"
 
 
-def _ydl_opts(tmpdir: str, proxy: str | None, client: str | None = None) -> dict:
+def _ydl_opts(tmpdir: str, proxy: str | None, client: str | None = None,
+              flat: bool = False) -> dict:
     opts = {
         # STRICTLY audio-only (vcodec=none): the old spec could match a
         # muxed video+audio format and haul the video down for nothing
@@ -294,6 +297,10 @@ def _ydl_opts(tmpdir: str, proxy: str | None, client: str | None = None) -> dict
         opts["cookiefile"] = config.RADIO_COOKIES_FILE
     if proxy:
         opts["proxy"] = proxy
+    if flat:
+        # listing only: don't fully extract each hit (an age-gated one would
+        # abort the whole search before we ever saw the other results)
+        opts["extract_flat"] = "in_playlist"
     if client:
         # age-gated videos ("Sign in to confirm your age") open for the embedded
         # TV client without any account
@@ -301,13 +308,15 @@ def _ydl_opts(tmpdir: str, proxy: str | None, client: str | None = None) -> dict
     return opts
 
 
-def _try_fetch(ydl, info, query: str, tmpdir: str) -> dict:
-    """Validate + download ONE candidate. Raises on any problem."""
+def _try_fetch(ydl, url: str, query: str, tmpdir: str) -> dict:
+    """Fully resolve + download ONE candidate URL. Raises on any problem —
+    including the age gate, which is what makes the caller try the next hit."""
+    info = ydl.extract_info(url, download=False)
     dur = float(info.get("duration") or 0)
     cap = config.RADIO_MAX_MINUTES * 60
     if dur > cap:
         raise RuntimeError(f"too long ({round(dur / 60)} min; cap is {config.RADIO_MAX_MINUTES})")
-    src = info.get("webpage_url") or info.get("original_url") or ""
+    src = info.get("webpage_url") or url
     if db.radio_source_exists(src):
         raise RuntimeError("already on the station")
     title, artist = _meta(info, query)
@@ -345,7 +354,7 @@ def _download(query: str) -> dict:
     cap = config.RADIO_MAX_MINUTES * 60
     searching = target.startswith("ytsearch")
 
-    def with_retries(fn):
+    def with_retries(fn, flat=False):
         last = None
         for attempt in range(1 + config.RADIO_PROXY_TRIES):
             proxy = None if attempt == 0 else _proxy()
@@ -353,11 +362,14 @@ def _download(query: str) -> dict:
                 break                            # no proxy configured; done
             with tempfile.TemporaryDirectory() as tmpdir:
                 try:
-                    with yt_dlp.YoutubeDL(_ydl_opts(tmpdir, proxy)) as ydl:
+                    with yt_dlp.YoutubeDL(_ydl_opts(tmpdir, proxy, flat=flat)) as ydl:
                         return fn(ydl, tmpdir)
                 except Exception as e:           # noqa: BLE001
                     last = e
-                    if any(h in str(e).lower() for h in _RETRY_HINTS):
+                    msg = str(e).lower()
+                    if any(h in msg for h in _AGE_HINTS):
+                        raise                    # a different exit can't open an age gate
+                    if any(h in msg for h in _RETRY_HINTS):
                         log.info("radio: retryable failure (attempt %d); fresh proxy session",
                                  attempt + 1)
                         continue
@@ -367,7 +379,7 @@ def _download(query: str) -> dict:
     def resolve(ydl, _tmpdir):
         info = ydl.extract_info(target, download=False)
         if info.get("entries") is None:
-            return [info]
+            return [info.get("webpage_url") or target]
         entries = [e for e in info["entries"] if e]
         if not entries:
             raise RuntimeError("no YouTube result for that")
@@ -380,14 +392,15 @@ def _download(query: str) -> dict:
             raise RuntimeError(
                 f"no result under {config.RADIO_MAX_MINUTES} min"
                 + (f" (shortest was {round(shortest / 60)} min)" if shortest else ""))
-        return fits
+        return [e.get("webpage_url") or e.get("url")
+                or f"https://www.youtube.com/watch?v={e['id']}" for e in fits]
 
-    candidates = with_retries(resolve)
+    candidates = with_retries(resolve, flat=searching)
 
     last_err = None
     for i, cand in enumerate(candidates):
         try:
-            return with_retries(lambda ydl, tmpdir, c=cand: _try_fetch(ydl, c, query, tmpdir))
+            return with_retries(lambda ydl, tmpdir, u=cand: _try_fetch(ydl, u, query, tmpdir))
         except Exception as e:                   # noqa: BLE001
             last_err = e
             if searching and any(h in str(e).lower() for h in _AGE_HINTS):
