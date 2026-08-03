@@ -916,13 +916,19 @@ def bussy_win(request: Request, user=Depends(auth.current_user)):
     return render(request, "bussy_win.html", user=user)
 
 
+_PLEX_GRID_TYPES = {"movie", "show", "season", "album", "artist"}   # poster-shaped
+_PLEX_VIDEO_TYPES = {"movie", "episode", "clip"}                    # inline-watchable
+
+
 @app.get("/plex", response_class=HTMLResponse)
 def plex_page(request: Request, user=Depends(auth.current_user),
-              section: str | None = None, key: str | None = None, page: int = 1):
-    """Browse the shared Plex server. Read-only: playback deep-links into Plex's
-    own clients, so no media (and no token) passes through here."""
+              section: str | None = None, key: str | None = None, page: int = 1,
+              q: str | None = None):
+    """Browse the shared Plex server. Shows drill show -> season -> episode;
+    movies/episodes play inline at /plex/watch/{key}."""
     ctx: dict = {"user": user, "configured": plex.configured(), "error": None,
-                 "libraries": [], "items": [], "section": None, "parent": None,
+                 "libraries": [], "grid_items": [], "list_items": [], "deck": [],
+                 "section": None, "parent": None, "q": (q or "").strip(),
                  "page": max(1, page), "total_pages": 1}
     if not plex.configured():
         ctx["error"] = "Plex isn't configured yet (PLEX_URL / PLEX_TOKEN in .env)."
@@ -930,28 +936,62 @@ def plex_page(request: Request, user=Depends(auth.current_user),
     per = 60
     try:
         ctx["libraries"] = plex.libraries()
-        if key:                                   # seasons of a show / episodes of a season
-            ctx["parent"], ctx["items"] = plex.children(key)
+        if ctx["q"]:
+            items = plex.search(ctx["q"])
+        elif key:                                 # seasons of a show / episodes of a season
+            ctx["parent"], items = plex.children(key)
         elif section:
             sec, items, total = plex.browse(section, limit=per, offset=(ctx["page"] - 1) * per)
-            ctx["section"], ctx["items"] = sec, items
+            ctx["section"] = sec
             ctx["total_pages"] = max(1, -(-total // per))
-        else:
-            ctx["items"] = plex.recently_added()
+        else:                                     # landing: continue watching + recent
+            ctx["deck"] = plex.on_deck()
+            items = plex.recently_added()
+        ctx["grid_items"] = [i for i in items if i["type"] in _PLEX_GRID_TYPES]
+        ctx["list_items"] = [i for i in items if i["type"] not in _PLEX_GRID_TYPES]
     except plex.PlexError as e:
         ctx["error"] = str(e)
     return render(request, "plex.html", **ctx)
 
 
+@app.get("/plex/watch/{key}", response_class=HTMLResponse)
+def plex_watch(request: Request, key: str, user=Depends(auth.current_user)):
+    """Inline player page for a movie/episode."""
+    if not key.isdigit():
+        raise HTTPException(404)
+    try:
+        item = plex.stream_info(key)
+    except plex.PlexError as e:
+        raise HTTPException(502, str(e)) from e
+    return render(request, "plex_watch.html", user=user, i=item)
+
+
+@app.get("/plex/stream/{key}")
+def plex_stream(key: str, user=Depends(auth.current_user)):
+    """Redirect the member's <video> to a playable Plex URL: the raw file when
+    browser-native, else Plex's live HLS transcode (runs on the Plex server's
+    hardware — nothing streams through the droplet). Session is per-user+item
+    so two members watching the same thing don't kill each other's transcode."""
+    if not key.isdigit():
+        raise HTTPException(404)
+    try:
+        url = plex.stream_url(key, session=f"stackdock-u{user['id']}-{key}")
+    except plex.PlexError as e:
+        raise HTTPException(502, str(e)) from e
+    return RedirectResponse(url, status_code=302)
+
+
 @app.get("/plex/art")
-def plex_art(path: str, user=Depends(auth.current_user)):
+def plex_art(path: str, user=Depends(auth.current_user),
+             w: int | None = Query(None, ge=64, le=1024)):
     """Proxy Plex artwork so posters render without exposing the token. `path`
     is constrained to Plex's own image routes — this must never become a general
-    fetcher for arbitrary paths on the server."""
+    fetcher for arbitrary paths on the server. `w` uses Plex's photo transcoder
+    to downscale (full-size art is 500 KB+ and every byte crosses the droplet)."""
     if not path.startswith("/library/") or ".." in path:
         raise HTTPException(400, "bad art path")
     try:
-        body, ctype = plex.art(path)
+        body, ctype = plex.art(path, width=w)
     except plex.PlexError as e:
         raise HTTPException(502, str(e)) from e
     return Response(content=body, media_type=ctype,

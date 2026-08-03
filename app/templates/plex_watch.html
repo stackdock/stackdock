@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ i.title }} · {{ site_title }}{% endblock %}
+{% block content %}
+<article class="reader">
+  <p class="spine">{{ i.spine or 'Plex' }}{% if i.sxe %} · {{ i.sxe }}{% endif %}</p>
+  <h1>{{ i.title }}</h1>
+  <p class="meta">
+    {% if i.year %}{{ i.year }}{% endif %}
+    {% if i.duration_min %} · {{ i.duration_min }} min{% endif %}
+  </p>
+
+  <!-- src redirects to Plex: the raw file when browser-native, else a live HLS
+       transcode running on the Plex server (iOS/Safari play HLS natively) -->
+  <video controls playsinline preload="metadata" class="plex-player"
+         src="/plex/stream/{{ i.key }}"></video>
+
+  {% if i.summary %}<div class="body"><p>{{ i.summary }}</p></div>{% endif %}
+
+  <p class="hint">Stutters or won't start? <a href="{{ plex_web(i.key) }}"
+     target="_blank" rel="noopener">Open in the Plex app instead →</a> — codecs a
+     browser can't play get live-transcoded by the Plex server, which can be slow,
+     and desktop Chrome can't play the transcoded (HLS) form at all.</p>
+</article>
+{% endblock %}

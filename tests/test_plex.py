@@ -53,6 +53,40 @@ def test_web_url_deep_links_to_plex_app():
     assert "machine123" in url and "%2Flibrary%2Fmetadata%2F42" in url
 
 
+def test_stream_url_direct_plays_browser_native_codecs(monkeypatch):
+    payload = {"MediaContainer": {"Metadata": [
+        {"ratingKey": "9", "title": "Native", "type": "movie",
+         "Media": [{"container": "mp4", "videoCodec": "h264", "audioCodec": "aac",
+                    "Part": [{"key": "/library/parts/77/file.mp4"}]}]}]}}
+    monkeypatch.setattr(plex.requests, "get", lambda *a, **k: _Resp(payload))
+    url = plex.stream_url("9", session="s1")
+    assert url.startswith("https://plex.test:32400/library/parts/77/file.mp4")
+    assert "X-Plex-Token=tok" in url
+
+
+def test_stream_url_transcodes_non_native_codecs(monkeypatch):
+    payload = {"MediaContainer": {"Metadata": [
+        {"ratingKey": "9", "title": "MKV", "type": "movie",
+         "Media": [{"container": "mkv", "videoCodec": "hevc", "audioCodec": "dts",
+                    "Part": [{"key": "/library/parts/78/file.mkv"}]}]}]}}
+    monkeypatch.setattr(plex.requests, "get", lambda *a, **k: _Resp(payload))
+    url = plex.stream_url("9", session="s1")
+    assert "/video/:/transcode/universal/start.m3u8" in url
+    assert "protocol=hls" in url and "session=s1" in url
+
+
+def test_search_filters_to_library_types(monkeypatch):
+    payload = {"MediaContainer": {"Metadata": [
+        {"ratingKey": "1", "title": "A Movie", "type": "movie"},
+        {"ratingKey": "2", "title": "Some Actor", "type": "person"},
+        {"ratingKey": "3", "title": "An Episode", "type": "episode",
+         "parentIndex": 2, "index": 5}]}}
+    monkeypatch.setattr(plex.requests, "get", lambda *a, **k: _Resp(payload))
+    items = plex.search("a")
+    assert [i["title"] for i in items] == ["A Movie", "An Episode"]
+    assert items[1]["sxe"] == "S02E05"
+
+
 def test_art_proxy_rejects_paths_outside_library(client, monkeypatch):
     # the proxy must not become a general fetcher against the Plex host
     from app import auth, db

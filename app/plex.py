@@ -67,6 +67,9 @@ def _get(path: str, params: dict | None = None, cache: bool = True):
 
 def _item(m: dict) -> dict:
     """Normalize a Plex metadata dict to what the templates use."""
+    sxe = None
+    if m.get("type") == "episode" and m.get("parentIndex") is not None and m.get("index") is not None:
+        sxe = f"S{int(m['parentIndex']):02d}E{int(m['index']):02d}"
     return {
         "key": m.get("ratingKey"),
         "title": m.get("title") or "(untitled)",
@@ -76,6 +79,7 @@ def _item(m: dict) -> dict:
         "thumb": m.get("thumb") or m.get("parentThumb") or m.get("grandparentThumb"),
         # a season/episode shows its show name; a movie shows its year
         "spine": m.get("grandparentTitle") or m.get("parentTitle") or "",
+        "sxe": sxe,
         "duration_min": round(m["duration"] / 60000) if m.get("duration") else None,
         "leaf_count": m.get("leafCount"),
     }
@@ -91,6 +95,23 @@ def recently_added(limit: int = 24) -> list[dict]:
     data = _get("/library/recentlyAdded", {"X-Plex-Container-Start": 0,
                                            "X-Plex-Container-Size": limit})
     return [_item(m) for m in (data.get("Metadata") or [])]
+
+
+def on_deck(limit: int = 12) -> list[dict]:
+    """Plex's Continue Watching row (half-watched things, next episodes)."""
+    data = _get("/library/onDeck", {"X-Plex-Container-Start": 0,
+                                    "X-Plex-Container-Size": limit})
+    return [_item(m) for m in (data.get("Metadata") or [])]
+
+
+_SEARCH_TYPES = {"movie", "show", "season", "episode", "album", "artist", "track"}
+
+
+def search(query: str, limit: int = 40) -> list[dict]:
+    data = _get("/search", {"query": query[:80]}, cache=False)
+    items = [_item(m) for m in (data.get("Metadata") or [])
+             if m.get("type") in _SEARCH_TYPES]
+    return items[:limit]
 
 
 def browse(section_key: str, limit: int = 60, offset: int = 0,
@@ -112,17 +133,71 @@ def children(rating_key: str) -> tuple[dict, list[dict]]:
     return parent, [_item(m) for m in (data.get("Metadata") or [])]
 
 
-def art(thumb_path: str) -> tuple[bytes, str]:
-    """Fetch a poster server-side so the token never reaches a member's browser."""
+def art(thumb_path: str, width: int | None = None) -> tuple[bytes, str]:
+    """Fetch a poster server-side so the token never reaches a member's browser.
+    With `width`, Plex's photo transcoder downscales it first — full-size art is
+    500 KB+ per poster and every byte passes through the droplet."""
     if not configured():
         raise PlexError("Plex isn't configured.")
-    url = config.PLEX_URL.rstrip("/") + thumb_path
+    base = config.PLEX_URL.rstrip("/")
+    if width:
+        url = base + "/photo/:/transcode"
+        params = {"width": width, "height": int(width * 1.5),
+                  "minSize": 1, "upscale": 1, "url": thumb_path}
+    else:
+        url, params = base + thumb_path, {}
     try:
-        r = requests.get(url, timeout=TIMEOUT, headers={"X-Plex-Token": config.PLEX_TOKEN})
+        r = requests.get(url, params=params, timeout=TIMEOUT,
+                         headers={"X-Plex-Token": config.PLEX_TOKEN})
         r.raise_for_status()
     except requests.RequestException as e:
         raise PlexError("couldn't fetch artwork") from e
     return r.content, r.headers.get("Content-Type", "image/jpeg")
+
+
+def stream_info(rating_key: str) -> dict:
+    """Item metadata + the codec/part details needed to pick a stream strategy."""
+    data = _get(f"/library/metadata/{rating_key}", cache=False)
+    md = (data.get("Metadata") or [{}])[0]
+    if not md.get("ratingKey"):
+        raise PlexError("item not found")
+    item = _item(md)
+    media = (md.get("Media") or [{}])[0]
+    part = (media.get("Part") or [{}])[0]
+    item.update(container=media.get("container"), video_codec=media.get("videoCodec"),
+                audio_codec=media.get("audioCodec"), part_key=part.get("key"))
+    return item
+
+
+def _direct_playable(info: dict) -> bool:
+    """Codecs every browser can play natively — anything else goes through
+    Plex's live transcoder as HLS."""
+    return (info.get("container") in ("mp4", "mov")
+            and info.get("video_codec") == "h264"
+            and info.get("audio_codec") in ("aac", "mp3", None))
+
+
+def stream_url(rating_key: str, session: str) -> str:
+    """A URL the member's <video> element can play. Direct file when the codecs
+    are browser-native; otherwise Plex's universal transcoder emits HLS (the
+    transcode runs on the PLEX server's hardware, not the droplet). The URL
+    carries the per-server token — acceptable for a trusted member group; it is
+    NOT the admin account token.  `session` must be unique per viewer+item or
+    Plex kills the other viewer's transcode."""
+    info = stream_info(rating_key)
+    base = config.PLEX_URL.rstrip("/")
+    if _direct_playable(info) and info.get("part_key"):
+        return f"{base}{info['part_key']}?X-Plex-Token={config.PLEX_TOKEN}"
+    q = urlencode({
+        "path": f"/library/metadata/{rating_key}",
+        "mediaIndex": 0, "partIndex": 0, "protocol": "hls",
+        "fastSeek": 1, "directPlay": 0, "directStream": 1,
+        "maxVideoBitrate": 8000, "videoQuality": 100,
+        "X-Plex-Client-Identifier": "stackdock-web",
+        "X-Plex-Token": config.PLEX_TOKEN,
+        "session": session,
+    })
+    return f"{base}/video/:/transcode/universal/start.m3u8?{q}"
 
 
 def web_url(rating_key: str) -> str:
