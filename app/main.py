@@ -952,6 +952,34 @@ def radio_add(user=Depends(auth.current_user), query: str = Form(...)):
     return RedirectResponse("/radio?msg=queued+%E2%80%94+downloading", status_code=303)
 
 
+@app.post("/radio/import")
+def radio_import(user=Depends(auth.current_user), songs: str = Form(...)):
+    """Bulk-queue a pasted list, one song per line. Spotify's API refuses to
+    return playlist CONTENTS to this app tier — metadata reads fine, /tracks
+    403s identically from the droplet AND a residential exit, and the scope IS
+    granted (proved 3 Aug 2026) — so pasting an exported list is the reliable
+    way to load a big playlist. Accepts the tab-separated form the Spotify
+    desktop app puts on the clipboard as well as plain text."""
+    added = skipped = 0
+    for raw in (songs or "").splitlines()[:500]:
+        line = raw.strip()
+        if not line:
+            continue
+        if "\t" in line:                    # "Title\tArtist\tAlbum\tDuration"
+            parts = [x.strip() for x in line.split("\t") if x.strip()]
+            line = " ".join(parts[:2])
+        line = line.lstrip("0123456789.-) ").strip()      # numbered lists
+        if not (2 <= len(line) <= 300) or db.radio_query_exists(line):
+            skipped += 1
+            continue
+        db.add_radio_track(line, added_by=user["username"])
+        added += 1
+    if added:
+        _trigger_job("radio")
+    msg = f"queued {added} song(s)" + (f", skipped {skipped}" if skipped else "")
+    return RedirectResponse("/radio?msg=" + msg.replace(" ", "+"), status_code=303)
+
+
 @app.get("/radio/now")
 def radio_now(user=Depends(auth.current_user)):
     """What is on air RIGHT NOW, decided by the server — the single source of

@@ -19,6 +19,18 @@
       <br>🎵 Spotify connected · <a href="/radio/spotify/connect">reconnect</a>
     {% endif %}</p>
 
+  <details class="filter-box">
+    <summary>📋 Bulk add / import a playlist</summary>
+    <form method="post" action="/radio/import">
+      <textarea name="songs" rows="6" style="width:100%" required
+                placeholder="One song per line — &quot;Title Artist&quot;.&#10;Paste straight from the Spotify desktop app (select tracks → Ctrl/Cmd-C) or any exported list."></textarea>
+      <button type="submit">Queue them all</button>
+    </form>
+    <p class="hint">Spotify's API won't hand this app a playlist's track list
+      (their restriction — metadata works, contents don't), so pasting is the
+      reliable way to load a big playlist. Duplicates are skipped automatically.</p>
+  </details>
+
   {% if tracks %}
   <div class="radio-player" id="rp">
     <div class="rp-head">

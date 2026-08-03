@@ -94,7 +94,16 @@ app/radio.py             Member radio (/radio, nav '📻 Radio'): anyone submits
                          Spotify's 2025 restrictions, and the no-auth embed page silently
                          truncates (14 of a 65-track playlist). So: SPOTIFY_CLIENT_ID/SECRET +
                          one-click OAuth at /radio/spotify/connect (admin) -> /callback stores
-                         ONLY the refresh token (spotify_auth table, rotation-aware).
+                         ONLY the refresh token (spotify_auth table, rotation-aware). BUT as
+                         of 3 Aug 2026 Spotify BLOCKS playlist CONTENTS for this app tier:
+                         /me + /me/playlists + playlist metadata all 200, every playlist's
+                         `tracks` field comes back null, and /playlists/{id}/tracks 403s with
+                         a bare 'Forbidden' (scoped endpoints say 'Insufficient client scope'
+                         instead, so the scope IS granted). PROVEN not IP-related: identical
+                         403 through the residential proxy. Don't chase this in code — it
+                         needs Spotify Extended Quota approval. POST /radio/import (bulk
+                         paste, one song per line, accepts the desktop app's tab-separated
+                         clipboard and numbered lists) is the working path for big playlists.
                          RUNNING ORDER (station_order) is TWO blocks: [1] UP NEXT — a real queue;
                          a finished download joins the BOTTOM automatically, /radio/promote
                          appends the same way, /radio/playnext cuts to the front, ↑/↓ reorder,

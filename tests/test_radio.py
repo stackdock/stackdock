@@ -496,6 +496,26 @@ def test_radio_page_renders_both_blocks(client, monkeypatch):
     assert queued and played
 
 
+def test_bulk_import_queues_a_pasted_list(client, monkeypatch):
+    from app import auth, main
+    monkeypatch.setattr(main, "_trigger_job", lambda j: True)
+    db.create_user("m", auth.hash_password("pw12345678"))
+    client.post("/login", data={"username": "m", "password": "pw12345678"})
+    pasted = "\n".join([
+        "Wandering Star\tPortishead\tDummy\t4:52",   # Spotify desktop clipboard
+        "1. Army of Me Björk",                        # numbered list
+        "   ",                                        # blank
+        "Glory Box Portishead",
+        "Glory Box Portishead",                       # duplicate within the paste
+    ])
+    r = client.post("/radio/import", data={"songs": pasted}, follow_redirects=False)
+    assert r.status_code == 303
+    queries = [t["query"] for t in db.radio_pending()]
+    assert queries == ["Wandering Star Portishead", "Army of Me Björk",
+                       "Glory Box Portishead"]        # tabs trimmed, number stripped,
+                                                      # blank and dupe skipped
+
+
 def test_now_endpoint_ships_the_live_queue(client, monkeypatch):
     from app import auth
     db.create_user("m", auth.hash_password("pw12345678"), is_admin=True)
