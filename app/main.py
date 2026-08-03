@@ -927,7 +927,7 @@ def plex_page(request: Request, user=Depends(auth.current_user),
     """Browse the shared Plex server. Shows drill show -> season -> episode;
     movies/episodes play inline at /plex/watch/{key}."""
     ctx: dict = {"user": user, "configured": plex.configured(), "error": None,
-                 "libraries": [], "grid_items": [], "list_items": [], "deck": [],
+                 "libraries": [], "grid_items": [], "list_items": [],
                  "section": None, "parent": None, "q": (q or "").strip(),
                  "page": max(1, page), "total_pages": 1}
     if not plex.configured():
@@ -944,8 +944,7 @@ def plex_page(request: Request, user=Depends(auth.current_user),
             sec, items, total = plex.browse(section, limit=per, offset=(ctx["page"] - 1) * per)
             ctx["section"] = sec
             ctx["total_pages"] = max(1, -(-total // per))
-        else:                                     # landing: continue watching + recent
-            ctx["deck"] = plex.on_deck()
+        else:
             items = plex.recently_added()
         ctx["grid_items"] = [i for i in items if i["type"] in _PLEX_GRID_TYPES]
         ctx["list_items"] = [i for i in items if i["type"] not in _PLEX_GRID_TYPES]

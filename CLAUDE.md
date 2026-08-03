@@ -79,7 +79,7 @@ app/ingest/podcast_rss.py    poll PODCAST_FEEDS (Substack private podcast feeds,
 app/ingest/rss_articles.py   poll ARTICLE_FEEDS (JSON {name: url}; any full-text blog RSS/Atom,
                              e.g. lukesmith.xyz/index.xml) → articles; dedupe rss:{guid};
                              first sync per publication silent; job id "articles" (hourly)
-app/plex.py              Plex tab (/plex): libraries, Continue Watching (onDeck), search,
+app/plex.py              Plex tab (/plex): libraries, recently-added, search,
                          poster grid, show->season->episode drill-down. INLINE playback:
                          /plex/watch/{key} <video> -> /plex/stream/{key} 302s to the raw file
                          (browser-native mp4/h264/aac) or Plex's live HLS transcode (runs on

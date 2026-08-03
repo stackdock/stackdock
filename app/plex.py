@@ -97,13 +97,6 @@ def recently_added(limit: int = 24) -> list[dict]:
     return [_item(m) for m in (data.get("Metadata") or [])]
 
 
-def on_deck(limit: int = 12) -> list[dict]:
-    """Plex's Continue Watching row (half-watched things, next episodes)."""
-    data = _get("/library/onDeck", {"X-Plex-Container-Start": 0,
-                                    "X-Plex-Container-Size": limit})
-    return [_item(m) for m in (data.get("Metadata") or [])]
-
-
 _SEARCH_TYPES = {"movie", "show", "season", "episode", "album", "artist", "track"}
 
 
@@ -194,6 +187,9 @@ def stream_url(rating_key: str, session: str) -> str:
         "fastSeek": 1, "directPlay": 0, "directStream": 1,
         "maxVideoBitrate": 8000, "videoQuality": 100,
         "X-Plex-Client-Identifier": "stackdock-web",
+        # REQUIRED: without a platform the server can't pick a client profile
+        # and 400s the transcode start (verified live, Aug 2026)
+        "X-Plex-Platform": "Chrome",
         "X-Plex-Token": config.PLEX_TOKEN,
         "session": session,
     })
