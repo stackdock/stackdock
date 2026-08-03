@@ -65,7 +65,7 @@
   </ul>
   {% endif %}
 
-  {% macro track_row(t, block) -%}
+  {% macro track_row(t, block, is_first=false, is_last=false) -%}
     <li class="card" data-track-id="{{ t.id }}">
       <span class="thumb thumb-fallback">♪</span>
       <span class="card-body card-link">
@@ -79,12 +79,12 @@
         <form method="post" action="/radio/move" class="inline-form">
           <input type="hidden" name="track_id" value="{{ t.id }}">
           <input type="hidden" name="dir" value="up">
-          <button type="submit" title="Earlier in Up Next"{{ ' disabled' if loop.first }}>↑</button>
+          <button type="submit" title="Earlier in Up Next"{{ ' disabled' if is_first }}>↑</button>
         </form>
         <form method="post" action="/radio/move" class="inline-form">
           <input type="hidden" name="track_id" value="{{ t.id }}">
           <input type="hidden" name="dir" value="down">
-          <button type="submit" title="Later in Up Next"{{ ' disabled' if loop.last }}>↓</button>
+          <button type="submit" title="Later in Up Next"{{ ' disabled' if is_last }}>↓</button>
         </form>
         <form method="post" action="/radio/promote" class="inline-form">
           <input type="hidden" name="track_id" value="{{ t.id }}">
@@ -110,7 +110,7 @@
 
   {% if promoted %}
   <h3 class="hub-title">⤴ Up next <span class="count">{{ promoted|length }}</span></h3>
-  <ul class="cards">{% for t in promoted %}{{ track_row(t, 'up') }}{% endfor %}</ul>
+  <ul class="cards">{% for t in promoted %}{{ track_row(t, 'up', loop.first, loop.last) }}{% endfor %}</ul>
   {% endif %}
 
   {% if fresh %}

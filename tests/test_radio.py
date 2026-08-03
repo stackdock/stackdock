@@ -259,6 +259,22 @@ def test_playlist_sync_queues_new_tracks_once(fresh_db, monkeypatch):
     assert radio.sync_playlists() == 0
 
 
+def test_radio_page_renders_every_rotation_block(client, monkeypatch):
+    # regression: the row macro used `loop.first`, which Jinja macros can't see
+    # from the caller — /radio 500ed the moment an Up Next row existed
+    from app import auth
+    db.create_user("m", auth.hash_password("pw12345678"), is_admin=True)
+    client.post("/login", data={"username": "m", "password": "pw12345678"})
+    pinned, played, brand_new = _ready("Pinned"), _ready("Played"), _ready("Fresh")
+    db.radio_promote(pinned, True)
+    db.radio_mark_aired(played)
+    r = client.get("/radio")
+    assert r.status_code == 200
+    assert "Up next" in r.text and "Recently added" in r.text and "In rotation" in r.text
+    assert "Pinned" in r.text and "Played" in r.text and "Fresh" in r.text
+    assert brand_new
+
+
 def test_submit_route_queues_and_triggers(client, monkeypatch):
     from app import auth, main
     triggered = []
