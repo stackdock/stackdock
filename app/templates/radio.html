@@ -156,8 +156,10 @@
     if (!p) { $("rp-title").textContent = "dead air"; return; }
     $("rp-title").textContent = p.title;
     $("rp-artist").textContent = (p.artist || "") + " · added by " + p.added_by;
+    const who = (s.who || []).join(", ");
     $("rp-listeners").textContent =
       s.listeners + (s.listeners === 1 ? " listener" : " listeners") +
+      (who ? ": " + who : "") +
       (s.votes ? " · skip " + s.votes + "/" + s.needed : "");
     $("rp-vote").textContent = s.voted ? "⏭ voted " + s.votes + "/" + s.needed
                                        : "⏭ skip" + (s.votes ? " " + s.votes + "/" + s.needed : "");

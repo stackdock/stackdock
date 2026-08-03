@@ -959,9 +959,10 @@ def radio_now(user=Depends(auth.current_user)):
     threshold scales with the audience)."""
     db.radio_touch_listener(user["id"])
     st = radio.station_now()
-    listeners = db.radio_listener_count()
+    names = db.radio_listener_names()
+    listeners = len(names)
     if not st:
-        return {"playing": None, "listeners": listeners}
+        return {"playing": None, "listeners": listeners, "who": names}
     t = st["track"]
     votes = db.radio_vote_count(t["id"], st["cycle"])
     return {
@@ -973,6 +974,7 @@ def radio_now(user=Depends(auth.current_user)):
             "url": storage.url_for(t["audio_key"]),
         },
         "listeners": listeners,
+        "who": names,
         "votes": votes,
         "needed": radio.votes_needed(listeners),
         "voted": db.radio_voted(user["id"], t["id"], st["cycle"]),

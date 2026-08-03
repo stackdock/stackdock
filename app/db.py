@@ -1292,6 +1292,15 @@ def radio_touch_listener(user_id: int) -> None:
                   (user_id, now_iso()))
 
 
+def radio_listener_names(within_seconds: int = 120) -> list[str]:
+    """Who is tuned in right now (heartbeat within the window)."""
+    cutoff = (datetime.now(timezone.utc) - timedelta(seconds=within_seconds)).isoformat()
+    with conn() as c:
+        return [r["username"] for r in c.execute(
+            "SELECT u.username FROM radio_listeners l JOIN users u ON u.id = l.user_id "
+            "WHERE l.last_seen > ? ORDER BY LOWER(u.username)", (cutoff,)).fetchall()]
+
+
 def radio_listener_count(within_seconds: int = 120) -> int:
     cutoff = (datetime.now(timezone.utc) - timedelta(seconds=within_seconds)).isoformat()
     with conn() as c:

@@ -41,7 +41,14 @@ _RETRY_HINTS = (
     # 3 Aug 2026: SSL EOF and a 36 KB-short truncation) — a fresh session fixes
     "unexpected_eof", "eof occurred", "bytes read", "incompleteread",
     "connection reset", "timed out",
+    # a burned exit also shows up as a plain 403 on the media URL
+    "403: forbidden", "http error 403",
 )
+# "Sign in to confirm your age" — handled by switching player client, not by a
+# fresh proxy session
+_AGE_HINTS = ("confirm your age", "age-restricted", "inappropriate for some users")
+# how many search hits to consider before giving up on finding one that fits
+SEARCH_RESULTS = 5
 
 
 # Now-playing artwork: assigned by track id so every listener sees the SAME
@@ -253,8 +260,8 @@ def _target(query: str) -> str:
         title = _og_title(q)
         if not title:
             raise RuntimeError("couldn't read a title from that link — paste the song name instead")
-        return f"ytsearch1:{title}"
-    return f"ytsearch1:{q}"
+        return f"ytsearch{SEARCH_RESULTS}:{title}"
+    return f"ytsearch{SEARCH_RESULTS}:{q}"
 
 
 def _proxy() -> str | None:
@@ -268,9 +275,11 @@ def _proxy() -> str | None:
     return f"{scheme}://{user}:{config.NYT_PROXY_PASS}@{rest}"
 
 
-def _ydl_opts(tmpdir: str, proxy: str | None) -> dict:
+def _ydl_opts(tmpdir: str, proxy: str | None, client: str | None = None) -> dict:
     opts = {
-        "format": "bestaudio[ext=m4a]/bestaudio[acodec^=mp4a]",
+        # STRICTLY audio-only (vcodec=none): the old spec could match a
+        # muxed video+audio format and haul the video down for nothing
+        "format": "bestaudio[ext=m4a][vcodec=none]/bestaudio[vcodec=none]/bestaudio",
         "noplaylist": True,
         "outtmpl": str(Path(tmpdir) / "%(id)s.%(ext)s"),
         "quiet": True, "no_warnings": True,
@@ -285,6 +294,10 @@ def _ydl_opts(tmpdir: str, proxy: str | None) -> dict:
         opts["cookiefile"] = config.RADIO_COOKIES_FILE
     if proxy:
         opts["proxy"] = proxy
+    if client:
+        # age-gated videos ("Sign in to confirm your age") open for the embedded
+        # TV client without any account
+        opts["extractor_args"] = {"youtube": {"player_client": [client]}}
     return opts
 
 
@@ -295,6 +308,7 @@ def _download(query: str) -> dict:
 
     target = _target(query)
     last_err = None
+    client = None          # switched to an embedded client for age-gated videos
     # direct first, then FRESH residential sessions on bot-check: DataImpulse
     # exits vary in quality (live test 3 Aug 2026: first session bot-checked,
     # next one sailed through), so one proxy try isn't enough
@@ -304,15 +318,26 @@ def _download(query: str) -> dict:
             break                                # no proxy configured; done
         with tempfile.TemporaryDirectory() as tmpdir:
             try:
-                with yt_dlp.YoutubeDL(_ydl_opts(tmpdir, proxy)) as ydl:
+                with yt_dlp.YoutubeDL(_ydl_opts(tmpdir, proxy, client)) as ydl:
                     info = ydl.extract_info(target, download=False)
+                    cap = config.RADIO_MAX_MINUTES * 60
                     if info.get("entries") is not None:      # search result
                         entries = [e for e in info["entries"] if e]
                         if not entries:
                             raise RuntimeError("no YouTube result for that")
-                        info = entries[0]
+                        # Take the first hit that FITS instead of hit #1: a song
+                        # search often turns up a full album/mix first, which
+                        # used to fail the whole track on the length cap.
+                        fits = [e for e in entries if 0 < float(e.get("duration") or 0) <= cap]
+                        if not fits:
+                            longest = min((float(e.get("duration") or 0) for e in entries
+                                           if e.get("duration")), default=0)
+                            raise RuntimeError(
+                                f"no result under {config.RADIO_MAX_MINUTES} min"
+                                + (f" (shortest was {round(longest / 60)} min)" if longest else ""))
+                        info = fits[0]
                     dur = float(info.get("duration") or 0)
-                    if dur > config.RADIO_MAX_MINUTES * 60:
+                    if dur > cap:
                         raise RuntimeError(
                             f"too long ({round(dur / 60)} min; cap is {config.RADIO_MAX_MINUTES})")
                     src = info.get("webpage_url") or info.get("original_url") or target
@@ -336,6 +361,11 @@ def _download(query: str) -> dict:
             except Exception as e:                            # noqa: BLE001
                 last_err = e
                 msg = str(e).lower()
+                if any(h in msg for h in _AGE_HINTS) and client is None:
+                    # age gate opens for the embedded TV client, no account needed
+                    client = "tv_embedded"
+                    log.info("radio: age-gated; retrying with the %s client", client)
+                    continue
                 if any(h in msg for h in _RETRY_HINTS):
                     log.info("radio: retryable failure (attempt %d); trying a fresh proxy session",
                              attempt + 1)

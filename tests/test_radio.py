@@ -11,12 +11,12 @@ def test_target_youtube_urls_pass_through():
 
 
 def test_target_text_becomes_search():
-    assert radio._target("purple rain prince") == "ytsearch1:purple rain prince"
+    assert radio._target("purple rain prince") == f"ytsearch{radio.SEARCH_RESULTS}:purple rain prince"
 
 
 def test_target_foreign_url_uses_page_title(monkeypatch):
     monkeypatch.setattr(radio, "_og_title", lambda u: "Song Name — Artist")
-    assert radio._target("https://open.spotify.com/track/xyz") == "ytsearch1:Song Name — Artist"
+    assert radio._target("https://open.spotify.com/track/xyz") == f"ytsearch{radio.SEARCH_RESULTS}:Song Name — Artist"
     monkeypatch.setattr(radio, "_og_title", lambda u: None)
     with pytest.raises(RuntimeError, match="paste the song name"):
         radio._target("https://open.spotify.com/track/xyz")
