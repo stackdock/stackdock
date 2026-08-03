@@ -7,7 +7,7 @@
 
   {% if libraries %}
   <div class="pub-filter">
-    <a href="/plex" class="{{ 'active' if not section and not parent and not q }}">Home</a>
+    <a href="/plex" class="{{ 'active' if not section and not parent and not q }}">Recently added</a>
     {% for l in libraries %}
       <a href="/plex?section={{ l.key }}" class="{{ 'active' if section and section.key == l.key }}">{{ l.title }}</a>
     {% endfor %}
