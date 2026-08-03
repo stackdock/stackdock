@@ -56,9 +56,6 @@ PLEX_PASSWORD = os.getenv("PLEX_PASSWORD", "")
 RADIO_MAX_MINUTES = int(os.getenv("RADIO_MAX_MINUTES", "15"))
 RADIO_POLL_MINUTES = int(os.getenv("RADIO_POLL_MINUTES", "5"))
 RADIO_PROXY_TRIES = int(os.getenv("RADIO_PROXY_TRIES", "3"))
-# How long a new song counts as "recently added" (played before the shuffled
-# catalogue, radio-style heavy rotation)
-RADIO_RECENT_HOURS = int(os.getenv("RADIO_RECENT_HOURS", "24"))
 # Spotify app credentials (developer.spotify.com -> Create app). Without them
 # playlist sync falls back to the embed page, which TRUNCATES long playlists.
 SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID", "").strip()

@@ -933,13 +933,10 @@ def radio_page(request: Request, user=Depends(auth.current_user),
     # the rotation, split into the blocks the station plays them in
     order = radio.station_order()
     promoted = [t for t in order if t["promoted_at"]]
-    fresh = [t for t in order if not t["promoted_at"]
-             and radio._age_hours(t["created_at"]) < config.RADIO_RECENT_HOURS]
-    catalogue = [t for t in order if not t["promoted_at"]
-                 and radio._age_hours(t["created_at"]) >= config.RADIO_RECENT_HOURS]
+    fresh = [t for t in order if not t["promoted_at"] and not t["aired_at"]]
+    catalogue = [t for t in order if not t["promoted_at"] and t["aired_at"]]
     return render(request, "radio.html", user=user, tracks=tracks,
                   promoted=promoted, fresh=fresh, catalogue=catalogue,
-                  recent_hours=config.RADIO_RECENT_HOURS,
                   queue=queue, message=msg,
                   total_min=round(sum(t["duration"] or 0 for t in tracks) / 60))
 
@@ -995,8 +992,7 @@ def radio_vote(user=Depends(auth.current_user)):
     needed = radio.votes_needed(db.radio_listener_count())
     passed = votes >= needed
     if passed:
-        # jump the station to the next track boundary for every listener
-        db.radio_add_offset(st["remaining"])
+        radio.station_skip()          # moves the needle for every listener
         db.radio_clear_votes(t["id"], cycle)
         log.info("radio: vote-skip passed (%d/%d) — %s", votes, needed, t["title"])
     return {"passed": passed, "votes": 0 if passed else votes, "needed": needed}

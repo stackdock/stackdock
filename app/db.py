@@ -110,6 +110,7 @@ CREATE TABLE IF NOT EXISTS radio_tracks (
     duration REAL,                     -- seconds (the station math needs it)
     position INTEGER,                   -- ordering within the Up Next block
     promoted_at TEXT,                   -- non-NULL = pinned to Up Next (plays first)
+    aired_at TEXT,                      -- first time it went out; NULL = never played yet
     error TEXT,
     added_by TEXT,
     created_at TEXT NOT NULL
@@ -117,9 +118,15 @@ CREATE TABLE IF NOT EXISTS radio_tracks (
 
 -- Station clock offset: vote-skips ADD the remaining seconds of the current
 -- track, which advances the shared timeline for every listener at once.
+-- The needle: which track is on air and when it started. Explicit position
+-- (not clock-modulo-playlist) so adding, reordering, promoting or deleting a
+-- track changes only what plays NEXT — it can't yank the song you're hearing.
 CREATE TABLE IF NOT EXISTS radio_state (
     id INTEGER PRIMARY KEY CHECK (id = 1),
-    offset_seconds REAL NOT NULL DEFAULT 0,
+    offset_seconds REAL NOT NULL DEFAULT 0,   -- legacy, unused
+    current_track_id INTEGER,
+    started_at REAL,                          -- epoch seconds
+    cycle INTEGER NOT NULL DEFAULT 0,         -- bumped every advance; scopes skip votes
     updated_at TEXT
 );
 
@@ -333,7 +340,11 @@ def init():
                            ("connected_accounts", "subs_json TEXT"),
                            ("connected_accounts", "paid_json TEXT"),
                            ("radio_tracks", "position INTEGER"),
-                           ("radio_tracks", "promoted_at TEXT")]:
+                           ("radio_tracks", "promoted_at TEXT"),
+                           ("radio_tracks", "aired_at TEXT"),
+                           ("radio_state", "current_track_id INTEGER"),
+                           ("radio_state", "started_at REAL"),
+                           ("radio_state", "cycle INTEGER NOT NULL DEFAULT 0")]:
             try:
                 c.execute(f"ALTER TABLE {table} ADD COLUMN {col}")
             except sqlite3.OperationalError:
@@ -1169,22 +1180,33 @@ def radio_retry(track_id: int) -> None:
                   "WHERE id=? AND status='failed'", (track_id,))
 
 
-def radio_offset() -> float:
+def radio_get_state() -> dict:
     with conn() as c:
-        row = c.execute("SELECT offset_seconds FROM radio_state WHERE id = 1").fetchone()
-        return float(row["offset_seconds"]) if row else 0.0
+        row = c.execute("SELECT current_track_id, started_at, cycle "
+                        "FROM radio_state WHERE id = 1").fetchone()
+    return ({"track_id": row["current_track_id"], "started_at": row["started_at"],
+             "cycle": row["cycle"] or 0} if row
+            else {"track_id": None, "started_at": None, "cycle": 0})
 
 
-def radio_add_offset(seconds: float) -> float:
-    """Advance the shared timeline (a passed vote-skip). Returns the new offset."""
+def radio_set_state(track_id: int, started_at: float, cycle: int) -> None:
     with conn() as c:
-        c.execute("""INSERT INTO radio_state (id, offset_seconds, updated_at)
-                     VALUES (1, ?, ?)
+        c.execute("""INSERT INTO radio_state (id, current_track_id, started_at, cycle, updated_at)
+                     VALUES (1, ?, ?, ?, ?)
                      ON CONFLICT(id) DO UPDATE SET
-                       offset_seconds = radio_state.offset_seconds + excluded.offset_seconds,
-                       updated_at = excluded.updated_at""", (seconds, now_iso()))
-        return float(c.execute("SELECT offset_seconds FROM radio_state WHERE id=1")
-                     .fetchone()["offset_seconds"])
+                       current_track_id = excluded.current_track_id,
+                       started_at = excluded.started_at,
+                       cycle = excluded.cycle,
+                       updated_at = excluded.updated_at""",
+                  (track_id, started_at, cycle, now_iso()))
+
+
+def radio_mark_aired(track_id: int) -> None:
+    """First airing graduates a track out of 'Recently added' and consumes its
+    Up Next pin (an up-next queue is spent once it plays)."""
+    with conn() as c:
+        c.execute("UPDATE radio_tracks SET aired_at = COALESCE(aired_at, ?), "
+                  "promoted_at = NULL WHERE id = ?", (now_iso(), track_id))
 
 
 def radio_touch_listener(user_id: int) -> None:

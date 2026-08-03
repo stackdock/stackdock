@@ -53,21 +53,16 @@ def art_for(track_id: int) -> str:
     return f"/static/radio-art/{(int(track_id) % ART_COUNT) + 1}.jpg"
 
 
-def _age_hours(iso: str | None) -> float:
-    try:
-        return (datetime.now(timezone.utc)
-                - datetime.fromisoformat(iso)).total_seconds() / 3600
-    except (TypeError, ValueError):
-        return 1e9          # unparsable -> treat as old
+_NEEDLE_LOCK = threading.Lock()
 
 
 def station_order() -> list:
     """The rotation, in the order a station would run it:
 
       1. UP NEXT — tracks members pinned (promoted_at), in pin order
-      2. NEW — added in the last RADIO_RECENT_HOURS, oldest first, so a fresh
-         submission lands at the BOTTOM of the new block and gets heavy play
-      3. THE CATALOGUE — everything older, SHUFFLED
+      2. RECENTLY ADDED — never aired yet, oldest first, so a fresh submission
+         lands at the BOTTOM and every new song is guaranteed one play
+      3. THE CATALOGUE — everything that has aired at least once, SHUFFLED
 
     The shuffle seed is the UTC date, so it reshuffles once a day and every
     listener still derives the same order (the server is authoritative anyway,
@@ -76,31 +71,86 @@ def station_order() -> list:
     tracks = [t for t in db.list_radio_tracks("ready") if (t["duration"] or 0) > 0]
     promoted = [t for t in tracks if t["promoted_at"]]          # list order = position
     rest = [t for t in tracks if not t["promoted_at"]]
-    fresh = [t for t in rest if _age_hours(t["created_at"]) < config.RADIO_RECENT_HOURS]
-    catalogue = [t for t in rest if _age_hours(t["created_at"]) >= config.RADIO_RECENT_HOURS]
+    fresh = [t for t in rest if not t["aired_at"]]              # never been on air
+    catalogue = [t for t in rest if t["aired_at"]]
     random.Random(int(datetime.now(timezone.utc).strftime("%Y%m%d"))).shuffle(catalogue)
     return promoted + fresh + catalogue
 
 
+def _next_after(order: list, track_id: int | None):
+    """The track following `track_id` in the current order (wrapping). Falls back
+    to the head when the track is gone (deleted) or unknown."""
+    ids = [t["id"] for t in order]
+    if track_id in ids:
+        return order[(ids.index(track_id) + 1) % len(order)]
+    return order[0]
+
+
 def station_now() -> dict | None:
-    """The SERVER decides what's on air. playhead = (wall clock + skip offset)
-    modulo the station length; `cycle` counts complete passes so a skip vote
-    belongs to one airing only. Returns None when there's nothing playable."""
-    tracks = station_order()
-    if not tracks:
-        return None
-    total = sum(t["duration"] for t in tracks)
-    t_now = time.time() + db.radio_offset()
-    cycle = int(t_now // total)
-    pos = t_now % total
-    for i, tr in enumerate(tracks):
-        if pos < tr["duration"]:
-            return {"track": tr, "index": i, "offset": pos, "cycle": cycle,
-                    "remaining": tr["duration"] - pos, "total": total,
-                    "count": len(tracks)}
-        pos -= tr["duration"]
-    return {"track": tracks[0], "index": 0, "offset": 0.0, "cycle": cycle,
-            "remaining": tracks[0]["duration"], "total": total, "count": len(tracks)}
+    """What is on air, decided by the SERVER.
+
+    The needle is explicit — radio_state holds the current track and when it
+    started — rather than clock-modulo-playlist. That matters because the
+    running order changes constantly (submissions, promotions, a track
+    graduating out of 'Recently added' after it plays): with modulo arithmetic
+    every such change re-maps the whole timeline and yanks the song you're
+    hearing; with a needle it only affects what comes NEXT.
+
+    Advancing happens lazily here, when someone asks, and each advance marks the
+    finished track as aired (graduating it into the general rotation and
+    consuming any Up Next pin).
+    """
+    with _NEEDLE_LOCK:
+        order = station_order()
+        if not order:
+            return None
+        st = db.radio_get_state()
+        now_ts = time.time()
+        cur = next((t for t in order if t["id"] == st["track_id"]), None)
+        started, cycle = st["started_at"], st["cycle"]
+
+        if cur is None or not started:            # first boot, or the track is gone
+            cur = _next_after(order, st["track_id"]) if st["track_id"] else order[0]
+            started, cycle = now_ts, cycle + 1
+            db.radio_set_state(cur["id"], started, cycle)
+
+        # walk forward through however many tracks finished since we last looked
+        # (bounded: a long outage shouldn't spin through days of playlist)
+        for _ in range(len(order) + 1):
+            elapsed = now_ts - started
+            if elapsed < cur["duration"]:
+                break
+            db.radio_mark_aired(cur["id"])        # graduates + un-pins
+            order = station_order()               # order may have just changed
+            if not order:
+                return None
+            nxt = _next_after(order, cur["id"])
+            started, cycle = started + cur["duration"], cycle + 1
+            cur = nxt
+            db.radio_set_state(cur["id"], started, cycle)
+        else:
+            started, cycle = now_ts, cycle + 1    # way behind: rejoin at the top
+            db.radio_set_state(cur["id"], started, cycle)
+
+        offset = max(0.0, min(now_ts - started, cur["duration"]))
+        return {"track": cur, "offset": offset, "cycle": cycle,
+                "remaining": cur["duration"] - offset,
+                "count": len(order),
+                "index": next((i for i, t in enumerate(order) if t["id"] == cur["id"]), 0)}
+
+
+def station_skip() -> None:
+    """Vote-skip result: retire the current track and start the next one now."""
+    with _NEEDLE_LOCK:
+        order = station_order()
+        if not order:
+            return
+        st = db.radio_get_state()
+        if st["track_id"]:
+            db.radio_mark_aired(st["track_id"])
+            order = station_order() or order
+        nxt = _next_after(order, st["track_id"])
+        db.radio_set_state(nxt["id"], time.time(), st["cycle"] + 1)
 
 
 def votes_needed(listeners: int) -> int:

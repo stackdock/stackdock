@@ -76,27 +76,69 @@ def test_reorder_survives_deletion_of_a_middle_track(fresh_db):
     assert a
 
 
-def test_station_now_is_deterministic_and_walks_the_timeline(fresh_db, monkeypatch):
+def test_station_advances_track_by_track(fresh_db, monkeypatch):
     for t in ("A", "B", "C"):
-        _ready(t)                                    # 100s each -> 300s station
-    monkeypatch.setattr(radio.time, "time", lambda: 150.0)
+        _ready(t)                                    # 100s each
+    clock = {"t": 1000.0}
+    monkeypatch.setattr(radio.time, "time", lambda: clock["t"])
     st = radio.station_now()
-    assert st["track"]["title"] == "B" and 49 < st["offset"] < 51
-    assert st["cycle"] == 0 and st["remaining"] > 0
-    monkeypatch.setattr(radio.time, "time", lambda: 350.0)    # 50s into pass 2
-    st2 = radio.station_now()
-    assert st2["track"]["title"] == "A" and st2["cycle"] == 1
+    assert st["track"]["title"] == "A" and st["offset"] < 1
+    clock["t"] += 40
+    assert 39 < radio.station_now()["offset"] < 41           # same track, later
+    clock["t"] += 70                                          # past A's end
+    st = radio.station_now()
+    assert st["track"]["title"] == "B" and st["offset"] < 15
+    clock["t"] += 100_000                                     # long outage
+    assert radio.station_now() is not None                    # rejoins, no spin
+
+
+def test_a_played_track_graduates_into_the_shuffled_catalogue(fresh_db, monkeypatch):
+    a, b = _ready("A"), _ready("B")
+    clock = {"t": 500.0}
+    monkeypatch.setattr(radio.time, "time", lambda: clock["t"])
+    radio.station_now()                                       # A on air
+    assert not db.get_radio_track(a)["aired_at"]              # not yet finished
+    clock["t"] += 101                                         # A finishes
+    assert radio.station_now()["track"]["title"] == "B"
+    assert db.get_radio_track(a)["aired_at"]                  # graduated
+    assert [t["id"] for t in radio.station_order() if not t["aired_at"]] == [b]
+
+
+def test_playing_a_pinned_track_consumes_the_pin(fresh_db, monkeypatch):
+    a, b = _ready("A"), _ready("B")
+    db.radio_promote(b, True)                                 # B jumps the queue
+    clock = {"t": 900.0}
+    monkeypatch.setattr(radio.time, "time", lambda: clock["t"])
+    assert radio.station_now()["track"]["title"] == "B"
+    clock["t"] += 101
+    radio.station_now()
+    assert db.get_radio_track(b)["promoted_at"] is None       # pin spent
+    assert a
 
 
 def test_vote_skip_advances_the_station_for_everyone(fresh_db, monkeypatch):
     for t in ("A", "B", "C"):
         _ready(t)
-    monkeypatch.setattr(radio.time, "time", lambda: 10.0)     # 10s into A
-    before = radio.station_now()
-    assert before["track"]["title"] == "A"
-    db.radio_add_offset(before["remaining"])                  # a passed vote
+    monkeypatch.setattr(radio.time, "time", lambda: 10.0)
+    assert radio.station_now()["track"]["title"] == "A"
+    radio.station_skip()                                      # a passed vote
     after = radio.station_now()
     assert after["track"]["title"] == "B" and after["offset"] < 1
+
+
+def test_reordering_never_yanks_the_song_on_air(fresh_db, monkeypatch):
+    a, b, c = _ready("A"), _ready("B"), _ready("C")
+    clock = {"t": 2000.0}
+    monkeypatch.setattr(radio.time, "time", lambda: clock["t"])
+    radio.station_now()
+    clock["t"] += 30
+    on_air = radio.station_now()["track"]["title"]
+    db.radio_promote(c, True)                                 # playlist changes mid-song
+    _ready("D")
+    still = radio.station_now()
+    assert still["track"]["title"] == on_air                  # same song...
+    assert 29 < still["offset"] < 32                          # ...same position
+    assert a and b
 
 
 def test_vote_threshold_is_a_majority_of_listeners():
@@ -175,21 +217,16 @@ def test_title_dedupe_catches_the_same_song_under_another_title(fresh_db):
     assert not db.radio_title_exists("discard the whole nine yards by someone else")
 
 
-def test_rotation_is_up_next_then_new_then_shuffled_catalogue(fresh_db, monkeypatch):
-    from app import config
-    monkeypatch.setattr(config, "RADIO_RECENT_HOURS", 24)
-    old_ts = (db.datetime.now(db.timezone.utc) - db.timedelta(days=5)).isoformat()
+def test_rotation_is_up_next_then_unplayed_then_shuffled_catalogue(fresh_db):
     fresh_ids = [_ready(f"New{i}") for i in range(2)]
     old_ids = [_ready(f"Old{i}") for i in range(4)]
-    with db.conn() as c:                      # age the catalogue tracks
-        for tid in old_ids:
-            c.execute("UPDATE radio_tracks SET created_at=? WHERE id=?", (old_ts, tid))
+    for tid in old_ids:                       # these have already been on air
+        db.radio_mark_aired(tid)
     titles = [t["title"] for t in radio.station_order()]
     assert titles[:2] == ["New0", "New1"]                  # newest lands at the bottom
     assert sorted(titles[2:]) == ["Old0", "Old1", "Old2", "Old3"]
-    assert radio.station_order() == radio.station_order() or True   # stable within a day
 
-    db.radio_promote(old_ids[2], True)                     # pin one from the catalogue
+    db.radio_promote(old_ids[2], True)                     # pull one back to the front
     titles = [t["title"] for t in radio.station_order()]
     assert titles[0] == "Old2" and titles[1:3] == ["New0", "New1"]
     db.radio_promote(old_ids[2], False)                    # demote back
