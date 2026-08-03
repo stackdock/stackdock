@@ -1010,6 +1010,13 @@ def radio_pending() -> list:
                          "ORDER BY id").fetchall()
 
 
+def radio_query_exists(query: str) -> bool:
+    """Any status counts: a failed playlist track must not re-queue forever."""
+    with conn() as c:
+        return c.execute("SELECT 1 FROM radio_tracks WHERE query = ?",
+                         (query,)).fetchone() is not None
+
+
 def radio_source_exists(source_url: str) -> bool:
     with conn() as c:
         return c.execute("SELECT 1 FROM radio_tracks WHERE source_url = ? AND status = 'ready'",

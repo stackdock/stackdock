@@ -96,7 +96,11 @@ def _download(query: str) -> dict:
 
     target = _target(query)
     last_err = None
-    for attempt, proxy in enumerate((None, _proxy())):
+    # direct first, then FRESH residential sessions on bot-check: DataImpulse
+    # exits vary in quality (live test 3 Aug 2026: first session bot-checked,
+    # next one sailed through), so one proxy try isn't enough
+    for attempt in range(1 + config.RADIO_PROXY_TRIES):
+        proxy = None if attempt == 0 else _proxy()
         if attempt and proxy is None:
             break                                # no proxy configured; done
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -129,13 +133,70 @@ def _download(query: str) -> dict:
             except Exception as e:                            # noqa: BLE001
                 last_err = e
                 msg = str(e).lower()
-                # bot-checked on the datacenter IP -> one retry through the
-                # residential proxy; anything else is final
-                if attempt == 0 and any(h in msg for h in _BOT_HINTS):
-                    log.info("radio: bot-check on direct download; retrying via proxy")
+                if any(h in msg for h in _BOT_HINTS):
+                    log.info("radio: bot-check (attempt %d); retrying via fresh proxy session",
+                             attempt + 1)
                     continue
                 raise
     raise last_err if last_err else RuntimeError("download failed")
+
+
+def _spotify_playlist_tracks(url: str) -> list[str]:
+    """Track queries ('title artist') from a PUBLIC Spotify playlist via the
+    no-auth embed page (__NEXT_DATA__ JSON; the embed lists up to ~100 tracks,
+    plenty for a station playlist)."""
+    import json as _json
+
+    pid = re.search(r"playlist/([A-Za-z0-9]+)", url)
+    if not pid:
+        return []
+    r = requests.get(f"https://open.spotify.com/embed/playlist/{pid.group(1)}",
+                     timeout=20, headers={"User-Agent": "Mozilla/5.0"})
+    m = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>',
+                  r.text, re.S)
+    if not m:
+        return []
+
+    def find(o):
+        if isinstance(o, dict):
+            if "trackList" in o:
+                return o["trackList"]
+            for v in o.values():
+                if (x := find(v)) is not None:
+                    return x
+        elif isinstance(o, list):
+            for v in o:
+                if (x := find(v)) is not None:
+                    return x
+        return None
+
+    entries = find(_json.loads(m.group(1))) or []
+    out = []
+    for e in entries:
+        title, artist = (e.get("title") or "").strip(), (e.get("subtitle") or "").strip()
+        if title:
+            out.append(f"{title} {artist}".strip())
+    return out
+
+
+def sync_playlists() -> int:
+    """Queue every not-yet-seen track from the watched playlists (RADIO_PLAYLISTS).
+    Dedupe is by the exact query string, so failed tracks stay failed instead of
+    re-queueing forever."""
+    added = 0
+    for url in config.RADIO_PLAYLISTS:
+        try:
+            queries = _spotify_playlist_tracks(url)
+        except requests.RequestException as e:
+            log.warning("radio: playlist fetch failed (%s): %s", url, e.__class__.__name__)
+            continue
+        for q in queries:
+            if not db.radio_query_exists(q):
+                db.add_radio_track(q, added_by="playlist")
+                added += 1
+    if added:
+        log.info("radio: %d new track(s) queued from watched playlists", added)
+    return added
 
 
 def run() -> int:
@@ -143,6 +204,7 @@ def run() -> int:
     if not _RUN_LOCK.acquire(blocking=False):
         return 0
     try:
+        sync_playlists()
         done = 0
         for t in db.radio_pending():
             try:

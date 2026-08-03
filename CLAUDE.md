@@ -89,6 +89,13 @@ app/radio.py             Member radio (/radio, nav '📻 Radio'): anyone submits
                          with NO server state: playlist = daily-seeded shuffle, playhead =
                          wall-clock mod total length, so every member hears the same thing; skip
                          desyncs locally, '● live' re-tunes. Submitter or admin can delete.
+                         RADIO_PLAYLISTS (JSON urls): public Spotify playlists mirrored onto
+                         the station via the NO-AUTH embed page (__NEXT_DATA__ trackList,
+                         ~100-track cap) — dedupe by exact query string so failed tracks
+                         never re-queue. Bot-check retries use FRESH proxy sessions
+                         (RADIO_PROXY_TRIES=3): DataImpulse exit quality varies, one try
+                         is not enough (live-proven 3 Aug 2026: direct+tv+one-proxy all
+                         bot-checked/DRM'd; a second default-client proxy session worked).
 app/plex.py              Plex tab (/plex): libraries, recently-added, search,
                          poster grid, show->season->episode drill-down. INLINE playback:
                          /plex/watch/{key} <video> -> /plex/stream/{key} 302s to the raw file

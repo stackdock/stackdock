@@ -55,6 +55,12 @@ PLEX_PASSWORD = os.getenv("PLEX_PASSWORD", "")
 # ---- Member radio (yt-dlp; see app/radio.py) ----
 RADIO_MAX_MINUTES = int(os.getenv("RADIO_MAX_MINUTES", "15"))
 RADIO_POLL_MINUTES = int(os.getenv("RADIO_POLL_MINUTES", "5"))
+RADIO_PROXY_TRIES = int(os.getenv("RADIO_PROXY_TRIES", "3"))
+# Public Spotify playlists to mirror onto the station (JSON list of URLs)
+try:
+    RADIO_PLAYLISTS: list[str] = json.loads(os.getenv("RADIO_PLAYLISTS", "[]"))
+except json.JSONDecodeError:
+    RADIO_PLAYLISTS = []
 
 # ---- Article feeds (any blog RSS/Atom with full-text items, e.g. a Hugo site) ----
 # JSON object: {"Publication display name": "https://...feed-url..."}

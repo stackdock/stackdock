@@ -42,6 +42,31 @@ def test_run_marks_ready_and_failed(fresh_db, monkeypatch):
     assert db.radio_source_exists("https://yt/x")
 
 
+_EMBED_HTML = ('<html><script id="__NEXT_DATA__" type="application/json">'
+               '{"props":{"pageProps":{"state":{"data":{"entity":{"title":"Radio",'
+               '"trackList":[{"title":"Song A","subtitle":"Artist One"},'
+               '{"title":"Song B","subtitle":"Artist Two"}]}}}}}}</script></html>')
+
+
+class _EmbedResp:
+    text = _EMBED_HTML
+    status_code = 200
+
+
+def test_playlist_sync_queues_new_tracks_once(fresh_db, monkeypatch):
+    from app import config
+    monkeypatch.setattr(config, "RADIO_PLAYLISTS",
+                        ["https://open.spotify.com/playlist/abc123?si=x"])
+    monkeypatch.setattr(radio.requests, "get", lambda *a, **k: _EmbedResp())
+    assert radio.sync_playlists() == 2
+    pending = db.radio_pending()
+    assert [t["query"] for t in pending] == ["Song A Artist One", "Song B Artist Two"]
+    assert all(t["added_by"] == "playlist" for t in pending)
+    # second sweep: nothing new; a failed track must not re-queue either
+    db.radio_set_failed(pending[0]["id"], "no result")
+    assert radio.sync_playlists() == 0
+
+
 def test_submit_route_queues_and_triggers(client, monkeypatch):
     from app import auth, main
     triggered = []
