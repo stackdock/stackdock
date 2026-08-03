@@ -63,3 +63,18 @@ def open_stream(key: str):
     return (obj["Body"],
             obj.get("ContentType") or "application/octet-stream",
             obj.get("ContentLength"))
+
+
+def prefix_usage(prefix: str) -> tuple[int, int]:
+    """(object count, total bytes) under a key prefix — e.g. how much of the
+    bucket the radio's audio occupies. Paginated; soft-fails to (0, 0)."""
+    count = total = 0
+    try:
+        paginator = client().get_paginator("list_objects_v2")
+        for page in paginator.paginate(Bucket=config.S3_BUCKET, Prefix=prefix):
+            for obj in page.get("Contents", []):
+                count += 1
+                total += obj.get("Size", 0)
+    except Exception:                                     # noqa: BLE001
+        return 0, 0
+    return count, total

@@ -1270,6 +1270,12 @@ def status_page(request: Request, user=Depends(auth.current_user)):
         storage_ok, storage_msg = False, f"{type(e).__name__}: {e}"
 
     du = shutil.disk_usage(config.DATA_DIR)
+    # where things actually live: audio in R2, only the SQLite DB on the droplet
+    radio_files, radio_bytes = storage.prefix_usage("radio/")
+    try:
+        db_mb = round(config.DB_PATH.stat().st_size / 1e6, 1)
+    except OSError:
+        db_mb = 0
     accounts = db.list_accounts()
 
     # per-account subscription breakdown (who they follow / pay for) for /status.
@@ -1302,6 +1308,11 @@ def status_page(request: Request, user=Depends(auth.current_user)):
                   storage_ok=storage_ok, storage_msg=storage_msg,
                   disk_used_pct=round(du.used / du.total * 100),
                   disk_free_gb=round(du.free / 1e9, 1),
+                  disk_total_gb=round(du.total / 1e9, 1),
+                  disk_used_gb=round(du.used / 1e9, 1),
+                  db_mb=db_mb,
+                  radio_files=radio_files,
+                  radio_gb=round(radio_bytes / 1e9, 2),
                   accounts=accounts,
                   account_subs=account_subs,
                   github_repo=config.GITHUB_REPO,

@@ -12,8 +12,10 @@
     </li>
     <li>
       <span class="spine">disk</span>
-      <span class="row-title">{{ "✅" if disk_used_pct < 85 else "⚠️" }} {{ disk_used_pct }}% used · {{ disk_free_gb }} GB free</span><span></span>
+      <span class="row-title">{{ "✅" if disk_used_pct < 85 else "⚠️" }} droplet: {{ disk_used_gb }} / {{ disk_total_gb }} GB used ({{ disk_used_pct }}%) · {{ disk_free_gb }} GB free</span><span></span>
     </li>
+    <li><span class="spine">sqlite</span><span class="row-title">{{ db_mb }} MB on the droplet (the ONLY thing stored locally — all audio lives in R2)</span><span></span></li>
+    <li><span class="spine">radio</span><span class="row-title">🎵 {{ radio_files }} file(s) · {{ radio_gb }} GB in R2 under <code>radio/</code></span><span></span></li>
     <li><span class="spine">library</span><span class="row-title">{{ n_articles }} articles · {{ n_episodes }} episodes</span><span></span></li>
   </ul>
 </section>
