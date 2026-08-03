@@ -84,6 +84,10 @@ def _ydl_opts(tmpdir: str, proxy: str | None) -> dict:
         "socket_timeout": 30,
         "max_filesize": 100 * 1024 * 1024,
     }
+    # a youtube.com cookies.txt beats the bot-check with no proxy traffic at
+    # all (preferred path); yt-dlp rewrites the file when YouTube rotates values
+    if config.RADIO_COOKIES_FILE and Path(config.RADIO_COOKIES_FILE).exists():
+        opts["cookiefile"] = config.RADIO_COOKIES_FILE
     if proxy:
         opts["proxy"] = proxy
     return opts

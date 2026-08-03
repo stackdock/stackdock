@@ -36,8 +36,18 @@
   <ul class="rows">
     {% for t in queue %}
     <li><span class="spine">{{ t.status }}</span>
-        <span class="row-title">{{ t.query }}{% if t.error %} — <span class="form-error">{{ t.error }}</span>{% endif %}</span>
-        <span class="added-by">{{ t.added_by }}</span></li>
+        <span class="row-title">{{ t.query }}{% if t.error %} — <span class="form-error">{{ t.error[:120] }}</span>{% endif %}</span>
+        <span class="added-by">{{ t.added_by }}</span>
+        {% if t.status == 'failed' %}
+        <form method="post" action="/radio/retry" class="inline-form">
+          <input type="hidden" name="track_id" value="{{ t.id }}">
+          <button type="submit">retry</button>
+        </form>
+        <form method="post" action="/radio/delete" class="inline-form">
+          <input type="hidden" name="track_id" value="{{ t.id }}">
+          <button type="submit">✕</button>
+        </form>
+        {% endif %}</li>
     {% endfor %}
   </ul>
   {% endif %}

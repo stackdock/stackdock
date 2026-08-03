@@ -954,6 +954,16 @@ def radio_tracks_json(user=Depends(auth.current_user)):
             for t in db.list_radio_tracks("ready")]
 
 
+@app.post("/radio/retry")
+def radio_retry(user=Depends(auth.current_user), track_id: int = Form(...)):
+    t = db.get_radio_track(track_id)
+    if not t:
+        raise HTTPException(404)
+    db.radio_retry(track_id)
+    _trigger_job("radio")
+    return RedirectResponse("/radio", status_code=303)
+
+
 @app.post("/radio/delete")
 def radio_delete(user=Depends(auth.current_user), track_id: int = Form(...)):
     t = db.get_radio_track(track_id)

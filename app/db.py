@@ -1054,6 +1054,12 @@ def delete_radio_track(track_id: int) -> None:
         c.execute("DELETE FROM radio_tracks WHERE id=?", (track_id,))
 
 
+def radio_retry(track_id: int) -> None:
+    with conn() as c:
+        c.execute("UPDATE radio_tracks SET status='pending', error=NULL "
+                  "WHERE id=? AND status='failed'", (track_id,))
+
+
 def get_plex_token() -> str | None:
     with conn() as c:
         row = c.execute("SELECT token FROM plex_auth WHERE id = 1").fetchone()

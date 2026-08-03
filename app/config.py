@@ -56,6 +56,11 @@ PLEX_PASSWORD = os.getenv("PLEX_PASSWORD", "")
 RADIO_MAX_MINUTES = int(os.getenv("RADIO_MAX_MINUTES", "15"))
 RADIO_POLL_MINUTES = int(os.getenv("RADIO_POLL_MINUTES", "5"))
 RADIO_PROXY_TRIES = int(os.getenv("RADIO_PROXY_TRIES", "3"))
+# Netscape cookies.txt exported from a youtube.com browser session (use a
+# THROWAWAY Google account). Beats the bot-check without burning proxy traffic;
+# lives in the data volume so it survives deploys and yt-dlp can rewrite it
+# when YouTube rotates cookie values.
+RADIO_COOKIES_FILE = os.getenv("RADIO_COOKIES_FILE", str(DATA_DIR / "youtube-cookies.txt"))
 # Public Spotify playlists to mirror onto the station (JSON list of URLs)
 try:
     RADIO_PLAYLISTS: list[str] = json.loads(os.getenv("RADIO_PLAYLISTS", "[]"))
