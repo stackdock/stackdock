@@ -114,6 +114,31 @@ CREATE TABLE IF NOT EXISTS radio_tracks (
     created_at TEXT NOT NULL
 );
 
+-- Station clock offset: vote-skips ADD the remaining seconds of the current
+-- track, which advances the shared timeline for every listener at once.
+CREATE TABLE IF NOT EXISTS radio_state (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    offset_seconds REAL NOT NULL DEFAULT 0,
+    updated_at TEXT
+);
+
+-- Skip votes for ONE airing of a track: (track, cycle) — cycle = which pass
+-- through the playlist — so a vote can't carry over to the next time it plays.
+CREATE TABLE IF NOT EXISTS radio_votes (
+    user_id INTEGER NOT NULL,
+    track_id INTEGER NOT NULL,
+    cycle INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, track_id, cycle)
+);
+
+-- Who's tuned in right now (heartbeat from the player), so the vote threshold
+-- can scale with the audience instead of being a fixed number.
+CREATE TABLE IF NOT EXISTS radio_listeners (
+    user_id INTEGER PRIMARY KEY,
+    last_seen TEXT NOT NULL
+);
+
 -- Current Plex per-server access token. Lives in the DB (not .env) because the
 -- auto-refresher runs inside the container, which can't rewrite .env; .env's
 -- PLEX_TOKEN is the seed/fallback.
@@ -1087,6 +1112,67 @@ def radio_retry(track_id: int) -> None:
     with conn() as c:
         c.execute("UPDATE radio_tracks SET status='pending', error=NULL "
                   "WHERE id=? AND status='failed'", (track_id,))
+
+
+def radio_offset() -> float:
+    with conn() as c:
+        row = c.execute("SELECT offset_seconds FROM radio_state WHERE id = 1").fetchone()
+        return float(row["offset_seconds"]) if row else 0.0
+
+
+def radio_add_offset(seconds: float) -> float:
+    """Advance the shared timeline (a passed vote-skip). Returns the new offset."""
+    with conn() as c:
+        c.execute("""INSERT INTO radio_state (id, offset_seconds, updated_at)
+                     VALUES (1, ?, ?)
+                     ON CONFLICT(id) DO UPDATE SET
+                       offset_seconds = radio_state.offset_seconds + excluded.offset_seconds,
+                       updated_at = excluded.updated_at""", (seconds, now_iso()))
+        return float(c.execute("SELECT offset_seconds FROM radio_state WHERE id=1")
+                     .fetchone()["offset_seconds"])
+
+
+def radio_touch_listener(user_id: int) -> None:
+    with conn() as c:
+        c.execute("""INSERT INTO radio_listeners (user_id, last_seen) VALUES (?, ?)
+                     ON CONFLICT(user_id) DO UPDATE SET last_seen = excluded.last_seen""",
+                  (user_id, now_iso()))
+
+
+def radio_listener_count(within_seconds: int = 120) -> int:
+    cutoff = (datetime.now(timezone.utc) - timedelta(seconds=within_seconds)).isoformat()
+    with conn() as c:
+        return c.execute("SELECT COUNT(*) n FROM radio_listeners WHERE last_seen > ?",
+                         (cutoff,)).fetchone()["n"]
+
+
+def radio_vote(user_id: int, track_id: int, cycle: int) -> int:
+    """Record one listener's skip vote for this airing; returns the vote count."""
+    with conn() as c:
+        c.execute("INSERT OR IGNORE INTO radio_votes (user_id, track_id, cycle, created_at) "
+                  "VALUES (?,?,?,?)", (user_id, track_id, cycle, now_iso()))
+        return c.execute("SELECT COUNT(*) n FROM radio_votes WHERE track_id=? AND cycle=?",
+                         (track_id, cycle)).fetchone()["n"]
+
+
+def radio_vote_count(track_id: int, cycle: int) -> int:
+    with conn() as c:
+        return c.execute("SELECT COUNT(*) n FROM radio_votes WHERE track_id=? AND cycle=?",
+                         (track_id, cycle)).fetchone()["n"]
+
+
+def radio_voted(user_id: int, track_id: int, cycle: int) -> bool:
+    with conn() as c:
+        return c.execute("SELECT 1 FROM radio_votes WHERE user_id=? AND track_id=? AND cycle=?",
+                         (user_id, track_id, cycle)).fetchone() is not None
+
+
+def radio_clear_votes(track_id: int, cycle: int) -> None:
+    with conn() as c:
+        c.execute("DELETE FROM radio_votes WHERE track_id=? AND cycle=?", (track_id, cycle))
+        # keep the table from growing forever
+        c.execute("DELETE FROM radio_votes WHERE created_at < ?",
+                  ((datetime.now(timezone.utc) - timedelta(days=1)).isoformat(),))
 
 
 def get_plex_token() -> str | None:

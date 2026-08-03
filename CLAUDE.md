@@ -84,30 +84,28 @@ app/radio.py             Member radio (/radio, nav '📻 Radio'): anyone submits
                          (PINNED in requirements; bump when YouTube breaks it) downloads the
                          native AAC stream (bestaudio[ext=m4a], no ffmpeg) -> R2 radio/{id}.m4a.
                          Worker = job 'radio' (RADIO_POLL_MINUTES + one-shot on submit); YouTube
-                         BOT-CHECKS datacenter IPs — one retry through the NYT_PROXY_* residential
-                         proxy. RADIO_MAX_MINUTES caps length. The station is SYNCED pseudo-live
-                         with NO server state: order = radio_tracks.position (↑/↓ buttons;
-                         renumbered densely on every move so NULL/dupe positions can't wedge
-                         it), playhead = SERVER clock (tracks.json ships `now`; a skewed
-                         device clock would otherwise desync it) mod total length. Skip
-                         desyncs locally, '● live' re-tunes. Edge cases handled in the
-                         player: zero-duration tracks excluded; a playhead landing in a
-                         track's last 2s starts the NEXT one (else instant-ended loop);
-                         'ended' steps forward when metadata duration exceeds the real file;
-                         media errors (expired presign / deleted track) re-fetch the
-                         playlist at most every 30s then advance, with a failure cap so a
-                         dead station can't spin; the list is also re-fetched at track
-                         boundaries so additions/reorders appear without a reload; returning
-                         to the foreground re-syncs if the broadcast moved on. Volume shares
-                         the episode player's vol:global/mute:global keys (slider hidden on
-                         iOS, which ignores programmatic volume). Submitter or admin deletes.
-                         RADIO_PLAYLISTS (JSON urls): public Spotify playlists mirrored onto
-                         the station via the NO-AUTH embed page (__NEXT_DATA__ trackList,
-                         ~100-track cap) — dedupe by exact query string so failed tracks
-                         never re-queue. Bot-check retries use FRESH proxy sessions
-                         (RADIO_PROXY_TRIES=3): DataImpulse exit quality varies, one try
-                         is not enough (live-proven 3 Aug 2026: direct+tv+one-proxy all
-                         bot-checked/DRM'd; a second default-client proxy session worked).
+                         BOT-CHECKS datacenter IPs — retries across RADIO_PROXY_TRIES FRESH
+                         NYT_PROXY_* residential sessions (exit quality varies; transient SSL
+                         EOF / truncated downloads retry the same way). RADIO_USE_COOKIES is OFF
+                         by default: a cookies.txt session clears the bot-check but YouTube then
+                         serves SABR-only (ZERO audio formats, proxy or not — measured 3 Aug 2026).
+                         RADIO_PLAYLISTS mirrors public Spotify playlists via the NO-AUTH embed
+                         page (__NEXT_DATA__ trackList, ~100 cap); dedupe by normalized query so
+                         failures never re-queue. THE STATION IS SERVER-AUTHORITATIVE: GET
+                         /radio/now decides what is on air (playhead = wall clock + radio_state
+                         .offset_seconds, mod total; `cycle` = pass number) and doubles as the
+                         listener heartbeat (radio_listeners); clients only follow it, so every
+                         member hears the same second of the same song and shares the same
+                         artwork (art_for(track_id) -> static/radio-art/{1..3}.jpg, stable per
+                         track). VOTE-SKIP (POST /radio/vote): votes are per (track, cycle) so
+                         they never carry to the next airing; a STRICT majority of current
+                         listeners (floor(n/2)+1) adds the track's remaining seconds to the
+                         offset, moving the broadcast for EVERYONE. No pause — the control mutes
+                         (vol:global/mute:global, slider hidden on iOS); lock-screen play/pause
+                         both mute, nexttrack votes. Order is radio_tracks.position (↑/↓,
+                         renumbered densely per move). Player edge cases: presign expiry/deleted
+                         track re-syncs (failure-capped), 'ended' asks the server rather than
+                         assuming, drift >6s re-seeks, refocus re-syncs.
 app/plex.py              Plex tab (/plex): libraries, recently-added, search,
                          poster grid, show->season->episode drill-down. INLINE playback:
                          /plex/watch/{key} <video> -> /plex/stream/{key} 302s to the raw file
@@ -159,7 +157,7 @@ docker-compose.yml       stackdock (internal :8000) + caddy (80/443, auto-HTTPS)
 - Rate-limit posture (app/ingest/substack.py): jittered 0.8-2.2s gaps between requests (polite_get), per-session UA from USER_AGENTS, exponential backoff honoring Retry-After on 429/503 (MAX_RETRIES=4, cap 90s), podcast downloads retry the same way, and substack/podcast run() take a non-blocking lock so a manual /admin sync can't stack on top of the scheduler run. If Substack starts rate-limiting anyway, raise REQUEST_GAP_MIN/MAX before anything else.
 - Substack `_RUN_LOCK` sharing (app/ingest/substack.py): the hourly sync run() takes it NON-blocking (overlapping syncs skip — coalesce handles cadence). The periodic maintenance passes refresh_locked() (SUBSTACK_REFRESH_HOURS) and verify_paid_access() (24h) take it BLOCKING with a SUBSTACK_LOCK_WAIT timeout (default 900s) — they must WAIT out an in-flight sync, not skip. They previously used a non-blocking acquire; because their sparse 12h/24h tick almost always landed mid-sync, refresh_locked effectively NEVER ran, so a locked preview for a pub a member pays for but whose sync DISCOVERY misses (private reading list / thin get_publications — refresh_locked is the discovery-INDEPENDENT, access-driven safety net for exactly that) stayed locked forever (e.g. J'accuse via chudcrusherloyalist, July 2026).
 - Episode published_at is normalized to ISO at ingest (RSS RFC-822 dates broke string sorting); db.init() migrates legacy rows once.
-- PWA: app/static/manifest.webmanifest + icons (Pillow-generated; regenerate via the snippet in git history if the palette changes) + /sw.js (served from the root route in main.py so its scope covers "/"). The service worker deliberately NEVER caches page content (cookie-authed app; cached pages could outlive a logout) — static assets stale-while-revalidate, navigations network-FIRST (the successful online `/offline` response is written back to STATIC_CACHE so the precached shelf + its position-sync JS don't freeze until a version bump), offline nav falls back to the cached `/offline`, and saved-audio requests to `/offline-audio/{slug}` are served from AUDIO_CACHE. STATIC_CACHE is at **v30** — bump it when changing static assets. (Bumping does NOT refresh `/offline` on its own anymore; the network-first write-back handles that, but the bump still clears old CSS/JS.)
+- PWA: app/static/manifest.webmanifest + icons (Pillow-generated; regenerate via the snippet in git history if the palette changes) + /sw.js (served from the root route in main.py so its scope covers "/"). The service worker deliberately NEVER caches page content (cookie-authed app; cached pages could outlive a logout) — static assets stale-while-revalidate, navigations network-FIRST (the successful online `/offline` response is written back to STATIC_CACHE so the precached shelf + its position-sync JS don't freeze until a version bump), offline nav falls back to the cached `/offline`, and saved-audio requests to `/offline-audio/{slug}` are served from AUDIO_CACHE. STATIC_CACHE is at **v31** — bump it when changing static assets. (Bumping does NOT refresh `/offline` on its own anymore; the network-first write-back handles that, but the bump still clears old CSS/JS.)
 - Podcast player (templates/episode.html): per-episode resume via localStorage keys pos:{slug}/dur:{slug}/done:{slug} (client-side only, per device — by design, no server round-trips), global speed in rate:global, Media Session API for lock-screen controls, keyboard space/arrows, and a real Download link via storage.url_for(key, download_name=...) which presigns with Content-Disposition: attachment (the HTML download attribute is ignored cross-origin). Index audio cards paint progress/played state from the same localStorage keys.
 - Cross-source dedupe/merge (db.find_article_match + db.absorb_article): the same post can arrive via cookie sync (substack:{id}), email ingest (email Message-ID), or anonymous tracked-pub sync — message_id alone can't dedupe across those. Matching is by normalized canonical URL (host+path, utm/query/scheme stripped) with a (publication, title) fallback. absorb_article is fill-missing-only (never overwrites existing metadata), upgrades the body whenever the existing row is locked/stub/empty and the new source has full access (clearing is_locked), adopts the canonical substack: message_id so future syncs dedupe on the fast path, and credits the account in article_sources. Both substack.py and email_ingest.py route through this — adding a new member's cookie backfills silently and everything already mirrored just gains a source badge (and possibly an unlocked body) instead of duplicating.
 - Player position saves are gated by an `engaged` flag (set on first play) and a t>5s floor — a visit where playback never started must NOT clobber the stored position with 0 on pagehide/visibilitychange. Volume/mute persist in vol:global/mute:global; iOS ignores programmatic volume (hardware buttons only), which is expected.
@@ -187,7 +185,7 @@ Tagged releases exist (v1.0, v1.1). Release model: **deploys run on EVERY push t
 - Connecting a cookie (/accounts/add): account label is auto-set to the member's own username (no free-text label); Substack username (handle) is REQUIRED and the leading @ is stripped; the same cookie can't be connected by two accounts (db.account_with_cookie rejects); reconnecting with the same (user, service, label) UPDATES in place (db.add_account upsert) keeping last_sync (skips re-backfill) and clearing stale status; on connect, a best-effort public-profile check warns the member to make their reading list public if we can't read their subscriptions. /accounts shows the saved handle.
 - Offline reachability: a persistent "📦 Saved" masthead nav link + a manifest `shortcuts` entry both point at /offline (the SW serves it even offline). The /offline shelf shows the real saved-AUDIO size (summed blob sizes, KB/MB/GB/TB formatted), not raw origin usage.
 - Broken remote thumbnails fall back to the CSS tile via a global capture-phase img error handler in base.html (data-fallback = letter for articles, ▶ for episodes).
-- Custom /404 page (Tumblr-style, self-contained, tiled bg + figure + embedded YouTube audio attempt); signup page meme copy. SW STATIC_CACHE is at **v30** — bump it when static assets change.
+- Custom /404 page (Tumblr-style, self-contained, tiled bg + figure + embedded YouTube audio attempt); signup page meme copy. SW STATIC_CACHE is at **v31** — bump it when static assets change.
 - Listening positions are SERVER-MONOTONIC (July 2026): db.upsert_listen_position keeps `position = MAX(existing, incoming)` unless the payload sets `override:true` (a deliberate scrub-back / restart, tracked client-side as `userScrubbed`) or `done` — so a stale still-open tab beaconing an old position on blur can't rewind progress made on another device. The player sends `override` on scrubs. done-ness is SERVER-AUTHORITATIVE with a client `done:{slug}` value of `"1"` (synced) vs `"pending"` (finished offline, not yet pushed): the base.html + /offline flushers PROMOTE pending→"1" on a successful push, and when the server says not-done but local is a synced "1" they DELETE the local flag (defer to the server) instead of re-pushing done=true — this killed a cross-device fight loop where a finished device kept re-zeroing a device that had resumed. index cards read done as `server.done || local==="pending"`.
 - XSS: remote HTML (article bodies, episode/show notes) is scrubbed at RENDER time by the `sanitize` Jinja filter (app/sanitize.py → nh3/ammonia allowlist) — templates use `{{ x | sanitize | safe }}`, NOT bare `| safe`. This also covers rows stored before sanitization existed. `original_url` and other remote URL fields in hrefs go through the `safe_url` filter (http/https only, else `#`) so a stored `javascript:` scheme can't execute. nh3 is a hard dep (requirements.txt); if it's ever missing the filter fails SAFE by escaping everything.
 - CSRF: a Sec-Fetch-Site middleware (main.py) rejects state-changing POST/PUT/PATCH/DELETE whose `Sec-Fetch-Site` is `cross-site` OR `same-site` (the status.<domain> uptime-kuma subdomain is SAME-site, which SameSite=Lax cookies do NOT protect against). Same-origin (our forms/fetch) and absent (old browsers) are allowed. Logout is POST-only for the same reason. `/article/{id}/hide` (a GLOBAL hide) is admin-only; per-user hiding is `/mine/hide`.

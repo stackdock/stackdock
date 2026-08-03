@@ -15,18 +15,21 @@
 
   {% if tracks %}
   <div class="radio-player" id="rp">
-    <div class="rp-now">
-      <span class="spine" id="rp-live">● LIVE</span>
-      <span class="card-title" id="rp-title">tuning in…</span>
-      <span class="row-meta" id="rp-artist"></span>
+    <div class="rp-head">
+      <img id="rp-art" class="rp-art" alt="" hidden>
+      <div class="rp-now">
+        <span class="spine" id="rp-live">● LIVE</span>
+        <span class="card-title" id="rp-title">tuning in…</span>
+        <span class="row-meta" id="rp-artist"></span>
+        <span class="row-meta" id="rp-listeners"></span>
+      </div>
     </div>
     <div class="pp-controls">
-      <button id="rp-play" class="pp-main" title="Tune in">▶</button>
-      <button id="rp-skip" class="pp-skip" title="Skip (just for you)">⏭</button>
-      <button id="rp-sync" class="pp-skip" title="Back to the live broadcast">● live</button>
+      <button id="rp-tune" class="pp-main" title="Tune in">▶</button>
+      <button id="rp-mute" class="pp-skip" title="Mute">🔊</button>
+      <button id="rp-vote" class="pp-skip" title="Vote to skip this track">⏭ skip</button>
     </div>
     <div class="pp-volume">
-      <button id="rp-mute" title="Mute">🔊</button>
       <input type="range" id="rp-vol" min="0" max="100" value="100" aria-label="Volume">
     </div>
     <audio id="rp-audio" preload="none"></audio>
@@ -96,11 +99,11 @@
 <script>
 (async () => {
   // ---- the station ----
-  // Everyone hears the same broadcast: the running order is the member-defined
-  // one from the server and the playhead is SERVER time modulo the station's
-  // total length. No server state, no per-listener stream — any two clients
-  // compute the same song at the same offset. Skipping desyncs you locally
-  // ("live" dims); ● live re-tunes.
+  // ONE broadcast, decided by the server: /radio/now says what is on air, at
+  // what offset, with which artwork, and how the skip vote stands. The client
+  // just follows it — no local shuffle, no local clock maths, so every
+  // listener is genuinely on the same song at the same second.
+  // There is no pause (it is a radio): the button mutes.
   const a = document.getElementById("rp-audio");
   const $ = (id) => document.getElementById(id);
   const store = {
@@ -108,116 +111,111 @@
     set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
   };
 
-  let order = [], total = 0, skew = 0;   // skew = serverNow - clientNow (seconds)
-  let idx = 0, live = true, failures = 0, lastFetch = 0;
+  const POLL_MS = 10000;            // heartbeat + sync + vote tally
+  const DRIFT_TOLERANCE = 6;        // seconds out before we hard-resync
+  let cur = null;                   // {id, cycle, ...} currently loaded
+  let tuned = false, failures = 0, polling = false;
 
-  async function loadTracks() {
-    const r = await fetch("/radio/tracks.json", { credentials: "same-origin" });
-    if (!r.ok) throw new Error("tracks " + r.status);
-    const data = await r.json();
-    lastFetch = Date.now();
-    // a track with no/zero duration can't be placed on the timeline
-    order = (data.tracks || []).filter((t) => t.duration > 0);
-    total = order.reduce((s, t) => s + t.duration, 0);
-    if (data.now) skew = data.now - Date.now() / 1000;
-    return order.length;
+  async function fetchNow() {
+    const r = await fetch("/radio/now", { credentials: "same-origin" });
+    if (!r.ok) throw new Error("now " + r.status);
+    return r.json();
   }
 
-  const now = () => Date.now() / 1000 + skew;
-
-  // Where the broadcast is right now. Guards the boundary: if the computed
-  // offset lands in the last 2s of a track, start the NEXT one instead —
-  // otherwise we'd load a track only to have it end immediately and loop.
-  function liveSpot() {
-    let off = now() % total;
-    for (let i = 0; i < order.length; i++) {
-      if (off < order[i].duration) {
-        return (order[i].duration - off < 2)
-          ? { i: (i + 1) % order.length, off: 0 }
-          : { i, off };
-      }
-      off -= order[i].duration;
-    }
-    return { i: 0, off: 0 };
-  }
-
-  function show(t) {
-    if (!t) return;
-    $("rp-title").textContent = t.title;
-    $("rp-artist").textContent = (t.artist || "") + " · added by " + t.added_by;
-    $("rp-live").style.opacity = live ? 1 : 0.35;
-    $("rp-live").textContent = live ? "● LIVE" : "○ off-air (just you)";
+  function paint(s) {
+    const p = s.playing;
+    if (!p) { $("rp-title").textContent = "dead air"; return; }
+    $("rp-title").textContent = p.title;
+    $("rp-artist").textContent = (p.artist || "") + " · added by " + p.added_by;
+    $("rp-listeners").textContent =
+      s.listeners + (s.listeners === 1 ? " listener" : " listeners") +
+      (s.votes ? " · skip " + s.votes + "/" + s.needed : "");
+    $("rp-vote").textContent = s.voted ? "⏭ voted " + s.votes + "/" + s.needed
+                                       : "⏭ skip" + (s.votes ? " " + s.votes + "/" + s.needed : "");
+    $("rp-vote").disabled = !!s.voted;
+    const art = $("rp-art");
+    if (p.art && art.getAttribute("src") !== p.art) { art.src = p.art; art.hidden = false; }
     if ("mediaSession" in navigator) {
       try {
         navigator.mediaSession.metadata = new MediaMetadata({
-          title: t.title, artist: t.artist || "Chud FM", album: "Chud FM" });
+          title: p.title, artist: p.artist || "Chud FM", album: "Chud FM",
+          artwork: p.art ? [{ src: p.art, sizes: "512x512", type: "image/jpeg" }] : [],
+        });
       } catch {}
     }
   }
 
-  function playAt(i, off) {
-    if (!order.length) return;
-    idx = ((i % order.length) + order.length) % order.length;
-    const t = order[idx];
-    a.src = t.url;
-    // seek only once metadata exists, and only to a sane offset
+  // Load the on-air track and seek to the server's offset.
+  function load(p) {
+    cur = p;
+    a.src = p.url;
     const seek = () => {
-      const d = isFinite(a.duration) ? a.duration : t.duration;
-      if (off > 1 && off < d - 1) { try { a.currentTime = off; } catch {} }
+      const d = isFinite(a.duration) ? a.duration : p.duration;
+      if (p.offset > 1 && p.offset < d - 1) { try { a.currentTime = p.offset; } catch {} }
     };
     a.readyState >= 1 ? seek() : a.addEventListener("loadedmetadata", seek, { once: true });
-    a.play().catch(() => {});      // autoplay refusal: user taps ▶, no error state
-    show(t);
+    if (tuned) a.play().catch(() => {});
   }
 
-  function tuneIn() { live = true; const s = liveSpot(); playAt(s.i, s.off); }
+  // Follow the server: a different track (natural rollover OR a passed
+  // vote-skip) reloads; drifting within the same track re-seeks.
+  async function sync(force) {
+    if (polling) return;
+    polling = true;
+    try {
+      const s = await fetchNow();
+      paint(s);
+      const p = s.playing;
+      if (!p) { a.pause(); cur = null; return; }
+      const changed = !cur || cur.id !== p.id || cur.cycle !== p.cycle;
+      if (changed || force) { load(p); return; }
+      if (tuned && !a.paused && Math.abs((a.currentTime || 0) - p.offset) > DRIFT_TOLERANCE) {
+        const d = isFinite(a.duration) ? a.duration : p.duration;
+        if (p.offset > 1 && p.offset < d - 1) { try { a.currentTime = p.offset; } catch {} }
+      }
+    } catch (e) {
+      diag.log("radio sync failed: " + e.message);
+    } finally { polling = false; }
+  }
 
-  // Presigned URLs expire and a track can be deleted mid-listen; both surface
-  // as a media error. Re-fetch the playlist (at most every 30s), then move on.
-  // `failures` stops a dead station from spinning forever.
-  a.addEventListener("error", async () => {
-    const t = order[idx];
-    diag.log("radio audio error on " + (t ? t.title : "?") + " (" + (a.error && a.error.code) + ")");
-    if (++failures > Math.max(3, order.length)) {
+  // Presigned URLs expire and tracks can be deleted mid-air; both land here.
+  a.addEventListener("error", () => {
+    diag.log("radio audio error (" + (a.error && a.error.code) + ") on " + (cur && cur.title));
+    if (++failures > 5) {
       diag.flush("radio-dead");
       $("rp-title").textContent = "station trouble — reload the page";
       return;
     }
-    try {
-      if (Date.now() - lastFetch > 30000 && !(await loadTracks())) return;
-    } catch {}
-    setTimeout(() => (live ? tuneIn() : playAt(idx + 1, 0)), 1200);
+    setTimeout(() => sync(true), 1500);      // fresh presign + whatever is on air now
   });
   a.addEventListener("playing", () => { failures = 0; });
+  // a track ending early/late is normal (metadata vs real length): ask the server
+  a.addEventListener("ended", () => sync(true));
 
-  a.addEventListener("ended", async () => {
-    // refresh at track boundaries so songs added/reordered elsewhere appear
-    // without a reload (cheap: once per song, not a poll)
-    try { if (Date.now() - lastFetch > 30000) await loadTracks(); } catch {}
-    if (!order.length) return;
-    if (!live) { playAt(idx + 1, 0); return; }
-    const s = liveSpot();
-    // if the timeline still points at the track that just finished (metadata
-    // duration longer than the real file), step forward rather than restart it
-    playAt(s.i === idx ? idx + 1 : s.i, s.i === idx ? 0 : s.off);
-  });
-
-  $("rp-play").onclick = () => {
-    // a radio has no pause: resuming re-joins the live broadcast
-    if (a.paused) { live ? tuneIn() : a.play().catch(() => {}); }
-    else a.pause();
+  $("rp-tune").onclick = () => {
+    tuned = true;
+    $("rp-tune").textContent = "📻";
+    $("rp-tune").title = "on air";
+    sync(true);
   };
-  a.addEventListener("play", () => { $("rp-play").textContent = "❚❚"; });
-  a.addEventListener("pause", () => { $("rp-play").textContent = "▶"; });
-  $("rp-skip").onclick = () => { live = false; playAt(idx + 1, 0); };
-  $("rp-sync").onclick = tuneIn;
 
-  // ---- volume (shared with the episode player's global keys) ----
+  $("rp-vote").onclick = async () => {
+    $("rp-vote").disabled = true;
+    try {
+      const r = await fetch("/radio/vote", { method: "POST", credentials: "same-origin" });
+      const v = await r.json();
+      // a passed vote moves the station for everyone; pick it up immediately
+      setTimeout(() => sync(v.passed), v.passed ? 300 : 0);
+    } catch { $("rp-vote").disabled = false; }
+  };
+
+  // ---- volume / mute (no pause: this is a radio) ----
   const K_VOL = "vol:global", K_MUTE = "mute:global";
   const vol = $("rp-vol"), muteBtn = $("rp-mute");
   const applyVolUi = () => {
     vol.value = Math.round(a.volume * 100);
     muteBtn.textContent = (a.muted || a.volume === 0) ? "🔇" : (a.volume < 0.5 ? "🔉" : "🔊");
+    $("rp-live").style.opacity = a.muted ? 0.35 : 1;
   };
   a.volume = Math.min(1, Math.max(0, parseFloat(store.get(K_VOL) ?? "1")));
   a.muted = store.get(K_MUTE) === "1";
@@ -235,38 +233,22 @@
     applyVolUi();
   };
   a.addEventListener("volumechange", applyVolUi);
-  // iOS routes volume to the hardware buttons and ignores the slider — hide it
-  // there rather than showing a control that does nothing
+  // iOS ignores programmatic volume (hardware buttons only) — mute still works
   if (/iPad|iPhone|iPod/.test(navigator.userAgent)) vol.style.display = "none";
 
   if ("mediaSession" in navigator) {
-    const ms = navigator.mediaSession;
     try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
-    // iOS delivers either action regardless of state (see the episode player's
-    // device traces) — both toggle
-    const toggle = () => {
-      if (a.paused) { live ? tuneIn() : a.play().catch(() => {}); } else a.pause();
-    };
-    ms.setActionHandler("play", toggle);
-    ms.setActionHandler("pause", toggle);
-    try { ms.setActionHandler("nexttrack", () => $("rp-skip").click()); } catch {}
+    const ms = navigator.mediaSession;
+    const mute = () => { a.muted = !a.muted; store.set(K_MUTE, a.muted ? "1" : "0"); applyVolUi(); };
+    ms.setActionHandler("play", mute);        // lock-screen buttons mute/unmute
+    ms.setActionHandler("pause", mute);       // (a radio has no pause)
+    try { ms.setActionHandler("nexttrack", () => $("rp-vote").click()); } catch {}
   }
 
-  // returning to the app after a while: the broadcast moved on without us
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden && live && !a.paused) {
-      const s = liveSpot();
-      if (s.i !== idx || Math.abs((a.currentTime || 0) - s.off) > 5) tuneIn();
-    }
-  });
-
-  try {
-    if (!(await loadTracks())) { $("rp-title").textContent = "no playable tracks"; return; }
-  } catch {
-    $("rp-title").textContent = "couldn't load the station";
-    return;
-  }
-  show(order[liveSpot().i]);            // show what's on air; ▶ actually tunes in
+  // keep following the broadcast; catch up immediately on refocus
+  setInterval(() => sync(false), POLL_MS);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) sync(false); });
+  sync(false);                                 // show what is on air before tuning in
 })();
 </script>
 {% endif %}

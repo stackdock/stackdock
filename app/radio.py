@@ -19,6 +19,7 @@ import random
 import re
 import tempfile
 import threading
+import time
 from pathlib import Path
 
 import requests
@@ -39,6 +40,43 @@ _RETRY_HINTS = (
     "unexpected_eof", "eof occurred", "bytes read", "incompleteread",
     "connection reset", "timed out",
 )
+
+
+# Now-playing artwork: assigned by track id so every listener sees the SAME
+# image for the same song (part of "one broadcast"), and it never changes for a
+# given track. Files live in static/radio-art/.
+ART_COUNT = 3
+
+
+def art_for(track_id: int) -> str:
+    return f"/static/radio-art/{(int(track_id) % ART_COUNT) + 1}.jpg"
+
+
+def station_now() -> dict | None:
+    """The SERVER decides what's on air. playhead = (wall clock + skip offset)
+    modulo the station length; `cycle` counts complete passes so a skip vote
+    belongs to one airing only. Returns None when there's nothing playable."""
+    tracks = [t for t in db.list_radio_tracks("ready") if (t["duration"] or 0) > 0]
+    if not tracks:
+        return None
+    total = sum(t["duration"] for t in tracks)
+    t_now = time.time() + db.radio_offset()
+    cycle = int(t_now // total)
+    pos = t_now % total
+    for i, tr in enumerate(tracks):
+        if pos < tr["duration"]:
+            return {"track": tr, "index": i, "offset": pos, "cycle": cycle,
+                    "remaining": tr["duration"] - pos, "total": total,
+                    "count": len(tracks)}
+        pos -= tr["duration"]
+    return {"track": tracks[0], "index": 0, "offset": 0.0, "cycle": cycle,
+            "remaining": tracks[0]["duration"], "total": total, "count": len(tracks)}
+
+
+def votes_needed(listeners: int) -> int:
+    """STRICT majority of current listeners (floor(n/2)+1), min 1 — with two
+    people listening a single vote must not carry the skip."""
+    return max(1, listeners // 2 + 1)
 
 
 def _is_url(s: str) -> bool:

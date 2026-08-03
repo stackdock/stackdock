@@ -246,7 +246,14 @@ footer {
   background: var(--panel); border: 1px solid var(--rule); border-radius: 8px;
   padding: 1rem; margin: 1rem 0;
 }
-.rp-now { display: flex; flex-direction: column; gap: 0.15rem; margin-bottom: 0.6rem; }
+.rp-head { display: flex; gap: 0.9rem; align-items: flex-start; margin-bottom: 0.6rem; }
+.rp-art {
+  width: 110px; flex: 0 0 auto; aspect-ratio: 3 / 4; object-fit: cover;
+  border: 1px solid var(--rule); border-radius: 6px; background: var(--paper);
+}
+.rp-now { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+#rp-vote:disabled { opacity: 0.55; cursor: default; }
+@media (max-width: 640px) { .rp-art { width: 84px; } }
 #rp-live { color: #b23b3b; font-weight: 700; letter-spacing: 0.08em; }
 .track-actions { display: flex; align-items: center; gap: 0.1rem; flex: 0 0 auto; }
 .track-actions button {

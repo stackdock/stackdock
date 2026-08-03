@@ -945,16 +945,52 @@ def radio_add(user=Depends(auth.current_user), query: str = Form(...)):
     return RedirectResponse("/radio?msg=queued+%E2%80%94+downloading", status_code=303)
 
 
-@app.get("/radio/tracks.json")
-def radio_tracks_json(user=Depends(auth.current_user)):
-    """The station playlist: presigned URLs minted fresh per fetch, plus the
-    server clock. Clients compute the live playhead from SERVER time, so a
-    device with a skewed clock still hears what everyone else hears."""
-    return {"now": datetime.now(timezone.utc).timestamp(),
-            "tracks": [{"id": t["id"], "title": t["title"], "artist": t["artist"],
-                        "duration": t["duration"] or 0, "added_by": t["added_by"],
-                        "url": storage.url_for(t["audio_key"])}
-                       for t in db.list_radio_tracks("ready")]}
+@app.get("/radio/now")
+def radio_now(user=Depends(auth.current_user)):
+    """What is on air RIGHT NOW, decided by the server — the single source of
+    truth every listener follows. Doubles as the listener heartbeat (the vote
+    threshold scales with the audience)."""
+    db.radio_touch_listener(user["id"])
+    st = radio.station_now()
+    listeners = db.radio_listener_count()
+    if not st:
+        return {"playing": None, "listeners": listeners}
+    t = st["track"]
+    votes = db.radio_vote_count(t["id"], st["cycle"])
+    return {
+        "playing": {
+            "id": t["id"], "title": t["title"], "artist": t["artist"],
+            "added_by": t["added_by"], "duration": t["duration"],
+            "offset": st["offset"], "cycle": st["cycle"],
+            "art": radio.art_for(t["id"]),
+            "url": storage.url_for(t["audio_key"]),
+        },
+        "listeners": listeners,
+        "votes": votes,
+        "needed": radio.votes_needed(listeners),
+        "voted": db.radio_voted(user["id"], t["id"], st["cycle"]),
+        "tracks": st["count"],
+    }
+
+
+@app.post("/radio/vote")
+def radio_vote(user=Depends(auth.current_user)):
+    """Vote to skip what's on air. A majority of current listeners advances the
+    shared timeline — for everyone, not just the voter."""
+    st = radio.station_now()
+    if not st:
+        raise HTTPException(409, "nothing playing")
+    db.radio_touch_listener(user["id"])
+    t, cycle = st["track"], st["cycle"]
+    votes = db.radio_vote(user["id"], t["id"], cycle)
+    needed = radio.votes_needed(db.radio_listener_count())
+    passed = votes >= needed
+    if passed:
+        # jump the station to the next track boundary for every listener
+        db.radio_add_offset(st["remaining"])
+        db.radio_clear_votes(t["id"], cycle)
+        log.info("radio: vote-skip passed (%d/%d) — %s", votes, needed, t["title"])
+    return {"passed": passed, "votes": 0 if passed else votes, "needed": needed}
 
 
 @app.post("/radio/move")

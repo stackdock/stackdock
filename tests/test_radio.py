@@ -76,6 +76,54 @@ def test_reorder_survives_deletion_of_a_middle_track(fresh_db):
     assert a
 
 
+def test_station_now_is_deterministic_and_walks_the_timeline(fresh_db, monkeypatch):
+    for t in ("A", "B", "C"):
+        _ready(t)                                    # 100s each -> 300s station
+    monkeypatch.setattr(radio.time, "time", lambda: 150.0)
+    st = radio.station_now()
+    assert st["track"]["title"] == "B" and 49 < st["offset"] < 51
+    assert st["cycle"] == 0 and st["remaining"] > 0
+    monkeypatch.setattr(radio.time, "time", lambda: 350.0)    # 50s into pass 2
+    st2 = radio.station_now()
+    assert st2["track"]["title"] == "A" and st2["cycle"] == 1
+
+
+def test_vote_skip_advances_the_station_for_everyone(fresh_db, monkeypatch):
+    for t in ("A", "B", "C"):
+        _ready(t)
+    monkeypatch.setattr(radio.time, "time", lambda: 10.0)     # 10s into A
+    before = radio.station_now()
+    assert before["track"]["title"] == "A"
+    db.radio_add_offset(before["remaining"])                  # a passed vote
+    after = radio.station_now()
+    assert after["track"]["title"] == "B" and after["offset"] < 1
+
+
+def test_vote_threshold_is_a_majority_of_listeners():
+    assert radio.votes_needed(0) == 1        # solo listener can skip
+    assert radio.votes_needed(1) == 1
+    assert radio.votes_needed(2) == 2
+    assert radio.votes_needed(3) == 2
+    assert radio.votes_needed(6) == 4
+
+
+def test_votes_are_scoped_to_one_airing(fresh_db):
+    tid = _ready("A")
+    assert db.radio_vote(1, tid, cycle=0) == 1
+    assert db.radio_vote(1, tid, cycle=0) == 1        # same user doesn't stack
+    assert db.radio_vote(2, tid, cycle=0) == 2
+    assert db.radio_voted(1, tid, 0) and not db.radio_voted(3, tid, 0)
+    assert db.radio_vote_count(tid, cycle=1) == 0     # next airing starts clean
+    db.radio_clear_votes(tid, 0)
+    assert db.radio_vote_count(tid, 0) == 0
+
+
+def test_artwork_is_stable_and_shared_per_track():
+    assert radio.art_for(7) == radio.art_for(7)       # same track -> same image
+    assert {radio.art_for(i) for i in range(9)} == {
+        f"/static/radio-art/{n}.jpg" for n in (1, 2, 3)}
+
+
 def test_query_dedupe_ignores_case_and_spacing(fresh_db):
     db.add_radio_track("Song A  Artist One", "erin")
     assert db.radio_query_exists("song a artist one")
