@@ -105,12 +105,25 @@ def station_order() -> list:
 
 
 def _next_after(order: list, track_id: int | None):
-    """The track following `track_id` in the current order (wrapping). Falls back
-    to the head when the track is gone (deleted) or unknown."""
-    ids = [t["id"] for t in order]
+    """What plays after `track_id`.
+
+    THE QUEUE ALWAYS WINS. Walking the flat order instead meant that once the
+    needle was inside the rotation block it just stepped through rotation and
+    only reached Up Next by wrapping all the way around — so a track you queued
+    wasn't actually up next (reported 3 Aug 2026). Only when the queue is empty
+    (or holds nothing but the track that's finishing) do we take the rotation
+    successor, which keeps the least-recently-played ordering intact.
+    """
+    queued = [t for t in order if t["promoted_at"] and t["id"] != track_id]
+    if queued:
+        return queued[0]
+    rotation = [t for t in order if not t["promoted_at"]]
+    if not rotation:
+        return order[0]
+    ids = [t["id"] for t in rotation]
     if track_id in ids:
-        return order[(ids.index(track_id) + 1) % len(order)]
-    return order[0]
+        return rotation[(ids.index(track_id) + 1) % len(rotation)]
+    return rotation[0]
 
 
 def station_now() -> dict | None:
@@ -308,6 +321,21 @@ def _ydl_opts(tmpdir: str, proxy: str | None, client: str | None = None,
     return opts
 
 
+def _relevant(query: str, info: dict) -> bool:
+    """Does this hit actually look like the song that was asked for? The
+    age-gate fallback walks search results, and results for 'Music and Me
+    fakemink' include OTHER fakemink songs — without this, a gated track would
+    silently be replaced by the wrong song (3 Aug 2026)."""
+    want = [w for w in db.radio_norm(query, drop_brackets=True).split() if len(w) > 2]
+    if not want:
+        return True
+    have = db.radio_norm(
+        f"{info.get('title') or ''} {info.get('uploader') or ''} "
+        f"{info.get('artist') or ''} {info.get('track') or ''}", drop_brackets=True)
+    hits = sum(1 for w in want if w in have)
+    return hits >= max(2, round(len(want) * 0.6)) or hits == len(want)
+
+
 def _try_fetch(ydl, url: str, query: str, tmpdir: str) -> dict:
     """Fully resolve + download ONE candidate URL. Raises on any problem —
     including the age gate, which is what makes the caller try the next hit."""
@@ -316,6 +344,8 @@ def _try_fetch(ydl, url: str, query: str, tmpdir: str) -> dict:
     cap = config.RADIO_MAX_MINUTES * 60
     if dur > cap:
         raise RuntimeError(f"too long ({round(dur / 60)} min; cap is {config.RADIO_MAX_MINUTES})")
+    if not _relevant(query, info):
+        raise RuntimeError("search hit doesn't match the request")
     src = info.get("webpage_url") or url
     if db.radio_source_exists(src):
         raise RuntimeError("already on the station")
@@ -403,9 +433,19 @@ def _download(query: str) -> dict:
             return with_retries(lambda ydl, tmpdir, u=cand: _try_fetch(ydl, u, query, tmpdir))
         except Exception as e:                   # noqa: BLE001
             last_err = e
-            if searching and any(h in str(e).lower() for h in _AGE_HINTS):
-                log.info("radio: hit %d is age-gated; trying the next result", i + 1)
-                continue
+            msg = str(e).lower()
+            # These are properties of THIS hit, not of the request: an age gate,
+            # a hit that is a different song, or one already on the station.
+            # Move to the next result rather than failing the submission.
+            candidate_level = (any(h in msg for h in _AGE_HINTS)
+                               or "doesn't match the request" in msg
+                               or "already on the station" in msg)
+            if searching and candidate_level:
+                if i + 1 < len(candidates):
+                    log.info("radio: hit %d unusable (%s); trying the next result",
+                             i + 1, msg.split(":")[-1].strip()[:60])
+                    continue
+                break            # exhausted — fall through to the summary below
             raise
     if searching and last_err and any(h in str(last_err).lower() for h in _AGE_HINTS):
         raise RuntimeError("every result for that is age-restricted — paste a direct "

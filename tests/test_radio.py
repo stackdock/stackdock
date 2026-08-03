@@ -94,6 +94,40 @@ def test_all_results_age_gated_gives_a_clear_message(fresh_db, monkeypatch):
         radio._download("x")
 
 
+def test_fallback_refuses_a_different_song_by_the_same_artist(fresh_db, monkeypatch):
+    # results for "music and me fakemink" include OTHER fakemink songs; falling
+    # through to one of those would quietly put the wrong track on the station
+    entries = [{"id": "gated", "duration": 200, "title": "fakemink - Music and Me",
+                "webpage_url": "https://yt/gated"},
+               {"id": "wrong", "duration": 190, "title": "fakemink - Ragebait",
+                "uploader": "fakemink", "webpage_url": "https://yt/wrong"},
+               {"id": "right", "duration": 205, "title": "fakemink - Music and Me (Lyrics)",
+                "uploader": "fakemink", "webpage_url": "https://yt/right"}]
+    monkeypatch.setattr(radio, "_proxy", lambda: None)
+    monkeypatch.setattr(radio.storage, "upload_stream", lambda *a, **k: None)
+    import yt_dlp
+    monkeypatch.setattr(yt_dlp, "YoutubeDL", _fake_ydl_factory(entries, ("gated",)))
+    out = radio._download("Music and Me fakemink")
+    assert out["source_url"] == "https://yt/right"     # skipped the wrong song
+    assert "Music and Me" in out["title"]
+
+
+def test_a_duplicate_hit_advances_instead_of_failing_the_song(fresh_db, monkeypatch):
+    # the first hit already being on the station shouldn't kill the submission
+    # when another upload of the REQUESTED song is available
+    _ready("Old Thing", query="old thing")
+    entries = [{"id": "dupe", "duration": 200, "title": "Old Thing",
+                "webpage_url": "https://yt/dupe"},
+               {"id": "new", "duration": 200, "title": "Brand New Song - Someone",
+                "uploader": "Someone", "webpage_url": "https://yt/new"}]
+    monkeypatch.setattr(radio, "_proxy", lambda: None)
+    monkeypatch.setattr(radio.storage, "upload_stream", lambda *a, **k: None)
+    import yt_dlp
+    monkeypatch.setattr(yt_dlp, "YoutubeDL", _fake_ydl_factory(entries))
+    out = radio._download("Brand New Song Someone")
+    assert out["source_url"] == "https://yt/new"
+
+
 def test_an_age_gate_never_burns_the_proxy_retries(fresh_db, monkeypatch):
     # "Sign in to confirm your AGE" used to match the bot-check hint
     # "sign in to confirm", so every proxy attempt was spent on a wall no
@@ -205,6 +239,27 @@ def test_playing_a_queued_track_pops_it_off_the_queue(fresh_db, monkeypatch):
     assert db.get_radio_track(b)["promoted_at"] is None       # left the queue
     assert db.get_radio_track(b)["last_played_at"]            # and is now in rotation
     assert db.get_radio_track(a)["promoted_at"]               # A still queued
+
+
+def test_up_next_really_plays_next_even_from_mid_rotation(fresh_db, monkeypatch):
+    # regression: with the needle inside the rotation block, the flat-order walk
+    # stepped through rotation and only reached Up Next by wrapping all the way
+    # round — so a queued track was not actually up next
+    rot = [_ready(f"Rot{i}") for i in range(5)]
+    for tid in rot:
+        db.radio_mark_aired(tid)                  # everything is in rotation
+    clock = {"t": 3000.0}
+    monkeypatch.setattr(radio.time, "time", lambda: clock["t"])
+    radio.station_now()                           # needle somewhere in rotation
+    clock["t"] += 101
+    radio.station_now()                           # ...and moved along it
+    queued = _ready("QueueMe")                    # now queue something
+    clock["t"] += 101
+    assert radio.station_now()["track"]["title"] == "QueueMe"   # plays immediately
+    assert db.get_radio_track(queued)["promoted_at"]             # still queued while airing
+    clock["t"] += 101
+    assert radio.station_now()["track"]["title"].startswith("Rot")   # back to rotation
+    assert db.get_radio_track(queued)["promoted_at"] is None     # consumed once played
 
 
 def test_the_queue_plays_straight_through_without_ping_ponging(fresh_db, monkeypatch):
