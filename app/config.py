@@ -60,6 +60,8 @@ RADIO_PROXY_TRIES = int(os.getenv("RADIO_PROXY_TRIES", "3"))
 # playlist sync falls back to the embed page, which TRUNCATES long playlists.
 SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID", "").strip()
 SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET", "").strip()
+# Must match a redirect URI registered on the Spotify app EXACTLY
+SPOTIFY_REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI", PUBLIC_BASE_URL + "/callback")
 # Netscape cookies.txt from a youtube.com session (THROWAWAY account only).
 # OFF BY DEFAULT and measured, not assumed: cookies DO clear the bot-check, but
 # an authenticated session gets YouTube's SABR-only response — storyboards and

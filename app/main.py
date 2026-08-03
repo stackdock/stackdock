@@ -937,6 +937,8 @@ def radio_page(request: Request, user=Depends(auth.current_user),
     catalogue = [t for t in order if not t["promoted_at"] and t["aired_at"]]
     return render(request, "radio.html", user=user, tracks=tracks,
                   promoted=promoted, fresh=fresh, catalogue=catalogue,
+                  spotify_configured=radio.spotify_configured(),
+                  spotify_connected=radio.spotify_connected(),
                   queue=queue, message=msg,
                   total_min=round(sum(t["duration"] or 0 for t in tracks) / 60))
 
@@ -1005,6 +1007,34 @@ def radio_move(user=Depends(auth.current_user), track_id: int = Form(...),
         raise HTTPException(400, "dir must be up or down")
     db.radio_move(track_id, -1 if dir == "up" else 1)
     return RedirectResponse("/radio", status_code=303)
+
+
+@app.get("/radio/spotify/connect")
+def radio_spotify_connect(user=Depends(auth.current_admin)):
+    """Start the Spotify authorization. A USER token is required to read a
+    playlist's tracks — app-only credentials get an empty list."""
+    if not radio.spotify_configured():
+        raise HTTPException(400, "set SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET first")
+    state = pysecrets.token_urlsafe(24)
+    db.spotify_set_state(state)
+    return RedirectResponse(radio.spotify_authorize_url(state), status_code=303)
+
+
+@app.get("/callback")
+def spotify_callback(code: str | None = None, state: str | None = None,
+                     error: str | None = None, user=Depends(auth.current_admin)):
+    """Spotify's registered redirect target."""
+    expected = db.spotify_take_state()
+    if error or not code:
+        return RedirectResponse(f"/radio?msg=Spotify+authorization+failed+({error or 'no code'})",
+                                status_code=303)
+    if not expected or state != expected:
+        raise HTTPException(400, "state mismatch — start again from /radio")
+    ok = radio.spotify_exchange_code(code)
+    _trigger_job("radio")
+    return RedirectResponse("/radio?msg=" + ("Spotify+connected+—+syncing+the+full+playlist"
+                                             if ok else "Spotify+connection+failed"),
+                            status_code=303)
 
 
 @app.post("/radio/promote")

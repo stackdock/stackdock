@@ -22,6 +22,7 @@ import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlencode
 
 import requests
 
@@ -308,25 +309,75 @@ def _download(query: str) -> dict:
 _SPOTIFY_TOKEN: dict = {"value": None, "expires": 0.0}
 
 
-def _spotify_token() -> str | None:
-    """Client-credentials token (app-only, no user login). Spotify killed the
-    anonymous web-player token endpoint, so the embed page is the only no-auth
-    route — and it silently truncates long playlists (14 of a larger playlist,
-    3 Aug 2026). With SPOTIFY_CLIENT_ID/SECRET set we use the real API and get
-    everything."""
-    if not (config.SPOTIFY_CLIENT_ID and config.SPOTIFY_CLIENT_SECRET):
-        return None
-    if _SPOTIFY_TOKEN["value"] and time.time() < _SPOTIFY_TOKEN["expires"]:
-        return _SPOTIFY_TOKEN["value"]
+SPOTIFY_SCOPES = "playlist-read-private playlist-read-collaborative"
+
+
+def spotify_configured() -> bool:
+    return bool(config.SPOTIFY_CLIENT_ID and config.SPOTIFY_CLIENT_SECRET)
+
+
+def spotify_connected() -> bool:
+    return bool(db.spotify_get_refresh_token())
+
+
+def spotify_authorize_url(state: str) -> str:
+    return "https://accounts.spotify.com/authorize?" + urlencode({
+        "client_id": config.SPOTIFY_CLIENT_ID,
+        "response_type": "code",
+        "redirect_uri": config.SPOTIFY_REDIRECT_URI,
+        "scope": SPOTIFY_SCOPES,
+        "state": state,
+    })
+
+
+def spotify_exchange_code(code: str) -> bool:
+    """Swap the one-time authorization code for a refresh token (the only
+    Spotify credential we keep)."""
     try:
         r = requests.post("https://accounts.spotify.com/api/token",
-                          data={"grant_type": "client_credentials"},
+                          data={"grant_type": "authorization_code", "code": code,
+                                "redirect_uri": config.SPOTIFY_REDIRECT_URI},
                           auth=(config.SPOTIFY_CLIENT_ID, config.SPOTIFY_CLIENT_SECRET),
                           timeout=20)
         if r.status_code != 200:
-            log.warning("radio: Spotify token request failed (HTTP %s)", r.status_code)
+            log.warning("radio: Spotify code exchange failed (HTTP %s)", r.status_code)
+            return False
+        rt = r.json().get("refresh_token")
+        if not rt:
+            return False
+        db.spotify_set_refresh_token(rt)
+        _SPOTIFY_TOKEN.update(value=None, expires=0)
+        log.info("radio: Spotify account connected.")
+        return True
+    except (requests.RequestException, ValueError) as e:
+        log.warning("radio: Spotify code exchange error: %s", e.__class__.__name__)
+        return False
+
+
+def _spotify_token() -> str | None:
+    """A USER token when an account is connected, else app-only client
+    credentials. The distinction is the whole ballgame: under Spotify's 2025
+    restrictions an app-only token returns playlist METADATA with an EMPTY
+    track list (403 on /tracks, 0 items on the playlist object — measured
+    3 Aug 2026), so only a user token can read a playlist's songs."""
+    if not spotify_configured():
+        return None
+    if _SPOTIFY_TOKEN["value"] and time.time() < _SPOTIFY_TOKEN["expires"]:
+        return _SPOTIFY_TOKEN["value"]
+    refresh = db.spotify_get_refresh_token()
+    data = ({"grant_type": "refresh_token", "refresh_token": refresh} if refresh
+            else {"grant_type": "client_credentials"})
+    try:
+        r = requests.post("https://accounts.spotify.com/api/token", data=data,
+                          auth=(config.SPOTIFY_CLIENT_ID, config.SPOTIFY_CLIENT_SECRET),
+                          timeout=20)
+        if r.status_code != 200:
+            log.warning("radio: Spotify token request failed (HTTP %s)%s", r.status_code,
+                        " — reconnect the account on /radio" if refresh else "")
             return None
         d = r.json()
+        if d.get("refresh_token"):            # Spotify may rotate it
+            db.spotify_set_refresh_token(d["refresh_token"])
         _SPOTIFY_TOKEN.update(value=d["access_token"],
                               expires=time.time() + float(d.get("expires_in", 3600)) - 60)
         return _SPOTIFY_TOKEN["value"]

@@ -11,7 +11,13 @@
     <button type="submit">Add to station</button>
   </form>
   <p class="hint" style="margin-top:0">Links from any platform work — it finds the song
-    on YouTube and downloads it. Everyone hears the same broadcast.</p>
+    on YouTube and downloads it. Everyone hears the same broadcast.
+    {% if user.is_admin and spotify_configured and not spotify_connected %}
+      <br><a href="/radio/spotify/connect">🎵 Connect Spotify</a> — required to read
+      a playlist past the first few tracks.
+    {% elif user.is_admin and spotify_connected %}
+      <br>🎵 Spotify connected · <a href="/radio/spotify/connect">reconnect</a>
+    {% endif %}</p>
 
   {% if tracks %}
   <div class="radio-player" id="rp">

@@ -147,6 +147,16 @@ CREATE TABLE IF NOT EXISTS radio_listeners (
     last_seen TEXT NOT NULL
 );
 
+-- Spotify OAuth: app-only (client-credentials) tokens get playlist metadata but
+-- an EMPTY track list under Spotify's 2025 restrictions, so reading a playlist
+-- needs a USER token. Only the long-lived refresh token is stored.
+CREATE TABLE IF NOT EXISTS spotify_auth (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    refresh_token TEXT,
+    state TEXT,                              -- CSRF nonce for the pending authorize
+    updated_at TEXT
+);
+
 -- Current Plex per-server access token. Lives in the DB (not .env) because the
 -- auto-refresher runs inside the container, which can't rewrite .env; .env's
 -- PLEX_TOKEN is the seed/fallback.
@@ -1178,6 +1188,37 @@ def radio_retry(track_id: int) -> None:
     with conn() as c:
         c.execute("UPDATE radio_tracks SET status='pending', error=NULL "
                   "WHERE id=? AND status='failed'", (track_id,))
+
+
+def spotify_get_refresh_token() -> str | None:
+    with conn() as c:
+        row = c.execute("SELECT refresh_token FROM spotify_auth WHERE id = 1").fetchone()
+        return row["refresh_token"] if row else None
+
+
+def spotify_set_refresh_token(token: str) -> None:
+    with conn() as c:
+        c.execute("""INSERT INTO spotify_auth (id, refresh_token, updated_at)
+                     VALUES (1, ?, ?)
+                     ON CONFLICT(id) DO UPDATE SET refresh_token = excluded.refresh_token,
+                                                   updated_at = excluded.updated_at""",
+                  (token, now_iso()))
+
+
+def spotify_set_state(state: str) -> None:
+    with conn() as c:
+        c.execute("""INSERT INTO spotify_auth (id, state, updated_at) VALUES (1, ?, ?)
+                     ON CONFLICT(id) DO UPDATE SET state = excluded.state,
+                                                   updated_at = excluded.updated_at""",
+                  (state, now_iso()))
+
+
+def spotify_take_state() -> str | None:
+    """Read and clear the pending CSRF nonce (single use)."""
+    with conn() as c:
+        row = c.execute("SELECT state FROM spotify_auth WHERE id = 1").fetchone()
+        c.execute("UPDATE spotify_auth SET state = NULL WHERE id = 1")
+        return row["state"] if row else None
 
 
 def radio_get_state() -> dict:
