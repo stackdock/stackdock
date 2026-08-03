@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Plex · {{ site_title }}{% endblock %}
+{% block content %}
+<section id="plex">
+  <h2>Plex{% if section %} · {{ section.title }}{% elif parent %} · {{ parent.title }}{% endif %}</h2>
+  {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
+
+  {% if libraries %}
+  <div class="pub-filter">
+    <a href="/plex" class="{{ 'active' if not section and not parent }}">Recently added</a>
+    {% for l in libraries %}
+      <a href="/plex?section={{ l.key }}" class="{{ 'active' if section and section.key == l.key }}">{{ l.title }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if configured and not items and not error %}
+    <p class="empty">Nothing here.</p>
+  {% endif %}
+
+  <ul class="cards">
+    {% for i in items %}
+    <li class="card">
+      {% set openable = i.type in ('show', 'season') %}
+      <a class="card-link"
+         {% if openable %}href="/plex?key={{ i.key }}"{% else %}href="{{ plex_web(i.key) }}" target="_blank" rel="noopener"{% endif %}>
+        {% if i.thumb %}
+          <img class="thumb" src="/plex/art?path={{ i.thumb | urlencode }}" alt="" loading="lazy" data-fallback="{{ (i.title or '?')[:1] | upper }}">
+        {% else %}
+          <span class="thumb thumb-fallback">{{ (i.title or '?')[:1] | upper }}</span>
+        {% endif %}
+        <span class="card-body">
+          <span class="spine">
+            {{ i.spine or i.type | title }}
+            {%- if i.leaf_count %} · {{ i.leaf_count }} episode{{ 's' if i.leaf_count != 1 }}{% endif %}
+          </span>
+          <span class="card-title">{{ i.title }}</span>
+          <span class="row-meta">
+            {% if i.year %}<time>{{ i.year }}</time>{% endif %}
+            {% if i.duration_min %}<span class="added-by">{{ i.duration_min }} min</span>{% endif %}
+            {% if not openable %}<span class="added-by">▶ open in Plex</span>{% endif %}
+          </span>
+        </span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+
+  {% if total_pages > 1 %}
+  <nav class="pager">
+    {% if page > 1 %}<a href="/plex?section={{ section.key }}&page={{ page - 1 }}">← prev</a>{% else %}<span class="off">← prev</span>{% endif %}
+    <span class="pager-info">page {{ page }} of {{ total_pages }}</span>
+    {% if page < total_pages %}<a href="/plex?section={{ section.key }}&page={{ page + 1 }}">next →</a>{% else %}<span class="off">next →</span>{% endif %}
+  </nav>
+  {% endif %}
+
+  <p class="hint">Playback opens in Plex's own app — Chudstack only browses the
+    library, so nothing streams through this server.</p>
+</section>
+{% endblock %}

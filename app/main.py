@@ -15,7 +15,7 @@ from fastapi.responses import (FileResponse, HTMLResponse, JSONResponse,
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import auth, config, db, feedgen, metrics, notify, sanitize, storage
+from . import auth, config, db, feedgen, metrics, notify, plex, sanitize, storage
 from .ingest import email_ingest, mde, nyt, patreon, podcast_rss, rss_articles, substack, youtube
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -249,6 +249,7 @@ def service_worker():
 def render(request, template, **ctx):
     ctx.setdefault("site_title", config.SITE_TITLE)
     ctx.setdefault("static_v", STATIC_V)
+    ctx.setdefault("plex_web", plex.web_url)
     return templates.TemplateResponse(request, template, ctx)
 
 
@@ -913,6 +914,48 @@ def bussy_checkout(request: Request, user=Depends(auth.current_user), plan: str 
 @app.get("/bussy-zone/bussy", response_class=HTMLResponse)
 def bussy_win(request: Request, user=Depends(auth.current_user)):
     return render(request, "bussy_win.html", user=user)
+
+
+@app.get("/plex", response_class=HTMLResponse)
+def plex_page(request: Request, user=Depends(auth.current_user),
+              section: str | None = None, key: str | None = None, page: int = 1):
+    """Browse the shared Plex server. Read-only: playback deep-links into Plex's
+    own clients, so no media (and no token) passes through here."""
+    ctx: dict = {"user": user, "configured": plex.configured(), "error": None,
+                 "libraries": [], "items": [], "section": None, "parent": None,
+                 "page": max(1, page), "total_pages": 1}
+    if not plex.configured():
+        ctx["error"] = "Plex isn't configured yet (PLEX_URL / PLEX_TOKEN in .env)."
+        return render(request, "plex.html", **ctx)
+    per = 60
+    try:
+        ctx["libraries"] = plex.libraries()
+        if key:                                   # seasons of a show / episodes of a season
+            ctx["parent"], ctx["items"] = plex.children(key)
+        elif section:
+            sec, items, total = plex.browse(section, limit=per, offset=(ctx["page"] - 1) * per)
+            ctx["section"], ctx["items"] = sec, items
+            ctx["total_pages"] = max(1, -(-total // per))
+        else:
+            ctx["items"] = plex.recently_added()
+    except plex.PlexError as e:
+        ctx["error"] = str(e)
+    return render(request, "plex.html", **ctx)
+
+
+@app.get("/plex/art")
+def plex_art(path: str, user=Depends(auth.current_user)):
+    """Proxy Plex artwork so posters render without exposing the token. `path`
+    is constrained to Plex's own image routes — this must never become a general
+    fetcher for arbitrary paths on the server."""
+    if not path.startswith("/library/") or ".." in path:
+        raise HTTPException(400, "bad art path")
+    try:
+        body, ctype = plex.art(path)
+    except plex.PlexError as e:
+        raise HTTPException(502, str(e)) from e
+    return Response(content=body, media_type=ctype,
+                    headers={"Cache-Control": "private, max-age=86400"})
 
 
 @app.get("/mde", response_class=HTMLResponse)

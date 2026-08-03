@@ -41,6 +41,13 @@ try:
 except json.JSONDecodeError:
     PODCAST_FEEDS = {}
 
+# ---- Plex (read-only browse tab) ----
+# PLEX_TOKEN must be the PER-SERVER access token when the server is shared with
+# the account rather than owned by it (scripts/plex_token.sh does the exchange).
+PLEX_URL = os.getenv("PLEX_URL", "").strip()
+PLEX_TOKEN = os.getenv("PLEX_TOKEN", "").strip()
+PLEX_SERVER_ID = os.getenv("PLEX_SERVER_ID", "").strip()   # for app.plex.tv deep links
+
 # ---- Article feeds (any blog RSS/Atom with full-text items, e.g. a Hugo site) ----
 # JSON object: {"Publication display name": "https://...feed-url..."}
 try:

@@ -1,0 +1,132 @@
+"""Read-only Plex client for the /plex browse tab.
+
+Talks to ONE Plex server (PLEX_URL) with PLEX_TOKEN. The token is a per-server
+access token: for a server that's SHARED with the account (owned=False, which is
+our case) the plain account token 401s — the working one comes from
+plex.tv/api/v2/resources[].accessToken. scripts/plex_token.sh does that exchange.
+
+Nothing is downloaded or mirrored: the tab lists what's on the server and links
+out to Plex's own clients to play, so no media flows through the droplet (a 1 GB
+box can't transcode) and no token reaches members' browsers. Images ARE proxied
+through /plex/art so posters render without handing the token to the client.
+
+Every call soft-fails: an unreachable server / expired share raises PlexError,
+which the route renders as a message rather than a 500.
+"""
+import logging
+import time
+from urllib.parse import quote, urlencode
+
+import requests
+
+from . import config
+
+log = logging.getLogger("stackdock.plex")
+
+TIMEOUT = 15
+_CACHE: dict[str, tuple[float, object]] = {}
+CACHE_TTL = 120        # a library listing is cheap but the server is someone's home box
+
+
+class PlexError(RuntimeError):
+    pass
+
+
+def configured() -> bool:
+    return bool(config.PLEX_URL and config.PLEX_TOKEN)
+
+
+def _get(path: str, params: dict | None = None, cache: bool = True):
+    if not configured():
+        raise PlexError("Plex isn't configured (PLEX_URL / PLEX_TOKEN).")
+    key = path + "?" + urlencode(sorted((params or {}).items()))
+    if cache:
+        hit = _CACHE.get(key)
+        if hit and time.time() - hit[0] < CACHE_TTL:
+            return hit[1]
+    url = config.PLEX_URL.rstrip("/") + path
+    try:
+        r = requests.get(url, params=params or {}, timeout=TIMEOUT,
+                         headers={"X-Plex-Token": config.PLEX_TOKEN,
+                                  "Accept": "application/json"})
+    except requests.RequestException as e:
+        raise PlexError(f"couldn't reach the Plex server ({e.__class__.__name__})") from e
+    if r.status_code == 401:
+        raise PlexError("Plex rejected the token — the share may have been revoked; "
+                        "re-run scripts/plex_token.sh")
+    if r.status_code != 200:
+        raise PlexError(f"Plex returned HTTP {r.status_code}")
+    try:
+        data = (r.json().get("MediaContainer") or {})
+    except ValueError as e:
+        raise PlexError("Plex returned a non-JSON response") from e
+    if cache:
+        _CACHE[key] = (time.time(), data)
+    return data
+
+
+def _item(m: dict) -> dict:
+    """Normalize a Plex metadata dict to what the templates use."""
+    return {
+        "key": m.get("ratingKey"),
+        "title": m.get("title") or "(untitled)",
+        "type": m.get("type"),
+        "year": m.get("year"),
+        "summary": m.get("summary") or "",
+        "thumb": m.get("thumb") or m.get("parentThumb") or m.get("grandparentThumb"),
+        # a season/episode shows its show name; a movie shows its year
+        "spine": m.get("grandparentTitle") or m.get("parentTitle") or "",
+        "duration_min": round(m["duration"] / 60000) if m.get("duration") else None,
+        "leaf_count": m.get("leafCount"),
+    }
+
+
+def libraries() -> list[dict]:
+    dirs = _get("/library/sections").get("Directory") or []
+    return [{"key": d.get("key"), "title": d.get("title"), "type": d.get("type"),
+             "thumb": d.get("thumb")} for d in dirs]
+
+
+def recently_added(limit: int = 24) -> list[dict]:
+    data = _get("/library/recentlyAdded", {"X-Plex-Container-Start": 0,
+                                           "X-Plex-Container-Size": limit})
+    return [_item(m) for m in (data.get("Metadata") or [])]
+
+
+def browse(section_key: str, limit: int = 60, offset: int = 0,
+           sort: str = "titleSort") -> tuple[dict, list[dict], int]:
+    """(section, items, total) for one library section."""
+    data = _get(f"/library/sections/{section_key}/all",
+                {"X-Plex-Container-Start": offset, "X-Plex-Container-Size": limit,
+                 "sort": sort})
+    section = {"key": section_key, "title": data.get("title2") or data.get("librarySectionTitle") or "Library",
+               "type": data.get("viewGroup")}
+    return section, [_item(m) for m in (data.get("Metadata") or [])], int(data.get("totalSize") or 0)
+
+
+def children(rating_key: str) -> tuple[dict, list[dict]]:
+    """Seasons of a show, or episodes of a season."""
+    data = _get(f"/library/metadata/{rating_key}/children")
+    parent = {"title": data.get("title2") or data.get("parentTitle") or "",
+              "key": rating_key}
+    return parent, [_item(m) for m in (data.get("Metadata") or [])]
+
+
+def art(thumb_path: str) -> tuple[bytes, str]:
+    """Fetch a poster server-side so the token never reaches a member's browser."""
+    if not configured():
+        raise PlexError("Plex isn't configured.")
+    url = config.PLEX_URL.rstrip("/") + thumb_path
+    try:
+        r = requests.get(url, timeout=TIMEOUT, headers={"X-Plex-Token": config.PLEX_TOKEN})
+        r.raise_for_status()
+    except requests.RequestException as e:
+        raise PlexError("couldn't fetch artwork") from e
+    return r.content, r.headers.get("Content-Type", "image/jpeg")
+
+
+def web_url(rating_key: str) -> str:
+    """Deep link into Plex's own player — playback happens in Plex, not here."""
+    mid = config.PLEX_SERVER_ID or ""
+    key = quote(f"/library/metadata/{rating_key}", safe="")
+    return f"https://app.plex.tv/desktop/#!/server/{mid}/details?key={key}"

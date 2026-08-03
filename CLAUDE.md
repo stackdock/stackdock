@@ -79,6 +79,10 @@ app/ingest/podcast_rss.py    poll PODCAST_FEEDS (Substack private podcast feeds,
 app/ingest/rss_articles.py   poll ARTICLE_FEEDS (JSON {name: url}; any full-text blog RSS/Atom,
                              e.g. lukesmith.xyz/index.xml) → articles; dedupe rss:{guid};
                              first sync per publication silent; job id "articles" (hourly)
+app/plex.py              READ-ONLY Plex browse tab (/plex): libraries, recently-added,
+                         show->season->episode drill-down. Playback DEEP-LINKS to
+                         app.plex.tv (no media or token ever reaches the droplet/members);
+                         posters proxy through /plex/art (path-guarded to /library/*).
 .github/workflows/deploy.yml SSH deploy: reset to origin/main, compose up, health check
 docker-compose.yml       stackdock (internal :8000) + caddy (80/443, auto-HTTPS) + uptime-kuma (status.<domain>, external healthz monitor — first visit creates its admin; point a monitor at /healthz and wire the Discord webhook in its UI)
 ```
