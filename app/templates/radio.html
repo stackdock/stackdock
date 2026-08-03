@@ -131,7 +131,7 @@
   </div>
 
   {% if catalogue %}
-  <h3 class="hub-title">🎚 In rotation <span class="count">{{ catalogue|length }}</span></h3>
+  <h3 class="hub-title">🔁 In rotation <span class="count">{{ catalogue|length }}</span></h3>
   <ul class="cards">{% for t in catalogue %}{{ track_row(t, 'cat') }}{% endfor %}</ul>
   {% endif %}
 
@@ -288,7 +288,7 @@
     block.hidden = rows.length === 0;
     $("up-next-count").textContent = q.length ? q.length : "";
     const head = block.querySelector(".hub-title");
-    if (head) head.firstChild.textContent = q.length ? "⤴ Up next " : "🎚 Coming up ";
+    if (head) head.firstChild.textContent = q.length ? "⤴ Up next " : "🔁 Coming up ";
     const nextIds = rows.map((t) => String(t.id)).join(",");
     const shownIds = Array.from(list.children).map((r) => r.dataset.trackId || "").join(",");
     if (nextIds !== shownIds) {                 // only rebuild when it changed

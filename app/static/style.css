@@ -13,6 +13,7 @@
 }
 
 * { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body {
   margin: 0;
   background: var(--paper);
@@ -279,6 +280,9 @@ footer {
   /* 40px touch targets for the small button groups */
   .feed-box button, .search-form button, .inline-form button, .sync-row button,
   .card-hide button, .pp-volume button { min-height: 40px; min-width: 40px; }
+  /* 16px floor: iOS zooms the whole page in on focus of any smaller field */
+  input:not([type=range]):not([type=checkbox]):not([type=radio]),
+  select, textarea { font-size: 16px; }
 }
 
 /* ---------- collapsed mobile header ---------- */
