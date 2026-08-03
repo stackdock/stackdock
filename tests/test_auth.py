@@ -1,5 +1,5 @@
 """Auth primitives: password hashing, signed sessions, reset tokens."""
-from app import auth
+from app import auth, db
 
 
 def test_password_hash_roundtrip():
@@ -14,15 +14,25 @@ def test_verify_password_bad_hash_is_false():
     assert auth.verify_password("anything", "not-a-bcrypt-hash") is False
 
 
-def test_session_value_roundtrip():
+def test_session_value_roundtrip(fresh_db):
     token = auth.make_session_value(42)
     assert auth.read_session_value(token) == 42
 
 
-def test_session_value_tampered_rejected():
+def test_session_value_tampered_rejected(fresh_db):
     token = auth.make_session_value(42)
     assert auth.read_session_value(token + "x") is None
     assert auth.read_session_value("garbage") is None
+
+
+def test_password_change_invalidates_old_sessions(fresh_db):
+    uid = db.create_user("dave", auth.hash_password("pw"))
+    old = auth._load_session(auth.make_session_value(uid))
+    assert auth.session_gen_ok(old, db.get_user(uid))
+    db.set_password(uid, auth.hash_password("newpw"))
+    assert not auth.session_gen_ok(old, db.get_user(uid))     # old cookie dead
+    fresh = auth._load_session(auth.make_session_value(uid))
+    assert auth.session_gen_ok(fresh, db.get_user(uid))       # re-issued works
 
 
 def test_reset_token_hash_is_deterministic_and_opaque():

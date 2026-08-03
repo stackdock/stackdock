@@ -356,19 +356,23 @@ def init():
                            ("radio_tracks", "last_played_at TEXT"),
                            ("radio_state", "current_track_id INTEGER"),
                            ("radio_state", "started_at REAL"),
-                           ("radio_state", "cycle INTEGER NOT NULL DEFAULT 0")]:
+                           ("radio_state", "cycle INTEGER NOT NULL DEFAULT 0"),
+                           ("users", "session_gen INTEGER NOT NULL DEFAULT 0")]:
             try:
                 c.execute(f"ALTER TABLE {table} ADD COLUMN {col}")
-            except sqlite3.OperationalError:
-                pass  # column already exists
+            except sqlite3.OperationalError as e:
+                if "duplicate column" not in str(e).lower():
+                    raise   # a lock/disk error is not "already migrated"
         # `notified` is special: when first added, mark all existing rows as
         # already-notified so we don't blast the entire backlog into Discord.
         for table in ("articles", "episodes"):
             try:
                 c.execute(f"ALTER TABLE {table} ADD COLUMN notified INTEGER DEFAULT 0")
-                c.execute(f"UPDATE {table} SET notified = 1")   # runs once, on add
-            except sqlite3.OperationalError:
-                pass  # column already exists; leave per-row flags intact
+            except sqlite3.OperationalError as e:
+                if "duplicate column" not in str(e).lower():
+                    raise
+            else:
+                c.execute(f"UPDATE {table} SET notified = 1")   # once, on add
         try:
             c.execute(
                 "INSERT INTO connected_accounts (user_id, service, label, cookie, last_sync, status, created_at) "
@@ -455,6 +459,14 @@ def article_exists(message_id: str) -> bool:
     with conn() as c:
         r = c.execute("SELECT 1 FROM articles WHERE message_id = ?", (message_id,)).fetchone()
         return r is not None
+
+
+def delete_article_by_message_id(message_id: str) -> None:
+    with conn() as c:
+        row = c.execute("SELECT id FROM articles WHERE message_id = ?", (message_id,)).fetchone()
+        if row:
+            c.execute("DELETE FROM article_sources WHERE article_id = ?", (row["id"],))
+            c.execute("DELETE FROM articles WHERE id = ?", (row["id"],))
 
 
 def _norm_url(u: str | None) -> str | None:
@@ -906,8 +918,10 @@ def create_user(username: str, password_hash: str, is_admin: bool = False) -> in
 
 
 def set_password(user_id: int, password_hash: str) -> None:
+    # bumping session_gen invalidates every session issued before the change
     with conn() as c:
-        c.execute("UPDATE users SET password_hash = ? WHERE id = ?", (password_hash, user_id))
+        c.execute("UPDATE users SET password_hash = ?, session_gen = session_gen + 1 "
+                  "WHERE id = ?", (password_hash, user_id))
 
 
 def create_invite(code: str) -> None:
@@ -918,16 +932,6 @@ def create_invite(code: str) -> None:
 def list_invites():
     with conn() as c:
         return c.execute("SELECT * FROM invites ORDER BY created_at DESC").fetchall()
-
-
-def consume_invite(code: str, username: str) -> bool:
-    """Atomically claim an unused invite. Returns True if it was valid."""
-    with conn() as c:
-        cur = c.execute(
-            "UPDATE invites SET used_by = ? WHERE code = ? AND used_by IS NULL",
-            (username, code),
-        )
-        return cur.rowcount == 1
 
 
 class SignupError(Exception):

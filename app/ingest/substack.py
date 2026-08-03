@@ -83,7 +83,7 @@ def polite_get(s: requests.Session, url: str, **kwargs) -> requests.Response:
         if attempt == MAX_RETRIES - 1:
             return r   # out of retries — don't sleep out a backoff we won't use
         ra = r.headers.get("Retry-After", "")
-        wait = (int(ra) if ra.isdigit() else min(BACKOFF_CAP_S, 5 * 2 ** attempt))
+        wait = min(BACKOFF_CAP_S, int(ra) if ra.isdigit() else 5 * 2 ** attempt)
         wait += random.uniform(0, 3)
         log.warning("rate limited (%s) on %s — backing off %.1fs (try %d/%d)",
                     r.status_code, url, wait, attempt + 1, MAX_RETRIES)

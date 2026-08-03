@@ -22,7 +22,9 @@ import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import urlencode
+import ipaddress
+import socket
+from urllib.parse import urlencode, urlsplit
 
 import requests
 
@@ -265,12 +267,31 @@ def _is_url(s: str) -> bool:
     return s.startswith(("http://", "https://"))
 
 
+def _is_private_host(url: str) -> bool:
+    """SSRF guard: submitted URLs are fetched server-side; refuse anything that
+    resolves to loopback/private/link-local space."""
+    host = urlsplit(url).hostname
+    if not host:
+        return True
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except OSError:
+        return True
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0])
+        if not ip.is_global:
+            return True
+    return False
+
+
 def _og_title(url: str) -> str | None:
     """Search text for a non-YouTube link. Spotify (and most music sites) put
     the track in og:title and the artist FIRST in og:description
     ("The Growlers · Natural Affair · Song · 2019"), so both go into the query —
     a bare track name matches far too loosely."""
     try:
+        if _is_private_host(url):
+            return None
         r = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
         body = r.text
         m = (re.search(r'<meta[^>]+property="og:title"[^>]+content="([^"]+)"', body)
@@ -583,8 +604,10 @@ def _spotify_api_tracks(pid: str) -> list[str] | None:
               "fields": "total,next,items(track(name,artists(name)))"}
     try:
         while url:
+            # params only on the first request; the `next` URL carries its own
             r = requests.get(url, headers={"Authorization": f"Bearer {token}"},
-                             params=params if "offset" in str(params) else None, timeout=25)
+                             params=params, timeout=25)
+            params = None
             if r.status_code != 200:
                 log.warning("radio: Spotify playlist %s -> HTTP %s", pid, r.status_code)
                 return None if not out else out
@@ -656,7 +679,8 @@ def sync_playlists() -> int:
     for url in config.RADIO_PLAYLISTS:
         try:
             queries = _spotify_playlist_tracks(url)
-        except requests.RequestException as e:
+        except (requests.RequestException, ValueError, KeyError, TypeError) as e:
+            # a malformed embed page must not abort the whole radio run
             log.warning("radio: playlist fetch failed (%s): %s", url, e.__class__.__name__)
             continue
         for q in queries:

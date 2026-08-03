@@ -23,11 +23,13 @@ def test_user_crud_and_count(fresh_db):
 
 def test_invite_consumed_once(fresh_db):
     db.create_invite("INV1")
-    assert db.consume_invite("INV1", "newuser") is True
+    assert db.create_user_with_invite("newuser", "h", "INV1")
     # already used -> rejected
-    assert db.consume_invite("INV1", "someoneelse") is False
+    with pytest.raises(db.SignupError):
+        db.create_user_with_invite("someoneelse", "h", "INV1")
     # unknown code -> rejected
-    assert db.consume_invite("NOPE", "x") is False
+    with pytest.raises(db.SignupError):
+        db.create_user_with_invite("x", "h", "NOPE")
 
 
 def test_reset_token_expiry(fresh_db):
@@ -184,7 +186,7 @@ def test_paid_flags_present_in_both_list_branches(fresh_db):
 
 def test_delete_and_clear_invites(fresh_db):
     db.create_invite("A"); db.create_invite("B"); db.create_invite("C")
-    db.consume_invite("B", "bob")          # B is now used
+    db.create_user_with_invite("bob", "h", "B")    # B is now used
     db.delete_invite("A")                   # remove one unused
     assert {i["code"] for i in db.list_invites()} == {"B", "C"}
     removed = db.clear_invites(only_used=True)   # clears B

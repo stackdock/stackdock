@@ -3,10 +3,12 @@ import json
 import logging
 import secrets as pysecrets
 import shutil
+import threading
+import time
 from datetime import datetime, timedelta, timezone
 from contextlib import asynccontextmanager
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, Response
@@ -116,6 +118,12 @@ def _safe_next(next_url: str | None, fallback: str = "/") -> str:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # refuse to serve production with forgeable sessions or seeded creds
+    if config.PUBLIC_BASE_URL.startswith("https"):
+        if config.SECRET_KEY == "dev-only-change-me":
+            raise RuntimeError("SECRET_KEY is the dev default — set it in .env")
+        if config.BASIC_AUTH_PASS == "change-me":
+            raise RuntimeError("BASIC_AUTH_PASS is the dev default — set it in .env")
     db.init()
     auth.ensure_admin_user()
     # Interval jobs default to first-run = now + interval, so the hourly substack
@@ -223,10 +231,13 @@ async def session_refresh(request: Request, call_next):
     value = request.cookies.get(auth.SESSION_COOKIE)
     if value and not any(auth.SESSION_COOKIE in c
                          for c in response.headers.getlist("set-cookie")):
-        uid, issued = auth.read_session_timestamped(value)
-        if uid and issued and db.get_user(uid) and \
+        data, issued = auth.read_session_timestamped(value)
+        # age check first — the DB lookup would otherwise run on every request
+        if data and issued and \
                 (datetime.now(timezone.utc) - issued).total_seconds() > auth.SESSION_REFRESH_AFTER:
-            auth.set_session_cookie(response, uid)
+            user = db.get_user(data.get("uid")) if data.get("uid") else None
+            if user and auth.session_gen_ok(data, user):
+                auth.set_session_cookie(response, user["id"])
     return response
 
 
@@ -351,7 +362,12 @@ def change_password(request: Request, user=Depends(auth.current_user),
     if len(new) < 8:
         return page(error="New password must be at least 8 characters.")
     db.set_password(user["id"], auth.hash_password(new))
-    return page(message="Password updated.")
+    resp = page(message="Password updated.")
+    auth.set_session_cookie(resp, user["id"])   # re-issue: the gen bump killed the old cookie
+    return resp
+
+
+_FORGOT_LAST = [0.0]   # last reset-ping time; global 30s cooldown
 
 
 @app.get("/forgot", response_class=HTMLResponse)
@@ -361,9 +377,14 @@ def forgot_page(request: Request):
 
 @app.post("/forgot")
 def forgot(request: Request, username: str = Form(...)):
-    # Only ping the channel for real accounts, but show the same message either way
-    if db.get_user_by_name(username.strip()):
-        notify.notify_reset_request(username.strip())
+    # Same message either way; the ping runs off-thread so response time can't
+    # confirm the account exists, and a global cooldown stops webhook spam.
+    name = username.strip()
+    now = time.monotonic()
+    if db.get_user_by_name(name) and now - _FORGOT_LAST[0] > 30:
+        _FORGOT_LAST[0] = now
+        threading.Thread(target=notify.notify_reset_request, args=(name,),
+                         daemon=True).start()
     return render(request, "forgot.html", done=True)
 
 
@@ -610,6 +631,8 @@ async def api_save_position(slug: str, request: Request, user=Depends(auth.curre
         raise HTTPException(404)
     try:
         data = json.loads((await request.body()) or b"{}")
+        if not isinstance(data, dict):
+            raise ValueError("not an object")
         position = float(data.get("position", 0))
         duration = float(data.get("duration", 0))
         done = bool(data.get("done", False))
@@ -629,14 +652,17 @@ async def api_player_diag(slug: str, request: Request, user=Depends(auth.current
     Logged only (docker logs), never stored."""
     try:
         data = json.loads((await request.body()) or b"{}")
-        why = str(data.get("why", ""))[:40]
-        events = [str(e)[:200] for e in list(data.get("events", []))[:100]]
+        if not isinstance(data, dict):
+            raise ValueError("not an object")
+        one_line = lambda s: str(s).replace("\r", " ").replace("\n", " ")  # noqa: E731
+        why = one_line(data.get("why", ""))[:40]
+        events = [one_line(e)[:200] for e in list(data.get("events", []))[:100]]
     except (ValueError, TypeError):
         raise HTTPException(400, "bad payload")
-    # indent every client-supplied line so a crafted event can't masquerade as
-    # a server log line
+    # newlines stripped + indent, so client input can't forge a server log line
     log.info("PLAYER DIAG [%s] %s (%s)\n%s",
-             user["username"], slug, why, "\n".join("  | " + e for e in events))
+             user["username"], one_line(slug)[:80], why,
+             "\n".join("  | " + e for e in events))
     return {"ok": True}
 
 
@@ -1207,10 +1233,19 @@ def plex_art(path: str, user=Depends(auth.current_user),
     is constrained to Plex's own image routes — this must never become a general
     fetcher for arbitrary paths on the server. `w` uses Plex's photo transcoder
     to downscale (full-size art is 500 KB+ and every byte crosses the droplet)."""
-    if not path.startswith("/library/") or ".." in path:
+    # decode until stable and forward the canonical form: %2e%2e (or double-
+    # encoded), smuggled ?query, and CR/LF all pass a raw-string check
+    decoded = path
+    for _ in range(3):
+        nxt = unquote(decoded)
+        if nxt == decoded:
+            break
+        decoded = nxt
+    if (not decoded.startswith("/library/") or ".." in decoded
+            or any(ch in decoded for ch in "?#\r\n")):
         raise HTTPException(400, "bad art path")
     try:
-        body, ctype = plex.art(path, width=w)
+        body, ctype = plex.art(decoded, width=w)
     except plex.PlexError as e:
         raise HTTPException(502, str(e)) from e
     return Response(content=body, media_type=ctype,
@@ -1380,7 +1415,7 @@ def status_page(request: Request, user=Depends(auth.current_user)):
 
 @app.get("/feed/{token}/all.xml")
 def feed_all(token: str):
-    if not pysecrets.compare_digest(token, config.FEED_TOKEN):
+    if not pysecrets.compare_digest(token.encode(), config.FEED_TOKEN.encode()):
         raise HTTPException(404)
     return Response(content=feedgen.build_feed(), media_type="application/rss+xml")
 
@@ -1388,7 +1423,7 @@ def feed_all(token: str):
 @app.get("/feed/{token}/articles.xml")
 def feed_articles(token: str):
     """Unified RSS of all mirrored article text, across every member's accounts."""
-    if not pysecrets.compare_digest(token, config.FEED_TOKEN):
+    if not pysecrets.compare_digest(token.encode(), config.FEED_TOKEN.encode()):
         raise HTTPException(404)
     return Response(content=feedgen.build_articles_feed(), media_type="application/rss+xml")
 
@@ -1396,13 +1431,13 @@ def feed_articles(token: str):
 @app.get("/feed/{token}/everything.xml")
 def feed_everything(token: str):
     """Articles + episodes merged into one feed, newest first."""
-    if not pysecrets.compare_digest(token, config.FEED_TOKEN):
+    if not pysecrets.compare_digest(token.encode(), config.FEED_TOKEN.encode()):
         raise HTTPException(404)
     return Response(content=feedgen.build_combined_feed(), media_type="application/rss+xml")
 
 
 @app.get("/feed/{token}/show.xml")
 def feed_show(token: str, name: str):
-    if not pysecrets.compare_digest(token, config.FEED_TOKEN):
+    if not pysecrets.compare_digest(token.encode(), config.FEED_TOKEN.encode()):
         raise HTTPException(404)
     return Response(content=feedgen.build_feed(feed_filter=name), media_type="application/rss+xml")

@@ -64,13 +64,22 @@ def resolve_channel(handle: str) -> tuple[str | None, str]:
             return "", "could not find channel id (is the @handle right?)"
         cid = m.group(1)
     # display name via the feed's title
-    parsed = feedparser.parse(_feed_url(cid))
-    name = parsed.feed.get("title") or handle
+    try:
+        name = _fetch_feed(cid).feed.get("title") or handle
+    except requests.RequestException:
+        name = handle
     return cid, name
 
 
 def _feed_url(channel_id: str) -> str:
     return f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
+
+
+def _fetch_feed(cid: str):
+    # feedparser's own urllib fetch has no timeout; fetch first, parse bytes
+    r = requests.get(_feed_url(cid), timeout=30)
+    r.raise_for_status()
+    return feedparser.parse(r.content)
 
 
 def _iso(entry) -> str:
@@ -120,9 +129,9 @@ def _run() -> int:
         cname = cname or cid
         is_backfill = ch["last_sync"] is None
         try:
-            parsed = feedparser.parse(_feed_url(cid))
+            parsed = _fetch_feed(cid)
         except Exception as e:                                  # noqa: BLE001
-            log.warning("YouTube: feed parse failed for %s: %s", cname, e)
+            log.warning("YouTube: feed fetch failed for %s: %s", cname, e)
             continue
 
         for entry in parsed.entries:
@@ -141,12 +150,12 @@ def _run() -> int:
             )
         db.set_youtube_channel_sync(ch["id"], db.now_iso())
 
-    # Resilient notify: announce everything still unnotified, then mark it — a
-    # crash mid-run leaves items pending and the next run sends them.
+    # Resilient notify: mark items only when Discord accepted them, so an
+    # outage or crash leaves them pending for the next run.
     pending = db.list_unnotified_youtube()
     if pending:
         priority = [dict(v) for v in pending if v["priority"]]
         normal = [dict(v) for v in pending if not v["priority"]]
-        notify.notify_youtube(priority, normal)
-        db.mark_youtube_notified([v["id"] for v in pending])
+        if notify.notify_youtube(priority, normal):
+            db.mark_youtube_notified([v["id"] for v in pending])
     return len(pending)

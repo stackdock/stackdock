@@ -58,26 +58,38 @@ def check_login(user, password: str) -> bool:
 # ---------- sessions ----------
 
 def make_session_value(user_id: int) -> str:
-    return _serializer.dumps({"uid": user_id})
+    # gen ties the session to the current password; set_password bumps it,
+    # killing every cookie issued before the change
+    user = db.get_user(user_id)
+    gen = (user["session_gen"] if user else 0) or 0
+    return _serializer.dumps({"uid": user_id, "gen": gen})
 
 
-def read_session_value(value: str):
+def _load_session(value: str) -> dict | None:
     try:
-        data = _serializer.loads(value, max_age=SESSION_MAX_AGE)
-        return data.get("uid")
+        return _serializer.loads(value, max_age=SESSION_MAX_AGE)
     except BadSignature:
         return None
 
 
+def read_session_value(value: str):
+    data = _load_session(value)
+    return data.get("uid") if data else None
+
+
 def read_session_timestamped(value: str):
-    """(uid, issued_at) for a valid session, else (None, None). issued_at is
-    tz-aware UTC — used by the sliding-refresh middleware."""
+    """(payload, issued_at) for a valid session, else (None, None). issued_at
+    is tz-aware UTC — used by the sliding-refresh middleware."""
     try:
         data, issued = _serializer.loads(value, max_age=SESSION_MAX_AGE,
                                          return_timestamp=True)
-        return data.get("uid"), issued
+        return data, issued
     except BadSignature:
         return None, None
+
+
+def session_gen_ok(data: dict, user) -> bool:
+    return (data.get("gen") or 0) == ((user["session_gen"] if user else 0) or 0)
 
 
 def set_session_cookie(response, user_id: int) -> None:
@@ -114,8 +126,10 @@ def _redirect_to_login(request: Request):
 def current_user(request: Request):
     """Require a logged-in user; redirects browsers to /login."""
     value = request.cookies.get(SESSION_COOKIE)
-    uid = read_session_value(value) if value else None
-    user = db.get_user(uid) if uid else None
+    data = _load_session(value) if value else None
+    user = db.get_user(data["uid"]) if data and data.get("uid") else None
+    if user and not session_gen_ok(data, user):
+        user = None                       # issued before a password change
     if not user:
         _redirect_to_login(request)
     return user

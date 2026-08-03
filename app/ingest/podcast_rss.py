@@ -19,7 +19,6 @@ from .. import config, db, notify, storage
 
 log = logging.getLogger("stackdock.podcasts")
 
-CHUNK = 1024 * 256
 
 
 def _slug(s: str) -> str:

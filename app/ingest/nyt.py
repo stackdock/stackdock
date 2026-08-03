@@ -207,7 +207,6 @@ def fetch_nyt_article(url: str, nyt_cookie: str | None = None) -> NytArticle:
                 last_err = err
         except Exception as e:               # noqa: BLE001 — retry on any failure
             last_err = f"camoufox: {type(e).__name__}: {e}"
-        continue
     raise NytFetchError(f"Could not pull article after "
                         f"{config.NYT_BROWSER_TRIES} browser attempts: {last_err}")
 

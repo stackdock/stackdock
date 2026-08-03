@@ -19,7 +19,6 @@ import threading
 import time
 
 from .. import config, db, notify, storage
-from .substack import _clean_body
 
 log = logging.getLogger("stackdock.patreon")
 
@@ -297,16 +296,15 @@ def _ingest_post(s, account, post, campaigns, notified: int,
                     raise RuntimeError(f"audio HTTP {resp.status_code}")
                 mime = resp.headers.get("content-type") or "audio/mpeg"
                 spool = tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024)
-                size = 0
-                for chunk in resp.iter_content(chunk_size=256 * 1024):
-                    if chunk:
-                        spool.write(chunk)
-                        size += len(chunk)
-                if not size:
-                    spool.close()
-                    raise RuntimeError("empty audio body")
-                spool.seek(0)
                 try:
+                    size = 0
+                    for chunk in resp.iter_content(chunk_size=256 * 1024):
+                        if chunk:
+                            spool.write(chunk)
+                            size += len(chunk)
+                    if not size:
+                        raise RuntimeError("empty audio body")
+                    spool.seek(0)
                     storage.upload_stream(spool, key, mime)
                 finally:
                     spool.close()
@@ -316,6 +314,8 @@ def _ingest_post(s, account, post, campaigns, notified: int,
                 audio_bytes=size, audio_mime=mime, duration="",
                 published_at=published, image_url=None,
                 paid_access=1, is_paid=1 if is_paid else 0, notified=notified)
+            # drop the stub article a failed earlier audio attempt left behind
+            db.delete_article_by_message_id(guid)
             return 1 if eid else 0
         except Exception as e:
             log.warning("[%s] Patreon audio download failed (%s): %s",
