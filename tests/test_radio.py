@@ -496,6 +496,33 @@ def test_radio_page_renders_both_blocks(client, monkeypatch):
     assert queued and played
 
 
+def test_drag_reorder_sets_the_whole_queue_order(fresh_db):
+    a, b, c = _ready("A"), _ready("B"), _ready("C")
+    played = _ready("Played")
+    db.radio_mark_aired(played)                       # in rotation, not the queue
+    db.radio_set_queue_order([c, a, b])
+    assert [t["title"] for t in radio.station_order()][:3] == ["C", "A", "B"]
+    # a queued track the client didn't know about keeps a place (at the end),
+    # and rotation tracks are never touched
+    d = _ready("D")
+    db.radio_set_queue_order([b, c])
+    queue = [t["title"] for t in radio.station_order() if t["promoted_at"]]
+    assert queue[:2] == ["B", "C"] and set(queue[2:]) == {"A", "D"}
+    assert db.get_radio_track(played)["promoted_at"] is None
+    assert d
+
+
+def test_reorder_route_rejects_junk(client, monkeypatch):
+    from app import auth
+    db.create_user("m", auth.hash_password("pw12345678"))
+    client.post("/login", data={"username": "m", "password": "pw12345678"})
+    a, b = _ready("A"), _ready("B")
+    assert client.post("/radio/reorder", data={"order": "nope,,x"}).status_code == 400
+    r = client.post("/radio/reorder", data={"order": f"{b},{a}"}, follow_redirects=False)
+    assert r.status_code == 303
+    assert [t["title"] for t in radio.station_order()][:2] == ["B", "A"]
+
+
 def test_bulk_import_queues_a_pasted_list(client, monkeypatch):
     from app import auth, main
     monkeypatch.setattr(main, "_trigger_job", lambda j: True)

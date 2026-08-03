@@ -1090,6 +1090,16 @@ def radio_play_next(user=Depends(auth.current_user), track_id: int = Form(...)):
     return RedirectResponse("/radio", status_code=303)
 
 
+@app.post("/radio/reorder")
+def radio_reorder(user=Depends(auth.current_user), order: str = Form(...)):
+    """Whole-queue order from a drag: a comma-separated list of track ids."""
+    ids = [int(x) for x in order.split(",") if x.strip().isdigit()][:500]
+    if not ids:
+        raise HTTPException(400, "no order given")
+    db.radio_set_queue_order(ids)
+    return RedirectResponse("/radio", status_code=303)
+
+
 @app.post("/radio/promote")
 def radio_promote(user=Depends(auth.current_user), track_id: int = Form(...),
                   on: str = Form("1")):

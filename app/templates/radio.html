@@ -169,7 +169,9 @@
   // promote), so it is re-rendered from every poll instead of being frozen at
   // page load. Built with DOM APIs — titles come from YouTube, so never innerHTML.
   async function act(url, trackId, extra) {
-    const body = new URLSearchParams(Object.assign({ track_id: trackId }, extra || {}));
+    const fields = Object.assign({}, extra || {});
+    if (trackId != null) fields.track_id = trackId;
+    const body = new URLSearchParams(fields);
     try {
       await fetch(url, { method: "POST", credentials: "same-origin",
                          headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -178,9 +180,64 @@
     sync(false);                       // reflect it immediately, no page reload
   }
 
+  // ---- drag to reorder ----
+  // Pointer events, not HTML5 drag-and-drop: the latter doesn't fire on touch,
+  // and this app is used mostly from the phone. The handle sets
+  // touch-action:none so dragging doesn't scroll the page instead.
+  let drag = null;
+
+  function rowsOf(list) {
+    return Array.from(list.children);
+  }
+
+  function startDrag(e, li) {
+    if (e.button > 0) return;                 // left button / touch only
+    const list = li.parentElement;
+    if (!list || rowsOf(list).length < 2) return;
+    drag = { li, list };
+    li.classList.add("dragging");
+    try { e.target.setPointerCapture(e.pointerId); } catch (err) {}
+    e.preventDefault();
+  }
+
+  function moveDrag(e) {
+    if (!drag) return;
+    const y = e.clientY;
+    const others = rowsOf(drag.list).filter((r) => r !== drag.li);
+    const before = others.find((r) => {
+      const b = r.getBoundingClientRect();
+      return y < b.top + b.height / 2;
+    });
+    if (before) drag.list.insertBefore(drag.li, before);
+    else drag.list.appendChild(drag.li);
+    e.preventDefault();
+  }
+
+  function endDrag() {
+    if (!drag) return;
+    const { li, list } = drag;
+    li.classList.remove("dragging");
+    drag = null;                               // clear BEFORE the await below so
+    const ids = rowsOf(list).map((r) => r.dataset.trackId).filter(Boolean);
+    if (ids.length) act("/radio/reorder", null, { order: ids.join(",") });
+  }
+
+  document.addEventListener("pointermove", moveDrag, { passive: false });
+  document.addEventListener("pointerup", endDrag);
+  document.addEventListener("pointercancel", endDrag);
+
   function queueRow(t, i, n, queued) {
     const li = document.createElement("li");
     li.className = "card";
+    li.dataset.trackId = t.id;
+    if (queued) {
+      const grip = document.createElement("span");
+      grip.className = "drag-handle";
+      grip.textContent = "⠿";
+      grip.title = "Drag to reorder";
+      grip.addEventListener("pointerdown", (e) => startDrag(e, li));
+      li.appendChild(grip);
+    }
     const thumb = document.createElement("span");
     thumb.className = "thumb thumb-fallback";
     thumb.textContent = queued ? String(i + 1) : "♪";
@@ -224,14 +281,18 @@
 
   function renderQueue(s) {
     const block = $("up-next-block"), list = $("up-next-list");
-    if (!block || !list) return;
+    if (!block || !list || drag) return;        // never rebuild mid-drag
     const q = s.queue || [];
     const rows = q.length ? q : (s.coming || []);
     block.hidden = rows.length === 0;
     $("up-next-count").textContent = q.length ? q.length : "";
     const head = block.querySelector(".hub-title");
     if (head) head.firstChild.textContent = q.length ? "⤴ Up next " : "🎚 Coming up ";
-    list.replaceChildren(...rows.map((t, i) => queueRow(t, i, rows.length, q.length > 0)));
+    const nextIds = rows.map((t) => String(t.id)).join(",");
+    const shownIds = Array.from(list.children).map((r) => r.dataset.trackId || "").join(",");
+    if (nextIds !== shownIds) {                 // only rebuild when it changed
+      list.replaceChildren(...rows.map((t, i) => queueRow(t, i, rows.length, q.length > 0)));
+    }
     const names = rows.slice(0, 2).map((t) => t.title).join(" · ");
     $("rp-coming").textContent = names ? "then: " + names : "";
   }

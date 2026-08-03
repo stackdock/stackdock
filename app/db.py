@@ -1120,6 +1120,23 @@ def radio_title_exists(title: str, artist: str = "") -> bool:
     return False
 
 
+def radio_set_queue_order(ids: list[int]) -> None:
+    """Explicit Up Next order (from a drag). Only queued rows are touched, and
+    any queued track the client didn't know about keeps its place at the end
+    rather than colliding on a position."""
+    with conn() as c:
+        queued = [r["id"] for r in c.execute(
+            f"SELECT id FROM radio_tracks WHERE promoted_at IS NOT NULL {_RADIO_ORDER}")]
+        seen, ordered = set(), []
+        for tid in ids:
+            if tid in queued and tid not in seen:
+                seen.add(tid)
+                ordered.append(tid)
+        ordered += [t for t in queued if t not in seen]
+        for pos, tid in enumerate(ordered):
+            c.execute("UPDATE radio_tracks SET position=? WHERE id=?", (pos, tid))
+
+
 def radio_play_next(track_id: int) -> None:
     """Jump a track to the TOP of Up Next — it plays as soon as the current one
     finishes (promote appends at the bottom; this cuts the line)."""
