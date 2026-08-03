@@ -30,8 +30,15 @@ log = logging.getLogger("stackdock.radio")
 _RUN_LOCK = threading.Lock()
 
 _YT_HOSTS = ("youtube.com", "youtu.be", "music.youtube.com", "m.youtube.com")
-_BOT_HINTS = ("confirm you're not a bot", "confirm you are not a bot",
-              "sign in to confirm", "429", "captcha")
+_RETRY_HINTS = (
+    # bot-checked (datacenter IP / burned proxy exit)
+    "confirm you're not a bot", "confirm you are not a bot",
+    "sign in to confirm", "429", "captcha",
+    # transient mid-download failures through a flaky proxy exit (seen live
+    # 3 Aug 2026: SSL EOF and a 36 KB-short truncation) — a fresh session fixes
+    "unexpected_eof", "eof occurred", "bytes read", "incompleteread",
+    "connection reset", "timed out",
+)
 
 
 def _is_url(s: str) -> bool:
@@ -137,8 +144,8 @@ def _download(query: str) -> dict:
             except Exception as e:                            # noqa: BLE001
                 last_err = e
                 msg = str(e).lower()
-                if any(h in msg for h in _BOT_HINTS):
-                    log.info("radio: bot-check (attempt %d); retrying via fresh proxy session",
+                if any(h in msg for h in _RETRY_HINTS):
+                    log.info("radio: retryable failure (attempt %d); trying a fresh proxy session",
                              attempt + 1)
                     continue
                 raise
