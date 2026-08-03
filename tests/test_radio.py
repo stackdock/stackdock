@@ -1,4 +1,6 @@
 """Member radio: target resolution, worker flow, and the submit route."""
+import pathlib
+
 import pytest
 
 from app import db, radio
@@ -20,6 +22,72 @@ def test_target_foreign_url_uses_page_title(monkeypatch):
     monkeypatch.setattr(radio, "_og_title", lambda u: None)
     with pytest.raises(RuntimeError, match="paste the song name"):
         radio._target("https://open.spotify.com/track/xyz")
+
+
+class _FakeYDL:
+    """Minimal yt-dlp stand-in: `gated` ids raise the age-gate error on download."""
+
+    def __init__(self, entries, gated=(), tmpdir=None):
+        self.entries, self.gated, self.tmpdir = entries, set(gated), tmpdir
+        self.downloaded = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def extract_info(self, target, download=False):
+        return {"entries": self.entries}
+
+    def download(self, urls):
+        vid = urls[0].rsplit("/", 1)[-1]
+        if vid in self.gated:
+            raise RuntimeError(
+                f"ERROR: [youtube] {vid}: Sign in to confirm your age. "
+                "This video may be inappropriate for some users.")
+        self.downloaded.append(vid)
+        (pathlib.Path(self.tmpdir) / f"{vid}.m4a").write_bytes(b"audio")
+
+
+def test_an_age_gated_hit_falls_through_to_the_next_result(fresh_db, monkeypatch):
+    # every player client hits the age wall now, so the only way through is a
+    # different upload of the same song
+    entries = [{"id": "gated1", "duration": 200, "title": "Song A",
+                "webpage_url": "https://yt/gated1"},
+               {"id": "gated2", "duration": 210, "title": "Song A",
+                "webpage_url": "https://yt/gated2"},
+               {"id": "clean", "duration": 205, "title": "Song A - Artist",
+                "webpage_url": "https://yt/clean"}]
+    made = {}
+
+    def fake_ydl(opts):
+        made["ydl"] = _FakeYDL(entries, gated=("gated1", "gated2"),
+                               tmpdir=str(pathlib.Path(opts["outtmpl"]).parent))
+        return made["ydl"]
+
+    monkeypatch.setattr(radio, "_proxy", lambda: None)
+    monkeypatch.setattr(radio.storage, "upload_stream", lambda *a, **k: None)
+    import yt_dlp
+    monkeypatch.setattr(yt_dlp, "YoutubeDL", fake_ydl)
+    out = radio._download("song a artist")
+    assert out["source_url"] == "https://yt/clean"      # skipped both gated ones
+    assert out["audio_key"] == "radio/clean.m4a"
+
+
+def test_all_results_age_gated_gives_a_clear_message(fresh_db, monkeypatch):
+    entries = [{"id": f"g{i}", "duration": 200, "title": "X",
+                "webpage_url": f"https://yt/g{i}"} for i in range(3)]
+
+    def fake_ydl(opts):
+        return _FakeYDL(entries, gated=[e["id"] for e in entries],
+                        tmpdir=str(pathlib.Path(opts["outtmpl"]).parent))
+
+    monkeypatch.setattr(radio, "_proxy", lambda: None)
+    import yt_dlp
+    monkeypatch.setattr(yt_dlp, "YoutubeDL", fake_ydl)
+    with pytest.raises(RuntimeError, match="age-restricted"):
+        radio._download("x")
 
 
 def test_run_marks_ready_and_failed(fresh_db, monkeypatch):

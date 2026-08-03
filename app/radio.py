@@ -301,76 +301,102 @@ def _ydl_opts(tmpdir: str, proxy: str | None, client: str | None = None) -> dict
     return opts
 
 
+def _try_fetch(ydl, info, query: str, tmpdir: str) -> dict:
+    """Validate + download ONE candidate. Raises on any problem."""
+    dur = float(info.get("duration") or 0)
+    cap = config.RADIO_MAX_MINUTES * 60
+    if dur > cap:
+        raise RuntimeError(f"too long ({round(dur / 60)} min; cap is {config.RADIO_MAX_MINUTES})")
+    src = info.get("webpage_url") or info.get("original_url") or ""
+    if db.radio_source_exists(src):
+        raise RuntimeError("already on the station")
+    title, artist = _meta(info, query)
+    if db.radio_title_exists(title, artist):
+        raise RuntimeError("already on the station (same song)")
+    ydl.download([src])
+    files = list(Path(tmpdir).iterdir())
+    if not files:
+        raise RuntimeError("download produced no file")
+    f = files[0]
+    key = f"radio/{info['id']}.{f.suffix.lstrip('.') or 'm4a'}"
+    with open(f, "rb") as fh:
+        storage.upload_stream(fh, key, "audio/mp4")
+    return {"title": title, "artist": artist, "source_url": src,
+            "audio_key": key, "duration": dur}
+
+
 def _download(query: str) -> dict:
     """Resolve + download one track. Returns {title, artist, source_url,
-    audio_key, duration}. Raises with a member-readable message on failure."""
+    audio_key, duration}. Raises with a member-readable message on failure.
+
+    Two INDEPENDENT retry budgets, because they fix different things:
+      * proxy attempts — the same URL through fresh residential sessions, for
+        bot-checks and burned exits (DataImpulse exit quality varies).
+      * candidates — the next search hit, for problems that belong to the video
+        itself. Age gates are the case that matters: every player client
+        (tv_embedded, web_embedded, tv, android_vr, ios, mweb) hits the wall now
+        (probed live 3 Aug 2026) and cookies would clear it but trigger SABR
+        (zero audio formats), so the only way through is a different upload.
+      Sharing one budget meant advancing a candidate ate a proxy attempt.
+    """
     import yt_dlp
 
     target = _target(query)
+    cap = config.RADIO_MAX_MINUTES * 60
+    searching = target.startswith("ytsearch")
+
+    def with_retries(fn):
+        last = None
+        for attempt in range(1 + config.RADIO_PROXY_TRIES):
+            proxy = None if attempt == 0 else _proxy()
+            if attempt and proxy is None:
+                break                            # no proxy configured; done
+            with tempfile.TemporaryDirectory() as tmpdir:
+                try:
+                    with yt_dlp.YoutubeDL(_ydl_opts(tmpdir, proxy)) as ydl:
+                        return fn(ydl, tmpdir)
+                except Exception as e:           # noqa: BLE001
+                    last = e
+                    if any(h in str(e).lower() for h in _RETRY_HINTS):
+                        log.info("radio: retryable failure (attempt %d); fresh proxy session",
+                                 attempt + 1)
+                        continue
+                    raise
+        raise last if last else RuntimeError("download failed")
+
+    def resolve(ydl, _tmpdir):
+        info = ydl.extract_info(target, download=False)
+        if info.get("entries") is None:
+            return [info]
+        entries = [e for e in info["entries"] if e]
+        if not entries:
+            raise RuntimeError("no YouTube result for that")
+        # keep only hits that FIT the cap — a song search often turns up a full
+        # album or mix as the first result
+        fits = [e for e in entries if 0 < float(e.get("duration") or 0) <= cap]
+        if not fits:
+            shortest = min((float(e["duration"]) for e in entries if e.get("duration")),
+                           default=0)
+            raise RuntimeError(
+                f"no result under {config.RADIO_MAX_MINUTES} min"
+                + (f" (shortest was {round(shortest / 60)} min)" if shortest else ""))
+        return fits
+
+    candidates = with_retries(resolve)
+
     last_err = None
-    client = None          # switched to an embedded client for age-gated videos
-    # direct first, then FRESH residential sessions on bot-check: DataImpulse
-    # exits vary in quality (live test 3 Aug 2026: first session bot-checked,
-    # next one sailed through), so one proxy try isn't enough
-    for attempt in range(1 + config.RADIO_PROXY_TRIES):
-        proxy = None if attempt == 0 else _proxy()
-        if attempt and proxy is None:
-            break                                # no proxy configured; done
-        with tempfile.TemporaryDirectory() as tmpdir:
-            try:
-                with yt_dlp.YoutubeDL(_ydl_opts(tmpdir, proxy, client)) as ydl:
-                    info = ydl.extract_info(target, download=False)
-                    cap = config.RADIO_MAX_MINUTES * 60
-                    if info.get("entries") is not None:      # search result
-                        entries = [e for e in info["entries"] if e]
-                        if not entries:
-                            raise RuntimeError("no YouTube result for that")
-                        # Take the first hit that FITS instead of hit #1: a song
-                        # search often turns up a full album/mix first, which
-                        # used to fail the whole track on the length cap.
-                        fits = [e for e in entries if 0 < float(e.get("duration") or 0) <= cap]
-                        if not fits:
-                            longest = min((float(e.get("duration") or 0) for e in entries
-                                           if e.get("duration")), default=0)
-                            raise RuntimeError(
-                                f"no result under {config.RADIO_MAX_MINUTES} min"
-                                + (f" (shortest was {round(longest / 60)} min)" if longest else ""))
-                        info = fits[0]
-                    dur = float(info.get("duration") or 0)
-                    if dur > cap:
-                        raise RuntimeError(
-                            f"too long ({round(dur / 60)} min; cap is {config.RADIO_MAX_MINUTES})")
-                    src = info.get("webpage_url") or info.get("original_url") or target
-                    if db.radio_source_exists(src):
-                        raise RuntimeError("already on the station")
-                    # same song, different YouTube upload/title — checked BEFORE
-                    # spending a download on it
-                    title, artist = _meta(info, query)
-                    if db.radio_title_exists(title, artist):
-                        raise RuntimeError("already on the station (same song)")
-                    ydl.download([info.get("webpage_url") or target])
-                files = list(Path(tmpdir).iterdir())
-                if not files:
-                    raise RuntimeError("download produced no file")
-                f = files[0]
-                key = f"radio/{info['id']}.{f.suffix.lstrip('.') or 'm4a'}"
-                with open(f, "rb") as fh:
-                    storage.upload_stream(fh, key, "audio/mp4")
-                return {"title": title, "artist": artist,
-                        "source_url": src, "audio_key": key, "duration": dur}
-            except Exception as e:                            # noqa: BLE001
-                last_err = e
-                msg = str(e).lower()
-                if any(h in msg for h in _AGE_HINTS) and client is None:
-                    # age gate opens for the embedded TV client, no account needed
-                    client = "tv_embedded"
-                    log.info("radio: age-gated; retrying with the %s client", client)
-                    continue
-                if any(h in msg for h in _RETRY_HINTS):
-                    log.info("radio: retryable failure (attempt %d); trying a fresh proxy session",
-                             attempt + 1)
-                    continue
-                raise
+    for i, cand in enumerate(candidates):
+        try:
+            return with_retries(lambda ydl, tmpdir, c=cand: _try_fetch(ydl, c, query, tmpdir))
+        except Exception as e:                   # noqa: BLE001
+            last_err = e
+            if searching and any(h in str(e).lower() for h in _AGE_HINTS):
+                log.info("radio: hit %d is age-gated; trying the next result", i + 1)
+                continue
+            raise
+    if searching and last_err and any(h in str(last_err).lower() for h in _AGE_HINTS):
+        raise RuntimeError("every result for that is age-restricted — paste a direct "
+                           "link to an unrestricted upload") from last_err
     raise last_err if last_err else RuntimeError("download failed")
 
 
