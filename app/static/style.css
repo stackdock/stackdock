@@ -132,6 +132,7 @@ details.feed-box[open] > summary { margin-bottom: 0.6rem; }
 .card-hide button {
   background: none; border: 0; color: var(--ink-soft); cursor: pointer;
   font-size: 0.95rem; line-height: 1; padding: 0 0.6rem;
+  min-width: 24px; min-height: 24px;
 }
 .card-hide button:hover { color: #b23b3b; }
 .list-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin: 0.5rem 0 0.75rem; }
@@ -275,6 +276,9 @@ footer {
 .track-actions button:disabled { opacity: 0.25; cursor: default; }
 @media (max-width: 640px) {
   .track-actions button { min-width: 40px; min-height: 40px; }
+  /* 40px touch targets for the small button groups */
+  .feed-box button, .search-form button, .inline-form button, .sync-row button,
+  .card-hide button, .pp-volume button { min-height: 40px; min-width: 40px; }
 }
 
 /* ---------- collapsed mobile header ---------- */
@@ -526,14 +530,19 @@ html[data-chud="still"] .wordmark:hover { transform: none !important; }
 }
 .card.played .card-title { color: var(--ink-soft); }
 .pp-volume { display: flex; align-items: center; gap: 0.5rem; justify-content: center; margin-top: 0.6rem; }
-.pp-volume button { border: 0; background: none; font-size: 1rem; cursor: pointer; }
+.pp-volume button { border: 0; background: none; font-size: 1rem; cursor: pointer; min-width: 24px; min-height: 24px; }
 .pp-volume input[type="range"] { width: 9rem; accent-color: var(--shelf); height: 4px; }
 
 /* installed-app (PWA) polish: respect notches/home bars, kill double-tap zoom */
 body { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
 header { padding-top: max(0.6rem, env(safe-area-inset-top)); }
 footer { padding-bottom: max(0.8rem, env(safe-area-inset-bottom)); }
-.pp-controls button, .pp-volume button, .tabs .tab, .card-link { touch-action: manipulation; }
+button, .tabs .tab, .card-link { touch-action: manipulation; }
+
+/* keyboard focus ring; :focus-visible keeps mouse/touch clean */
+button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--shelf); outline-offset: 2px;
+}
 
 /* ---------- themes ---------- */
 /* dark palette, applied either explicitly or by OS preference in auto mode */

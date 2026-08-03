@@ -103,7 +103,7 @@
     <a class="back-pill" id="back-pill" href="/" aria-label="Back">‹</a>
     <a class="wordmark" href="/"><img class="brand-chud" src="/static/wojak-figure.svg" alt="">{{ site_title }}</a>
     {% if user is defined and user %}
-    <button id="nav-burger" aria-label="Menu" aria-expanded="false">☰</button>
+    <button type="button" id="nav-burger" aria-label="Menu" aria-expanded="false">☰</button>
     {% endif %}
     <!-- fixed bottom-right on desktop (position:fixed ignores DOM placement);
          on phones it goes static and lives inside the ☰ menu -->

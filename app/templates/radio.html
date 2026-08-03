@@ -44,9 +44,9 @@
       </div>
     </div>
     <div class="pp-controls">
-      <button id="rp-tune" class="pp-main" title="Tune in">▶</button>
-      <button id="rp-mute" class="pp-skip" title="Mute">🔊</button>
-      <button id="rp-vote" class="pp-skip" title="Vote to skip this track">⏭ skip</button>
+      <button type="button" id="rp-tune" class="pp-main" title="Tune in" aria-label="Tune in">▶</button>
+      <button type="button" id="rp-mute" class="pp-skip" title="Mute" aria-label="Mute">🔊</button>
+      <button type="button" id="rp-vote" class="pp-skip" title="Vote to skip this track">⏭ skip</button>
     </div>
     <div class="pp-volume">
       <input type="range" id="rp-vol" min="0" max="100" value="100" aria-label="Volume">
@@ -263,6 +263,7 @@
     const mk = (label, hint, fn, disabled) => {
       const b = document.createElement("button");
       b.type = "button"; b.textContent = label; b.title = hint; b.disabled = !!disabled;
+      b.setAttribute("aria-label", hint);
       b.onclick = fn;
       actions.appendChild(b);
     };
@@ -374,6 +375,7 @@
     tuned = true;
     $("rp-tune").textContent = "📻";
     $("rp-tune").title = "on air";
+    $("rp-tune").setAttribute("aria-label", "on air");
     sync(true);
   };
 
@@ -392,7 +394,9 @@
   const vol = $("rp-vol"), muteBtn = $("rp-mute");
   const applyVolUi = () => {
     vol.value = Math.round(a.volume * 100);
-    muteBtn.textContent = (a.muted || a.volume === 0) ? "🔇" : (a.volume < 0.5 ? "🔉" : "🔊");
+    const muted = a.muted || a.volume === 0;
+    muteBtn.textContent = muted ? "🔇" : (a.volume < 0.5 ? "🔉" : "🔊");
+    muteBtn.setAttribute("aria-label", muted ? "Unmute" : "Mute");
     $("rp-live").style.opacity = a.muted ? 0.35 : 1;
   };
   a.volume = Math.min(1, Math.max(0, parseFloat(store.get(K_VOL) ?? "1")));

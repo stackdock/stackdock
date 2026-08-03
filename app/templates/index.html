@@ -18,7 +18,7 @@
 {%- endmacro %}
 
 {% macro follow_star(kind, name, back) -%}
-  <form method="post" action="/follow" class="follow-form"><input type="hidden" name="kind" value="{{ kind }}"><input type="hidden" name="name" value="{{ name }}"><input type="hidden" name="back" value="{{ back }}">{% set on = name in (followed_pubs if kind == 'pub' else followed_shows) %}<button type="submit" class="star {{ 'on' if on }}" title="{{ 'Remove from' if on else 'Add to' }} Your Stuff">{{ '★' if on else '☆' }}</button></form>
+  <form method="post" action="/follow" class="follow-form"><input type="hidden" name="kind" value="{{ kind }}"><input type="hidden" name="name" value="{{ name }}"><input type="hidden" name="back" value="{{ back }}">{% set on = name in (followed_pubs if kind == 'pub' else followed_shows) %}<button type="submit" class="star {{ 'on' if on }}" title="{{ 'Remove from' if on else 'Add to' }} Your Stuff" aria-label="{{ 'Remove from' if on else 'Add to' }} Your Stuff">{{ '★' if on else '☆' }}</button></form>
 {%- endmacro %}
 
 {% if active_tab == 'text' %}
@@ -80,8 +80,8 @@
         </span>
       </a>
       <form method="post" action="/article/{{ a.id }}/hide" class="card-hide">
-        {% if a.hidden %}<input type="hidden" name="unhide" value="1"><button type="submit" title="Unhide">↩</button>
-        {% else %}<button type="submit" title="Hide this article">✕</button>{% endif %}
+        {% if a.hidden %}<input type="hidden" name="unhide" value="1"><button type="submit" title="Unhide" aria-label="Unhide">↩</button>
+        {% else %}<button type="submit" title="Hide this article" aria-label="Hide this article">✕</button>{% endif %}
       </form>
     </li>
     {% endfor %}
@@ -135,8 +135,8 @@
         <input type="hidden" name="kind" value="article">
         <input type="hidden" name="ref" value="{{ a.slug }}">
         <input type="hidden" name="back" value="{{ mine_back }}">
-        {% if is_hidden %}<input type="hidden" name="unhide" value="1"><button type="submit" title="Mark unread">↩</button>
-        {% else %}<button type="submit" title="Mark read / hide">✕</button>{% endif %}
+        {% if is_hidden %}<input type="hidden" name="unhide" value="1"><button type="submit" title="Mark unread" aria-label="Mark unread">↩</button>
+        {% else %}<button type="submit" title="Mark read / hide" aria-label="Mark read and hide">✕</button>{% endif %}
       </form>
     </li>
     {% endfor %}
@@ -173,8 +173,8 @@
         <input type="hidden" name="kind" value="episode">
         <input type="hidden" name="ref" value="{{ e.slug }}">
         <input type="hidden" name="back" value="{{ mine_back }}">
-        {% if is_hidden %}<input type="hidden" name="unhide" value="1"><button type="submit" title="Mark unplayed">↩</button>
-        {% else %}<button type="submit" title="Mark played / hide">✕</button>{% endif %}
+        {% if is_hidden %}<input type="hidden" name="unhide" value="1"><button type="submit" title="Mark unplayed" aria-label="Mark unplayed">↩</button>
+        {% else %}<button type="submit" title="Mark played / hide" aria-label="Mark played and hide">✕</button>{% endif %}
       </form>
     </li>
     {% endfor %}
@@ -282,13 +282,13 @@
   <summary class="label"><span class="fun-label">Unified feeds — everything from everyone, one URL each</span><span class="work-label">Sync endpoints</span></summary>
   <div class="feed-row"><span class="feed-name">🎧 Podcast apps</span>
     <code id="feed-audio-b">{{ feed_base }}/all.xml</code>
-    <button onclick="copyFeed('feed-audio-b')">Copy</button></div>
+    <button type="button" onclick="copyFeed('feed-audio-b')">Copy</button></div>
   <div class="feed-row"><span class="feed-name">📰 Articles (RSS readers)</span>
     <code id="feed-articles-b">{{ feed_base }}/articles.xml</code>
-    <button onclick="copyFeed('feed-articles-b')">Copy</button></div>
+    <button type="button" onclick="copyFeed('feed-articles-b')">Copy</button></div>
   <div class="feed-row"><span class="feed-name">🗞 Everything combined</span>
     <code id="feed-everything-b">{{ feed_base }}/everything.xml</code>
-    <button onclick="copyFeed('feed-everything-b')">Copy</button></div>
+    <button type="button" onclick="copyFeed('feed-everything-b')">Copy</button></div>
   <p class="hint">Each URL aggregates all blogs from all members. Keep them private.</p>
   <script>function copyFeed(id){
     var txt=document.getElementById(id).textContent;

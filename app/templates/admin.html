@@ -59,10 +59,10 @@
   <h2>Sync</h2>
   <p class="hint">Manual triggers (also available via <code>POST /admin/sync/&lt;job&gt;</code>):</p>
   <div class="sync-row">
-    <button onclick="sync('email')">Email</button>
-    <button onclick="sync('podcasts')">Podcast feeds</button>
-    <button onclick="sync('substack')">Substack</button>
-    <button onclick="sync('articles')">Article feeds</button>
+    <button type="button" onclick="sync('email')">Email</button>
+    <button type="button" onclick="sync('podcasts')">Podcast feeds</button>
+    <button type="button" onclick="sync('substack')">Substack</button>
+    <button type="button" onclick="sync('articles')">Article feeds</button>
     <span id="sync-result" class="hint"></span>
   </div>
   <script>

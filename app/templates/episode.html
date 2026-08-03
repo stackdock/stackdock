@@ -20,14 +20,14 @@
     </div>
 
     <div class="pp-controls">
-      <button id="pp-back" class="pp-skip" title="Back 15s">↺15</button>
-      <button id="pp-play" class="pp-main" title="Play/Pause">▶</button>
-      <button id="pp-fwd" class="pp-skip" title="Forward 30s">30↻</button>
-      <button id="pp-speed" class="pp-speed" title="Playback speed">1×</button>
+      <button type="button" id="pp-back" class="pp-skip" title="Back 15s" aria-label="Back 15 seconds">↺15</button>
+      <button type="button" id="pp-play" class="pp-main" title="Play/Pause" aria-label="Play">▶</button>
+      <button type="button" id="pp-fwd" class="pp-skip" title="Forward 30s" aria-label="Forward 30 seconds">30↻</button>
+      <button type="button" id="pp-speed" class="pp-speed" title="Playback speed" aria-label="Playback speed">1×</button>
     </div>
 
     <div class="pp-volume">
-      <button id="pp-mute" title="Mute">🔊</button>
+      <button type="button" id="pp-mute" title="Mute" aria-label="Mute">🔊</button>
       <input type="range" id="pp-vol" min="0" max="100" value="100" aria-label="Volume">
     </div>
 
@@ -207,7 +207,10 @@
   });
 
   // ---- controls ----
-  const setPlayIcon = () => { $("pp-play").textContent = a.paused ? "▶" : "❚❚"; };
+  const setPlayIcon = () => {
+    $("pp-play").textContent = a.paused ? "▶" : "❚❚";
+    $("pp-play").setAttribute("aria-label", a.paused ? "Play" : "Pause");
+  };
   $("pp-play").onclick = () => { a.paused ? a.play() : a.pause(); };
   a.addEventListener("play", () => { engaged = true; store.del(K_DONE); setPlayIcon(); });
   a.addEventListener("pause", setPlayIcon);
@@ -244,7 +247,9 @@
   const volEl = $("pp-vol"), muteBtn = $("pp-mute");
   const applyVolUi = () => {
     volEl.value = Math.round(a.volume * 100);
-    muteBtn.textContent = (a.muted || a.volume === 0) ? "🔇" : (a.volume < 0.5 ? "🔉" : "🔊");
+    const muted = a.muted || a.volume === 0;
+    muteBtn.textContent = muted ? "🔇" : (a.volume < 0.5 ? "🔉" : "🔊");
+    muteBtn.setAttribute("aria-label", muted ? "Unmute" : "Mute");
   };
   a.volume = Math.min(1, Math.max(0, parseFloat(store.get(K_VOL) ?? "1")));
   a.muted = store.get(K_MUTE) === "1";
