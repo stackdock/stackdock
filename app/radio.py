@@ -47,7 +47,7 @@ _RETRY_HINTS = (
 # Now-playing artwork: assigned by track id so every listener sees the SAME
 # image for the same song (part of "one broadcast"), and it never changes for a
 # given track. Files live in static/radio-art/.
-ART_COUNT = 9
+ART_COUNT = 12
 
 
 def art_for(track_id: int) -> str:
