@@ -248,7 +248,7 @@ footer {
      and the dock-duplicated links (Articles/Podcasts/Saved) vanish entirely */
   #nav-burger {
     display: inline-flex; align-items: center; justify-content: center;
-    align-self: center; margin-left: auto; margin-right: 4.4rem; /* clear the theme picker */
+    align-self: center; margin-left: auto;
     width: 40px; height: 40px; font-size: 1.15rem; cursor: pointer;
     color: var(--ink); background: var(--panel);
     border: 1px solid var(--rule); border-radius: 8px;
@@ -544,13 +544,14 @@ html[data-theme="brimstone"] .episode-art { opacity: 0.9; }
   .star { min-width: 40px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
   /* the floating theme picker sits closer to the corner and stays out of the
      reading column on narrow screens */
-  /* the bottom dock owns the bottom edge now — float the picker top-right
-     instead (clear of the left-aligned wordmark, under the iOS status bar) */
+  /* on phones the picker stops floating entirely (it blocked the ☰ burger)
+     and lives inside the expanded menu instead */
   .theme-dropdown {
-    font-size: 0.68rem; padding: 0.3rem 0.4rem; opacity: 0.92;
-    bottom: auto; top: calc(0.6rem + env(safe-area-inset-top, 0px));
-    right: 0.6rem;
+    position: static; display: none; align-self: center;
+    font-size: 0.75rem; padding: 0.45rem 0.5rem; opacity: 1;
+    box-shadow: none; margin-top: 0.15rem;
   }
+  body.nav-open .theme-dropdown { display: inline-block; }
 
   /* Publications/Shows filter as a clean vertical LIST on phones: the wrapped
      pills + floating stars read as clutter and it was hard to tell which star

@@ -105,6 +105,13 @@
     {% if user is defined and user %}
     <button id="nav-burger" aria-label="Menu" aria-expanded="false">☰</button>
     {% endif %}
+    <!-- fixed bottom-right on desktop (position:fixed ignores DOM placement);
+         on phones it goes static and lives inside the ☰ menu -->
+    <select id="theme-select" class="theme-dropdown" aria-label="Theme">
+      <option value="auto">◐ Auto</option>
+      <option value="agartha">☀ Agartha</option>
+      <option value="brimstone">🌙 Brimstone</option>
+    </select>
     <nav>
       {% if user is defined and user %}
         <a href="/" class="dock-dup"><span class="fun-label">Articles</span><span class="work-label">Documents</span></a>
@@ -156,11 +163,6 @@
   </script>
   <footer><span class="fun-label">Chud Use ONLY | Enforced by Sovereign Citizen Maritime Law<br>
     <span class="footer-temple">✝ running on TempleOS v5.03</span></span></footer>
-  <select id="theme-select" class="theme-dropdown" aria-label="Theme">
-    <option value="auto">◐ Auto</option>
-    <option value="agartha">☀ Agartha</option>
-    <option value="brimstone">🌙 Brimstone</option>
-  </select>
 <script>
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
 
