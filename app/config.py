@@ -52,6 +52,10 @@ PLEX_SERVER_ID = os.getenv("PLEX_SERVER_ID", "").strip()   # deep links + token 
 PLEX_EMAIL = os.getenv("PLEX_EMAIL", "").strip()
 PLEX_PASSWORD = os.getenv("PLEX_PASSWORD", "")
 
+# ---- Member radio (yt-dlp; see app/radio.py) ----
+RADIO_MAX_MINUTES = int(os.getenv("RADIO_MAX_MINUTES", "15"))
+RADIO_POLL_MINUTES = int(os.getenv("RADIO_POLL_MINUTES", "5"))
+
 # ---- Article feeds (any blog RSS/Atom with full-text items, e.g. a Hugo site) ----
 # JSON object: {"Publication display name": "https://...feed-url..."}
 try:

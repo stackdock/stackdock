@@ -96,6 +96,23 @@ CREATE TABLE IF NOT EXISTS mde_auth (
     updated_at TEXT
 );
 
+-- Member radio: songs submitted by anyone (text or any-platform URL), resolved
+-- to YouTube by yt-dlp, audio stored in R2, played as a synced pseudo-live
+-- station at /radio. status: pending -> ready | failed.
+CREATE TABLE IF NOT EXISTS radio_tracks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    query TEXT NOT NULL,               -- what the member submitted, verbatim
+    status TEXT NOT NULL DEFAULT 'pending',
+    title TEXT,
+    artist TEXT,
+    source_url TEXT,                   -- resolved YouTube watch URL (dedupe key)
+    audio_key TEXT,                    -- R2 object
+    duration REAL,                     -- seconds (the station math needs it)
+    error TEXT,
+    added_by TEXT,
+    created_at TEXT NOT NULL
+);
+
 -- Current Plex per-server access token. Lives in the DB (not .env) because the
 -- auto-refresher runs inside the container, which can't rewrite .env; .env's
 -- PLEX_TOKEN is the seed/fallback.
@@ -978,6 +995,56 @@ def delete_account(account_id: int, user_id: int) -> bool:
             (account_id, user_id),
         )
         return cur.rowcount == 1
+
+
+def add_radio_track(query: str, added_by: str) -> int:
+    with conn() as c:
+        cur = c.execute("INSERT INTO radio_tracks (query, added_by, created_at) VALUES (?,?,?)",
+                        (query, added_by, now_iso()))
+        return cur.lastrowid
+
+
+def radio_pending() -> list:
+    with conn() as c:
+        return c.execute("SELECT * FROM radio_tracks WHERE status = 'pending' "
+                         "ORDER BY id").fetchall()
+
+
+def radio_source_exists(source_url: str) -> bool:
+    with conn() as c:
+        return c.execute("SELECT 1 FROM radio_tracks WHERE source_url = ? AND status = 'ready'",
+                         (source_url,)).fetchone() is not None
+
+
+def radio_set_ready(track_id: int, *, title, artist, source_url, audio_key, duration) -> None:
+    with conn() as c:
+        c.execute("""UPDATE radio_tracks SET status='ready', title=?, artist=?,
+                     source_url=?, audio_key=?, duration=?, error=NULL WHERE id=?""",
+                  (title, artist, source_url, audio_key, duration, track_id))
+
+
+def radio_set_failed(track_id: int, error: str) -> None:
+    with conn() as c:
+        c.execute("UPDATE radio_tracks SET status='failed', error=? WHERE id=?",
+                  (error[:300], track_id))
+
+
+def list_radio_tracks(status: str | None = "ready") -> list:
+    with conn() as c:
+        if status:
+            return c.execute("SELECT * FROM radio_tracks WHERE status=? ORDER BY id",
+                             (status,)).fetchall()
+        return c.execute("SELECT * FROM radio_tracks ORDER BY id").fetchall()
+
+
+def get_radio_track(track_id: int):
+    with conn() as c:
+        return c.execute("SELECT * FROM radio_tracks WHERE id=?", (track_id,)).fetchone()
+
+
+def delete_radio_track(track_id: int) -> None:
+    with conn() as c:
+        c.execute("DELETE FROM radio_tracks WHERE id=?", (track_id,))
 
 
 def get_plex_token() -> str | None:

@@ -15,7 +15,7 @@ from fastapi.responses import (FileResponse, HTMLResponse, JSONResponse,
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import auth, config, db, feedgen, metrics, notify, plex, sanitize, storage
+from . import auth, config, db, feedgen, metrics, notify, plex, radio, sanitize, storage
 from .ingest import email_ingest, mde, nyt, patreon, podcast_rss, rss_articles, substack, youtube
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -44,7 +44,7 @@ JOB_STATE: dict[str, dict] = {}   # job_id -> {last_run, result, ok}
 # through run_job() so /status reflects manual runs too (not just scheduled ones)
 JOBS = {"email": email_ingest.run, "podcasts": podcast_rss.run,
         "substack": substack.run, "patreon": patreon.run, "nyt": nyt.run,
-        "articles": rss_articles.run,
+        "articles": rss_articles.run, "radio": radio.run,
         "substack_refresh": substack.refresh_locked,
         "verify_paid": substack.verify_paid_access, "youtube": youtube.run,
         "mde": mde.run, "mde_catalogue": mde.refresh}
@@ -141,6 +141,11 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(_tracked("articles"), "interval",
                       minutes=config.ARTICLE_POLL_MINUTES, id="articles", max_instances=1,
                       coalesce=True, next_run_time=now + timedelta(seconds=kickoff["articles"]))
+    # radio downloads are also one-shot-triggered on submit; the interval just
+    # retries anything a restart interrupted
+    scheduler.add_job(_tracked("radio"), "interval",
+                      minutes=config.RADIO_POLL_MINUTES, id="radio", max_instances=1,
+                      coalesce=True, next_run_time=now + timedelta(seconds=190))
     # NYT retries any rows still 'pulling' (e.g. left over from a crash/restart).
     scheduler.add_job(_tracked("nyt"), "interval",
                       minutes=config.NYT_POLL_MINUTES, id="nyt", max_instances=1,
@@ -918,6 +923,52 @@ def bussy_win(request: Request, user=Depends(auth.current_user)):
 
 _PLEX_GRID_TYPES = {"movie", "show", "season", "album", "artist"}   # poster-shaped
 _PLEX_VIDEO_TYPES = {"movie", "episode", "clip"}                    # inline-watchable
+
+
+@app.get("/radio", response_class=HTMLResponse)
+def radio_page(request: Request, user=Depends(auth.current_user),
+               msg: str | None = None):
+    tracks = db.list_radio_tracks("ready")
+    queue = [t for t in db.list_radio_tracks(None) if t["status"] != "ready"]
+    return render(request, "radio.html", user=user, tracks=tracks,
+                  queue=queue, message=msg,
+                  total_min=round(sum(t["duration"] or 0 for t in tracks) / 60))
+
+
+@app.post("/radio/add")
+def radio_add(user=Depends(auth.current_user), query: str = Form(...)):
+    q = query.strip()
+    if not (2 <= len(q) <= 300):
+        raise HTTPException(400, "song name or link, 2-300 chars")
+    db.add_radio_track(q, added_by=user["username"])
+    _trigger_job("radio")
+    return RedirectResponse("/radio?msg=queued+%E2%80%94+downloading", status_code=303)
+
+
+@app.get("/radio/tracks.json")
+def radio_tracks_json(user=Depends(auth.current_user)):
+    """The station playlist: presigned URLs minted fresh per page load."""
+    return [{"id": t["id"], "title": t["title"], "artist": t["artist"],
+             "duration": t["duration"] or 0, "added_by": t["added_by"],
+             "url": storage.url_for(t["audio_key"])}
+            for t in db.list_radio_tracks("ready")]
+
+
+@app.post("/radio/delete")
+def radio_delete(user=Depends(auth.current_user), track_id: int = Form(...)):
+    t = db.get_radio_track(track_id)
+    if not t:
+        raise HTTPException(404)
+    # submitter can pull their own; admin can pull anything
+    if not (user["is_admin"] or t["added_by"] == user["username"]):
+        raise HTTPException(403)
+    if t["audio_key"]:
+        try:
+            storage.delete(t["audio_key"])
+        except Exception:                                     # noqa: BLE001
+            pass   # row removal is what matters; orphan objects are harmless
+    db.delete_radio_track(track_id)
+    return RedirectResponse("/radio", status_code=303)
 
 
 @app.get("/plex", response_class=HTMLResponse)

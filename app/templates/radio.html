@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %}Radio · {{ site_title }}{% endblock %}
+{% block content %}
+<section id="radio">
+  <h2>📻 Chud FM <span class="count">{{ tracks|length }} tracks · {{ total_min }} min</span></h2>
+  {% if message %}<p class="form-ok">{{ message }}</p>{% endif %}
+
+  <form method="post" action="/radio/add" class="search-form list-controls">
+    <input type="search" name="query" placeholder="Song name, or a link from anywhere…"
+           autocomplete="off" required minlength="2" maxlength="300">
+    <button type="submit">Add to station</button>
+  </form>
+  <p class="hint" style="margin-top:0">Links from any platform work — it finds the song
+    on YouTube and downloads it. Everyone hears the same broadcast.</p>
+
+  {% if tracks %}
+  <div class="radio-player" id="rp">
+    <div class="rp-now">
+      <span class="spine" id="rp-live">● LIVE</span>
+      <span class="card-title" id="rp-title">tuning in…</span>
+      <span class="row-meta" id="rp-artist"></span>
+    </div>
+    <div class="pp-controls">
+      <button id="rp-play" class="pp-main" title="Tune in">▶</button>
+      <button id="rp-skip" class="pp-skip" title="Skip (just for you)">⏭</button>
+      <button id="rp-sync" class="pp-skip" title="Back to the live broadcast">● live</button>
+    </div>
+    <audio id="rp-audio" preload="none"></audio>
+  </div>
+  {% else %}
+  <p class="empty">Dead air — add the first song.</p>
+  {% endif %}
+
+  {% if queue %}
+  <h3 class="hub-title">Queue</h3>
+  <ul class="rows">
+    {% for t in queue %}
+    <li><span class="spine">{{ t.status }}</span>
+        <span class="row-title">{{ t.query }}{% if t.error %} — <span class="form-error">{{ t.error }}</span>{% endif %}</span>
+        <span class="added-by">{{ t.added_by }}</span></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if tracks %}
+  <h3 class="hub-title">On the station</h3>
+  <ul class="cards">
+    {% for t in tracks %}
+    <li class="card" data-track-id="{{ t.id }}">
+      <span class="thumb thumb-fallback">♪</span>
+      <span class="card-body card-link">
+        <span class="spine">{{ t.artist or 'unknown artist' }}</span>
+        <span class="card-title">{{ t.title }}</span>
+        <span class="row-meta"><span class="added-by">{{ t.added_by }}</span>
+          <time>{{ ((t.duration or 0) / 60) | round(1) }} min</time></span>
+      </span>
+      {% if user.is_admin or t.added_by == user.username %}
+      <form method="post" action="/radio/delete" class="card-hide">
+        <input type="hidden" name="track_id" value="{{ t.id }}">
+        <button type="submit" title="Remove from station">✕</button>
+      </form>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</section>
+
+{% if tracks %}
+<script>
+(async () => {
+  // ---- the station ----
+  // Everyone tunes into the same broadcast: the playlist order is a seeded
+  // shuffle (seed = UTC date, so it reshuffles daily) and the playhead is
+  // wall-clock time modulo the station's total length — no server state, any
+  // two members computing this get the same song at the same offset.
+  const a = document.getElementById("rp-audio");
+  const $ = (id) => document.getElementById(id);
+  let tracks = await (await fetch("/radio/tracks.json", { credentials: "same-origin" })).json();
+  tracks = tracks.filter((t) => t.duration > 0);
+  if (!tracks.length) return;
+
+  function mulberry32(s) {
+    return () => {
+      s |= 0; s = (s + 0x6D2B79F5) | 0;
+      let t = Math.imul(s ^ (s >>> 15), 1 | s);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  const day = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const rand = mulberry32(parseInt(day, 10) ^ tracks.length);
+  const order = tracks.slice().sort((x, y) => x.id - y.id);
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  const total = order.reduce((s, t) => s + t.duration, 0);
+
+  let idx = 0, live = true;
+  function liveSpot() {
+    let off = (Date.now() / 1000) % total;
+    for (let i = 0; i < order.length; i++) {
+      if (off < order[i].duration) return { i, off };
+      off -= order[i].duration;
+    }
+    return { i: 0, off: 0 };
+  }
+  function show(t) {
+    $("rp-title").textContent = t.title;
+    $("rp-artist").textContent = (t.artist || "") + " · added by " + t.added_by;
+    $("rp-live").style.opacity = live ? 1 : 0.35;
+    if ("mediaSession" in navigator) {
+      try {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: t.title, artist: t.artist || "Chud FM", album: "Chud FM" });
+      } catch {}
+    }
+  }
+  function playAt(i, off) {
+    idx = i;
+    const t = order[idx];
+    a.src = t.url;
+    a.currentTime = 0;
+    const seek = () => { if (off > 1 && off < t.duration - 1) a.currentTime = off; };
+    a.readyState >= 1 ? seek() : a.addEventListener("loadedmetadata", seek, { once: true });
+    a.play().catch(() => {});
+    show(t);
+  }
+  function tuneIn() { live = true; const s = liveSpot(); playAt(s.i, s.off); }
+
+  $("rp-play").onclick = () => {
+    if (a.paused) { live ? tuneIn() : a.play(); }             // re-tune on resume:
+    else a.pause();                                           // radio has no pause
+  };
+  a.addEventListener("play", () => { $("rp-play").textContent = "❚❚"; });
+  a.addEventListener("pause", () => { $("rp-play").textContent = "▶"; });
+  a.addEventListener("ended", () => {
+    if (live) tuneIn();                                       // stay on the broadcast
+    else playAt((idx + 1) % order.length, 0);
+  });
+  a.addEventListener("error", () => {
+    diag.log("radio audio error on " + (order[idx] && order[idx].title));
+    if (!a.paused || live) setTimeout(() => (live ? tuneIn() : playAt((idx + 1) % order.length, 0)), 1500);
+  });
+  $("rp-skip").onclick = () => { live = false; playAt((idx + 1) % order.length, 0); };
+  $("rp-sync").onclick = tuneIn;
+
+  if ("mediaSession" in navigator) {
+    const ms = navigator.mediaSession;
+    try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
+    const toggle = () => { a.paused ? (live ? tuneIn() : a.play()) : a.pause(); };
+    ms.setActionHandler("play", toggle);
+    ms.setActionHandler("pause", toggle);
+    try { ms.setActionHandler("nexttrack", () => $("rp-skip").click()); } catch {}
+  }
+  show(order[liveSpot().i]);
+})();
+</script>
+{% endif %}
+{% endblock %}

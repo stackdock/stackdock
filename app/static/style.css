@@ -241,6 +241,14 @@ footer {
   border-radius: 8px; border: 1px solid var(--rule);
 }
 
+/* ---------- radio ---------- */
+.radio-player {
+  background: var(--panel); border: 1px solid var(--rule); border-radius: 8px;
+  padding: 1rem; margin: 1rem 0;
+}
+.rp-now { display: flex; flex-direction: column; gap: 0.15rem; margin-bottom: 0.6rem; }
+#rp-live { color: #b23b3b; font-weight: 700; letter-spacing: 0.08em; }
+
 /* ---------- collapsed mobile header ---------- */
 #nav-burger { display: none; }
 @media (max-width: 640px) {
