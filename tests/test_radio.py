@@ -291,9 +291,7 @@ def test_up_next_really_plays_next_even_from_mid_rotation(fresh_db, monkeypatch)
 
 
 def test_coming_up_follows_the_needle_not_the_shuffle_head(fresh_db, monkeypatch):
-    # regression: "Coming up" took rotation[:3] — the head of the day-seeded
-    # shuffle, which never moves — so it showed the same tracks all day instead
-    # of what actually plays after the current one
+    # regression: "Coming up" showed rotation[:3] — the shuffle head, static all day
     for tid in [_ready(f"Rot{i}") for i in range(5)]:
         db.radio_mark_aired(tid)                  # all in rotation, queue empty
     clock = {"t": 7000.0}

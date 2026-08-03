@@ -127,11 +127,9 @@ def _next_after(order: list, track_id: int | None):
 
 
 def station_coming(order: list, track_id: int | None, n: int = 3) -> list:
-    """The next `n` ROTATION tracks after `track_id`, wrapping — what the page
-    shows as "Coming up" when the queue is empty. Must mirror _next_after:
-    taking rotation[:n] instead showed the head of the day-seeded shuffle,
-    which never moves, so the same tracks sat in "Coming up" all day no matter
-    where the needle actually was (3 Aug 2026)."""
+    """Next n rotation tracks after track_id, wrapping — the "Coming up" list.
+    Mirrors _next_after. rotation[:n] was the day-seeded shuffle head, which
+    never moves — stuck showing the same tracks all day (3 Aug 2026)."""
     rotation = [t for t in order if not t["promoted_at"]]
     ids = [t["id"] for t in rotation]
     if track_id in ids:

@@ -1,18 +1,12 @@
 #!/usr/bin/env python3
-"""Regenerate the PWA icons (app/static/icon-*.png, apple-touch-icon.png).
+"""Regenerate PWA icons (app/static/icon-*.png, apple-touch-icon.png).
 
-Default style is "polished": the same stack glyph and palette as v1, with a
-subtle vertical gradient background and a soft glyph shadow (2025-era icon
-guidance: one simple glyph, soft depth, no text). Run with --flat to get the
-original perfectly-flat rendering back without touching git.
+Default: v1 glyph/palette + vertical gradient bg + soft glyph shadow.
+--flat regenerates the original flat style.
 
-    python3 scripts/gen_icons.py          # polished (current)
-    python3 scripts/gen_icons.py --flat   # original flat style
-
-Geometry is measured off the original icons so both styles are pixel-compatible.
-apple-touch-icon is full-bleed (iOS applies its own mask; transparent corners
-render as black on the home screen). Maskable keeps the glyph inside the
-central 80% safe zone. After changing icons, bump STATIC_CACHE in sw.js.
+apple-touch-icon is full-bleed (iOS masks it; transparent corners go black).
+Maskable keeps the glyph in the central 80% safe zone.
+Bump STATIC_CACHE in sw.js after changing icons.
 """
 import sys
 
@@ -37,7 +31,7 @@ def scaled(box, s=S, dx=0, dy=0):
 
 
 def background(size):
-    """Brand-green square; polished style gets a subtle top-lit gradient."""
+    """Brand-green square; default style adds a top-lit vertical gradient."""
     im = Image.new("RGBA", (size, size), GREEN + (255,))
     if FLAT:
         return im
@@ -64,7 +58,7 @@ def render():
     big = SIZE * S
     im = background(big)
     if not FLAT:
-        # soft shadow under the glyph: black, blurred, nudged down, ~16% alpha
+        # glyph shadow: black, blurred, +6px, 16% alpha
         shadow = glyph_layer(big, (0, 0, 0, 255), (0, 0, 0, 255))
         shadow = shadow.transform(shadow.size, Image.AFFINE, (1, 0, 0, 0, 1, -6 * S))
         shadow = shadow.filter(ImageFilter.GaussianBlur(8 * S))
