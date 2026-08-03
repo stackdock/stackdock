@@ -947,11 +947,23 @@ def radio_add(user=Depends(auth.current_user), query: str = Form(...)):
 
 @app.get("/radio/tracks.json")
 def radio_tracks_json(user=Depends(auth.current_user)):
-    """The station playlist: presigned URLs minted fresh per page load."""
-    return [{"id": t["id"], "title": t["title"], "artist": t["artist"],
-             "duration": t["duration"] or 0, "added_by": t["added_by"],
-             "url": storage.url_for(t["audio_key"])}
-            for t in db.list_radio_tracks("ready")]
+    """The station playlist: presigned URLs minted fresh per fetch, plus the
+    server clock. Clients compute the live playhead from SERVER time, so a
+    device with a skewed clock still hears what everyone else hears."""
+    return {"now": datetime.now(timezone.utc).timestamp(),
+            "tracks": [{"id": t["id"], "title": t["title"], "artist": t["artist"],
+                        "duration": t["duration"] or 0, "added_by": t["added_by"],
+                        "url": storage.url_for(t["audio_key"])}
+                       for t in db.list_radio_tracks("ready")]}
+
+
+@app.post("/radio/move")
+def radio_move(user=Depends(auth.current_user), track_id: int = Form(...),
+               dir: str = Form(...)):
+    if dir not in ("up", "down"):
+        raise HTTPException(400, "dir must be up or down")
+    db.radio_move(track_id, -1 if dir == "up" else 1)
+    return RedirectResponse("/radio", status_code=303)
 
 
 @app.post("/radio/retry")

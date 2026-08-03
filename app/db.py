@@ -108,6 +108,7 @@ CREATE TABLE IF NOT EXISTS radio_tracks (
     source_url TEXT,                   -- resolved YouTube watch URL (dedupe key)
     audio_key TEXT,                    -- R2 object
     duration REAL,                     -- seconds (the station math needs it)
+    position INTEGER,                   -- member-defined running order (NULL -> falls back to id)
     error TEXT,
     added_by TEXT,
     created_at TEXT NOT NULL
@@ -304,7 +305,8 @@ def init():
                            ("connected_accounts", "last_alert TEXT"),
                            ("connected_accounts", "handle TEXT"),
                            ("connected_accounts", "subs_json TEXT"),
-                           ("connected_accounts", "paid_json TEXT")]:
+                           ("connected_accounts", "paid_json TEXT"),
+                           ("radio_tracks", "position INTEGER")]:
             try:
                 c.execute(f"ALTER TABLE {table} ADD COLUMN {col}")
             except sqlite3.OperationalError:
@@ -1011,10 +1013,15 @@ def radio_pending() -> list:
 
 
 def radio_query_exists(query: str) -> bool:
-    """Any status counts: a failed playlist track must not re-queue forever."""
+    """Any status counts: a failed playlist track must not re-queue forever.
+    Compared case/whitespace-insensitively so a playlist edit that only changes
+    punctuation spacing doesn't re-download the same song."""
+    norm = " ".join(query.lower().split())
     with conn() as c:
-        return c.execute("SELECT 1 FROM radio_tracks WHERE query = ?",
-                         (query,)).fetchone() is not None
+        return c.execute(
+            "SELECT 1 FROM radio_tracks WHERE LOWER(TRIM(query)) = ? "
+            "OR REPLACE(REPLACE(LOWER(TRIM(query)), '  ', ' '), '  ', ' ') = ?",
+            (norm, norm)).fetchone() is not None
 
 
 def radio_source_exists(source_url: str) -> bool:
@@ -1036,12 +1043,34 @@ def radio_set_failed(track_id: int, error: str) -> None:
                   (error[:300], track_id))
 
 
+_RADIO_ORDER = "ORDER BY COALESCE(position, id), id"   # NULL position = never reordered
+
+
 def list_radio_tracks(status: str | None = "ready") -> list:
     with conn() as c:
         if status:
-            return c.execute("SELECT * FROM radio_tracks WHERE status=? ORDER BY id",
+            return c.execute(f"SELECT * FROM radio_tracks WHERE status=? {_RADIO_ORDER}",
                              (status,)).fetchall()
-        return c.execute("SELECT * FROM radio_tracks ORDER BY id").fetchall()
+        return c.execute(f"SELECT * FROM radio_tracks {_RADIO_ORDER}").fetchall()
+
+
+def radio_move(track_id: int, direction: int) -> bool:
+    """Move a ready track one slot up (-1) or down (+1). Positions are
+    renumbered densely first so a NULL/duplicated position can't wedge the
+    swap. Returns False at the ends (nothing to swap with)."""
+    with conn() as c:
+        rows = c.execute(f"SELECT id FROM radio_tracks WHERE status='ready' {_RADIO_ORDER}").fetchall()
+        ids = [r["id"] for r in rows]
+        if track_id not in ids:
+            return False
+        i = ids.index(track_id)
+        j = i + direction
+        if not 0 <= j < len(ids):
+            return False
+        ids[i], ids[j] = ids[j], ids[i]
+        for pos, tid in enumerate(ids):
+            c.execute("UPDATE radio_tracks SET position=? WHERE id=?", (pos, tid))
+        return True
 
 
 def get_radio_track(track_id: int):

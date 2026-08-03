@@ -42,6 +42,47 @@ def test_run_marks_ready_and_failed(fresh_db, monkeypatch):
     assert db.radio_source_exists("https://yt/x")
 
 
+def _ready(title, **kw):
+    tid = db.add_radio_track(kw.get("query", title), kw.get("by", "erin"))
+    db.radio_set_ready(tid, title=title, artist="A", source_url=f"https://yt/{tid}",
+                       audio_key=f"radio/{tid}.m4a", duration=100.0)
+    return tid
+
+
+def test_reorder_moves_tracks_and_stops_at_the_ends(fresh_db):
+    a, b, c = _ready("A"), _ready("B"), _ready("C")
+    order = lambda: [t["title"] for t in db.list_radio_tracks("ready")]
+    assert order() == ["A", "B", "C"]
+    assert db.radio_move(c, -1) and order() == ["A", "C", "B"]
+    assert db.radio_move(a, 1) and order() == ["C", "A", "B"]
+    assert not db.radio_move(order_id(db, "C"), -1)          # already first
+    assert not db.radio_move(order_id(db, "B"), 1)           # already last
+    assert order() == ["C", "A", "B"]                        # unchanged on refusal
+    assert not db.radio_move(9999, 1)                        # unknown id
+    assert b                                                  # (silence linters)
+
+
+def order_id(dbmod, title):
+    return next(t["id"] for t in dbmod.list_radio_tracks("ready") if t["title"] == title)
+
+
+def test_reorder_survives_deletion_of_a_middle_track(fresh_db):
+    a, b, c = _ready("A"), _ready("B"), _ready("C")
+    db.radio_move(c, -1)                    # A C B  (positions now dense)
+    db.delete_radio_track(order_id(db, "C"))
+    assert [t["title"] for t in db.list_radio_tracks("ready")] == ["A", "B"]
+    assert db.radio_move(b, -1)
+    assert [t["title"] for t in db.list_radio_tracks("ready")] == ["B", "A"]
+    assert a
+
+
+def test_query_dedupe_ignores_case_and_spacing(fresh_db):
+    db.add_radio_track("Song A  Artist One", "erin")
+    assert db.radio_query_exists("song a artist one")
+    assert db.radio_query_exists("  Song A Artist One ")
+    assert not db.radio_query_exists("Song B Artist Two")
+
+
 _EMBED_HTML = ('<html><script id="__NEXT_DATA__" type="application/json">'
                '{"props":{"pageProps":{"state":{"data":{"entity":{"title":"Radio",'
                '"trackList":[{"title":"Song A","subtitle":"Artist One"},'
