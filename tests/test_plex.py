@@ -87,6 +87,18 @@ def test_search_filters_to_library_types(monkeypatch):
     assert items[1]["sxe"] == "S02E05"
 
 
+def test_neighbors_finds_prev_next_within_season(monkeypatch):
+    sibs = [{"key": str(k), "title": f"Ep {k}", "type": "episode", "sxe": f"S01E0{k}"}
+            for k in (1, 2, 3)]
+    monkeypatch.setattr(plex, "children", lambda k: ({"title": "Season 1"}, sibs))
+    cur = {"type": "episode", "parent_key": "10", "key": "2"}
+    prev_ep, next_ep = plex.neighbors(cur)
+    assert prev_ep["key"] == "1" and next_ep["key"] == "3"
+    first_prev, _ = plex.neighbors({"type": "episode", "parent_key": "10", "key": "1"})
+    assert first_prev is None
+    assert plex.neighbors({"type": "movie", "key": "5"}) == (None, None)
+
+
 def test_art_proxy_rejects_paths_outside_library(client, monkeypatch):
     # the proxy must not become a general fetcher against the Plex host
     from app import auth, db

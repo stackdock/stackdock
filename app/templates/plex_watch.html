@@ -40,7 +40,27 @@
       v.src = src;                                             // last resort
     }
   })();
+  // auto-advance: when an episode ends, go to the next one (autoplay may need
+  // one tap depending on the browser's policy — the navigation isn't a gesture)
+  document.getElementById("plex-video").addEventListener("ended", () => {
+    const n = document.getElementById("next-ep");
+    if (n) location.href = n.href + "#autoplay";
+  });
+  if (location.hash === "#autoplay") {
+    const v = document.getElementById("plex-video");
+    const tryPlay = () => { const p = v.play(); if (p && p.catch) p.catch(() => {}); };
+    (v.readyState >= 2) ? tryPlay() : v.addEventListener("canplay", tryPlay, { once: true });
+  }
   </script>
+
+  {% if prev_ep or next_ep %}
+  <nav class="pager">
+    {% if prev_ep %}<a href="/plex/watch/{{ prev_ep.key }}">← {{ prev_ep.sxe or 'Previous' }} · {{ prev_ep.title }}</a>
+    {% else %}<span class="off">← Previous</span>{% endif %}
+    {% if next_ep %}<a id="next-ep" href="/plex/watch/{{ next_ep.key }}">{{ next_ep.sxe or 'Next' }} · {{ next_ep.title }} →</a>
+    {% else %}<span class="off">Next →</span>{% endif %}
+  </nav>
+  {% endif %}
 
   {% if i.summary %}<div class="body"><p>{{ i.summary }}</p></div>{% endif %}
 

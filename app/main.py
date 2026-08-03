@@ -962,7 +962,9 @@ def plex_watch(request: Request, key: str, user=Depends(auth.current_user)):
         item = plex.stream_info(key)
     except plex.PlexError as e:
         raise HTTPException(502, str(e)) from e
-    return render(request, "plex_watch.html", user=user, i=item)
+    prev_ep, next_ep = plex.neighbors(item)
+    return render(request, "plex_watch.html", user=user, i=item,
+                  prev_ep=prev_ep, next_ep=next_ep)
 
 
 @app.get("/plex/stream/{key}")

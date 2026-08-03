@@ -80,6 +80,7 @@ def _item(m: dict) -> dict:
         # a season/episode shows its show name; a movie shows its year
         "spine": m.get("grandparentTitle") or m.get("parentTitle") or "",
         "sxe": sxe,
+        "parent_key": m.get("parentRatingKey"),
         "duration_min": round(m["duration"] / 60000) if m.get("duration") else None,
         "leaf_count": m.get("leafCount"),
     }
@@ -161,6 +162,24 @@ def stream_info(rating_key: str) -> dict:
                 audio_codec=media.get("audioCodec"), part_key=part.get("key"))
     item["direct"] = _direct_playable(item)   # else /plex/stream serves HLS
     return item
+
+
+def neighbors(item: dict) -> tuple[dict | None, dict | None]:
+    """(previous, next) episode within the same season, for the watch page's
+    prev/next links and end-of-episode auto-advance. (None, None) for movies."""
+    if item.get("type") != "episode" or not item.get("parent_key"):
+        return None, None
+    try:
+        _, sibs = children(str(item["parent_key"]))
+    except PlexError:
+        return None, None
+    keys = [s["key"] for s in sibs]
+    try:
+        idx = keys.index(item["key"])
+    except ValueError:
+        return None, None
+    return (sibs[idx - 1] if idx > 0 else None,
+            sibs[idx + 1] if idx + 1 < len(sibs) else None)
 
 
 def _direct_playable(info: dict) -> bool:
