@@ -991,9 +991,10 @@ def radio_vote(user=Depends(auth.current_user)):
     t, cycle = st["track"], st["cycle"]
     votes = db.radio_vote(user["id"], t["id"], cycle)
     needed = radio.votes_needed(db.radio_listener_count())
-    passed = votes >= needed
+    # compare-and-swap on the cycle: if two votes land together, only the first
+    # one moves the needle (otherwise the station would jump two tracks)
+    passed = votes >= needed and radio.station_skip(expected_cycle=cycle)
     if passed:
-        radio.station_skip()          # moves the needle for every listener
         db.radio_clear_votes(t["id"], cycle)
         log.info("radio: vote-skip passed (%d/%d) — %s", votes, needed, t["title"])
     return {"passed": passed, "votes": 0 if passed else votes, "needed": needed}

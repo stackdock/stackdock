@@ -133,6 +133,51 @@ def test_the_queue_plays_straight_through_without_ping_ponging(fresh_db, monkeyp
     assert ids
 
 
+def test_a_dormant_station_resumes_instead_of_burning_the_queue(fresh_db, monkeypatch):
+    # nobody has to be listening for the clock to run: a quiet night must not
+    # "play" the whole station in one request, popping every queued song and
+    # stamping the entire catalogue as just-played
+    ids = [_ready(f"T{i}") for i in range(8)]
+    clock = {"t": 10_000.0}
+    monkeypatch.setattr(radio.time, "time", lambda: clock["t"])
+    radio.station_now()                       # T0 on air
+    clock["t"] += 8 * 3600                    # eight silent hours
+    st = radio.station_now()
+    assert st is not None and st["offset"] < 1          # resumed cleanly, not mid-nothing
+    queued = [t["title"] for t in radio.station_order() if t["promoted_at"]]
+    assert len(queued) >= len(ids) - (radio.MAX_CATCHUP_STEPS + 2)   # queue survived
+    assert st["track"]["title"] in [f"T{i}" for i in range(8)]
+
+
+def test_simultaneous_votes_only_skip_one_track(fresh_db, monkeypatch):
+    for i in range(4):
+        _ready(f"T{i}")
+    monkeypatch.setattr(radio.time, "time", lambda: 700.0)
+    first = radio.station_now()
+    cycle = first["cycle"]
+    assert radio.station_skip(expected_cycle=cycle) is True     # first vote carries
+    assert radio.station_skip(expected_cycle=cycle) is False    # racing vote refused
+    after = radio.station_now()
+    assert after["track"]["title"] != first["track"]["title"]
+    # exactly ONE track advanced, not two
+    order = [t["title"] for t in radio.station_order()]
+    assert after["track"]["title"] == order[0]
+
+
+def test_queue_reordering_ignores_rotation_tracks(fresh_db):
+    # ↑/↓ ranged over every ready track, so the neighbour could be a rotation
+    # track and the swap did nothing visible in the queue
+    played = [_ready(f"Old{i}") for i in range(3)]
+    for tid in played:
+        db.radio_mark_aired(tid)
+    a, b = _ready("QueueA"), _ready("QueueB")
+    assert [t["title"] for t in radio.station_order()][:2] == ["QueueA", "QueueB"]
+    assert db.radio_move(b, -1) is True
+    assert [t["title"] for t in radio.station_order()][:2] == ["QueueB", "QueueA"]
+    assert db.radio_move(b, -1) is False       # already first in the QUEUE
+    assert a
+
+
 def test_vote_skip_advances_the_station_for_everyone(fresh_db, monkeypatch):
     for t in ("A", "B", "C"):
         _ready(t)

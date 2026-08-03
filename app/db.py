@@ -1186,11 +1186,14 @@ def list_radio_tracks(status: str | None = "ready") -> list:
 
 
 def radio_move(track_id: int, direction: int) -> bool:
-    """Move a ready track one slot up (-1) or down (+1). Positions are
-    renumbered densely first so a NULL/duplicated position can't wedge the
-    swap. Returns False at the ends (nothing to swap with)."""
+    """Move a QUEUED track one slot up (-1) or down (+1) within Up Next.
+    Restricted to the queue: ranging over every ready track meant the neighbour
+    could be a rotation track, so the swap did nothing visible. Positions are
+    renumbered densely first so a NULL/duplicated position can't wedge it.
+    Returns False at the ends (nothing to swap with)."""
     with conn() as c:
-        rows = c.execute(f"SELECT id FROM radio_tracks WHERE status='ready' {_RADIO_ORDER}").fetchall()
+        rows = c.execute(f"SELECT id FROM radio_tracks WHERE status='ready' "
+                         f"AND promoted_at IS NOT NULL {_RADIO_ORDER}").fetchall()
         ids = [r["id"] for r in rows]
         if track_id not in ids:
             return False
@@ -1301,6 +1304,10 @@ def radio_vote(user_id: int, track_id: int, cycle: int) -> int:
     with conn() as c:
         c.execute("INSERT OR IGNORE INTO radio_votes (user_id, track_id, cycle, created_at) "
                   "VALUES (?,?,?,?)", (user_id, track_id, cycle, now_iso()))
+        # votes for airings that never reached the threshold would otherwise
+        # accumulate forever (clearing only happens on a passed skip)
+        c.execute("DELETE FROM radio_votes WHERE created_at < ?",
+                  ((datetime.now(timezone.utc) - timedelta(days=1)).isoformat(),))
         return c.execute("SELECT COUNT(*) n FROM radio_votes WHERE track_id=? AND cycle=?",
                          (track_id, cycle)).fetchone()["n"]
 

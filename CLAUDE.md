@@ -108,8 +108,16 @@ app/radio.py             Member radio (/radio, nav '📻 Radio'): anyone submits
                          cycle), advanced lazily in station_now(). NOT clock-modulo-playlist:
                          with modulo, every playlist change (submission, promotion, a track
                          graduating) re-maps the timeline and yanks the song currently playing.
-                         Advancing is bounded (a long outage rejoins at the top) and a deleted
-                         current track falls through to the head.
+                         Advancing is bounded by MAX_CATCHUP_STEPS: the clock runs whether or
+                         not anyone listens, so an unbounded catch-up would 'play' the whole
+                         station in one request — popping every queued song unheard and
+                         stamping last_played_at across the catalogue at one instant (which
+                         flattens the cooldown ordering). Past the cap it resumes from now.
+                         A deleted current track falls through to the head. station_skip
+                         takes expected_cycle as a COMPARE-AND-SWAP so two votes landing
+                         together can't jump two tracks. db.radio_move only ranges over
+                         QUEUED rows (over all ready rows, the neighbour could be a rotation
+                         track and ↑/↓ appeared to do nothing).
                          GET /radio/now is the single source of truth every client follows
                          (track, offset, artwork, vote tally) AND the listener heartbeat.
                          VOTE-SKIP (POST /radio/vote): votes scoped to (track, cycle) so they

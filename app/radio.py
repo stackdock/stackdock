@@ -60,6 +60,10 @@ _NEEDLE_LOCK = threading.Lock()
 # eligible to play before anything recently aired comes back around.
 COOLDOWN_FRACTION = 0.7
 
+# How many finished tracks one request will walk through before deciding the
+# station was dormant and just resuming (see station_now).
+MAX_CATCHUP_STEPS = 3
+
 
 def station_order() -> list:
     """The running order is just two blocks:
@@ -128,30 +132,36 @@ def station_now() -> dict | None:
             started, cycle = now_ts, cycle + 1
             db.radio_set_state(cur["id"], started, cycle)
 
-        # walk forward through however many tracks finished since we last looked
-        # (bounded: a long outage shouldn't spin through days of playlist)
-        for _ in range(len(order) + 1):
-            elapsed = now_ts - started
-            if elapsed < cur["duration"]:
-                break
+        # Walk forward over tracks that finished since anyone last looked.
+        # Bounded on purpose: nobody has to be listening for the clock to run,
+        # so a quiet night would otherwise "play" the entire station in one
+        # request — popping every queued song without anyone hearing it and
+        # stamping last_played_at on the whole catalogue at the same instant
+        # (which flattens the least-recently-played ordering). Past
+        # MAX_CATCHUP_STEPS we treat the station as dormant and simply resume
+        # with the next track from now.
+        steps = 0
+        while now_ts - started >= cur["duration"]:
             # Pick the successor from the order the finished track is STILL in.
             # Retiring it first would move it out of the queue and into the
             # shuffled rotation, so "the track after it" would be computed
             # against its new, unrelated position — which ping-ponged the
             # station between two songs (3 Aug 2026).
             nxt = _next_after(order, cur["id"])
-            db.radio_mark_aired(cur["id"])        # now retire it (queue -> rotation)
+            db.radio_mark_aired(cur["id"])        # retire it (queue -> rotation)
             order = station_order()
             if not order:
                 return None
             if nxt["id"] not in [t["id"] for t in order]:   # deleted meanwhile
                 nxt = order[0]
-            started, cycle = started + cur["duration"], cycle + 1
+            dormant = steps >= MAX_CATCHUP_STEPS
+            started = now_ts if dormant else started + cur["duration"]
+            cycle += 1
             cur = nxt
             db.radio_set_state(cur["id"], started, cycle)
-        else:
-            started, cycle = now_ts, cycle + 1    # way behind: rejoin at the top
-            db.radio_set_state(cur["id"], started, cycle)
+            if dormant:
+                break
+            steps += 1
 
         offset = max(0.0, min(now_ts - started, cur["duration"]))
         return {"track": cur, "offset": offset, "cycle": cycle,
@@ -160,13 +170,18 @@ def station_now() -> dict | None:
                 "index": next((i for i, t in enumerate(order) if t["id"] == cur["id"]), 0)}
 
 
-def station_skip() -> None:
-    """Vote-skip result: retire the current track and start the next one now."""
+def station_skip(expected_cycle: int | None = None) -> bool:
+    """Retire the current track and start the next one now. `expected_cycle`
+    makes it a compare-and-swap: two listeners whose votes land at the same
+    moment would otherwise each carry the skip and jump TWO tracks, so a caller
+    passes the cycle it voted against and a stale one is refused."""
     with _NEEDLE_LOCK:
         order = station_order()
         if not order:
-            return
+            return False
         st = db.radio_get_state()
+        if expected_cycle is not None and st["cycle"] != expected_cycle:
+            return False                           # already skipped/advanced
         nxt = _next_after(order, st["track_id"])   # successor first (see station_now)
         if st["track_id"]:
             db.radio_mark_aired(st["track_id"])
@@ -174,6 +189,7 @@ def station_skip() -> None:
             if fresh and nxt["id"] not in [t["id"] for t in fresh]:
                 nxt = fresh[0]
         db.radio_set_state(nxt["id"], time.time(), st["cycle"] + 1)
+        return True
 
 
 def votes_needed(listeners: int) -> int:
