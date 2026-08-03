@@ -9,16 +9,44 @@
     {% if i.duration_min %} · {{ i.duration_min }} min{% endif %}
   </p>
 
-  <!-- src redirects to Plex: the raw file when browser-native, else a live HLS
-       transcode running on the Plex server (iOS/Safari play HLS natively) -->
-  <video controls playsinline preload="metadata" class="plex-player"
-         src="/plex/stream/{{ i.key }}"></video>
+  <!-- /plex/stream redirects to Plex: the raw file when browser-native, else a
+       live HLS transcode on the Plex server. Safari/iOS play HLS natively;
+       Chrome/Firefox play it through the bundled hls.js (same architecture as
+       Plex's own web app — CORS on the Plex side is confirmed working). -->
+  <video id="plex-video" controls playsinline preload="metadata" class="plex-player"
+         data-direct="{{ 1 if i.direct else '' }}"></video>
+  <script src="/static/hls.min.js"></script>
+  <script>
+  (() => {
+    const v = document.getElementById("plex-video");
+    const src = "/plex/stream/{{ i.key }}";
+    if (v.dataset.direct ||                                    // plain mp4: every browser
+        v.canPlayType("application/vnd.apple.mpegurl")) {      // native HLS: Safari/iOS
+      v.src = src;
+      return;
+    }
+    if (window.Hls && Hls.isSupported()) {                     // MSE HLS: Chrome/Firefox
+      const h = new Hls({ maxBufferLength: 45 });
+      h.loadSource(src);
+      h.attachMedia(v);
+      h.on(Hls.Events.ERROR, (_, d) => {
+        if (!d.fatal) return;
+        diag.log("hls.js fatal: " + d.type + " " + d.details);
+        diag.flush("hls-fatal");
+        if (d.type === Hls.ErrorTypes.NETWORK_ERROR) h.startLoad();
+        else h.destroy();
+      });
+    } else {
+      v.src = src;                                             // last resort
+    }
+  })();
+  </script>
 
   {% if i.summary %}<div class="body"><p>{{ i.summary }}</p></div>{% endif %}
 
   <p class="hint">Stutters or won't start? <a href="{{ plex_web(i.key) }}"
      target="_blank" rel="noopener">Open in the Plex app instead →</a> — codecs a
-     browser can't play get live-transcoded by the Plex server, which can be slow,
-     and desktop Chrome can't play the transcoded (HLS) form at all.</p>
+     browser can't play get live-transcoded by the Plex server, which can take a
+     few seconds to spin up and depends on that server's horsepower.</p>
 </article>
 {% endblock %}

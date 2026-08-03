@@ -159,6 +159,7 @@ def stream_info(rating_key: str) -> dict:
     part = (media.get("Part") or [{}])[0]
     item.update(container=media.get("container"), video_codec=media.get("videoCodec"),
                 audio_codec=media.get("audioCodec"), part_key=part.get("key"))
+    item["direct"] = _direct_playable(item)   # else /plex/stream serves HLS
     return item
 
 
@@ -179,7 +180,7 @@ def stream_url(rating_key: str, session: str) -> str:
     Plex kills the other viewer's transcode."""
     info = stream_info(rating_key)
     base = config.PLEX_URL.rstrip("/")
-    if _direct_playable(info) and info.get("part_key"):
+    if info["direct"] and info.get("part_key"):
         return f"{base}{info['part_key']}?X-Plex-Token={config.PLEX_TOKEN}"
     q = urlencode({
         "path": f"/library/metadata/{rating_key}",
