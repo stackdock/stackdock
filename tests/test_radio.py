@@ -104,16 +104,17 @@ def test_a_played_track_graduates_into_the_shuffled_catalogue(fresh_db, monkeypa
     assert [t["id"] for t in radio.station_order() if not t["aired_at"]] == [b]
 
 
-def test_playing_a_pinned_track_consumes_the_pin(fresh_db, monkeypatch):
-    a, b = _ready("A"), _ready("B")
-    db.radio_promote(b, True)                                 # B jumps the queue
+def test_playing_a_queued_track_pops_it_off_the_queue(fresh_db, monkeypatch):
+    a, b = _ready("A"), _ready("B")                           # both auto-queued
+    db.radio_play_next(b)                                     # B cuts to the front
     clock = {"t": 900.0}
     monkeypatch.setattr(radio.time, "time", lambda: clock["t"])
     assert radio.station_now()["track"]["title"] == "B"
     clock["t"] += 101
     radio.station_now()
-    assert db.get_radio_track(b)["promoted_at"] is None       # pin spent
-    assert a
+    assert db.get_radio_track(b)["promoted_at"] is None       # left the queue
+    assert db.get_radio_track(b)["last_played_at"]            # and is now in rotation
+    assert db.get_radio_track(a)["promoted_at"]               # A still queued
 
 
 def test_vote_skip_advances_the_station_for_everyone(fresh_db, monkeypatch):
@@ -217,21 +218,36 @@ def test_title_dedupe_catches_the_same_song_under_another_title(fresh_db):
     assert not db.radio_title_exists("discard the whole nine yards by someone else")
 
 
-def test_rotation_is_up_next_then_unplayed_then_shuffled_catalogue(fresh_db):
-    fresh_ids = [_ready(f"New{i}") for i in range(2)]
-    old_ids = [_ready(f"Old{i}") for i in range(4)]
-    for tid in old_ids:                       # these have already been on air
-        db.radio_mark_aired(tid)
+def test_new_songs_queue_up_next_and_promotion_appends_at_the_bottom(fresh_db):
+    queued = [_ready(f"New{i}") for i in range(2)]         # downloads join the queue
+    played = [_ready(f"Old{i}") for i in range(3)]
+    for tid in played:
+        db.radio_mark_aired(tid)                           # -> rotation
     titles = [t["title"] for t in radio.station_order()]
-    assert titles[:2] == ["New0", "New1"]                  # newest lands at the bottom
-    assert sorted(titles[2:]) == ["Old0", "Old1", "Old2", "Old3"]
+    assert titles[:2] == ["New0", "New1"]                  # queue order = arrival order
+    assert sorted(titles[2:]) == ["Old0", "Old1", "Old2"]
 
-    db.radio_promote(old_ids[2], True)                     # pull one back to the front
+    db.radio_promote(played[1], True)                      # re-queue an old track
     titles = [t["title"] for t in radio.station_order()]
-    assert titles[0] == "Old2" and titles[1:3] == ["New0", "New1"]
-    db.radio_promote(old_ids[2], False)                    # demote back
-    assert [t["title"] for t in radio.station_order()][:2] == ["New0", "New1"]
-    assert fresh_ids
+    assert titles[:3] == ["New0", "New1", "Old1"]          # lands at the BOTTOM
+    db.radio_play_next(played[2])                          # cut the line
+    assert [t["title"] for t in radio.station_order()][:4] == [
+        "Old2", "New0", "New1", "Old1"]
+    assert queued
+
+
+def test_rotation_keeps_recently_played_songs_from_coming_straight_back(fresh_db):
+    ids = [_ready(f"T{i}") for i in range(10)]
+    for n, tid in enumerate(ids):                          # T0 oldest .. T9 newest
+        db.radio_mark_aired(tid)
+        with db.conn() as c:
+            c.execute("UPDATE radio_tracks SET last_played_at=? WHERE id=?",
+                      (f"2026-08-0{n // 3 + 1}T0{n % 3}:00:00+00:00", tid))
+    order = [t["title"] for t in radio.station_order()]
+    hot = {f"T{i}" for i in ids and range(7, 10)}          # the 3 most recent
+    # nothing recently played appears in the first (cool) stretch
+    assert not hot & set(order[:7])
+    assert set(order[7:]) == hot
 
 
 _EMBED_HTML = ('<html><script id="__NEXT_DATA__" type="application/json">'
@@ -259,20 +275,19 @@ def test_playlist_sync_queues_new_tracks_once(fresh_db, monkeypatch):
     assert radio.sync_playlists() == 0
 
 
-def test_radio_page_renders_every_rotation_block(client, monkeypatch):
+def test_radio_page_renders_both_blocks(client, monkeypatch):
     # regression: the row macro used `loop.first`, which Jinja macros can't see
     # from the caller — /radio 500ed the moment an Up Next row existed
     from app import auth
     db.create_user("m", auth.hash_password("pw12345678"), is_admin=True)
     client.post("/login", data={"username": "m", "password": "pw12345678"})
-    pinned, played, brand_new = _ready("Pinned"), _ready("Played"), _ready("Fresh")
-    db.radio_promote(pinned, True)
+    queued, played = _ready("Queued"), _ready("Played")
     db.radio_mark_aired(played)
     r = client.get("/radio")
     assert r.status_code == 200
-    assert "Up next" in r.text and "Recently added" in r.text and "In rotation" in r.text
-    assert "Pinned" in r.text and "Played" in r.text and "Fresh" in r.text
-    assert brand_new
+    assert "Up next" in r.text and "In rotation" in r.text
+    assert "Queued" in r.text and "Played" in r.text
+    assert queued and played
 
 
 def test_submit_route_queues_and_triggers(client, monkeypatch):

@@ -83,45 +83,53 @@ app/radio.py             Member radio (/radio, nav '📻 Radio'): anyone submits
                          or any-platform URL; non-YouTube links resolve via og:title) -> yt-dlp
                          (PINNED in requirements; bump when YouTube breaks it) downloads the
                          native AAC stream (bestaudio[ext=m4a], no ffmpeg) -> R2 radio/{id}.m4a.
-                         Worker = job 'radio' (RADIO_POLL_MINUTES + one-shot on submit); YouTube
+                         Worker = job 'radio' (RADIO_POLL_MINUTES=5 + one-shot on submit); YouTube
                          BOT-CHECKS datacenter IPs — retries across RADIO_PROXY_TRIES FRESH
-                         NYT_PROXY_* residential sessions (exit quality varies; transient SSL
-                         EOF / truncated downloads retry the same way). RADIO_USE_COOKIES is OFF
-                         by default: a cookies.txt session clears the bot-check but YouTube then
-                         serves SABR-only (ZERO audio formats, proxy or not — measured 3 Aug 2026).
-                         RADIO_PLAYLISTS mirrors public Spotify playlists via the NO-AUTH embed
-                         page (__NEXT_DATA__ trackList, ~100 cap); dedupe by normalized query so
-                         failures never re-queue. THE STATION IS SERVER-AUTHORITATIVE: GET
-                         /radio/now decides what is on air (playhead = wall clock + radio_state
-                         .offset_seconds, mod total; `cycle` = pass number) and doubles as the
-                         listener heartbeat (radio_listeners); clients only follow it, so every
-                         member hears the same second of the same song and shares the same
-                         artwork (art_for(track_id) -> static/radio-art/{1..ART_COUNT}.jpg,
-                         stable per track; add an image = drop a scaled 600px jpg in and
-                         bump ART_COUNT). VOTE-SKIP (POST /radio/vote): votes are per (track, cycle) so
-                         they never carry to the next airing; a STRICT majority of current
-                         listeners (floor(n/2)+1) adds the track's remaining seconds to the
-                         offset, moving the broadcast for EVERYONE. No pause — the control mutes
-                         (vol:global/mute:global, slider hidden on iOS); lock-screen play/pause
-                         both mute, nexttrack votes. ROTATION (station_order): [1] Up Next — member-pinned
-                         (promoted_at, ↑/↓ within the block) [2] NEW — added within
-                         RADIO_RECENT_HOURS=24, oldest first so a fresh submission lands at
-                         the bottom [3] the catalogue, SHUFFLED with the UTC date as seed
-                         (reshuffles daily, stable within a day so the timeline doesn't jump
-                         per request). DEDUPE runs in PYTHON, never SQL: Spotify joins
-                         artists with U+00A0 which SQLite LOWER/TRIM ignore, so every
-                         multi-artist track re-downloaded each sync (rows 8/17, 3 Aug 2026) —
-                         db.radio_norm() NFKC-folds and strips '(Official Video)'-style tails;
-                         radio_title_exists also catches the same song under a different
-                         YouTube title via containment with a 12-char floor; a duplicate
-                         submission DELETES its row instead of parking a failed one.
-                         _meta() picks display metadata: YouTube uploaders are labels or
-                         re-upload channels ('Astro Nautico', 'David Dean Burkhart'), so the
-                         artist comes from music metadata, then the 'Artist - Title' split,
-                         and only then the uploader; promo tails ('(Official Video)',
-                         '| Audiotree Live') are stripped from titles. Player edge cases: presign expiry/deleted
-                         track re-syncs (failure-capped), 'ended' asks the server rather than
-                         assuming, drift >6s re-seeks, refocus re-syncs.
+                         NYT_PROXY_* residential sessions (transient SSL EOF / truncated downloads
+                         retry the same way). RADIO_USE_COOKIES is OFF by default: a cookies.txt
+                         session clears the bot-check but YouTube then serves SABR-only (ZERO
+                         audio formats, proxy or not — measured 3 Aug 2026).
+                         SPOTIFY: playlist sync needs a USER token. App-only client credentials
+                         return playlist METADATA with an EMPTY track list (403 on /tracks) under
+                         Spotify's 2025 restrictions, and the no-auth embed page silently
+                         truncates (14 of a 65-track playlist). So: SPOTIFY_CLIENT_ID/SECRET +
+                         one-click OAuth at /radio/spotify/connect (admin) -> /callback stores
+                         ONLY the refresh token (spotify_auth table, rotation-aware).
+                         RUNNING ORDER (station_order) is TWO blocks: [1] UP NEXT — a real queue;
+                         a finished download joins the BOTTOM automatically, /radio/promote
+                         appends the same way, /radio/playnext cuts to the front, ↑/↓ reorder,
+                         and AIRING POPS IT OFF. [2] ROTATION — everything already played,
+                         least-recently-played first: sorted by last_played_at then split at
+                         COOLDOWN_FRACTION=0.7 into cool/hot blocks each shuffled with the UTC
+                         date seed, so a track can't come back around until most others have
+                         had a turn (a pure shuffle re-randomizes whenever the list changes and
+                         can replay a song immediately).
+                         THE NEEDLE IS EXPLICIT (radio_state.current_track_id + started_at +
+                         cycle), advanced lazily in station_now(). NOT clock-modulo-playlist:
+                         with modulo, every playlist change (submission, promotion, a track
+                         graduating) re-maps the timeline and yanks the song currently playing.
+                         Advancing is bounded (a long outage rejoins at the top) and a deleted
+                         current track falls through to the head.
+                         GET /radio/now is the single source of truth every client follows
+                         (track, offset, artwork, vote tally) AND the listener heartbeat.
+                         VOTE-SKIP (POST /radio/vote): votes scoped to (track, cycle) so they
+                         never carry to the next airing; a STRICT majority of current listeners
+                         (floor(n/2)+1) moves the needle for EVERYONE. No pause — the control
+                         mutes (vol:global/mute:global, slider hidden on iOS); lock-screen
+                         play/pause both mute, nexttrack votes. Artwork art_for(track_id) ->
+                         static/radio-art/{1..ART_COUNT}.jpg, stable per track and shared by all
+                         listeners (add one: drop a 600px jpg in and bump ART_COUNT).
+                         DEDUPE runs in PYTHON, never SQL: Spotify joins artists with U+00A0
+                         which SQLite LOWER/TRIM ignore, so every multi-artist track re-downloaded
+                         each sync (rows 8/17, 3 Aug 2026) — db.radio_norm() NFKC-folds and strips
+                         '(Official Video)'-style tails; radio_title_exists also catches the same
+                         song under a different YouTube title via containment with a 12-char
+                         floor; a duplicate submission DELETES its row instead of parking a
+                         failure. _meta() picks display metadata: uploaders are labels or
+                         re-upload channels ('Astro Nautico'), so artist = music metadata, then
+                         the 'Artist - Title' split, then the uploader.
+                         JINJA GOTCHA: the track-row macro takes loop.first/loop.last as ARGS —
+                         a macro cannot see the caller's `loop` (that 500ed /radio, 3 Aug 2026).
 app/plex.py              Plex tab (/plex): libraries, recently-added, search,
                          poster grid, show->season->episode drill-down. INLINE playback:
                          /plex/watch/{key} <video> -> /plex/stream/{key} 302s to the raw file

@@ -56,26 +56,39 @@ def art_for(track_id: int) -> str:
 
 _NEEDLE_LOCK = threading.Lock()
 
+# Share of the rotation that is "cool" (played longest ago) and therefore
+# eligible to play before anything recently aired comes back around.
+COOLDOWN_FRACTION = 0.7
+
 
 def station_order() -> list:
-    """The rotation, in the order a station would run it:
+    """The running order is just two blocks:
 
-      1. UP NEXT — tracks members pinned (promoted_at), in pin order
-      2. RECENTLY ADDED — never aired yet, oldest first, so a fresh submission
-         lands at the BOTTOM and every new song is guaranteed one play
-      3. THE CATALOGUE — everything that has aired at least once, SHUFFLED
+      1. UP NEXT — a real queue, played until exhausted. A finished download
+         joins the bottom automatically, and promoting an old track appends it
+         the same way. Airing a track pops it off the queue.
+      2. ROTATION — everything that has already played, LEAST-RECENTLY-PLAYED
+         first, shuffled only within that constraint.
 
-    The shuffle seed is the UTC date, so it reshuffles once a day and every
-    listener still derives the same order (the server is authoritative anyway,
-    but a stable seed keeps the timeline from jumping on every request).
+    Rotation is deliberately NOT a pure shuffle. The list changes constantly
+    (tracks graduate out of Up Next, the daily seed rolls over), and each
+    reshuffle can drop a song that just played right back near the front. So
+    rotation is sorted by last_played_at and split: the older-played COOL block
+    plays before the recently-played HOT block, with the daily seed shuffling
+    inside each. You still get variety, but a song can't come back around until
+    most of the others have had a turn.
     """
     tracks = [t for t in db.list_radio_tracks("ready") if (t["duration"] or 0) > 0]
-    promoted = [t for t in tracks if t["promoted_at"]]          # list order = position
-    rest = [t for t in tracks if not t["promoted_at"]]
-    fresh = [t for t in rest if not t["aired_at"]]              # never been on air
-    catalogue = [t for t in rest if t["aired_at"]]
-    random.Random(int(datetime.now(timezone.utc).strftime("%Y%m%d"))).shuffle(catalogue)
-    return promoted + fresh + catalogue
+    up_next = [t for t in tracks if t["promoted_at"]]     # list order = position
+    rotation = [t for t in tracks if not t["promoted_at"]]
+    # never-played sorts first ("" < any ISO timestamp)
+    rotation.sort(key=lambda t: t["last_played_at"] or "")
+    cut = max(1, int(len(rotation) * COOLDOWN_FRACTION))
+    cool, hot = rotation[:cut], rotation[cut:]
+    rnd = random.Random(int(datetime.now(timezone.utc).strftime("%Y%m%d")))
+    rnd.shuffle(cool)
+    rnd.shuffle(hot)
+    return up_next + cool + hot
 
 
 def _next_after(order: list, track_id: int | None):

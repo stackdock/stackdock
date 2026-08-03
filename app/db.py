@@ -111,6 +111,7 @@ CREATE TABLE IF NOT EXISTS radio_tracks (
     position INTEGER,                   -- ordering within the Up Next block
     promoted_at TEXT,                   -- non-NULL = pinned to Up Next (plays first)
     aired_at TEXT,                      -- first time it went out; NULL = never played yet
+    last_played_at TEXT,                -- every airing; drives least-recently-played rotation
     error TEXT,
     added_by TEXT,
     created_at TEXT NOT NULL
@@ -352,6 +353,7 @@ def init():
                            ("radio_tracks", "position INTEGER"),
                            ("radio_tracks", "promoted_at TEXT"),
                            ("radio_tracks", "aired_at TEXT"),
+                           ("radio_tracks", "last_played_at TEXT"),
                            ("radio_state", "current_track_id INTEGER"),
                            ("radio_state", "started_at REAL"),
                            ("radio_state", "cycle INTEGER NOT NULL DEFAULT 0")]:
@@ -384,6 +386,11 @@ def init():
             for row in c.execute(f"SELECT id, title FROM {table} WHERE slug IS NULL").fetchall():
                 c.execute(f"UPDATE {table} SET slug = ? WHERE id = ?",
                           (_unique_slug(c, table, row["title"]), row["id"]))
+        # Up Next became the single queue new songs join (was: a separate
+        # "recently added" block). Anything ready that never aired belongs in
+        # the queue; runs once, since it only touches rows with no promoted_at.
+        c.execute("UPDATE radio_tracks SET promoted_at = created_at "
+                  "WHERE status='ready' AND aired_at IS NULL AND promoted_at IS NULL")
         # Merge case-variant publication/show names: Substack pubs occasionally
         # re-capitalize themselves, and per-post name stamping then splits one
         # source into two filter chips (e.g. GrimDarkEnlightenment vs
@@ -1113,14 +1120,24 @@ def radio_title_exists(title: str, artist: str = "") -> bool:
     return False
 
 
+def radio_play_next(track_id: int) -> None:
+    """Jump a track to the TOP of Up Next — it plays as soon as the current one
+    finishes (promote appends at the bottom; this cuts the line)."""
+    with conn() as c:
+        row = c.execute("SELECT MIN(COALESCE(position, id)) m FROM radio_tracks "
+                        "WHERE promoted_at IS NOT NULL AND id != ?", (track_id,)).fetchone()
+        top = (row["m"] - 1) if row and row["m"] is not None else 0
+        c.execute("UPDATE radio_tracks SET promoted_at=?, position=? WHERE id=?",
+                  (now_iso(), top, track_id))
+
+
 def radio_promote(track_id: int, on: bool) -> None:
-    """Pin a track to Up Next (or release it back into rotation)."""
+    """Queue a track at the BOTTOM of Up Next (exactly where a new song lands),
+    or drop it back into the shuffled rotation."""
     with conn() as c:
         if on:
-            nxt = c.execute("SELECT COALESCE(MAX(position), -1) + 1 p FROM radio_tracks "
-                            "WHERE promoted_at IS NOT NULL").fetchone()["p"]
             c.execute("UPDATE radio_tracks SET promoted_at=?, position=? WHERE id=?",
-                      (now_iso(), nxt, track_id))
+                      (now_iso(), _next_queue_position(c), track_id))
         else:
             c.execute("UPDATE radio_tracks SET promoted_at=NULL WHERE id=?", (track_id,))
 
@@ -1131,11 +1148,24 @@ def radio_source_exists(source_url: str) -> bool:
                          (source_url,)).fetchone() is not None
 
 
+def _next_queue_position(c) -> int:
+    """Bottom of the Up Next queue. Uses COALESCE(position, id) because that's
+    what the ordering uses — taking MAX(position) alone would return NULL for
+    never-reordered rows and put the newcomer at the FRONT."""
+    row = c.execute("SELECT MAX(COALESCE(position, id)) m FROM radio_tracks "
+                    "WHERE promoted_at IS NOT NULL").fetchone()
+    return (row["m"] + 1) if row and row["m"] is not None else 0
+
+
 def radio_set_ready(track_id: int, *, title, artist, source_url, audio_key, duration) -> None:
+    """A finished download joins the BOTTOM of the Up Next queue — a new song is
+    guaranteed to play, then graduates into the shuffled rotation."""
     with conn() as c:
         c.execute("""UPDATE radio_tracks SET status='ready', title=?, artist=?,
-                     source_url=?, audio_key=?, duration=?, error=NULL WHERE id=?""",
-                  (title, artist, source_url, audio_key, duration, track_id))
+                     source_url=?, audio_key=?, duration=?, error=NULL,
+                     promoted_at=?, position=? WHERE id=?""",
+                  (title, artist, source_url, audio_key, duration,
+                   now_iso(), _next_queue_position(c), track_id))
 
 
 def radio_set_failed(track_id: int, error: str) -> None:
@@ -1246,8 +1276,10 @@ def radio_mark_aired(track_id: int) -> None:
     """First airing graduates a track out of 'Recently added' and consumes its
     Up Next pin (an up-next queue is spent once it plays)."""
     with conn() as c:
+        now = now_iso()
         c.execute("UPDATE radio_tracks SET aired_at = COALESCE(aired_at, ?), "
-                  "promoted_at = NULL WHERE id = ?", (now_iso(), track_id))
+                  "last_played_at = ?, promoted_at = NULL WHERE id = ?",
+                  (now, now, track_id))
 
 
 def radio_touch_listener(user_id: int) -> None:

@@ -932,11 +932,10 @@ def radio_page(request: Request, user=Depends(auth.current_user),
     queue = [t for t in db.list_radio_tracks(None) if t["status"] != "ready"]
     # the rotation, split into the blocks the station plays them in
     order = radio.station_order()
-    promoted = [t for t in order if t["promoted_at"]]
-    fresh = [t for t in order if not t["promoted_at"] and not t["aired_at"]]
-    catalogue = [t for t in order if not t["promoted_at"] and t["aired_at"]]
+    promoted = [t for t in order if t["promoted_at"]]        # the Up Next queue
+    catalogue = [t for t in order if not t["promoted_at"]]   # shuffled rotation
     return render(request, "radio.html", user=user, tracks=tracks,
-                  promoted=promoted, fresh=fresh, catalogue=catalogue,
+                  promoted=promoted, catalogue=catalogue,
                   spotify_configured=radio.spotify_configured(),
                   spotify_connected=radio.spotify_connected(),
                   queue=queue, message=msg,
@@ -1035,6 +1034,15 @@ def spotify_callback(code: str | None = None, state: str | None = None,
     return RedirectResponse("/radio?msg=" + ("Spotify+connected+—+syncing+the+full+playlist"
                                              if ok else "Spotify+connection+failed"),
                             status_code=303)
+
+
+@app.post("/radio/playnext")
+def radio_play_next(user=Depends(auth.current_user), track_id: int = Form(...)):
+    """Cut the line: this track plays as soon as the current one ends."""
+    if not db.get_radio_track(track_id):
+        raise HTTPException(404)
+    db.radio_play_next(track_id)
+    return RedirectResponse("/radio", status_code=303)
 
 
 @app.post("/radio/promote")

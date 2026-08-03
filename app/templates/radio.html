@@ -75,6 +75,10 @@
           <time>{{ ((t.duration or 0) / 60) | round(1) }} min</time></span>
       </span>
       <span class="track-actions">
+        <form method="post" action="/radio/playnext" class="inline-form">
+          <input type="hidden" name="track_id" value="{{ t.id }}">
+          <button type="submit" title="Play next">⏭</button>
+        </form>
         {% if block == 'up' %}
         <form method="post" action="/radio/move" class="inline-form">
           <input type="hidden" name="track_id" value="{{ t.id }}">
@@ -111,11 +115,6 @@
   {% if promoted %}
   <h3 class="hub-title">⤴ Up next <span class="count">{{ promoted|length }}</span></h3>
   <ul class="cards">{% for t in promoted %}{{ track_row(t, 'up', loop.first, loop.last) }}{% endfor %}</ul>
-  {% endif %}
-
-  {% if fresh %}
-  <h3 class="hub-title">🆕 Recently added <span class="count">{{ fresh|length }}</span></h3>
-  <ul class="cards">{% for t in fresh %}{{ track_row(t, 'new') }}{% endfor %}</ul>
   {% endif %}
 
   {% if catalogue %}
