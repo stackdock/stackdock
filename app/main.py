@@ -1004,7 +1004,7 @@ def radio_now(user=Depends(auth.current_user)):
                 "can_remove": bool(user["is_admin"] or x["added_by"] == user["username"])}
 
     queue = [row(x) for x in order if x["promoted_at"] and x["id"] != cur_id]
-    coming = [row(x) for x in order if not x["promoted_at"] and x["id"] != cur_id][:3]
+    coming = [row(x) for x in radio.station_coming(order, cur_id)]
     return {
         "playing": {
             "id": t["id"], "title": t["title"], "artist": t["artist"],

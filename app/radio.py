@@ -126,6 +126,20 @@ def _next_after(order: list, track_id: int | None):
     return rotation[0]
 
 
+def station_coming(order: list, track_id: int | None, n: int = 3) -> list:
+    """The next `n` ROTATION tracks after `track_id`, wrapping — what the page
+    shows as "Coming up" when the queue is empty. Must mirror _next_after:
+    taking rotation[:n] instead showed the head of the day-seeded shuffle,
+    which never moves, so the same tracks sat in "Coming up" all day no matter
+    where the needle actually was (3 Aug 2026)."""
+    rotation = [t for t in order if not t["promoted_at"]]
+    ids = [t["id"] for t in rotation]
+    if track_id in ids:
+        i = ids.index(track_id)
+        rotation = rotation[i + 1:] + rotation[:i]
+    return [t for t in rotation if t["id"] != track_id][:n]
+
+
 def station_now() -> dict | None:
     """What is on air, decided by the SERVER.
 

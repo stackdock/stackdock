@@ -290,6 +290,24 @@ def test_up_next_really_plays_next_even_from_mid_rotation(fresh_db, monkeypatch)
     assert db.get_radio_track(queued)["promoted_at"] is None     # consumed once played
 
 
+def test_coming_up_follows_the_needle_not_the_shuffle_head(fresh_db, monkeypatch):
+    # regression: "Coming up" took rotation[:3] — the head of the day-seeded
+    # shuffle, which never moves — so it showed the same tracks all day instead
+    # of what actually plays after the current one
+    for tid in [_ready(f"Rot{i}") for i in range(5)]:
+        db.radio_mark_aired(tid)                  # all in rotation, queue empty
+    clock = {"t": 7000.0}
+    monkeypatch.setattr(radio.time, "time", lambda: clock["t"])
+    for _ in range(4):                            # walk the needle along rotation
+        st = radio.station_now()
+        order = radio.station_order()
+        coming = radio.station_coming(order, st["track"]["id"])
+        nxt = radio._next_after(order, st["track"]["id"])
+        assert coming and coming[0]["id"] == nxt["id"]   # display matches reality
+        assert st["track"]["id"] not in [t["id"] for t in coming]
+        clock["t"] += 101
+
+
 def test_the_queue_plays_straight_through_without_ping_ponging(fresh_db, monkeypatch):
     # regression: retiring the finished track BEFORE picking its successor moved
     # it into the shuffled rotation first, so "the next track" was read off its
