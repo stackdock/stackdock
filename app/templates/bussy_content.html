@@ -78,6 +78,9 @@
 <script>
   document.querySelectorAll(".bzm-item").forEach(function (el) {
     el.addEventListener("click", function () { el.classList.toggle("revealed"); });
+    el.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); el.classList.toggle("revealed"); }
+    });
   });
 </script>
 {% endblock %}

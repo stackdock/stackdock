@@ -6,7 +6,7 @@
   {% if message %}<p class="form-ok">{{ message }}</p>{% endif %}
 
   <form method="post" action="/radio/add" class="search-form list-controls">
-    <input type="search" name="query" placeholder="Song name, or a link from anywhere…"
+    <input type="search" name="query" placeholder="Song name, or a link from anywhere…" aria-label="Song name or link"
            autocomplete="off" required minlength="2" maxlength="300">
     <button type="submit">Add to station</button>
   </form>
@@ -71,7 +71,7 @@
         </form>
         <form method="post" action="/radio/delete" class="inline-form">
           <input type="hidden" name="track_id" value="{{ t.id }}">
-          <button type="submit">✕</button>
+          <button type="submit" title="Remove" aria-label="Remove">✕</button>
         </form>
         {% endif %}</li>
     {% endfor %}
@@ -90,35 +90,35 @@
       <span class="track-actions">
         <form method="post" action="/radio/playnext" class="inline-form">
           <input type="hidden" name="track_id" value="{{ t.id }}">
-          <button type="submit" title="Play next">⏭</button>
+          <button type="submit" title="Play next" aria-label="Play next">⏭</button>
         </form>
         {% if block == 'up' %}
         <form method="post" action="/radio/move" class="inline-form">
           <input type="hidden" name="track_id" value="{{ t.id }}">
           <input type="hidden" name="dir" value="up">
-          <button type="submit" title="Earlier in Up Next"{{ ' disabled' if is_first }}>↑</button>
+          <button type="submit" title="Earlier in Up Next" aria-label="Earlier in Up Next"{{ ' disabled' if is_first }}>↑</button>
         </form>
         <form method="post" action="/radio/move" class="inline-form">
           <input type="hidden" name="track_id" value="{{ t.id }}">
           <input type="hidden" name="dir" value="down">
-          <button type="submit" title="Later in Up Next"{{ ' disabled' if is_last }}>↓</button>
+          <button type="submit" title="Later in Up Next" aria-label="Later in Up Next"{{ ' disabled' if is_last }}>↓</button>
         </form>
         <form method="post" action="/radio/promote" class="inline-form">
           <input type="hidden" name="track_id" value="{{ t.id }}">
           <input type="hidden" name="on" value="0">
-          <button type="submit" title="Back into rotation">⤵</button>
+          <button type="submit" title="Back into rotation" aria-label="Back into rotation">⤵</button>
         </form>
         {% else %}
         <form method="post" action="/radio/promote" class="inline-form">
           <input type="hidden" name="track_id" value="{{ t.id }}">
           <input type="hidden" name="on" value="1">
-          <button type="submit" title="Promote to Up Next">⤴</button>
+          <button type="submit" title="Promote to Up Next" aria-label="Promote to Up Next">⤴</button>
         </form>
         {% endif %}
         {% if user.is_admin or t.added_by == user.username %}
         <form method="post" action="/radio/delete" class="inline-form">
           <input type="hidden" name="track_id" value="{{ t.id }}">
-          <button type="submit" title="Remove from station">✕</button>
+          <button type="submit" title="Remove from station" aria-label="Remove from station">✕</button>
         </form>
         {% endif %}
       </span>

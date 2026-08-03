@@ -14,7 +14,7 @@
   </div>
   <form method="get" action="/plex" class="search-form list-controls">
     {% if section %}<input type="hidden" name="section" value="{{ section.key }}">{% endif %}
-    <input type="search" name="q" value="{{ q }}" placeholder="Search Plex…" autocomplete="off">
+    <input type="search" name="q" value="{{ q }}" placeholder="Search Plex…" aria-label="Search Plex" autocomplete="off">
     <button type="submit">Search</button>
     {% if q %}<a class="hint" href="/plex">clear</a>{% endif %}
   </form>

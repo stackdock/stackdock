@@ -11,7 +11,7 @@
     {% else %}
       <p class="greentext">&gt;forgot password<br>&gt;it happens to the best of us<br>&gt;summon the admin</p>
       <form method="post" action="/forgot">
-        <label>Your username <input name="username" required autofocus></label>
+        <label>Your username <input name="username" required autofocus autocomplete="username"></label>
         <button type="submit">Summon admin</button>
       </form>
       <p class="hint">This pings the group Discord so the admin can DM you a private reset link. The link itself never gets posted in the channel.</p>

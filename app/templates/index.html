@@ -49,7 +49,7 @@
       <input type="hidden" name="tab" value="text">
       {% for pp in active_pubs %}<input type="hidden" name="pub" value="{{ pp }}">{% endfor %}
       {% if sort == 'old' %}<input type="hidden" name="sort" value="old">{% endif %}
-      <input type="search" name="q" value="{{ q }}" placeholder="Search articles…" autocomplete="off">
+      <input type="search" name="q" value="{{ q }}" placeholder="Search articles…" aria-label="Search articles" autocomplete="off">
       <button type="submit">Search</button>
       {% if q %}<a class="hint" href="/?tab=text{{ pub_part }}{{ sort_part }}">clear</a>{% endif %}
     </form>
