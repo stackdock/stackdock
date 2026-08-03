@@ -120,8 +120,34 @@ def test_votes_are_scoped_to_one_airing(fresh_db):
 
 def test_artwork_is_stable_and_shared_per_track():
     assert radio.art_for(7) == radio.art_for(7)       # same track -> same image
-    assert {radio.art_for(i) for i in range(9)} == {
-        f"/static/radio-art/{n}.jpg" for n in (1, 2, 3)}
+    assert {radio.art_for(i) for i in range(24)} == {
+        f"/static/radio-art/{n}.jpg" for n in range(1, radio.ART_COUNT + 1)}
+
+
+def test_metadata_prefers_the_real_artist_over_the_uploader():
+    # a re-upload channel / label must not become the artist, and promo tails go
+    title, artist = radio._meta(
+        {"title": "Clairo - Hello? (feat. Rejjie Snow)", "uploader": "David Dean Burkhart"},
+        "Hello? Clairo")
+    assert (title, artist) == ("Hello? (feat. Rejjie Snow)", "Clairo")
+    assert radio._meta({"title": "Whirr - Rose Cold (Lyrics)"}, "") == ("Rose Cold", "Whirr")
+    assert radio._meta({"title": "No Vacation - Reaper | Audiotree Live",
+                        "uploader": "Audiotree"}, "") == ("Reaper", "No Vacation")
+    # explicit music metadata wins over a title guess
+    assert radio._meta({"title": "X - Y (Official Video)", "artist": "Real Artist"},
+                       "")[1] == "Real Artist"
+    # a title with no separator keeps its own name and falls back to the uploader
+    assert radio._meta({"title": "discard", "uploader": "Lil Ugly Mane"}, "") == (
+        "discard", "Lil Ugly Mane")
+
+
+def test_duplicate_submissions_are_dropped_not_parked_as_failures(fresh_db, monkeypatch):
+    _ready("Song A")
+    dup = db.add_radio_track("song a again", "erin")
+    monkeypatch.setattr(radio, "_download",
+                        lambda q: (_ for _ in ()).throw(RuntimeError("already on the station")))
+    radio.run()
+    assert db.get_radio_track(dup) is None            # gone, not a failed queue row
 
 
 def test_query_dedupe_ignores_case_and_spacing(fresh_db):

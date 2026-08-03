@@ -46,7 +46,7 @@ _RETRY_HINTS = (
 # Now-playing artwork: assigned by track id so every listener sees the SAME
 # image for the same song (part of "one broadcast"), and it never changes for a
 # given track. Files live in static/radio-art/.
-ART_COUNT = 3
+ART_COUNT = 6
 
 
 def art_for(track_id: int) -> str:
@@ -107,6 +107,35 @@ def votes_needed(listeners: int) -> int:
     """STRICT majority of current listeners (floor(n/2)+1), min 1 — with two
     people listening a single vote must not carry the skip."""
     return max(1, listeners // 2 + 1)
+
+
+# YouTube titles carry promo tails and the artist as a prefix; uploaders are
+# often a label or a re-upload channel ("Astro Nautico", "David Dean Burkhart"),
+# so the artist is better guessed from the title than taken from the channel.
+_TAIL_RE = re.compile(
+    r"\s*[\(\[]\s*(?:official|lyric|lyrics|audio|video|visualiser|visualizer|"
+    r"hd|hq|4k|mv|m/v|full|explicit|remaster\w*|music\s+video)[^\)\]]*[\)\]]", re.I)
+_SEPS = (" - ", " – ", " — ", " ‐ ")
+
+
+def _clean_title(raw: str) -> str:
+    s = re.sub(r"\s*\|.*$", "", raw or "")        # "… | Audiotree Live"
+    s = _TAIL_RE.sub("", s)
+    return s.strip(" -–—·")
+
+
+def _meta(info: dict, query: str) -> tuple[str, str]:
+    """(title, artist) fit for display."""
+    raw = (info.get("title") or query or "").strip()
+    split_artist, rest = "", raw
+    for sep in _SEPS:
+        if sep in raw:
+            split_artist, rest = (p.strip() for p in raw.split(sep, 1))
+            break
+    artist = (info.get("artist") or split_artist or info.get("creator")
+              or info.get("uploader") or "").strip()
+    title = _clean_title(info.get("track") or rest or raw)
+    return (title or _clean_title(raw) or raw), artist
 
 
 def _is_url(s: str) -> bool:
@@ -202,8 +231,7 @@ def _download(query: str) -> dict:
                         raise RuntimeError("already on the station")
                     # same song, different YouTube upload/title — checked BEFORE
                     # spending a download on it
-                    title = info.get("track") or info.get("title") or query
-                    artist = info.get("artist") or info.get("uploader") or ""
+                    title, artist = _meta(info, query)
                     if db.radio_title_exists(title, artist):
                         raise RuntimeError("already on the station (same song)")
                     ydl.download([info.get("webpage_url") or target])
@@ -299,6 +327,13 @@ def run() -> int:
                 log.info("radio: [%s] ready — %s", t["added_by"], meta["title"])
                 done += 1
             except Exception as e:                            # noqa: BLE001
+                # "already on the station" isn't a failure worth showing — the
+                # song IS there. Drop the row instead of parking junk in the
+                # queue (the original row still blocks a re-queue).
+                if "already on the station" in str(e):
+                    db.delete_radio_track(t["id"])
+                    log.info("radio: [%s] duplicate dropped (%s)", t["added_by"], t["query"])
+                    continue
                 db.radio_set_failed(t["id"], str(e))
                 log.warning("radio: [%s] failed (%s): %s", t["added_by"], t["query"], e)
         return done

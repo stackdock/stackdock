@@ -104,19 +104,16 @@
 
   {% if promoted %}
   <h3 class="hub-title">⤴ Up next <span class="count">{{ promoted|length }}</span></h3>
-  <p class="hint" style="margin:0">Pinned — plays before everything else, in this order.</p>
   <ul class="cards">{% for t in promoted %}{{ track_row(t, 'up') }}{% endfor %}</ul>
   {% endif %}
 
   {% if fresh %}
-  <h3 class="hub-title">🆕 New <span class="count">{{ fresh|length }}</span></h3>
-  <p class="hint" style="margin:0">Added in the last {{ recent_hours }}h — heavy rotation, newest at the bottom.</p>
+  <h3 class="hub-title">🆕 Recently added <span class="count">{{ fresh|length }}</span></h3>
   <ul class="cards">{% for t in fresh %}{{ track_row(t, 'new') }}{% endfor %}</ul>
   {% endif %}
 
   {% if catalogue %}
   <h3 class="hub-title">🎚 In rotation <span class="count">{{ catalogue|length }}</span></h3>
-  <p class="hint" style="margin:0">Shuffled daily, plays after the new stuff.</p>
   <ul class="cards">{% for t in catalogue %}{{ track_row(t, 'cat') }}{% endfor %}</ul>
   {% endif %}
 
