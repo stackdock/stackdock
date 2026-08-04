@@ -95,6 +95,11 @@ app/ingest/rss_articles.py   poll ARTICLE_FEEDS (JSON {name: url}; any full-text
                          notify all thread participants except the author; the logo badge
                          (#notif-dot, base.html) polls /api/notifications every 90s and
                          deep-links /read|listen/{slug}#c{thread} (episode pages seek to t).
+                         SHOUTBOX: floating 💬 fab (base.html, every page) opens a panel
+                         merging chat (shout_messages table, GET/POST /api/shoutbox,
+                         /delete/{id} own-or-admin) with the site-wide comment stream;
+                         badge = posts newer than the localStorage shout:seen cursor,
+                         own posts excluded; polls 25s.
 app/radio.py             Member radio (/radio, nav '📻 Radio'): anyone submits a song (text
                          or any-platform URL; non-YouTube links resolve via og:title) -> yt-dlp
                          (PINNED in requirements; bump when YouTube breaks it) downloads the
