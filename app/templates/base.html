@@ -380,6 +380,103 @@ window.addEventListener("pagehide", function () { diag.flush("pagehide", true); 
 })();
 </script>
 {% if user is defined and user %}
+<button type="button" id="shout-fab" class="shout-fab" aria-label="Shoutbox">💬<span id="shout-badge" class="shout-badge" hidden></span></button>
+<div id="shout-panel" class="shout-panel" hidden>
+  <div class="shout-head">💬 Shoutbox
+    <button type="button" id="shout-close" class="cmt-close" aria-label="Close">✕</button></div>
+  <div class="shout-feed" id="shout-feed"></div>
+  <form id="shout-form">
+    <input maxlength="500" required placeholder="Say something…" aria-label="Message" autocomplete="off">
+    <button type="submit">Send</button>
+  </form>
+</div>
+<script>
+// shoutbox: floating bubble on every page; merged feed of chat + site-wide
+// comments (comments link to their thread); badge counts unseen posts
+(function () {
+  var fab = document.getElementById("shout-fab"), badge = document.getElementById("shout-badge");
+  var panel = document.getElementById("shout-panel"), feed = document.getElementById("shout-feed");
+  var state = { items: [], me: null, admin: false };
+  var SEEN = "shout:seen";
+  var seen = function () { try { return localStorage.getItem(SEEN) || ""; } catch (e) { return ""; } };
+  var setSeen = function (v) { try { localStorage.setItem(SEEN, v); } catch (e) {} };
+
+  function latest() {
+    return state.items.length ? state.items[state.items.length - 1].created_at : "";
+  }
+  function unseen() {
+    var s = seen();
+    return state.items.filter(function (i) {
+      return i.created_at > s && i.author !== state.me;
+    }).length;
+  }
+  function row(i) {
+    var div = document.createElement("div");
+    div.className = "shout-row";
+    var who = document.createElement("strong"); who.textContent = i.author;
+    div.appendChild(who);
+    if (i.type === "comment") {
+      div.appendChild(document.createTextNode(" 💬 on "));
+      var a = document.createElement("a");
+      a.href = (i.kind === "article" ? "/read/" : "/listen/") + i.ref + "#c" + i.thread_id;
+      a.textContent = i.title;
+      div.appendChild(a);
+    }
+    div.appendChild(document.createTextNode(": " + i.body));
+    if (i.type === "chat" && (i.author === state.me || state.admin)) {
+      var del = document.createElement("button");
+      del.type = "button"; del.textContent = "✕"; del.setAttribute("aria-label", "Delete message");
+      del.addEventListener("click", function () {
+        fetch("/api/shoutbox/delete/" + i.id, { method: "POST", credentials: "same-origin" })
+          .then(refresh);
+      });
+      div.appendChild(del);
+    }
+    return div;
+  }
+  function render() {
+    var n = unseen();
+    badge.hidden = n === 0;
+    badge.textContent = n > 9 ? "9+" : String(n);
+    if (panel.hidden) return;
+    var stick = feed.scrollTop + feed.clientHeight >= feed.scrollHeight - 30;
+    feed.replaceChildren();
+    state.items.forEach(function (i) { feed.appendChild(row(i)); });
+    if (stick) feed.scrollTop = feed.scrollHeight;
+    setSeen(latest());
+    badge.hidden = true;
+  }
+  function refresh() {
+    return fetch("/api/shoutbox", { credentials: "same-origin" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { if (d) { state = d; render(); } })
+      .catch(function () {});
+  }
+  fab.addEventListener("click", function () {
+    panel.hidden = !panel.hidden;
+    if (!panel.hidden) {
+      refresh().then(function () {
+        feed.scrollTop = feed.scrollHeight;
+        panel.querySelector("input").focus();
+      });
+    }
+  });
+  document.getElementById("shout-close").addEventListener("click", function () { panel.hidden = true; });
+  document.getElementById("shout-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var inp = panel.querySelector("input"), v = inp.value.trim();
+    if (!v) return;
+    inp.value = "";
+    fetch("/api/shoutbox", { method: "POST", credentials: "same-origin", body: JSON.stringify({ body: v }) })
+      .then(refresh).then(function () { feed.scrollTop = feed.scrollHeight; });
+  });
+  refresh();
+  setInterval(refresh, 25000);
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") refresh();
+  });
+})();
+</script>
 <script>
 // reply notifications: badge on the logo -> dropdown -> deep link to the reply
 (function () {

@@ -744,6 +744,35 @@ def api_comment_delete(comment_id: int, user=Depends(auth.current_user)):
     return {"ok": True}
 
 
+@app.get("/api/shoutbox")
+def api_shoutbox(user=Depends(auth.current_user)):
+    return {"items": db.list_shoutbox(),
+            "me": user["username"], "admin": bool(user["is_admin"])}
+
+
+@app.post("/api/shoutbox")
+async def api_shout(request: Request, user=Depends(auth.current_user)):
+    try:
+        data = json.loads(await request.body())
+        body = str(data.get("body", "")).strip() if isinstance(data, dict) else ""
+    except ValueError:
+        raise HTTPException(400, "bad payload")
+    if not body or len(body) > 500:
+        raise HTTPException(400, "bad message")
+    return {"id": db.add_shout(user["id"], body)}
+
+
+@app.post("/api/shoutbox/delete/{shout_id}")
+def api_shout_delete(shout_id: int, user=Depends(auth.current_user)):
+    s = db.get_shout(shout_id)
+    if not s:
+        raise HTTPException(404)
+    if s["user_id"] != user["id"] and not user["is_admin"]:
+        raise HTTPException(403)
+    db.delete_shout(shout_id)
+    return {"ok": True}
+
+
 @app.get("/api/notifications")
 def api_notifications(user=Depends(auth.current_user)):
     return {"items": db.list_notifications(user["id"])}

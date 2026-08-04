@@ -304,6 +304,13 @@ CREATE TABLE IF NOT EXISTS comments (
 );
 CREATE INDEX IF NOT EXISTS idx_comments_thread ON comments(thread_id);
 
+CREATE TABLE IF NOT EXISTS shout_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    body TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS notifications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,          -- recipient
@@ -2016,3 +2023,48 @@ def mark_notifications_read(user_id: int, notif_id: int | None = None) -> None:
         else:
             c.execute("UPDATE notifications SET read_at = ? WHERE user_id = ? AND id = ?",
                       (now_iso(), user_id, notif_id))
+
+
+# ---------- shoutbox ----------
+
+def add_shout(user_id: int, body: str) -> int:
+    with conn() as c:
+        return c.execute("INSERT INTO shout_messages (user_id, body, created_at) VALUES (?,?,?)",
+                         (user_id, body, now_iso())).lastrowid
+
+
+def get_shout(shout_id: int):
+    with conn() as c:
+        return c.execute("SELECT * FROM shout_messages WHERE id = ?", (shout_id,)).fetchone()
+
+
+def delete_shout(shout_id: int) -> None:
+    with conn() as c:
+        c.execute("DELETE FROM shout_messages WHERE id = ?", (shout_id,))
+
+
+def list_shoutbox(limit: int = 50) -> list[dict]:
+    """Merged feed, oldest first: chat messages + every comment site-wide
+    (comments carry kind/ref/thread_id so the client can link to the thread)."""
+    with conn() as c:
+        shouts = c.execute(
+            "SELECT s.id, s.body, s.created_at, u.username AS author "
+            "FROM shout_messages s JOIN users u ON u.id = s.user_id "
+            "ORDER BY s.id DESC LIMIT ?", (limit,)).fetchall()
+        comments = c.execute(
+            "SELECT c.id, c.body, c.created_at, u.username AS author, "
+            "       c.thread_id, t.kind, t.ref "
+            "FROM comments c JOIN users u ON u.id = c.user_id "
+            "JOIN comment_threads t ON t.id = c.thread_id "
+            "ORDER BY c.id DESC LIMIT ?", (limit,)).fetchall()
+        items = [{"type": "chat", "id": r["id"], "author": r["author"],
+                  "body": r["body"], "created_at": r["created_at"]} for r in shouts]
+        for r in comments:
+            table = "articles" if r["kind"] == "article" else "episodes"
+            title = c.execute(f"SELECT title FROM {table} WHERE slug = ?", (r["ref"],)).fetchone()
+            items.append({"type": "comment", "id": r["id"], "author": r["author"],
+                          "body": r["body"], "created_at": r["created_at"],
+                          "kind": r["kind"], "ref": r["ref"], "thread_id": r["thread_id"],
+                          "title": title["title"] if title else r["ref"]})
+        items.sort(key=lambda x: x["created_at"], reverse=True)
+        return list(reversed(items[:limit]))
