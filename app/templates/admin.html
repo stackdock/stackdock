@@ -38,7 +38,7 @@
   <ul class="rows">
     {% for i in invites %}
     <li>
-      <span class="spine">{{ "used by " + i.used_by if i.used_by else "unused" }}</span>
+      <span class="spine">{{ "used by " + i.used_by if i.used_by else "unused" }}{{ " · by " + i.created_by if i.created_by }}</span>
       <span class="row-title"><code>{{ i.code }}</code> <time>{{ i.created_at[:10] }}</time></span>
       <form method="post" action="/admin/invite/delete" class="inline-form">
         <input type="hidden" name="code" value="{{ i.code }}">

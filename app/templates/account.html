@@ -12,4 +12,28 @@
     <button type="submit">Change password</button>
   </form>
 </div>
+
+<div class="auth-card" style="margin-top:1rem">
+  <h2>Invite a friend</h2>
+  {% if can_invite %}
+  <form method="post" action="/account/invite">
+    <button type="submit">Create invite link</button>
+  </form>
+  {% if new_invite %}
+  <p class="form-ok">New invite link (single use):</p>
+  <p><code>{{ new_invite }}</code></p>
+  {% endif %}
+  {% if my_invites %}
+  <ul class="rows">
+    {% for i in my_invites %}
+    <li><span class="spine">{{ "used by " + i.used_by if i.used_by else "unused" }}</span>
+        <span class="row-title"><code>{{ invite_base }}{{ i.code }}</code></span>
+        <time>{{ i.created_at[:10] }}</time></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {% else %}
+  <p class="hint">Invites unlock once your account is 30 days old.</p>
+  {% endif %}
+</div>
 {% endblock %}

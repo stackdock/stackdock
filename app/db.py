@@ -392,7 +392,8 @@ def init():
                            ("radio_state", "current_track_id INTEGER"),
                            ("radio_state", "started_at REAL"),
                            ("radio_state", "cycle INTEGER NOT NULL DEFAULT 0"),
-                           ("users", "session_gen INTEGER NOT NULL DEFAULT 0")]:
+                           ("users", "session_gen INTEGER NOT NULL DEFAULT 0"),
+                           ("invites", "created_by TEXT")]:
             try:
                 c.execute(f"ALTER TABLE {table} ADD COLUMN {col}")
             except sqlite3.OperationalError as e:
@@ -959,14 +960,21 @@ def set_password(user_id: int, password_hash: str) -> None:
                   "WHERE id = ?", (password_hash, user_id))
 
 
-def create_invite(code: str) -> None:
+def create_invite(code: str, created_by: str | None = None) -> None:
     with conn() as c:
-        c.execute("INSERT INTO invites (code, created_at) VALUES (?,?)", (code, now_iso()))
+        c.execute("INSERT INTO invites (code, created_at, created_by) VALUES (?,?,?)",
+                  (code, now_iso(), created_by))
 
 
 def list_invites():
     with conn() as c:
         return c.execute("SELECT * FROM invites ORDER BY created_at DESC").fetchall()
+
+
+def list_invites_by(username: str):
+    with conn() as c:
+        return c.execute("SELECT * FROM invites WHERE created_by = ? ORDER BY created_at DESC",
+                         (username,)).fetchall()
 
 
 class SignupError(Exception):

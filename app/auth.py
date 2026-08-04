@@ -154,9 +154,9 @@ def ensure_admin_user() -> None:
         )
 
 
-def new_invite_code() -> str:
+def new_invite_code(created_by: str | None = None) -> str:
     code = secrets.token_urlsafe(12)
-    db.create_invite(code)
+    db.create_invite(code, created_by)
     return code
 
 

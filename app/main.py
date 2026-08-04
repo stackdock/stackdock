@@ -339,9 +339,42 @@ def signup(request: Request, invite: str = Form(...), username: str = Form(...),
     return resp
 
 
+INVITE_MIN_ACCOUNT_DAYS = 30
+
+
+def _can_invite(user) -> bool:
+    if user["is_admin"]:
+        return True
+    try:
+        joined = datetime.fromisoformat(user["created_at"])
+    except (TypeError, ValueError):
+        return False
+    if joined.tzinfo is None:
+        joined = joined.replace(tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - joined).days >= INVITE_MIN_ACCOUNT_DAYS
+
+
+def _account_ctx(request, user, **kw):
+    ctx = dict(user=user, message=None, error=None, new_invite=None,
+               can_invite=_can_invite(user),
+               my_invites=db.list_invites_by(user["username"]),
+               invite_base=f"{config.PUBLIC_BASE_URL}/signup?invite=")
+    ctx.update(kw)
+    return render(request, "account.html", **ctx)
+
+
 @app.get("/account", response_class=HTMLResponse)
 def account_page(request: Request, user=Depends(auth.current_user)):
-    return render(request, "account.html", user=user, message=None, error=None)
+    return _account_ctx(request, user)
+
+
+@app.post("/account/invite")
+def account_invite(request: Request, user=Depends(auth.current_user)):
+    if not _can_invite(user):
+        raise HTTPException(403, f"Accounts unlock invites after {INVITE_MIN_ACCOUNT_DAYS} days")
+    code = auth.new_invite_code(user["username"])
+    return _account_ctx(request, user,
+                        new_invite=f"{config.PUBLIC_BASE_URL}/signup?invite={code}")
 
 
 @app.get("/help", response_class=HTMLResponse)
@@ -354,7 +387,7 @@ def help_page(request: Request, user=Depends(auth.current_user)):
 def change_password(request: Request, user=Depends(auth.current_user),
                     current: str = Form(...), new: str = Form(...), new2: str = Form(...)):
     def page(message=None, error=None):
-        return render(request, "account.html", user=user, message=message, error=error)
+        return _account_ctx(request, user, message=message, error=error)
     if not auth.verify_password(current, user["password_hash"]):
         return page(error="Current password is wrong.")
     if new != new2:
@@ -421,7 +454,7 @@ def admin_page(request: Request, user=Depends(auth.current_admin)):
 
 @app.post("/admin/invite")
 def admin_invite(request: Request, user=Depends(auth.current_admin)):
-    code = auth.new_invite_code()
+    code = auth.new_invite_code(user["username"])
     invite_link = f"{config.PUBLIC_BASE_URL}/signup?invite={code}"
     return render(request, "admin.html", user=user,
                   users=db.list_users(), invites=db.list_invites(),
