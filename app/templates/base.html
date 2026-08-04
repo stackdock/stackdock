@@ -144,11 +144,18 @@
        history.back() when there is history, else the index link. -->
   <script>
   (function () {
-    // close the Other menu on outside click
+    // Other: dropdown on desktop (closes on outside click); on phones the ☰
+    // menu is the overflow, so it stays open and renders flat
     var o = document.getElementById("nav-other");
-    if (o) document.addEventListener("click", function (e) {
-      if (o.open && !o.contains(e.target)) o.open = false;
-    });
+    var phone = matchMedia("(max-width: 640px)");
+    function syncOther() { if (o && phone.matches) o.open = true; }
+    if (o) {
+      syncOther();
+      phone.addEventListener("change", syncOther);
+      document.addEventListener("click", function (e) {
+        if (!phone.matches && o.open && !o.contains(e.target)) o.open = false;
+      });
+    }
     var b = document.getElementById("back-pill");
     if (location.pathname === "/") { b.remove(); return; }   // tabs live in the dock
     b.addEventListener("click", function (e) {

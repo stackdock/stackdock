@@ -816,7 +816,7 @@ mark.cmt-hl:hover { background: color-mix(in srgb, var(--shelf) 30%, transparent
 }
 .nav-other-menu a, .nav-other-menu .logout-form button { padding: 0.25rem 0; }
 @media (max-width: 640px) {
-  /* inside the ☰ menu the disclosure expands in place, no floating card */
-  .nav-other-menu { position: static; border: 0; box-shadow: none; padding: 0.2rem 0 0.2rem 1rem; }
-  .nav-other summary { font-size: 0.72rem; letter-spacing: 0.04em; padding: 0.45rem 0.5rem; min-height: 40px; display: inline-flex; align-items: center; }
+  /* the ☰ menu IS the overflow: no nesting — summary hidden, links flat */
+  .nav-other summary { display: none; }
+  .nav-other-menu { position: static; border: 0; box-shadow: none; padding: 0; background: none; display: contents; }
 }
