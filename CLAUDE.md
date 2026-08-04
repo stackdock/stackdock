@@ -79,6 +79,22 @@ app/ingest/podcast_rss.py    poll PODCAST_FEEDS (Substack private podcast feeds,
 app/ingest/rss_articles.py   poll ARTICLE_FEEDS (JSON {name: url}; any full-text blog RSS/Atom,
                              e.g. lukesmith.xyz/index.xml) → articles; dedupe rss:{guid};
                              first sync per publication silent; job id "articles" (hourly)
+(comments)               Highlight-anchored threads on articles + timestamp threads on
+                         episodes, with reply notifications. Tables comment_threads
+                         (anchor JSON: {text,prefix,suffix} | {t:sec}) / comments /
+                         notifications; API /api/comments/{kind}/{ref} (GET list, POST new
+                         thread), /api/threads/{id}/reply, /api/threads/comment/{id}/delete
+                         (own or admin; emptied thread deleted), /api/notifications (+/read).
+                         REPLY/DELETE LIVE UNDER /api/threads — a /api/comments/reply/{id}
+                         path is shadowed by the earlier {kind}/{ref} route (404 as
+                         kind='reply'). Article anchoring is CLIENT-side: match prefix+text+
+                         suffix against concatenated text nodes, wrap in <mark data-thread>;
+                         unmatched (edited) passages fall back to the index below the article.
+                         Selection button uses pointerdown (click fires after iOS clears the
+                         selection). Panel: margin card >=1100px, bottom sheet below. Replies
+                         notify all thread participants except the author; the logo badge
+                         (#notif-dot, base.html) polls /api/notifications every 90s and
+                         deep-links /read|listen/{slug}#c{thread} (episode pages seek to t).
 app/radio.py             Member radio (/radio, nav '📻 Radio'): anyone submits a song (text
                          or any-platform URL; non-YouTube links resolve via og:title) -> yt-dlp
                          (PINNED in requirements; bump when YouTube breaks it) downloads the
