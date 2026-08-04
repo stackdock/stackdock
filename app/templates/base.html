@@ -115,20 +115,24 @@
     </select>
     <nav>
       {% if user is defined and user %}
-        <a href="/" class="dock-dup"><span class="fun-label">Articles</span><span class="work-label">Documents</span></a>
-        <a href="/?tab=audio" class="dock-dup"><span class="fun-label">Podcasts</span><span class="work-label">Briefings</span></a>
+        <a href="/" class="dock-dup"><span class="fun-label">Content</span><span class="work-label">Library</span></a>
         <a href="/nyt"><span class="fun-label">NYT</span><span class="work-label">Wire</span></a>
         <a href="/youtube"><span class="fun-label">YouTube</span><span class="work-label">Video</span></a>
         <a href="/mde"><span class="fun-label">mde.tv</span><span class="work-label">Archive</span></a>
         <a href="/plex">Plex</a>
         <a href="/radio">📻 Radio</a>
         <a href="/offline" title="Saved for offline" class="dock-dup">📦 <span class="fun-label">Saved</span><span class="work-label">Offline</span></a>
-        <a href="/accounts">Accounts</a>
-        <a href="/help"><span class="fun-label">Help</span><span class="work-label">Docs</span></a>
-        <a href="/status">Status</a>
-        <a href="/account">Account</a>
-        {% if user.is_admin %}<a href="/admin">Admin</a>{% endif %}
-        <form method="post" action="/logout" class="logout-form"><button type="submit">Log out</button></form>
+        <details class="nav-other" id="nav-other">
+          <summary>Other ▾</summary>
+          <div class="nav-other-menu">
+            <a href="/accounts">Accounts</a>
+            <a href="/help"><span class="fun-label">Help</span><span class="work-label">Docs</span></a>
+            <a href="/status">Status</a>
+            <a href="/account">Account</a>
+            {% if user.is_admin %}<a href="/admin">Admin</a>{% endif %}
+            <form method="post" action="/logout" class="logout-form"><button type="submit">Log out</button></form>
+          </div>
+        </details>
       {% endif %}
     </nav>
   </header>
@@ -140,6 +144,11 @@
        history.back() when there is history, else the index link. -->
   <script>
   (function () {
+    // close the Other menu on outside click
+    var o = document.getElementById("nav-other");
+    if (o) document.addEventListener("click", function (e) {
+      if (o.open && !o.contains(e.target)) o.open = false;
+    });
     var b = document.getElementById("back-pill");
     if (location.pathname === "/") { b.remove(); return; }   // tabs live in the dock
     b.addEventListener("click", function (e) {

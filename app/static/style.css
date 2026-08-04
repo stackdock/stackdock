@@ -795,3 +795,28 @@ mark.cmt-hl:hover { background: color-mix(in srgb, var(--shelf) 30%, transparent
   .shout-fab { bottom: calc(4.9rem + env(safe-area-inset-bottom, 0px)); }
   .shout-panel { bottom: calc(8.2rem + env(safe-area-inset-bottom, 0px)); height: min(380px, 55vh); }
 }
+
+/* hidden must win over the panel's display:flex */
+.shout-panel[hidden] { display: none; }
+
+/* ---------- masthead "Other" disclosure ---------- */
+.nav-other { position: relative; display: inline-block; }
+.nav-other summary {
+  list-style: none; cursor: pointer;
+  color: var(--ink-soft); font-family: var(--mono); font-size: 0.8rem;
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
+.nav-other summary::-webkit-details-marker { display: none; }
+.nav-other summary:hover { color: var(--shelf); }
+.nav-other-menu {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 90;
+  display: flex; flex-direction: column; gap: 0.1rem; min-width: 9rem;
+  background: var(--panel); border: 1px solid var(--rule); border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.2); padding: 0.5rem 0.8rem;
+}
+.nav-other-menu a, .nav-other-menu .logout-form button { padding: 0.25rem 0; }
+@media (max-width: 640px) {
+  /* inside the ☰ menu the disclosure expands in place, no floating card */
+  .nav-other-menu { position: static; border: 0; box-shadow: none; padding: 0.2rem 0 0.2rem 1rem; }
+  .nav-other summary { font-size: 0.72rem; letter-spacing: 0.04em; padding: 0.45rem 0.5rem; min-height: 40px; display: inline-flex; align-items: center; }
+}
