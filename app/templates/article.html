@@ -28,6 +28,255 @@
     })();
   </script>
   {% elif a.cover_image and a.html and 'class="stub"' in a.html %}<img class="episode-art" src="{{ a.cover_image }}" alt="">{% endif %}
-  <div class="body">{{ a.html | sanitize | safe }}</div>
+  <div class="body" id="article-body">{{ a.html | sanitize | safe }}</div>
+
+  <section id="cmt-index" hidden>
+    <h2>💬 Comments <span class="count" id="cmt-count"></span></h2>
+    <ul class="cmt-list" id="cmt-list"></ul>
+  </section>
 </article>
+
+<button type="button" id="cmt-add" class="cmt-add" hidden>💬 Comment</button>
+<aside id="cmt-panel" class="cmt-panel" hidden></aside>
+
+<script>
+(function () {
+  // Highlight-anchored comment threads. Anchors are {text, prefix, suffix}
+  // matched against the article's concatenated text nodes; matched ranges are
+  // wrapped in <mark data-thread>. Threads whose anchor no longer matches
+  // still appear in the index below the article.
+  var body = document.getElementById("article-body");
+  var addBtn = document.getElementById("cmt-add"), panel = document.getElementById("cmt-panel");
+  var API = "/api/comments/article/{{ a.slug }}";
+  var state = { threads: [], me: null, admin: false };
+  var pendingAnchor = null;
+
+  function nodesAndText() {
+    var walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
+    var nodes = [], starts = [], joined = "", n;
+    while ((n = walker.nextNode())) { nodes.push(n); starts.push(joined.length); joined += n.nodeValue; }
+    return { nodes: nodes, starts: starts, text: joined };
+  }
+
+  function clearMarks() {
+    body.querySelectorAll("mark.cmt-hl").forEach(function (m) {
+      var p = m.parentNode;
+      while (m.firstChild) p.insertBefore(m.firstChild, m);
+      p.removeChild(m); p.normalize();
+    });
+  }
+
+  function anchorThread(t) {
+    var a; try { a = JSON.parse(t.anchor); } catch (e) { return false; }
+    var d = nodesAndText();
+    var idx = -1, combo = (a.prefix || "") + a.text + (a.suffix || "");
+    var ci = d.text.indexOf(combo);
+    if (ci >= 0) idx = ci + (a.prefix || "").length;
+    else idx = d.text.indexOf(a.text);
+    if (idx < 0) return false;
+    var end = idx + a.text.length, marked = false;
+    for (var i = 0; i < d.nodes.length; i++) {
+      var ns = d.starts[i], ne = ns + d.nodes[i].nodeValue.length;
+      if (ne <= idx || ns >= end) continue;
+      var r = document.createRange();
+      r.setStart(d.nodes[i], Math.max(idx, ns) - ns);
+      r.setEnd(d.nodes[i], Math.min(end, ne) - ns);
+      var m = document.createElement("mark");
+      m.className = "cmt-hl"; m.dataset.thread = t.id;
+      try { r.surroundContents(m); marked = true; } catch (e) {}
+    }
+    return marked;
+  }
+
+  function renderHighlights() {
+    clearMarks();
+    var list = document.getElementById("cmt-list");
+    list.replaceChildren();
+    state.threads.forEach(function (t) {
+      t.anchored = anchorThread(t);
+      var a; try { a = JSON.parse(t.anchor); } catch (e) { a = { text: "" }; }
+      var li = document.createElement("li");
+      var q = document.createElement("blockquote");
+      q.textContent = a.text ? "“" + a.text.slice(0, 120) + "”" : "(comment)";
+      var meta = document.createElement("span");
+      meta.className = "row-meta";
+      meta.textContent = t.comments.length + (t.comments.length === 1 ? " comment" : " comments")
+                         + (t.anchored ? "" : " · original passage changed");
+      li.append(q, meta);
+      li.dataset.thread = t.id;
+      li.addEventListener("click", function () { openThread(t.id, li); });
+      list.appendChild(li);
+    });
+    document.getElementById("cmt-count").textContent = state.threads.length || "";
+    document.getElementById("cmt-index").hidden = state.threads.length === 0;
+  }
+
+  function load() {
+    return fetch(API, { credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { state = d; renderHighlights(); });
+  }
+
+  function positionPanel(refEl) {
+    if (matchMedia("(min-width: 1100px)").matches && refEl) {
+      var y = refEl.getBoundingClientRect().top;
+      panel.classList.remove("sheet");
+      panel.style.top = Math.max(70, Math.min(y, innerHeight - 320)) + "px";
+    } else {
+      panel.classList.add("sheet");
+      panel.style.top = "";
+    }
+  }
+
+  function commentRow(c) {
+    var div = document.createElement("div");
+    div.className = "cmt";
+    var head = document.createElement("div");
+    head.className = "cmt-head";
+    var who = document.createElement("strong");
+    who.textContent = c.username;
+    var when = document.createElement("time");
+    when.textContent = (c.created_at || "").slice(0, 16).replace("T", " ");
+    head.append(who, when);
+    if (c.username === state.me || state.admin) {
+      var del = document.createElement("button");
+      del.type = "button"; del.textContent = "✕"; del.title = "Delete"; del.setAttribute("aria-label", "Delete comment");
+      del.addEventListener("click", function () {
+        fetch("/api/threads/comment/" + c.id + "/delete", { method: "POST", credentials: "same-origin" })
+          .then(function () { return load(); })
+          .then(function () { panel.hidden = true; });
+      });
+      head.appendChild(del);
+    }
+    var p = document.createElement("p");
+    p.textContent = c.body;
+    div.append(head, p);
+    return div;
+  }
+
+  function form(placeholder, submitLabel, onSubmit) {
+    var f = document.createElement("form");
+    var ta = document.createElement("textarea");
+    ta.required = true; ta.maxLength = 4000; ta.rows = 3; ta.placeholder = placeholder;
+    var b = document.createElement("button");
+    b.type = "submit"; b.textContent = submitLabel;
+    f.append(ta, b);
+    f.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var v = ta.value.trim();
+      if (v) onSubmit(v, b);
+    });
+    return f;
+  }
+
+  function closeBtn() {
+    var x = document.createElement("button");
+    x.type = "button"; x.className = "cmt-close"; x.textContent = "✕"; x.setAttribute("aria-label", "Close");
+    x.addEventListener("click", function () { panel.hidden = true; });
+    return x;
+  }
+
+  function openThread(tid, refEl) {
+    var t = state.threads.find(function (x) { return x.id === Number(tid); });
+    if (!t) return;
+    var a; try { a = JSON.parse(t.anchor); } catch (e) { a = { text: "" }; }
+    panel.replaceChildren(closeBtn());
+    var q = document.createElement("blockquote");
+    q.textContent = "“" + (a.text || "").slice(0, 200) + "”";
+    panel.appendChild(q);
+    t.comments.forEach(function (c) { panel.appendChild(commentRow(c)); });
+    panel.appendChild(form("Reply…", "Reply", function (v, btn) {
+      btn.disabled = true;
+      fetch("/api/threads/" + t.id + "/reply", {
+        method: "POST", credentials: "same-origin", body: JSON.stringify({ body: v }),
+      }).then(function () { return load(); }).then(function () {
+        openThread(tid, refEl);
+      });
+    }));
+    panel.hidden = false;
+    positionPanel(refEl || body.querySelector('mark[data-thread="' + tid + '"]'));
+  }
+
+  function openNew(anchor, refEl) {
+    panel.replaceChildren(closeBtn());
+    var q = document.createElement("blockquote");
+    q.textContent = "“" + anchor.text.slice(0, 200) + "”";
+    panel.appendChild(q);
+    panel.appendChild(form("Start a thread…", "Comment", function (v, btn) {
+      btn.disabled = true;
+      fetch(API, {
+        method: "POST", credentials: "same-origin",
+        body: JSON.stringify({ anchor: anchor, body: v }),
+      }).then(function (r) { return r.json(); }).then(function (d) {
+        return load().then(function () { openThread(d.thread_id); });
+      });
+    }));
+    panel.hidden = false;
+    positionPanel(refEl);
+  }
+
+  // ---- selection -> floating Comment button (mouse + touch) ----
+  function captureSelection() {
+    var sel = getSelection();
+    if (!sel || sel.isCollapsed || sel.rangeCount === 0) return null;
+    var range = sel.getRangeAt(0);
+    if (!body.contains(range.commonAncestorContainer)) return null;
+    var text = sel.toString();
+    if (!text.trim() || text.length > 500) return null;
+    var d = nodesAndText();
+    var sIdx = -1;
+    for (var i = 0; i < d.nodes.length; i++) {
+      if (d.nodes[i] === range.startContainer) { sIdx = d.starts[i] + range.startOffset; break; }
+    }
+    if (sIdx < 0) sIdx = d.text.indexOf(text);
+    if (sIdx < 0) return null;
+    return {
+      anchor: {
+        text: text,
+        prefix: d.text.slice(Math.max(0, sIdx - 40), sIdx),
+        suffix: d.text.slice(sIdx + text.length, sIdx + text.length + 40),
+      },
+      rect: range.getBoundingClientRect(),
+    };
+  }
+
+  var selTimer = null;
+  document.addEventListener("selectionchange", function () {
+    clearTimeout(selTimer);
+    selTimer = setTimeout(function () {
+      var cap = captureSelection();
+      if (cap) {
+        pendingAnchor = cap.anchor;
+        addBtn.style.top = Math.min(cap.rect.bottom + 8, innerHeight - 48) + "px";
+        addBtn.style.left = Math.min(Math.max(8, cap.rect.left), innerWidth - 130) + "px";
+        addBtn.hidden = false;
+      } else if (document.activeElement !== addBtn) {
+        addBtn.hidden = true;
+      }
+    }, 250);
+  });
+  // pointerdown, not click: iOS clears the selection before click fires
+  addBtn.addEventListener("pointerdown", function (e) {
+    e.preventDefault();
+    if (!pendingAnchor) return;
+    var rect = addBtn.getBoundingClientRect();
+    addBtn.hidden = true;
+    openNew(pendingAnchor, { getBoundingClientRect: function () { return rect; } });
+  });
+
+  body.addEventListener("click", function (e) {
+    var m = e.target.closest("mark.cmt-hl");
+    if (m) openThread(m.dataset.thread, m);
+  });
+
+  load().then(function () {
+    var h = location.hash.match(/^#c(\d+)$/);
+    if (h) {
+      var m = body.querySelector('mark[data-thread="' + h[1] + '"]');
+      if (m) m.scrollIntoView({ block: "center" });
+      openThread(h[1], m);
+    }
+  });
+})();
+</script>
 {% endblock %}

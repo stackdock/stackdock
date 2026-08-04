@@ -666,6 +666,100 @@ async def api_player_diag(slug: str, request: Request, user=Depends(auth.current
     return {"ok": True}
 
 
+# ---------------- comments & notifications ----------------
+
+def _comment_target(kind: str, ref: str):
+    if kind == "article":
+        return db.get_article_by_slug(ref)
+    if kind == "episode":
+        return db.get_episode_by_slug(ref)
+    return None
+
+
+def _valid_anchor(kind: str, anchor) -> bool:
+    if not isinstance(anchor, dict):
+        return False
+    if kind == "article":
+        text = anchor.get("text")
+        return (isinstance(text, str) and 0 < len(text) <= 500
+                and isinstance(anchor.get("prefix", ""), str) and len(anchor.get("prefix", "")) <= 100
+                and isinstance(anchor.get("suffix", ""), str) and len(anchor.get("suffix", "")) <= 100)
+    t = anchor.get("t")
+    return isinstance(t, (int, float)) and 0 <= t <= 60 * 60 * 24
+
+
+@app.get("/api/comments/{kind}/{ref}")
+def api_comments(kind: str, ref: str, user=Depends(auth.current_user)):
+    if not _comment_target(kind, ref):
+        raise HTTPException(404)
+    return {"threads": db.list_comment_threads(kind, ref),
+            "me": user["username"], "admin": bool(user["is_admin"])}
+
+
+@app.post("/api/comments/{kind}/{ref}")
+async def api_comment_thread(kind: str, ref: str, request: Request,
+                             user=Depends(auth.current_user)):
+    if not _comment_target(kind, ref):
+        raise HTTPException(404)
+    try:
+        data = json.loads(await request.body())
+        if not isinstance(data, dict):
+            raise ValueError
+        body = str(data.get("body", "")).strip()
+        anchor = data.get("anchor")
+    except (ValueError, TypeError):
+        raise HTTPException(400, "bad payload")
+    if not body or len(body) > 4000 or not _valid_anchor(kind, anchor):
+        raise HTTPException(400, "bad comment")
+    tid = db.create_comment_thread(kind, ref, json.dumps(anchor), user["id"], body)
+    return {"thread_id": tid}
+
+
+@app.post("/api/threads/{thread_id}/reply")
+async def api_comment_reply(thread_id: int, request: Request,
+                            user=Depends(auth.current_user)):
+    try:
+        data = json.loads(await request.body())
+        if not isinstance(data, dict):
+            raise ValueError
+        body = str(data.get("body", "")).strip()
+    except (ValueError, TypeError):
+        raise HTTPException(400, "bad payload")
+    if not body or len(body) > 4000:
+        raise HTTPException(400, "bad comment")
+    cid = db.add_comment(thread_id, user["id"], body)
+    if cid is None:
+        raise HTTPException(404)
+    return {"comment_id": cid}
+
+
+@app.post("/api/threads/comment/{comment_id}/delete")
+def api_comment_delete(comment_id: int, user=Depends(auth.current_user)):
+    c = db.get_comment(comment_id)
+    if not c:
+        raise HTTPException(404)
+    if c["user_id"] != user["id"] and not user["is_admin"]:
+        raise HTTPException(403)
+    db.delete_comment(comment_id)
+    return {"ok": True}
+
+
+@app.get("/api/notifications")
+def api_notifications(user=Depends(auth.current_user)):
+    return {"items": db.list_notifications(user["id"])}
+
+
+@app.post("/api/notifications/read")
+async def api_notifications_read(request: Request, user=Depends(auth.current_user)):
+    try:
+        data = json.loads((await request.body()) or b"{}")
+        nid = data.get("id") if isinstance(data, dict) else None
+    except ValueError:
+        nid = None
+    db.mark_notifications_read(user["id"], int(nid) if nid is not None else None)
+    return {"ok": True}
+
+
 @app.post("/publications/add")
 def publications_add(request: Request, user=Depends(auth.current_user),
                      name: str = Form(...), base_url: str = Form(...)):

@@ -659,3 +659,89 @@ html[data-theme="brimstone"] .episode-art { opacity: 0.9; }
 .filter-box .pub-filter { margin: 0; }
 .chip-x { font-weight: 700; opacity: 0.85; margin-left: 0.1rem; }
 .pub-filter a.active .chip-x:hover { opacity: 1; }
+
+/* ---------- comments & notifications ---------- */
+mark.cmt-hl {
+  background: color-mix(in srgb, var(--shelf) 18%, transparent);
+  border-bottom: 2px solid var(--shelf);
+  color: inherit; cursor: pointer; padding: 0;
+}
+mark.cmt-hl:hover { background: color-mix(in srgb, var(--shelf) 30%, transparent); }
+.cmt-add {
+  position: fixed; z-index: 60;
+  background: var(--shelf); color: #fff; border: 0; border-radius: 99px;
+  font-family: var(--mono); font-size: 0.78rem; padding: 0.45rem 0.9rem;
+  cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+.cmt-panel {
+  position: fixed; z-index: 70; right: 16px; width: 320px; max-height: 70vh;
+  overflow-y: auto; background: var(--panel); border: 1px solid var(--rule);
+  border-radius: 10px; padding: 0.75rem 0.9rem;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.2);
+}
+.cmt-panel.sheet {
+  right: 0; left: 0; bottom: 0; top: auto; width: auto; max-height: 60vh;
+  border-radius: 12px 12px 0 0; padding-bottom: max(0.9rem, env(safe-area-inset-bottom));
+}
+.cmt-panel blockquote {
+  margin: 0 0 0.6rem; padding: 0.3rem 0.6rem; border-left: 3px solid var(--shelf);
+  background: var(--shelf-soft); color: var(--ink); font-size: 0.82rem;
+  font-family: var(--serif); border-radius: 0 6px 6px 0;
+}
+.cmt-close { float: right; background: none; border: 0; cursor: pointer; color: var(--ink-soft); font-size: 1rem; min-width: 32px; min-height: 32px; }
+.cmt { border-top: 1px solid var(--rule); padding: 0.5rem 0; }
+.cmt:first-of-type { border-top: 0; }
+.cmt-head { display: flex; align-items: baseline; gap: 0.5rem; font-size: 0.75rem; }
+.cmt-head strong { color: var(--shelf); font-family: var(--mono); }
+.cmt-head time { color: var(--ink-soft); font-family: var(--mono); font-size: 0.68rem; flex: 1; }
+.cmt-head button { background: none; border: 0; color: var(--ink-soft); cursor: pointer; }
+.cmt-head button:hover { color: #b23b3b; }
+.cmt p { margin: 0.25rem 0 0; font-size: 0.88rem; white-space: pre-wrap; }
+.cmt-panel form, #cmt-new form { margin-top: 0.6rem; }
+.cmt-panel textarea, #cmt-new textarea, .cmt-list textarea {
+  width: 100%; border: 1px solid var(--rule); border-radius: 6px;
+  background: var(--paper); color: var(--ink); font-family: var(--sans);
+  font-size: 0.88rem; padding: 0.45rem;
+}
+.cmt-panel form button, #cmt-new form button, .cmt-list form button, .cmt-at {
+  margin-top: 0.35rem; font-family: var(--mono); font-size: 0.72rem;
+  background: var(--shelf); color: #fff; border: 0; border-radius: 5px;
+  padding: 0.35rem 0.9rem; cursor: pointer;
+}
+.cmt-list { list-style: none; margin: 0.5rem 0 0; padding: 0; }
+.cmt-list > li { border-bottom: 1px solid var(--rule); padding: 0.5rem 0; cursor: pointer; }
+.cmt-list blockquote { margin: 0 0 0.2rem; font-family: var(--serif); font-size: 0.85rem; }
+.cmt-stamps > li { cursor: default; }
+.cmt-stamps summary { cursor: pointer; font-size: 0.85rem; }
+.cmt-stamp {
+  font-family: var(--mono); font-size: 0.72rem; background: var(--shelf); color: #fff;
+  border: 0; border-radius: 99px; padding: 0.2rem 0.6rem; cursor: pointer;
+}
+.brand-wrap { position: relative; display: inline-flex; align-items: center; }
+.notif-dot {
+  position: absolute; top: -4px; right: -10px; z-index: 20;
+  background: #c0392b; color: #fff; border: 0; border-radius: 99px;
+  min-width: 20px; height: 20px; font-size: 0.68rem; font-family: var(--mono);
+  cursor: pointer; padding: 0 5px; line-height: 20px;
+}
+.notif-menu {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 90;
+  width: min(340px, 92vw); background: var(--panel); border: 1px solid var(--rule);
+  border-radius: 10px; box-shadow: 0 6px 24px rgba(0,0,0,0.25); overflow: hidden;
+}
+.notif-menu a {
+  display: block; padding: 0.55rem 0.75rem; text-decoration: none; color: var(--ink);
+  border-bottom: 1px solid var(--rule); font-size: 0.8rem;
+}
+.notif-menu a:hover { background: var(--shelf-soft); }
+.notif-menu a strong { color: var(--shelf); font-family: var(--mono); }
+.notif-menu a em { font-style: normal; font-family: var(--serif); }
+.notif-menu a span { display: block; color: var(--ink-soft); font-size: 0.74rem; margin-top: 0.15rem; }
+.notif-clear {
+  display: block; width: 100%; background: none; border: 0; cursor: pointer;
+  font-family: var(--mono); font-size: 0.7rem; color: var(--ink-soft); padding: 0.5rem;
+}
+.notif-clear:hover { color: var(--shelf); }
+@media (max-width: 640px) {
+  .cmt-add { font-size: 16px; }
+}

@@ -284,6 +284,34 @@ CREATE TABLE IF NOT EXISTS episodes (
     is_paid INTEGER DEFAULT 0,         -- 1 = the source post is paid-subscriber-only
     notified INTEGER DEFAULT 0         -- 1 once announced in a Discord digest
 );
+
+CREATE TABLE IF NOT EXISTS comment_threads (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind TEXT NOT NULL,                -- 'article' | 'episode'
+    ref TEXT NOT NULL,                 -- slug
+    anchor TEXT NOT NULL,              -- JSON: {text,prefix,suffix} | {t: seconds}
+    created_by INTEGER NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_threads_ref ON comment_threads(kind, ref);
+
+CREATE TABLE IF NOT EXISTS comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    thread_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    body TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_comments_thread ON comments(thread_id);
+
+CREATE TABLE IF NOT EXISTS notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,          -- recipient
+    comment_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    read_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, read_at);
 """
 
 
@@ -1885,3 +1913,106 @@ def is_bussy_member(user_id: int) -> bool:
 def count_bussy_members() -> int:
     with conn() as c:
         return c.execute("SELECT COUNT(*) FROM bussy_members").fetchone()[0]
+
+
+# ---------- comments & notifications ----------
+
+def create_comment_thread(kind: str, ref: str, anchor: str, user_id: int, body: str) -> int:
+    with conn() as c:
+        cur = c.execute(
+            "INSERT INTO comment_threads (kind, ref, anchor, created_by, created_at) "
+            "VALUES (?,?,?,?,?)", (kind, ref, anchor, user_id, now_iso()))
+        tid = cur.lastrowid
+        c.execute("INSERT INTO comments (thread_id, user_id, body, created_at) VALUES (?,?,?,?)",
+                  (tid, user_id, body, now_iso()))
+        return tid
+
+
+def add_comment(thread_id: int, user_id: int, body: str):
+    """Reply to a thread; fan a notification out to every other participant.
+    Returns the comment id, or None if the thread is gone."""
+    with conn() as c:
+        th = c.execute("SELECT * FROM comment_threads WHERE id = ?", (thread_id,)).fetchone()
+        if not th:
+            return None
+        cur = c.execute("INSERT INTO comments (thread_id, user_id, body, created_at) VALUES (?,?,?,?)",
+                        (thread_id, user_id, body, now_iso()))
+        cid = cur.lastrowid
+        participants = {r["user_id"] for r in c.execute(
+            "SELECT DISTINCT user_id FROM comments WHERE thread_id = ?", (thread_id,))}
+        participants.add(th["created_by"])
+        for uid in participants - {user_id}:
+            c.execute("INSERT INTO notifications (user_id, comment_id, created_at) VALUES (?,?,?)",
+                      (uid, cid, now_iso()))
+        return cid
+
+
+def get_comment(comment_id: int):
+    with conn() as c:
+        return c.execute("SELECT * FROM comments WHERE id = ?", (comment_id,)).fetchone()
+
+
+def delete_comment(comment_id: int) -> None:
+    """Remove a comment (+ its notifications); an emptied thread is removed too."""
+    with conn() as c:
+        row = c.execute("SELECT thread_id FROM comments WHERE id = ?", (comment_id,)).fetchone()
+        if not row:
+            return
+        c.execute("DELETE FROM notifications WHERE comment_id = ?", (comment_id,))
+        c.execute("DELETE FROM comments WHERE id = ?", (comment_id,))
+        left = c.execute("SELECT COUNT(*) FROM comments WHERE thread_id = ?",
+                         (row["thread_id"],)).fetchone()[0]
+        if not left:
+            c.execute("DELETE FROM comment_threads WHERE id = ?", (row["thread_id"],))
+
+
+def list_comment_threads(kind: str, ref: str) -> list[dict]:
+    with conn() as c:
+        threads = c.execute(
+            "SELECT t.*, u.username AS author FROM comment_threads t "
+            "JOIN users u ON u.id = t.created_by "
+            "WHERE t.kind = ? AND t.ref = ? ORDER BY t.id", (kind, ref)).fetchall()
+        out = []
+        for t in threads:
+            comments = c.execute(
+                "SELECT c.id, c.user_id, c.body, c.created_at, u.username FROM comments c "
+                "JOIN users u ON u.id = c.user_id WHERE c.thread_id = ? ORDER BY c.id",
+                (t["id"],)).fetchall()
+            out.append({"id": t["id"], "anchor": t["anchor"], "author": t["author"],
+                        "created_at": t["created_at"],
+                        "comments": [dict(x) for x in comments]})
+        return out
+
+
+def list_notifications(user_id: int, limit: int = 30) -> list[dict]:
+    """Unread notifications, newest first, with everything the dropdown shows."""
+    with conn() as c:
+        rows = c.execute(
+            "SELECT n.id, n.comment_id, c.thread_id, c.body, c.created_at, "
+            "       u.username AS author, t.kind, t.ref, t.anchor "
+            "FROM notifications n "
+            "JOIN comments c ON c.id = n.comment_id "
+            "JOIN users u ON u.id = c.user_id "
+            "JOIN comment_threads t ON t.id = c.thread_id "
+            "WHERE n.user_id = ? AND n.read_at IS NULL "
+            "ORDER BY n.id DESC LIMIT ?", (user_id, limit)).fetchall()
+        out = []
+        for r in rows:
+            table = "articles" if r["kind"] == "article" else "episodes"
+            title = c.execute(f"SELECT title FROM {table} WHERE slug = ?",
+                              (r["ref"],)).fetchone()
+            out.append({"id": r["id"], "thread_id": r["thread_id"], "kind": r["kind"],
+                        "ref": r["ref"], "anchor": r["anchor"], "author": r["author"],
+                        "snippet": r["body"][:120], "created_at": r["created_at"],
+                        "title": title["title"] if title else r["ref"]})
+        return out
+
+
+def mark_notifications_read(user_id: int, notif_id: int | None = None) -> None:
+    with conn() as c:
+        if notif_id is None:
+            c.execute("UPDATE notifications SET read_at = ? WHERE user_id = ? AND read_at IS NULL",
+                      (now_iso(), user_id))
+        else:
+            c.execute("UPDATE notifications SET read_at = ? WHERE user_id = ? AND id = ?",
+                      (now_iso(), user_id, notif_id))

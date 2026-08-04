@@ -101,7 +101,8 @@
 <body>
   <header class="masthead">
     <a class="back-pill" id="back-pill" href="/" aria-label="Back">‹</a>
-    <a class="wordmark" href="/"><img class="brand-chud" src="/static/wojak-figure.svg" alt="">{{ site_title }}</a>
+    <span class="brand-wrap"><a class="wordmark" href="/"><img class="brand-chud" src="/static/wojak-figure.svg" alt="">{{ site_title }}</a>{% if user is defined and user %}<button type="button" id="notif-dot" class="notif-dot" hidden aria-label="Notifications"></button>
+    <div id="notif-menu" class="notif-menu" hidden></div>{% endif %}</span>
     {% if user is defined and user %}
     <button type="button" id="nav-burger" aria-label="Menu" aria-expanded="false">☰</button>
     {% endif %}
@@ -378,5 +379,66 @@ window.addEventListener("pagehide", function () { diag.flush("pagehide", true); 
   if (matchMedia) matchMedia("(prefers-color-scheme: dark)").addEventListener("change", themeColor);
 })();
 </script>
+{% if user is defined and user %}
+<script>
+// reply notifications: badge on the logo -> dropdown -> deep link to the reply
+(function () {
+  var dot = document.getElementById("notif-dot"), menu = document.getElementById("notif-menu");
+  if (!dot) return;
+  var items = [];
+
+  function fmt(s) { return s.length > 90 ? s.slice(0, 90) + "…" : s; }
+  function target(n) {
+    return (n.kind === "article" ? "/read/" : "/listen/") + n.ref + "#c" + n.thread_id;
+  }
+  function render() {
+    dot.hidden = items.length === 0;
+    dot.textContent = items.length > 9 ? "9+" : String(items.length);
+    if (items.length === 0) menu.hidden = true;
+    menu.replaceChildren();
+    items.forEach(function (n) {
+      var a = document.createElement("a");
+      a.href = target(n);
+      a.innerHTML = "<strong></strong> replied on <em></em><span></span>";
+      a.querySelector("strong").textContent = n.author;
+      a.querySelector("em").textContent = n.title;
+      a.querySelector("span").textContent = fmt(n.snippet);
+      a.addEventListener("click", function () {
+        // best-effort mark-read; navigation proceeds regardless
+        navigator.sendBeacon("/api/notifications/read",
+          new Blob([JSON.stringify({ id: n.id })], { type: "text/plain" }));
+      });
+      menu.appendChild(a);
+    });
+    if (items.length) {
+      var all = document.createElement("button");
+      all.type = "button"; all.className = "notif-clear"; all.textContent = "mark all read";
+      all.addEventListener("click", function () {
+        fetch("/api/notifications/read", { method: "POST", credentials: "same-origin", body: "{}" })
+          .then(function () { items = []; render(); });
+      });
+      menu.appendChild(all);
+    }
+  }
+  function poll() {
+    fetch("/api/notifications", { credentials: "same-origin" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { if (d) { items = d.items || []; render(); } })
+      .catch(function () {});
+  }
+  dot.addEventListener("click", function (e) {
+    e.stopPropagation(); menu.hidden = !menu.hidden;
+  });
+  document.addEventListener("click", function (e) {
+    if (!menu.hidden && !menu.contains(e.target)) menu.hidden = true;
+  });
+  poll();
+  setInterval(poll, 90000);
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") poll();
+  });
+})();
+</script>
+{% endif %}
 </body>
 </html>

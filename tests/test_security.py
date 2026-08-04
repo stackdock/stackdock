@@ -23,7 +23,7 @@ def test_article_body_script_is_stripped(auth_client):
     html = auth_client.get(f"/read/{slug}").text
     # scope to the rendered article body (the base template has its own legit
     # inline <script> for theming, so we can't assert on the whole page)
-    body = html.split('<div class="body">', 1)[1].split("</article>", 1)[0]
+    body = html.split('<div class="body" id="article-body">', 1)[1].split("</article>", 1)[0]
     assert "hello" in body                        # legitimate content survives
     assert "<script" not in body.lower()          # script element gone
     assert "onerror" not in body.lower()          # event handler gone

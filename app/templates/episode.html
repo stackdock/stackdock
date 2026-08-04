@@ -44,6 +44,15 @@
   <p class="empty">Audio storage isn't configured, so this episode can't be streamed right now.</p>
   {% endif %}
 
+  {% if audio_url %}
+  <section id="cmt-index">
+    <h2>💬 Comments <span class="count" id="cmt-count"></span></h2>
+    <p class="pp-actions"><button type="button" id="cmt-at" class="cmt-at">💬 Comment at <span id="cmt-at-time">0:00</span></button></p>
+    <div id="cmt-new" hidden></div>
+    <ul class="cmt-list cmt-stamps" id="cmt-list"></ul>
+  </section>
+  {% endif %}
+
   {% if e.description %}<div class="body">{{ e.description | sanitize | safe }}</div>{% endif %}
 </article>
 
@@ -498,6 +507,133 @@
   });
   $("pp-done").addEventListener("click", () => stopKeeper("done"));
   window.addEventListener("pagehide", () => stopKeeper("pagehide"));
+})();
+</script>
+<script>
+// timestamp comment threads: 💬 at the current playback position; each thread
+// shows a seekable [m:ss] chip and expands to its replies
+(function () {
+  var a = document.getElementById("pp-audio");
+  var API = "/api/comments/episode/{{ e.slug }}";
+  var state = { threads: [], me: null, admin: false };
+  var $ = function (id) { return document.getElementById(id); };
+  var fmt = function (s) {
+    s = Math.max(0, Math.round(s));
+    var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(sec).padStart(2, "0");
+  };
+
+  setInterval(function () { $("cmt-at-time").textContent = fmt(a.currentTime || 0); }, 1000);
+
+  function form(placeholder, label, onSubmit) {
+    var f = document.createElement("form");
+    var ta = document.createElement("textarea");
+    ta.required = true; ta.maxLength = 4000; ta.rows = 3; ta.placeholder = placeholder;
+    var b = document.createElement("button");
+    b.type = "submit"; b.textContent = label;
+    f.append(ta, b);
+    f.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (ta.value.trim()) onSubmit(ta.value.trim(), b);
+    });
+    return f;
+  }
+
+  function commentRow(c) {
+    var div = document.createElement("div");
+    div.className = "cmt";
+    var head = document.createElement("div");
+    head.className = "cmt-head";
+    var who = document.createElement("strong"); who.textContent = c.username;
+    var when = document.createElement("time");
+    when.textContent = (c.created_at || "").slice(0, 16).replace("T", " ");
+    head.append(who, when);
+    if (c.username === state.me || state.admin) {
+      var del = document.createElement("button");
+      del.type = "button"; del.textContent = "✕"; del.title = "Delete"; del.setAttribute("aria-label", "Delete comment");
+      del.addEventListener("click", function () {
+        fetch("/api/threads/comment/" + c.id + "/delete", { method: "POST", credentials: "same-origin" })
+          .then(load);
+      });
+      head.appendChild(del);
+    }
+    var p = document.createElement("p"); p.textContent = c.body;
+    div.append(head, p);
+    return div;
+  }
+
+  function render() {
+    var list = $("cmt-list");
+    list.replaceChildren();
+    var threads = state.threads.slice().sort(function (x, y) {
+      return (JSON.parse(x.anchor).t || 0) - (JSON.parse(y.anchor).t || 0);
+    });
+    threads.forEach(function (t) {
+      var at = JSON.parse(t.anchor).t || 0;
+      var li = document.createElement("li");
+      li.id = "c" + t.id;
+      var d = document.createElement("details");
+      var sum = document.createElement("summary");
+      var chip = document.createElement("button");
+      chip.type = "button"; chip.className = "cmt-stamp"; chip.textContent = "▶ " + fmt(at);
+      chip.setAttribute("aria-label", "Play from " + fmt(at));
+      chip.addEventListener("click", function (e) {
+        e.preventDefault();
+        a.currentTime = at; a.play();
+      });
+      sum.appendChild(chip);
+      sum.appendChild(document.createTextNode(
+        " " + t.comments[0].username + ": " + t.comments[0].body.slice(0, 80) +
+        (t.comments.length > 1 ? "  (+" + (t.comments.length - 1) + ")" : "")));
+      d.appendChild(sum);
+      t.comments.forEach(function (c) { d.appendChild(commentRow(c)); });
+      d.appendChild(form("Reply…", "Reply", function (v, btn) {
+        btn.disabled = true;
+        fetch("/api/threads/" + t.id + "/reply", {
+          method: "POST", credentials: "same-origin", body: JSON.stringify({ body: v }),
+        }).then(load).then(function () {
+          var el = document.querySelector("#c" + t.id + " details");
+          if (el) el.open = true;
+        });
+      }));
+      li.appendChild(d);
+      list.appendChild(li);
+    });
+    $("cmt-count").textContent = threads.length || "";
+  }
+
+  function load() {
+    return fetch(API, { credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { state = d; render(); });
+  }
+
+  $("cmt-at").addEventListener("click", function () {
+    var at = Math.floor(a.currentTime || 0);
+    var box = $("cmt-new");
+    box.replaceChildren(form("Comment at " + fmt(at) + "…", "Comment", function (v, btn) {
+      btn.disabled = true;
+      fetch(API, {
+        method: "POST", credentials: "same-origin",
+        body: JSON.stringify({ anchor: { t: at }, body: v }),
+      }).then(load).then(function () { box.hidden = true; });
+    }));
+    box.hidden = false;
+    box.querySelector("textarea").focus();
+  });
+
+  load().then(function () {
+    var h = location.hash.match(/^#c(\d+)$/);
+    if (h) {
+      var li = document.getElementById("c" + h[1]);
+      if (li) {
+        li.querySelector("details").open = true;
+        li.scrollIntoView({ block: "center" });
+        var t = state.threads.find(function (x) { return x.id === Number(h[1]); });
+        if (t) a.currentTime = JSON.parse(t.anchor).t || 0;
+      }
+    }
+  });
 })();
 </script>
 {% endif %}
