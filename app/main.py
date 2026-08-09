@@ -602,13 +602,38 @@ def audio_proxy(slug: str, user=Depends(auth.current_user)):
         raise HTTPException(503, "storage unavailable")
 
     def _stream():
-        # close the R2 connection on normal completion AND on client abort
-        # (Starlette calls .close() on the generator when the client disconnects)
+        # One R2 GET can't be trusted for a 100 MB+ mobile offline save: when
+        # the phone stops consuming (backgrounded page, slow link), backpressure
+        # leaves the R2 socket idle until boto's read timeout kills it mid-body,
+        # truncating the save. On a read error, reopen at the current byte
+        # offset with a Range request and keep going; only consecutive failures
+        # with zero progress give up. Closes the R2 connection on completion
+        # AND on client abort (Starlette calls .close() on the generator).
+        src = body
+        sent = 0
+        fails = 0
         try:
-            for chunk in iter(lambda: body.read(256 * 1024), b""):
+            while True:
+                try:
+                    chunk = src.read(256 * 1024)
+                except Exception:
+                    try:
+                        src.close()
+                    except Exception:
+                        pass
+                    fails += 1
+                    if fails > 4:
+                        raise
+                    time.sleep(min(2 ** fails, 10))
+                    src, _, _ = storage.open_stream(e["audio_key"], start=sent)
+                    continue
+                if not chunk:
+                    break
+                fails = 0
+                sent += len(chunk)
                 yield chunk
         finally:
-            close = getattr(body, "close", None)
+            close = getattr(src, "close", None)
             if callable(close):
                 close()
 

@@ -310,9 +310,21 @@
         return;
       }
       const mb = (+offBtn.dataset.bytes / 1048576).toFixed(0);
-      offMsg("Saving" + (mb > 0 ? " ~" + mb + " MB" : "") + "… keep this page open");
+      offMsg("Saving" + (mb > 0 ? " ~" + mb + " MB" : "") + "… keep this page open and the screen on");
+      // Screen wake lock while saving: iOS suspends a backgrounded page and
+      // kills the fetch mid-download — auto-lock during a multi-minute save is
+      // how big episodes died (Zombi Wars, Aug 2026). Auto-released when the
+      // page hides; re-acquired if the user comes back with the save running.
+      let wake = null, saving = true;
+      const grabWake = async () => {
+        try { if (navigator.wakeLock && saving && !document.hidden)
+          wake = await navigator.wakeLock.request("screen"); } catch {}
+      };
+      const onWakeVis = () => { if (!document.hidden) grabWake(); };
+      document.addEventListener("visibilitychange", onWakeVis);
       try {
         if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+        await grabWake();
         const resp = await fetch("/audio/" + slug, { credentials: "same-origin", redirect: "follow" });
         // Guard against caching the LOGIN page as audio: an expired session makes
         // /audio 303 -> /login (a 200 HTML page). Reject anything that redirected
@@ -321,7 +333,31 @@
         if (!resp.ok || resp.redirected || !/^audio\/|octet-stream/.test(ctype)) {
           throw new Error(resp.redirected ? "not logged in" : "unexpected response");
         }
-        await c.put(cacheKey, resp);
+        // Live progress: count bytes through a TransformStream on the way into
+        // Cache Storage (still streamed — never the whole file in memory, which
+        // is the shelf's old OOM lesson). Content-Length is re-declared on the
+        // synthesized response because the shelf's size line reads that header.
+        let stored = resp;
+        const total = +offBtn.dataset.bytes || +(resp.headers.get("content-length") || 0);
+        if (resp.body && window.TransformStream) {
+          let got = 0, lastUi = 0;
+          const counter = new TransformStream({
+            transform(chunk, ctl) {
+              got += chunk.byteLength; ctl.enqueue(chunk);
+              const now = Date.now();
+              if (now - lastUi > 500) {
+                lastUi = now;
+                offMsg("Saving… " + (got / 1048576).toFixed(0) +
+                       (total ? " of " + (total / 1048576).toFixed(0) : "") +
+                       " MB — keep the screen on");
+              }
+            },
+          });
+          const headers = { "Content-Type": ctype };
+          if (total) headers["Content-Length"] = String(total);
+          stored = new Response(resp.body.pipeThrough(counter), { headers });
+        }
+        await c.put(cacheKey, stored);
         store.set("offline:" + slug, JSON.stringify({
           title: box.dataset.title, show: box.dataset.show,
           art: box.dataset.art || "", savedAt: Date.now(),
@@ -329,7 +365,11 @@
         setOffUi(true); offMsg("Saved ✓ — playable from the 📦 offline shelf with no connection.");
       } catch (err) {
         diag.log("offline save failed: " + err.message);
-        offMsg("Save failed (" + err.message + "). Try again on good wifi.");
+        offMsg("Save failed (" + err.message + "). Try again on good wifi, keeping the app in the foreground.");
+      } finally {
+        saving = false;
+        document.removeEventListener("visibilitychange", onWakeVis);
+        if (wake) try { wake.release(); } catch {}
       }
     };
   } else {

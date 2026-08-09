@@ -51,15 +51,22 @@ def url_for(key: str, download_name: str | None = None) -> str:
         "get_object", Params=params, ExpiresIn=config.PRESIGN_EXPIRY_SECONDS)
 
 
-def open_stream(key: str):
+def open_stream(key: str, start: int = 0):
     """(body, content_type, content_length) for the object — used by the
     same-origin /audio proxy so page JS can cache episodes for offline
     (cross-origin presigned URLs can't be fetch()ed from JS without CORS).
 
     `body` is the raw boto StreamingBody; the caller MUST close it (stream it
     inside a try/finally) so an aborted download doesn't leak the connection
-    to R2."""
-    obj = client().get_object(Bucket=config.S3_BUCKET, Key=key)
+    to R2.
+
+    `start` > 0 opens a Range read from that byte offset (content_length is
+    then the REMAINING bytes, not the object size) — the /audio proxy uses it
+    to resume after a mid-stream R2 read timeout."""
+    kwargs = {"Bucket": config.S3_BUCKET, "Key": key}
+    if start:
+        kwargs["Range"] = f"bytes={start}-"
+    obj = client().get_object(**kwargs)
     return (obj["Body"],
             obj.get("ContentType") or "application/octet-stream",
             obj.get("ContentLength"))
