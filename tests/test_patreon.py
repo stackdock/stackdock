@@ -146,6 +146,66 @@ def test_resweep_heals_fallback_named_rows(world, monkeypatch):
     assert a["publication"] == "Frienji" and a["author"] == "Frienji"
 
 
+PROMO = ("You're currently on the free tier, which doesn't show full videos. "
+         "By joining the paid tier, you can now watch the full MAN report right here!")
+
+
+def test_free_tier_promo_posts_are_hidden_and_silent(world, monkeypatch):
+    # a free-tier account "can view" the post, but the served body is a
+    # membership ad — store it hidden+locked and never queue it for the digest
+    monkeypatch.setattr(patreon, "fetch_stream", lambda s, n: (
+        [_post("7", "watch the full report!!", False, True)], {"c1": "Frienji"}))
+    monkeypatch.setattr(patreon, "_post_detail",
+                        lambda s, pid: {"content_json_string": _doc(PROMO)})
+    new, _ = patreon.sync_account({"cookie": "c", "label": "erin",
+                                   "last_sync": "2026-01-01T00:00:00+00:00"})
+    assert new == 0
+    assert not list(db.list_articles(publications=["Frienji"]))
+    a = db.get_article_by_message_id("patreon:7")
+    assert (a["hidden"], a["is_locked"], a["is_paid"]) == (1, 1, 1)
+    assert not db.list_unnotified_items()
+    # a resync serving the same ad neither unhides nor "upgrades" the body
+    patreon.sync_account({"cookie": "c", "label": "erin",
+                          "last_sync": "2026-01-01T00:00:00+00:00"})
+    a = db.get_article_by_message_id("patreon:7")
+    assert (a["hidden"], a["is_locked"]) == (1, 1)
+
+
+def test_promo_row_unhides_when_real_body_arrives(world, monkeypatch):
+    # once a paying account's sync serves the actual content, the promo-hidden
+    # row is upgraded in place and surfaced
+    monkeypatch.setattr(patreon, "fetch_stream", lambda s, n: (
+        [_post("7", "watch the full report!!", False, True)], {"c1": "Frienji"}))
+    monkeypatch.setattr(patreon, "_post_detail",
+                        lambda s, pid: {"content_json_string": _doc(PROMO)})
+    patreon.sync_account({"cookie": "c", "label": "erin",
+                          "last_sync": "2026-01-01T00:00:00+00:00"})
+    monkeypatch.setattr(patreon, "_post_detail",
+                        lambda s, pid: {"content_json_string": _doc("The actual chapter text")})
+    patreon.sync_account({"cookie": "c2", "label": "payer",
+                          "last_sync": "2026-01-01T00:00:00+00:00"})
+    a = db.get_article_by_message_id("patreon:7")
+    assert (a["hidden"], a["is_locked"]) == (0, 0)
+    assert "actual chapter text" in a["html"]
+
+
+def test_admin_hidden_row_stays_hidden_on_upgrade(world, monkeypatch):
+    # an admin-hidden row (body is NOT a promo) must not resurface when a sync
+    # touches it with fresh content
+    db.insert_article("patreon:8", "Frienji", "Junk", "Frienji", "https://x",
+                      '<p class="stub"><a href="https://x">Read on Patreon →</a></p>',
+                      "2026-06-01", added_by="erin", notified=1)
+    db.set_article_hidden(db.get_article_by_message_id("patreon:8")["id"], True)
+    monkeypatch.setattr(patreon, "fetch_stream", lambda s, n: (
+        [_post("8", "Junk", False, True)], {"c1": "Frienji"}))
+    monkeypatch.setattr(patreon, "_post_detail",
+                        lambda s, pid: {"content_json_string": _doc("Fresh body text")})
+    patreon.sync_account({"cookie": "c", "label": "erin",
+                          "last_sync": "2026-01-01T00:00:00+00:00"})
+    a = db.get_article_by_message_id("patreon:8")
+    assert a["hidden"] == 1 and "Fresh body text" in a["html"]
+
+
 def test_patreon_upgrades_stub_body_on_resync(world):
     # an article stored earlier as a stub gets its full body on the next sync
     db.insert_article("patreon:1", "Frienji", "Free One", "Frienji", "https://x",

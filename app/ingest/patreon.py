@@ -14,6 +14,7 @@ import html as _htmlmod
 import json
 import logging
 import random
+import re
 import tempfile
 import threading
 import time
@@ -140,6 +141,29 @@ def _audio_url(attrs):
         return None
     pf = attrs.get("post_file")
     return pf.get("url") if isinstance(pf, dict) else None
+
+
+# Patreon serves free-tier accounts a membership upsell where the content
+# should be ("You're currently on the free tier, which doesn't show full
+# videos...") — the post LOOKS viewable (can_view=true) but the body is an ad.
+_PROMO_PHRASES = (
+    "you're a free member",
+    "as a free member",
+    "on the free tier",
+    "join the paid tier",
+    "joining the paid tier",
+    "becoming a paid member",
+)
+
+
+def _is_tier_promo(html_body: str) -> bool:
+    """True when a served body opens with a free-tier membership upsell instead
+    of the actual content. Matched against the first 500 chars of the rendered
+    text (the pitch is always the preamble; deeper mentions can be legit)."""
+    text = re.sub(r"<[^>]+>", " ", html_body or "")
+    text = _htmlmod.unescape(text).replace("’", "'")
+    text = " ".join(text.split()).casefold()
+    return any(p in text[:500] for p in _PROMO_PHRASES)
 
 
 def _teaser_stub(url, teaser) -> str:
@@ -347,6 +371,13 @@ def _ingest_post(s, account, post, campaigns, notified: int,
         detail = _post_detail(s, pid)
         content_html = _render_doc((detail or {}).get("content_json_string"))
         time.sleep(random.uniform(0.5, 1.2))   # polite between per-post fetches
+    promo = _is_tier_promo(content_html)
+    if promo:
+        # the body is a membership ad, not the post — the real content is still
+        # gated for this account, so keep it locked (a paying account's sync
+        # can upgrade it later) and hidden (members never see the ad)
+        locked = True
+        is_paid = True
     body = content_html
     if is_video and not video_key:
         body = (f'<p class="stub">🎬 <a href="{url}">Watch this video on Patreon →</a></p>'
@@ -355,18 +386,25 @@ def _ingest_post(s, account, post, campaigns, notified: int,
         body = _teaser_stub(url, None)
 
     if existing:
-        if content_html:
+        if content_html and not promo:
             db.upgrade_article_body(existing["id"], body, account["label"])
+            # a promo-hidden row just got its real body — surface it (only
+            # rows whose stored body was the upsell; admin hides stay hidden)
+            if existing["hidden"] and _is_tier_promo(existing["html"]):
+                db.set_article_hidden(existing["id"], False)
         db.add_article_source(existing["id"], account["label"])
         return 0
     aid = db.insert_article(
         message_id=guid, publication=pub, title=title, author=pub,
         original_url=url, html=body, published_at=published,
         added_by=account["label"], cover_image=thumb, media_key=video_key,
-        is_paid=1 if is_paid else 0, is_locked=1 if locked else 0, notified=notified)
+        is_paid=1 if is_paid else 0, is_locked=1 if locked else 0,
+        notified=1 if promo else notified)
     if aid:
+        if promo:
+            db.set_article_hidden(aid, True)
         db.add_article_source(aid, account["label"])
-        return 1
+        return 0 if promo else 1
     return 0
 
 
